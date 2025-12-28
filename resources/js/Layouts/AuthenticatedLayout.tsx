@@ -10,15 +10,19 @@ export default function Authenticated({
   const user = usePage().props.auth.user;
   // محاكاة المسار الحالي لتفعيل الزر الأصفر (في الواقع نستخدم route().current())
 
-  const menuItems = [
-    { label: "Dashboard", route: "admin.dashboard", icon: "grid" },
-    { label: "Schools", route: "admin.schools.index", icon: "school" }, // استبدل route بـ schools.index // سنربطها لاحقاً بصفحة المدارس
-    { label: "Fleet Management", route: "admin.dashboard", icon: "bus" },
-    { label: "Attendance", route: "admin.dashboard", icon: "user" },
-    { label: "Notifications", route: "admin.dashboard", icon: "bell" },
-    { label: "Settings", route: "profile.edit", icon: "cog" },
-  ];
+const menuItems = [
+  { label: "Dashboard", route: "admin.dashboard", icon: "grid" },
 
+  // المدارس لها صفحة، لذا نترك الرابط كما هو
+  { label: "Schools", route: "admin.schools.index", icon: "school" },
+
+  // العناصر التالية لم نبرمجها بعد، لذا نجعل الرابط فارغاً مؤقتاً
+  { label: "Fleet Management", route: "", icon: "bus" },
+  { label: "Attendance", route: "", icon: "user" },
+  { label: "Notifications", route: "", icon: "bell" },
+
+  { label: "Settings", route: "profile.edit", icon: "cog" },
+];
   return (
     <div
       className="min-h-screen bg-[#f1f5f9] flex font-sans text-right"
@@ -37,16 +41,20 @@ export default function Authenticated({
         {/* Navigation */}
         <nav className="flex-1 px-4 space-y-2 mt-4">
           {menuItems.map((item, index) => {
-            const isActive = route().current(item.route); // جعلنا الأول نشطاً للمحاكاة
+const isActive = item.route && route().current(item.route);
             return (
               <Link
-                key={index}
-                href={route(item.route)}
-                className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 group ${
-                  isActive
-                    ? "bg-[#fbbf24] text-black font-semibold shadow-md"
-                    : "text-gray-400 hover:text-white hover:bg-white/5"
-                }`}
+                key={item.label}
+                // 2. إذا كان الرابط فارغاً نضع #، وإلا نستخدم دالة route()
+                href={item.route ? route(item.route) : "#"}
+                className={`
+                    group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200
+                    ${
+                      isActive
+                        ? "bg-brand-yellow text-brand-dark shadow-md font-bold" // تنسيق الـ Active (أصفر)
+                        : "text-gray-300 hover:bg-brand-dark-light hover:text-white" // تنسيق العادي
+                    }
+                `}
               >
                 <span className="w-6 h-6 mr-3">
                   {/* Simple Icons Rendering */}
