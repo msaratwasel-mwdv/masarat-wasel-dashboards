@@ -28,7 +28,7 @@ export default function Welcome({
                 />
                 <div className="relative flex min-h-screen flex-col items-center justify-center selection:bg-[#FF2D20] selection:text-white">
                     <div className="relative w-full max-w-2xl px-6 lg:max-w-7xl">
-                        <header className="grid grid-cols-2 items-center gap-2 py-10 lg:grid-cols-3">
+                        <header className="grid items-center grid-cols-2 gap-2 py-10 lg:grid-cols-3">
                             <div className="flex lg:col-start-2 lg:justify-center">
                                 <svg
                                     className="h-12 w-auto text-white lg:h-16 lg:text-[#FF2D20]"
@@ -42,10 +42,10 @@ export default function Welcome({
                                     />
                                 </svg>
                             </div>
-                            <nav className="-mx-3 flex flex-1 justify-end">
+                            <nav className="flex justify-end flex-1 -mx-3">
                                 {auth.user ? (
                                     <Link
-                                        href={route('dashboard')}
+                                        href={auth.user.role === 'admin' ? route('admin.dashboard') : route('school.dashboard')}
                                         className="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
                                     >
                                         Dashboard
@@ -78,7 +78,7 @@ export default function Welcome({
                                 >
                                     <div
                                         id="screenshot-container"
-                                        className="relative flex w-full flex-1 items-stretch"
+                                        className="relative flex items-stretch flex-1 w-full"
                                     >
                                         <img
                                             src="https://laravel.com/assets/img/welcome/docs-light.svg"
@@ -355,7 +355,7 @@ export default function Welcome({
                             </div>
                         </main>
 
-                        <footer className="py-16 text-center text-sm text-black dark:text-white/70">
+                        <footer className="py-16 text-sm text-center text-black dark:text-white/70">
                             Laravel v{laravelVersion} (PHP v{phpVersion})
                         </footer>
                     </div>

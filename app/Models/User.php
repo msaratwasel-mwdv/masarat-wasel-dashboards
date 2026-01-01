@@ -50,6 +50,8 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
-
-
+public function school()
+    {
+        return $this->belongsTo(School::class);
+    }
 }
