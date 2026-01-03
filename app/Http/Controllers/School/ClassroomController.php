@@ -11,21 +11,46 @@ use Inertia\Inertia;
 
 class ClassroomController extends Controller
 {
-    // عرض صفحة الفصول
-    public function index()
+    // [API] Fetch all classes for dropdowns
+    public function apiIndex()
     {
-        // ✅ 2. استخدمنا Auth بدلاً من auth() لإخفاء الخطأ
+        $schoolId = Auth::user()->school_id;
+        $classrooms = Classroom::where('school_id', $schoolId)
+            ->with(['teachers:id,name,national_id']) // load supervisors with national_id for search
+            ->orderBy('name')
+            ->get(['id', 'name', 'grade_level']);
+            
+        return response()->json($classrooms);
+    }
+
+    // عرض صفحة الفصول
+    public function index(Request $request)
+    {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
         $schoolId = $user->school_id;
+        $search = $request->input('search');
 
         $classrooms = Classroom::where('school_id', $schoolId)
+            ->when($search, function ($query, $search) {
+                $query->where('name', 'like', "%{$search}%")
+                      ->orWhere('grade_level', 'like', "%{$search}%");
+            })
             ->latest()
+            ->with('teachers') // Eager load teachers to display supervisor
             ->get();
 
+        // Fetch supervisors to populate the dropdown
+        $supervisors = User::where('school_id', $schoolId)
+            ->where('role', 'supervisor')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return Inertia::render('School/Classrooms/Index', [
-            'classrooms' => $classrooms->load('teachers:id,name,email'),
+            'classrooms' => $classrooms,
+            'supervisors' => $supervisors,
+            'filters' => $request->only(['search']),
         ]);
     }
 
@@ -41,7 +66,7 @@ class ClassroomController extends Controller
 
         $teachers = User::query()
             ->where('school_id', $user->school_id)
-            ->where('role', 'teacher')
+            ->where('role', 'supervisor') // Changed to show supervisors
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
@@ -78,7 +103,7 @@ class ClassroomController extends Controller
         $teacherIds = collect($validated['teacher_ids'] ?? [])->unique()->values();
         $teacherIds = User::query()
             ->where('school_id', $user->school_id)
-            ->where('role', 'teacher')
+            ->where('role', 'supervisor')
             ->whereIn('id', $teacherIds)
             ->pluck('id')
             ->all();
@@ -98,18 +123,24 @@ class ClassroomController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'grade_level' => 'nullable|string|max:255',
+            'supervisor_id' => 'nullable|exists:users,id', // Added validation
         ]);
 
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        Classroom::create([
+        $classroom = Classroom::create([
             'name' => $request->name,
             'grade_level' => $request->grade_level,
             'school_id' => $user->school_id, // ✅ استخدام المتغير المعرف
         ]);
 
-        return redirect()->back();
+        // Attach supervisor if selected
+        if ($request->supervisor_id) {
+            $classroom->teachers()->attach($request->supervisor_id, ['school_id' => $user->school_id]);
+        }
+
+        return redirect()->back()->with('success', 'Class created successfully');
     }
 
     // حذف فصل

@@ -1,109 +1,218 @@
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import { Head, Link } from "@inertiajs/react";
+import useTranslation from "@/hooks/useTranslation";
+import { useEffect, useState } from "react";
 
-export default function SchoolDashboard({ auth }: { auth: any }) {
+interface DashboardProps {
+    auth: any;
+    stats: {
+        students: number;
+        classes: number;
+        staff: number;
+        attendance_percentage: number;
+        attendance_today_count: number;
+    };
+    recent_students: Array<{
+        id: number;
+        name: string;
+        full_name?: string;
+        image?: string;
+        created_at: string;
+    }>;
+    system_status: string;
+}
+
+export default function SchoolDashboard({ auth, stats, recent_students, system_status }: DashboardProps) {
+    const { t, isRtl } = useTranslation();
+    const [animate, setAnimate] = useState(false);
+
+    useEffect(() => {
+        setAnimate(true);
+    }, []);
+
+    const statCards = [
+        {
+            title: t('Students'),
+            value: stats.students,
+            sub: t('Registered Students'),
+            icon: '🎓',
+            color: 'from-blue-500 to-blue-600',
+            link: route('school.students.index')
+        },
+        {
+            title: t('Classes'),
+            value: stats.classes,
+            sub: t('Total Classes'),
+            icon: '🏫',
+            color: 'from-yellow-400 to-yellow-600',
+            link: route('school.classrooms.index')
+        },
+        {
+            title: t('Staff'),
+            value: stats.staff,
+            sub: t('Drivers & Supervisors'),
+            icon: '👔',
+            color: 'from-green-500 to-green-600',
+            link: route('school.teachers.index')
+        },
+        {
+            title: t('Attendance'),
+            value: `${stats.attendance_percentage}%`,
+            sub: `${stats.attendance_today_count} ${t('Today\'s Presence')}`,
+            icon: '📅',
+            color: 'from-red-500 to-red-600',
+            link: route('school.reports.attendance')
+        }
+    ];
+
     return (
         <SchoolAuthenticatedLayout
-            // ✅ تم تمرير المستخدم ليعمل الشريط العلوي وتختفي الصفحة البيضاء
             user={auth.user}
             header={
-                <h2 className="text-xl font-semibold text-gray-800">
-                    School Control Panel
-                </h2>
+                <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                        {t('School Control Panel')}
+                    </h2>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs font-bold animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                        {t('All systems operational')}
+                    </div>
+                </div>
             }
         >
-            <Head title="School Dashboard" />
+            <Head title={t('Dashboard')} />
 
-            <div className="space-y-6">
-                {/* 1. ترحيب خاص بمدير المدرسة */}
-                <div className="p-6 bg-white border-l-4 border-yellow-400 shadow-sm rounded-2xl">
-                    <h1 className="text-2xl font-bold text-slate-800">
-                        Welcome back, {auth.user.name}!
-                    </h1>
-                    <p className="mt-1 text-gray-500">
-                        Here is today's overview for your school.
-                    </p>
+            <div className={`space-y-8 p-4 transition-opacity duration-1000 ${animate ? 'opacity-100' : 'opacity-0'}`}>
+
+                {/* 1. WELCOME SECTION */}
+                <div className="relative overflow-hidden bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-8 border-l-8 border-brand-yellow">
+                    <div className="relative z-10">
+                        <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-brand-dark to-brand-primary dark:from-white dark:to-gray-300">
+                            {t('Welcome back, Principal!')}
+                        </h1>
+                        <p className="mt-2 text-lg text-gray-500 dark:text-gray-400">
+                            {t('Here is today\'s overview for your school.')}
+                        </p>
+                    </div>
+                    {/* Background Pattern */}
+                    <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-brand-yellow/10 blur-3xl"></div>
                 </div>
 
-                {/* 2. الإحصائيات السريعة */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-                    {/* الطلاب */}
-                    <div className="p-6 transition bg-white border border-transparent shadow-sm rounded-2xl hover:shadow-md hover:border-blue-100">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 text-blue-600 rounded-full bg-blue-50">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                </svg>
+                {/* 2. STATS GRID */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {statCards.map((stat, idx) => (
+                        <Link
+                            key={idx}
+                            href={stat.link}
+                            className={`relative overflow-hidden rounded-2xl p-6 shadow-lg bg-white dark:bg-gray-800 border-b-4 border-transparent hover:border-brand-yellow transform transition-all hover:-translate-y-1 hover:shadow-2xl group`}
+                            style={{ animationDelay: `${idx * 100}ms` }}
+                        >
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="text-sm font-bold text-gray-400 uppercase tracking-wider">{stat.title}</p>
+                                    <h3 className="text-4xl font-extrabold text-gray-800 dark:text-white mt-2 group-hover:text-brand-primary transition-colors">
+                                        {stat.value}
+                                    </h3>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{stat.sub}</p>
+                                </div>
+                                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center text-2xl shadow-lg shadow-gray-200 dark:shadow-none`}>
+                                    {stat.icon}
+                                </div>
                             </div>
-                            <span className="text-xs font-bold text-gray-400 uppercase">Students</span>
-                        </div>
-                        <p className="text-3xl font-bold text-gray-800">0</p>
-                        <p className="mt-2 text-xs text-gray-400">Registered Students</p>
-                    </div>
-
-                    {/* الفصول */}
-                    <Link href={route("school.classrooms.index")} className="block p-6 transition bg-white border border-transparent shadow-sm rounded-2xl hover:shadow-md hover:border-yellow-100">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 text-yellow-600 rounded-full bg-yellow-50">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                </svg>
-                            </div>
-                            <span className="text-xs font-bold text-gray-400 uppercase">Classrooms</span>
-                        </div>
-                        <p className="text-lg font-bold text-gray-800">إدارة الفصول</p>
-                        <p className="mt-2 text-xs font-medium tracking-wide text-blue-500">Enter Management ⬅️</p>
-                    </Link>
-
-                    {/* الموظفين */}
-                    <div className="p-6 transition bg-white border border-transparent shadow-sm rounded-2xl hover:shadow-md hover:border-green-100">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 text-green-600 rounded-full bg-green-50">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                            </div>
-                            <span className="text-xs font-bold text-gray-400 uppercase">Staff</span>
-                        </div>
-                        <p className="text-3xl font-bold text-gray-800">0</p>
-                        <p className="mt-2 text-xs text-gray-400">Drivers & Supervisors</p>
-                    </div>
-
-                    {/* الحضور */}
-                    <div className="p-6 transition bg-white border border-transparent shadow-sm rounded-2xl hover:shadow-md hover:border-red-100">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 text-red-600 rounded-full bg-red-50">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                </svg>
-                            </div>
-                            <span className="text-xs font-bold text-gray-400 uppercase">Attendance</span>
-                        </div>
-                        <p className="text-3xl font-bold text-gray-800">--%</p>
-                        <p className="mt-2 text-xs text-gray-400">Today's Presence</p>
-                    </div>
+                        </Link>
+                    ))}
                 </div>
 
-                {/* 3. منطقة العمليات السريعة */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <div className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl">
-                        <h3 className="mb-4 font-bold text-gray-800">Quick Actions</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <button className="p-4 text-center transition border border-gray-200 rounded-xl hover:bg-gray-50 group">
-                                <span className="block mb-2 text-2xl transition-transform group-hover:scale-110">🚌</span>
-                                <span className="text-sm font-medium text-gray-600">Track Buses</span>
-                            </button>
-                            <button className="p-4 text-center transition border border-gray-200 rounded-xl hover:bg-gray-50 group">
-                                <span className="block mb-2 text-2xl transition-transform group-hover:scale-110">📢</span>
-                                <span className="text-sm font-medium text-gray-600">Send Alert</span>
-                            </button>
+                {/* 3. MAIN CONTENT GRID */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                    {/* QUICK ACTIONS */}
+                    <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                ⚡ {t('Quick Actions')}
+                            </h3>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <Link href={route('school.students.create')} className="flex flex-col items-center justify-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition gap-2 group">
+                                <span className="text-3xl group-hover:scale-110 transition-transform">🎓</span>
+                                <span className="text-sm font-bold text-blue-700 dark:text-blue-300 text-center">{t('Enroll Student')}</span>
+                            </Link>
+                            <Link href={route('school.reports.attendance')} className="flex flex-col items-center justify-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/40 transition gap-2 group">
+                                <span className="text-3xl group-hover:scale-110 transition-transform">📋</span>
+                                <span className="text-sm font-bold text-purple-700 dark:text-purple-300 text-center">{t('Take Attendance')}</span>
+                            </Link>
+                            <Link href={route('school.classrooms.index')} className="flex flex-col items-center justify-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition gap-2 group">
+                                <span className="text-3xl group-hover:scale-110 transition-transform">🏫</span>
+                                <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300 text-center">{t('Add Class')}</span>
+                            </Link>
+                            <Link href={route('school.teachers.index')} className="flex flex-col items-center justify-center p-4 bg-green-50 dark:bg-green-900/20 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/40 transition gap-2 group">
+                                <span className="text-3xl group-hover:scale-110 transition-transform">👔</span>
+                                <span className="text-sm font-bold text-green-700 dark:text-green-300 text-center">{t('Add Supervisor')}</span>
+                            </Link>
+                        </div>
+
+                        {/* SUB-SECTION: SYSTEM FEATURES STATUS (VISUAL ONLY) */}
+                        <div className="mt-8">
+                            <h4 className="text-sm font-bold text-gray-400 uppercase mb-4">{t('System Health')}</h4>
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                        <span className="font-medium text-gray-700 dark:text-gray-300">{t('Attendance System')}</span>
+                                    </div>
+                                    <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded dark:bg-green-900/50 dark:text-green-400">{t('Active')}</span>
+                                </div>
+                                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                        <span className="font-medium text-gray-700 dark:text-gray-300">{t('Student Portal')}</span>
+                                    </div>
+                                    <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded dark:bg-green-900/50 dark:text-green-400">{t('Active')}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div className="flex flex-col items-center justify-center p-6 text-center bg-white border border-gray-100 shadow-sm rounded-2xl">
-                        <h3 className="mb-2 font-bold text-gray-800">Need Help?</h3>
-                        <p className="mb-4 text-sm text-gray-500">Contact Wasel Support Center for any technical issues.</p>
-                        <span className="font-mono text-xl font-bold text-[#0f2847]">19992</span>
+
+                    {/* RECENT ACTIVITY / SIDEBAR */}
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6 border-b pb-2 dark:border-gray-700">
+                            {t('Recently Added Students')}
+                        </h3>
+                        {recent_students.length > 0 ? (
+                            <div className="space-y-4">
+                                {recent_students.map((student) => {
+                                    const displayName = student.full_name || student.name || t('Unknown');
+                                    const initial = displayName.charAt(0) || '?';
+                                    return (
+                                        <div key={student.id} className="flex items-center gap-4 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition">
+                                            <div className="w-10 h-10 rounded-full bg-brand-yellow/20 flex items-center justify-center text-brand-dark font-bold">
+                                                {initial}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-gray-800 dark:text-white text-sm">
+                                                    {displayName}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    {student.created_at ? new Date(student.created_at).toLocaleDateString() : '-'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <p className="text-center text-gray-500 py-4">{t('No recent activity')}</p>
+                        )}
+
+                        <div className="mt-8 pt-6 border-t dark:border-gray-700">
+                            <div className="bg-gradient-to-r from-brand-dark to-black p-4 rounded-xl text-white text-center">
+                                <p className="font-bold text-lg">Masarat Wasel 🚀</p>
+                                <p className="text-xs opacity-70 mt-1">{t('Version')} 2.0.0</p>
+                            </div>
+                        </div>
                     </div>
+
                 </div>
             </div>
         </SchoolAuthenticatedLayout>

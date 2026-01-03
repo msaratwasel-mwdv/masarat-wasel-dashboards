@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\SchoolController;
 use App\Http\Controllers\Admin\SchoolUserController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\School\AttendanceController;
+use App\Http\Controllers\School\Attendance\AttendanceController;
 use App\Http\Controllers\School\ClassroomController;
 use App\Http\Controllers\School\StudentController;
 use App\Http\Controllers\School\TeacherController;
@@ -48,18 +48,18 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
     ->name('school.')
     ->group(function () {
         // 1. لوحة التحكم
-        Route::get('/dashboard', function () {
-            return Inertia::render('School/Dashboard');
-        })->name('dashboard');
+        Route::get('/dashboard', [\App\Http\Controllers\School\DashboardController::class, 'index'])->name('dashboard');
 
         // 2. إدارة الفصول وربط المعلمين
+        Route::get('classes-api', [ClassroomController::class, 'apiIndex'])->name('classrooms.api'); // Add this line
         Route::resource('classrooms', ClassroomController::class);
 
         // 3. إدارة المعلمين (إنشاء/عرض) ثم ربطهم بالفصول من شاشة تعديل الفصل
-        Route::get('teachers', [TeacherController::class, 'index'])->name('teachers.index');
-        Route::post('teachers', [TeacherController::class, 'store'])->name('teachers.store');
+        // 3. إدارة المعلمين (إنشاء/عرض/تعديل/حذف)
+        Route::resource('teachers', TeacherController::class)->except(['show']);
 
         // 4. إدارة الطلاب
+        Route::get('students-api', [StudentController::class, 'apiIndex'])->name('students.api');
         Route::resource('students', StudentController::class);
 
         // التحقق من ولي الأمر (خطوة 1)
@@ -68,10 +68,17 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
 
         // سجل حضور الطالب
         Route::get('students/{student}/attendance', [StudentController::class, 'attendanceHistory'])->name('students.attendance');
-
-        // 5. الحضور اليومي
-        Route::get('attendance', [AttendanceController::class, 'index'])->name('attendance.index');
-        Route::post('attendance', [AttendanceController::class, 'store'])->name('attendance.store');
+    Route::get('/reports/attendance', function () {
+        return Inertia::render('School/Attendance/AttendanceReports');
+    })->name('reports.attendance');
+    Route::prefix('attendance')->group(function () {
+        Route::get('/', [AttendanceController::class, 'index'])->name('attendance.index');
+        Route::post('/', [AttendanceController::class, 'store'])->name('attendance.store');
+        Route::get('/{id}', [AttendanceController::class, 'show'])->name('attendance.show');
+        Route::put('/{id}', [AttendanceController::class, 'update'])->name('attendance.update');
+        Route::delete('/{id}', [AttendanceController::class, 'destroy'])->name('attendance.destroy');
+        Route::post('/bulk', [AttendanceController::class, 'bulkStore'])->name('attendance.bulk');
+    });
     });
 
 // ⚪ ثالثاً: روابط الملف الشخصي (Profile)
