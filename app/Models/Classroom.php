@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use App\Models\User;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Classroom extends Model
 {
@@ -18,19 +18,45 @@ class Classroom extends Model
         'school_id',
     ];
 
-    // ✅ تم الحفاظ على هذه العلاقة المهمة التي كانت في كودك
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
     }
 
+    // ✅ العلاقة الصحيحة
+    public function supervisors(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'classroom_teacher',
+            'classroom_id',
+            'teacher_id'
+        )->withPivot('school_id')
+         ->withTimestamps();
+    }
+
     /**
-     * ربط المعلمين بالفصل (Teachers)
+     * Alias for supervisors relationship to support controller usage of 'teachers'
      */
     public function teachers(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'classroom_teacher', 'classroom_id', 'teacher_id')
-            ->withTimestamps()
-            ->withPivot('school_id');
+        return $this->supervisors();
+    }
+
+    public function students(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Student::class,
+            StudentSchoolEnrollment::class,
+            'classroom_id',
+            'id',
+            'id',
+            'student_id'
+        )->where('student_school_enrollments.is_active', true);
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class);
     }
 }

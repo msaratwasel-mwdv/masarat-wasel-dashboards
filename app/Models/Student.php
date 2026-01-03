@@ -12,7 +12,18 @@ class Student extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['full_name', 'student_code', 'guardian_id', 'is_active'];
+    // ⬅️ أضف الحقول الجديدة هنا
+    protected $fillable = [
+        'full_name', 
+        'student_code', 
+        'national_id', // ⬅️ أضف
+        'gender',      // ⬅️ أضف
+        'guardian_id', 
+        'supervisor_id', 
+        'school_id',   // ⬅️ أضف
+        'image',       // ⬅️ أضف
+        'is_active'
+    ];
 
     public function enrollments(): HasMany
     {
@@ -29,5 +40,14 @@ class Student extends Model
         return $this->belongsTo(Guardian::class);
     }
 
-
+    public function supervisor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'supervisor_id');
+    }
+    
+    // ⬅️ أضف هذه العلاقة
+    public function school(): BelongsTo
+    {
+        return $this->belongsTo(School::class);
+    }
 }

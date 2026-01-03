@@ -21,7 +21,15 @@ export default function SchoolAuthenticatedLayout({
     console.log("Authenticated layout rendering");
   const { auth } = usePage().props as any;
   const { t, lang, changeLang, isRtl } = useTranslation();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  // Initialize theme from localStorage or default to 'dark'
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('theme') as 'light' | 'dark') || 'dark';
+    }
+    return 'dark';
+  });
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar state
 
   const toggleLang = () => {
@@ -30,9 +38,9 @@ export default function SchoolAuthenticatedLayout({
   };
 
   const toggleTheme = () => {
-    // Basic theme toggle logic for now (persisted in localstorage by useTranslation hook if extended later, keeping simple)
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
     if (newTheme === 'dark') document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   };
@@ -51,7 +59,7 @@ export default function SchoolAuthenticatedLayout({
         },
         { label: "إدارة الطلاب", route: "school.students.index", icon: "user" },
         { label: "إدارة الحافلات", route: "#", icon: "bus" }, // رابط مؤقت
-        { label: "الحضور اليومي", route: "school.attendance.index", icon: "report" },
+      { label: "الحضور اليومي", route: "school.reports.attendance", icon: "report" },
         { label: "الإعدادات", route: "profile.edit", icon: "cog" },
     ];
 
@@ -66,7 +74,7 @@ export default function SchoolAuthenticatedLayout({
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
-          <span className="mx-2 text-lg font-bold text-brand-yellow">{auth.user.school.name}</span>
+            <span className="mx-2 text-lg font-bold text-brand-yellow">{auth.user?.school?.name}</span>
         </div>
         <div className="flex items-center justify-center w-8 h-8 font-bold rounded-full bg-brand-yellow text-brand-dark">
 
@@ -98,7 +106,7 @@ export default function SchoolAuthenticatedLayout({
               <ApplicationLogo className="w-20 h-20 text-white fill-current" />
             </div>
             <span className="relative z-10 text-2xl font-bold tracking-wide text-brand-yellow drop-shadow-md">
-              {auth.user.school.name}
+                {auth.user?.school?.name}
             </span>
           </div>
         </div>
