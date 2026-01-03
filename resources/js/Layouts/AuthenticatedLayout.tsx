@@ -1,171 +1,351 @@
+// resources/js/Layouts/AuthenticatedLayout.tsx
 import { useState, PropsWithChildren, ReactNode } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import ApplicationLogo from "@/Components/ApplicationLogo";
+import { useTheme } from "@/Contexts/ThemeContext";
 import { User } from "@/types";
+
+// تعريف عناصر القائمة
+const getMenuItems = (isRTL: boolean) => [
+  {
+    label: isRTL ? "لوحة التحكم" : "Dashboard",
+    route: "admin.dashboard",
+    icon: "grid",
+  },
+  {
+    label: isRTL ? "المدارس" : "Schools",
+    route: "admin.schools.index",
+    icon: "school",
+  },
+  {
+    label: isRTL ? "إدارة الأسطول" : "Fleet Management",
+    route: "",
+    icon: "bus",
+  },
+  {
+    label: isRTL ? "الحضور والغياب" : "Attendance",
+    route: "",
+    icon: "user",
+  },
+  {
+    label: isRTL ? "الإشعارات" : "Notifications",
+    route: "",
+    icon: "bell",
+  },
+  {
+    label: isRTL ? "الإعدادات" : "Settings",
+    route: "profile.edit",
+    icon: "cog",
+  },
+];
 
 export default function Authenticated({
   header,
   children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
   const user = usePage().props.auth.user;
-  // محاكاة المسار الحالي لتفعيل الزر الأصفر (في الواقع نستخدم route().current())
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { theme, language, toggleTheme, toggleLanguage, isRTL } = useTheme();
+  const [searchQuery, setSearchQuery] = useState("");
 
-const menuItems = [
-  { label: "Dashboard", route: "admin.dashboard", icon: "grid" },
+  // إعادة ترتيب الفئات بناءً على اللغة
+  const rtlClasses = isRTL ? "rtl" : "ltr";
+  const textAlign = isRTL ? "text-right" : "text-left";
+  const flexDirection = isRTL ? "flex-row-reverse" : "flex-row";
+  const marginSide = isRTL ? "mr-4" : "ml-4";
+  const paddingSide = isRTL ? "pr-12" : "pl-12";
+  const sidebarPosition = isRTL ? "right-0" : "left-0";
+  const mainMargin = isRTL ? "mr-72" : "ml-72";
 
-  // المدارس لها صفحة، لذا نترك الرابط كما هو
-  { label: "Schools", route: "admin.schools.index", icon: "school" },
+  const menuItems = getMenuItems(isRTL);
 
-  // العناصر التالية لم نبرمجها بعد، لذا نجعل الرابط فارغاً مؤقتاً
-  { label: "Fleet Management", route: "", icon: "bus" },
-  { label: "Attendance", route: "", icon: "user" },
-  { label: "Notifications", route: "", icon: "bell" },
+  // دالة لعرض الأيقونات
+  const renderIcon = (name: string, isActive: boolean) => {
+    const baseClass = `w-5 h-5 transition-colors duration-200 ${
+      isActive
+        ? "text-brand-yellow"
+        : "text-gray-400 group-hover:text-white dark:group-hover:text-gray-200"
+    }`;
 
-  { label: "Settings", route: "profile.edit", icon: "cog" },
-];
+    switch (name) {
+      case "grid":
+        return (
+          <svg
+            className={baseClass}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+            />
+          </svg>
+        );
+      case "school":
+        return (
+          <svg
+            className={baseClass}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+            />
+          </svg>
+        );
+      case "bus":
+        return (
+          <svg
+            className={baseClass}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+            />
+          </svg>
+        );
+      case "user":
+        return (
+          <svg
+            className={baseClass}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+            />
+          </svg>
+        );
+      case "bell":
+        return (
+          <svg
+            className={baseClass}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+            />
+          </svg>
+        );
+      case "cog":
+        return (
+          <svg
+            className={baseClass}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div
-      className="min-h-screen bg-[#f1f5f9] flex font-sans text-right"
-      dir="ltr"
+      className={`min-h-screen bg-gray-50 dark:bg-gray-900 flex font-sans ${rtlClasses}`}
+      dir={isRTL ? "rtl" : "ltr"}
     >
-      {" "}
-      {/* dir="ltr" لأن التصميم إنجليزي مؤقتاً للمطابقة */}
       {/* --- SIDEBAR --- */}
-      <aside className="w-64 bg-brand-dark text-white flex flex-col fixed h-full z-10">
-        {/* Logo Area */}
-        <div className="h-20 flex items-center px-6 pt-4">
-          <span className="text-2xl font-bold tracking-wide">EduTrack</span>
+      <aside
+        className={`w-72 bg-gradient-to-b from-brand-dark to-brand-navy dark:from-gray-900 dark:to-gray-800 text-white flex flex-col fixed h-full z-20 shadow-sidebar transition-all duration-300 ${sidebarPosition} ${
+          isSidebarOpen
+            ? "translate-x-0"
+            : isRTL
+            ? "translate-x-full"
+            : "-translate-x-full"
+        }`}
+      >
+        {/* Logo Section */}
+        <div className="h-24 flex items-center px-8 border-b border-white/10 dark:border-gray-700">
+          <Link
+            href="/"
+            className={`flex items-center gap-3 group ${flexDirection}`}
+          >
+            <div className="rounded-lg flex items-center justify-center bg-white shadow-lg group-hover:scale-105 transition-transform">
+              <ApplicationLogo className="w-16 h-16 p-2" />
+            </div>
+            <div
+              className={`flex flex-col ${isRTL ? "text-right" : "text-left"}`}
+            >
+              <span className="text-xl font-bold tracking-wider text-white">
+                {isRTL ? "مسارات واصل" : "EduTrack"}
+              </span>
+              <span className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">
+                {isRTL ? "لوحة الإدارة" : "Admin Panel"}
+              </span>
+            </div>
+          </Link>
         </div>
-        <div className="px-6 pb-6 text-xs text-gray-400">Management Portal</div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-2 mt-4">
-          {menuItems.map((item, index) => {
-const isActive = item.route && route().current(item.route);
+        {/* Navigation Section */}
+        <nav className="flex-1 px-4 space-y-2 mt-8 overflow-y-auto">
+          <p
+            className={`px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 ${
+              isRTL ? "text-right" : "text-left"
+            }`}
+          >
+            {isRTL ? "القائمة الرئيسية" : "Main Menu"}
+          </p>
+
+          {menuItems.map((item) => {
+            const isActive = item.route && route().current(item.route);
+
             return (
               <Link
                 key={item.label}
-                // 2. إذا كان الرابط فارغاً نضع #، وإلا نستخدم دالة route()
                 href={item.route ? route(item.route) : "#"}
                 className={`
-                    group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200
-                    ${
-                      isActive
-                        ? "bg-brand-yellow text-brand-dark shadow-md font-bold" // تنسيق الـ Active (أصفر)
-                        : "text-gray-300 hover:bg-brand-dark-light hover:text-white" // تنسيق العادي
-                    }
+                  relative group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-300
+                  ${flexDirection}
+                  ${
+                    isActive
+                      ? "bg-brand-yellow/20 text-brand-yellow shadow-lg"
+                      : "text-gray-400 hover:bg-white/5 hover:text-white"
+                  }
                 `}
+                style={{
+                  borderRight:
+                    isActive && !isRTL ? "4px solid #facc15" : "none",
+                  borderLeft: isActive && isRTL ? "4px solid #facc15" : "none",
+                }}
               >
-                <span className="w-6 h-6 mr-3">
-                  {/* Simple Icons Rendering */}
-                  {item.icon === "grid" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "school" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "bus" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                      />
-                    </svg>
-                  )}{" "}
-                  {/* Bus Icon Placeholder */}
-                  {item.icon === "user" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "bell" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "cog" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                  )}
+                <span
+                  className={`${isRTL ? "ml-4" : "mr-4"} ${
+                    isActive ? "scale-110" : "group-hover:scale-110"
+                  } transition-transform duration-300`}
+                >
+                  {renderIcon(item.icon, isActive)}
                 </span>
-                <span>{item.label}</span>
+
+                <span
+                  className={`flex-1 text-sm font-medium ${
+                    isRTL ? "text-right" : "text-left"
+                  }`}
+                >
+                  {item.label}
+                </span>
+
+                {/* Arrow Icon */}
+                {!isActive && (
+                  <svg
+                    className={`w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
+                      isRTL ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                )}
               </Link>
             );
           })}
         </nav>
 
-        {/* Logout */}
-        <div className="p-4 border-t border-gray-800">
-          <Link
-            method="post"
-            href={route("logout")}
-            as="button"
-            className="flex items-center text-gray-400 hover:text-white transition w-full"
+        {/* User Profile Section */}
+        <div className="p-4 border-t border-white/10 dark:border-gray-700 bg-brand-navy/50">
+          <div
+            className={`rounded-xl p-3 flex items-center ${flexDirection} justify-between group hover:bg-white/5 transition-colors`}
           >
-            <svg
-              className="w-5 h-5 mr-3"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+            <div className={`flex items-center gap-3 ${flexDirection}`}>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-yellow to-yellow-600 flex items-center justify-center text-white font-bold shadow-lg">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <div
+                className={`flex flex-col ${
+                  isRTL ? "text-right" : "text-left"
+                }`}
+              >
+                <span className="text-sm font-bold text-white">
+                  {user.name}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {isRTL ? "مدير النظام" : "System Admin"}
+                </span>
+              </div>
+            </div>
+
+            <Link
+              method="post"
+              href={route("logout")}
+              as="button"
+              className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-all"
+              title={isRTL ? "تسجيل الخروج" : "Logout"}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-            Logout
-          </Link>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+            </Link>
+          </div>
         </div>
       </aside>
+
       {/* --- MAIN CONTENT --- */}
-      <main className="flex-1 ml-64">
-        {" "}
-        {/* ml-64 to account for fixed sidebar */}
-        {/* TOP HEADER */}
-        <header className="h-20 bg-white flex items-center justify-between px-8 sticky top-0 z-10">
+      <main
+        className={`flex-1 transition-all duration-300 ${
+          isSidebarOpen ? mainMargin : ""
+        }`}
+      >
+        {/* Top Header */}
+        <header className="h-20 bg-white dark:bg-gray-800 flex items-center justify-between px-8 sticky top-0 z-10 border-b border-gray-100 dark:border-gray-700 shadow-sm">
           {/* Search Bar */}
-          <div className="w-96 relative">
-            <span className="absolute left-3 top-3 text-gray-400">
+          <div className={`w-96 relative ${flexDirection}`}>
+            <span
+              className={`absolute ${
+                isRTL ? "right-4" : "left-4"
+              } top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-yellow transition-colors`}
+            >
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -182,15 +362,97 @@ const isActive = item.route && route().current(item.route);
             </span>
             <input
               type="text"
-              placeholder="Search schools..."
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-100 text-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={
+                isRTL
+                  ? "ابحث عن مدارس، سائقين..."
+                  : "Search schools, drivers..."
+              }
+              className={`w-full ${paddingSide} pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-yellow/50 focus:border-brand-yellow transition-all text-sm font-medium dark:text-gray-200`}
             />
           </div>
 
-          {/* Right Side Icons */}
-          <div className="flex items-center space-x-4">
-            <button className="text-gray-400 hover:text-gray-600 relative">
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+          {/* Right Side Controls */}
+          <div className={`flex items-center gap-4 ${flexDirection}`}>
+            {/* Language Toggle */}
+            <button
+              onClick={toggleLanguage}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all"
+              title={isRTL ? "Switch to English" : "التبديل إلى العربية"}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">
+                  {language === "ar" ? "EN" : "ع"}
+                </span>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+                  />
+                </svg>
+              </div>
+            </button>
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all"
+              title={
+                theme === "dark"
+                  ? isRTL
+                    ? "الوضع الفاتح"
+                    : "Light Mode"
+                  : isRTL
+                  ? "الوضع المظلم"
+                  : "Dark Mode"
+              }
+            >
+              {theme === "dark" ? (
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                  />
+                </svg>
+              )}
+            </button>
+
+            {/* Notifications */}
+            <button className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all">
+              <span
+                className={`absolute ${
+                  isRTL ? "left-1.5" : "right-1.5"
+                } top-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800`}
+              ></span>
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -206,18 +468,70 @@ const isActive = item.route && route().current(item.route);
               </svg>
             </button>
 
-            <div className="flex items-center space-x-3 border-l pl-4 border-gray-200">
-              <div className="w-8 h-8 rounded-full bg-blue-900 text-white flex items-center justify-center text-xs font-bold">
-                AD
+            {/* User Profile */}
+            <div
+              className={`flex items-center gap-3 ${flexDirection} ${
+                isRTL ? "pr-6 border-r" : "pl-6 border-l"
+              } border-gray-100 dark:border-gray-700`}
+            >
+              <div
+                className={`hidden md:block ${
+                  isRTL ? "text-right" : "text-left"
+                }`}
+              >
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                  {isRTL ? "مدير الشركة" : "Company Admin"}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {isRTL ? "المقر الرئيسي" : "Headquarters"}
+                </p>
               </div>
-              <span className="text-sm font-bold text-gray-700">
-                ADMIN PANEL
-              </span>
+              <div className="w-10 h-10 rounded-full bg-brand-dark dark:bg-gray-700 text-white flex items-center justify-center shadow-lg">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                  />
+                </svg>
+              </div>
             </div>
+
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
           </div>
         </header>
-        {/* PAGE CONTENT */}
-        <div className="p-8">{children}</div>
+
+        {/* Page Content */}
+        <div className="p-6">
+          <div className="max-w-7xl mx-auto">
+            {header && <div className="mb-8 animate-fade-in">{header}</div>}
+            <div className="animate-slide-in">{children}</div>
+          </div>
+        </div>
       </main>
     </div>
   );
