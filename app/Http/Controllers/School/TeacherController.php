@@ -51,8 +51,8 @@ class TeacherController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'national_id' => ['required', 'string', 'max:20', Rule::unique('users', 'national_id')],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-            'phone' => ['nullable', 'string', 'max:50', Rule::unique('users', 'phone')],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')],
+            'phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')],
             'password' => 'nullable|string|min:6',
         ]);
 
@@ -119,12 +119,12 @@ class TeacherController extends Controller
                 Rule::unique('users', 'national_id')->ignore($teacher->id),
             ],
             'email' => [
-                'required',
+                'nullable',
                 'email',
                 'max:255',
                 Rule::unique('users', 'email')->ignore($teacher->id),
             ],
-            'phone' => ['nullable', 'string', 'max:50'],
+            'phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($teacher->id)],
             'is_active' => 'required|boolean',
         ]);
 

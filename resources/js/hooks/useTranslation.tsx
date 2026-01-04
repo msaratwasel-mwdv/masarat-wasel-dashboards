@@ -57,6 +57,8 @@ const dictionary = {
 
     // Classrooms Management
     'Classes Management': { ar: 'إدارة الفصول والمراحل', en: 'Classes & Levels Management' },
+    'Classes List': { ar: 'قائمة الفصول', en: 'Classes List' },
+    'Teachers List': { ar: 'قائمة المعلمين', en: 'Teachers List' },
     'Organize and manage school classes and grade levels.': { ar: 'تنظيم وإدارة الفصول والمراحل الدراسية.', en: 'Organize and manage school classes and grade levels.' },
     'Total Classes': { ar: 'إجمالي الفصول', en: 'Total Classes' },
     'Add New Class': { ar: 'إضافة فصل جديد', en: 'Add New Class' },
@@ -236,7 +238,7 @@ const dictionary = {
     'Student Portal': { ar: 'بوابة الطلاب', en: 'Student Portal' },
     'Recently Added Students': { ar: 'الطلاب المضافون حديثاً', en: 'Recently Added Students' },
     'Version': { ar: 'الإصدار', en: 'Version' },
-};
+} as Record<string, { ar: string; en: string }>;
 
 
 

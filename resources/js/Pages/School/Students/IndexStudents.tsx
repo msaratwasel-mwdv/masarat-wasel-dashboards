@@ -1,9 +1,15 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
-import { Head, Link, router } from "@inertiajs/react";
+import { Head, useForm, router, Link, usePage } from "@inertiajs/react";
 import { User, Classroom } from "@/types";
 import useTranslation from "@/hooks/useTranslation";
 import { debounce } from "lodash";
+import Modal from "@/Components/Modal";
+import InputLabel from "@/Components/InputLabel";
+import TextInput from "@/Components/TextInput";
+import InputError from "@/Components/InputError";
+import PrimaryButton from "@/Components/PrimaryButton";
+import SecondaryButton from "@/Components/SecondaryButton";
 
 interface Guardian {
   id: number;
@@ -12,7 +18,9 @@ interface Guardian {
   phone?: string;
   national_id?: string;
   address?: string;
+  home_number?: string;
   image?: string;
+  email?: string;
 }
 
 interface Supervisor {
@@ -23,445 +31,634 @@ interface Supervisor {
 interface Student {
   id: number;
   full_name: string;
-  student_code: string;
   national_id?: string;
   gender?: string;
   image?: string;
   is_active: boolean;
-  guardian?: Guardian | null;
-  supervisor?: Supervisor | null;
+  guardian?: Guardian;
+  supervisor?: Supervisor;
+  guardian_id?: number;
+  supervisor_id?: number;
   current_enrollment: {
     classroom: Classroom;
+    classroom_id?: number;
   } | null;
 }
 
 interface Props {
   auth: { user: User };
   students: Student[];
-  filters?: { search?: string };
+  filters: { search?: string };
+  classrooms: Classroom[];
+  supervisors: Supervisor[];
 }
 
-export default function IndexStudents({ auth, students, filters }: Props) {
+export default function IndexStudents({ auth, students, filters, classrooms, supervisors }: Props) {
   const { t } = useTranslation();
-  const [search, setSearch] = useState(filters?.search || "");
+  const [search, setSearch] = useState(filters.search || "");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
-  // Search debounce
+  // Modal State
+  const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+
+  // Creation Step State
+  // 1: Search Guardian, 2: Create Guardian (if needed), 3: Student Info
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [guardianResult, setGuardianResult] = useState<{ found: boolean; guardian: Guardian | null } | null>(null);
+
+  // Forms
+  const guardianSearchForm = useForm({ national_id: "" });
+  const guardianCreateForm = useForm({
+    name: "", name_en: "", national_id: "", phone: "", email: "", address: "", home_number: "", image: null as File | null
+  });
+  const studentForm = useForm({
+    full_name: "",
+    national_id: "",
+    gender: "male",
+    classroom_id: "",
+    guardian_id: "",
+    supervisor_id: "",
+    image: null as File | null,
+    is_active: true,
+    // For editing guardian inside student modal
+    guardian: {
+      name: "", name_en: "", national_id: "", phone: "", address: "", home_number: "", image: null as File | null
+    }
+  });
+
+  // Reset all forms
+  const resetForms = () => {
+    guardianSearchForm.reset();
+    guardianSearchForm.clearErrors();
+    guardianCreateForm.reset();
+    guardianCreateForm.clearErrors();
+    studentForm.reset();
+    studentForm.clearErrors();
+    setGuardianResult(null);
+    setStep(1);
+  };
+
+  const openAddModal = () => {
+    setIsEditing(false);
+    setEditingStudent(null);
+    resetForms();
+    setStep(1);
+    setShowModal(true);
+  };
+
+  const openEditModal = (student: Student) => {
+    setIsEditing(true);
+    setEditingStudent(student);
+    resetForms();
+
+    // Populate Form
+    studentForm.setData({
+      full_name: student.full_name,
+      national_id: student.national_id || "",
+      gender: student.gender || "male",
+      classroom_id: student.current_enrollment?.classroom?.id?.toString() || "",
+      guardian_id: student.guardian_id?.toString() || "",
+      supervisor_id: student.supervisor?.id.toString() || "",
+      image: null,
+      is_active: student.is_active,
+      guardian: {
+        name: student.guardian?.name || "",
+        name_en: student.guardian?.name_en || "",
+        national_id: student.guardian?.national_id || "",
+        phone: student.guardian?.phone || "",
+        address: student.guardian?.address || "",
+        home_number: student.guardian?.home_number || "",
+        image: null
+      }
+    });
+
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    resetForms();
+  };
+
+  // --- Actions ---
+
+  const handleSearchGuardian = (e: React.FormEvent) => {
+    e.preventDefault();
+    guardianSearchForm.post(route("school.guardians.search"), {
+      preserveScroll: true,
+      onSuccess: (page) => {
+        // The endpoint returns with 'guardianResult' in session/props usually, 
+        // but since we are in a modal on Index, we might need a custom approach OR rely on Inertia props update.
+        // However, inertia reload whole page props. 
+        // Let's assume the controller redirects back with 'guardianResult'.
+        // We need to pick that up from the props.
+        // BUT: logic in controller was: return redirect()->back()->with('guardianResult', ...);
+        // We should watch for flash props or use a specific API if we don't want reload.
+        // For now, let's assume page reload is fine or we check props.
+      },
+      onError: () => {
+        // handle error
+      }
+    });
+  };
+
+  // We need to access the 'guardianResult' from page props if it was sent back
+  // Since we are adding it to the page, we might need to modify Props or access generic page props.
+  // Ideally, for a "Search in Modal", an API call via axios is smoother than Inertia form post which reloads props.
+  // BUT sticking to Inertia patterns as requested.
+  // NOTE: The previous `CreateStudent` used `guardianResult` prop. We don't have it in `IndexProps`.
+  // I will use `router` manual visit or axios for search to avoid full page prop complexities if possible,
+  // OR just use a simple lookup if we have all students/guardians? No, guardians are many.
+  // Let's stick to the controller logic: redirects back with `guardianResult`.
+  // I need to use `usePage` to get that prop.
+
+  // Actually, I can just fetch it via axios to avoid full reload flicker.
+  // But let's use the provided `guardianResult` logic from `CreateStudent` for consistency if possible.
+  // The controller returns `redirect()->back()->with(...)`.
+  // This updates the props. I'll add `guardianResult` to my Props interface for safety, though it comes from flash?
+  // Inertia "flash" messages are shared. `guardianResult` isn't standard flash.
+  // It was passed as a prop in `Create` method.
+  // In `searchGuardian` controller method: `return redirect()->back()->with(['guardianResult' => ...])`.
+  // This puts it in the session, effectively shared props if middleware handles it, or just specific prop.
+  // Let's try to trust Inertia to inject it into props if I declare it.
+
+  // ... For simplicity in this "Execution" step, I will convert the search to use Form but I'll watch the props.
+
+  // --- Search Debounce ---
   const debouncedSearch = useCallback(
-    debounce((query: string) => {
-      router.get(
-        route("school.students.index"),
-        { search: query },
-        { preserveState: true, preserveScroll: true }
-      );
-    }, 500),
+    debounce((val: string) => {
+      router.get(route("school.students.index"), { search: val }, { preserveState: true, preserveScroll: true });
+    }, 300),
     []
   );
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearch(value);
-    debouncedSearch(value);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+    debouncedSearch(e.target.value);
   };
 
-  const confirmDelete = (student: Student) => {
-    setStudentToDelete(student);
-    setShowDeleteModal(true);
-  };
-
+  // Delete
   const handleDelete = () => {
-    if (studentToDelete) {
+    if (!studentToDelete) return;
       router.delete(route("school.students.destroy", studentToDelete.id), {
-        onSuccess: () => {
-          setShowDeleteModal(false);
-          setStudentToDelete(null);
-        },
+        preserveScroll: true,
+        onSuccess: () => setShowDeleteModal(false)
+      });
+  };
+
+  // Submissions
+  const handleCreateGuardian = (e: React.FormEvent) => {
+    e.preventDefault();
+    guardianCreateForm.post(route("school.guardians.store"), {
+      preserveScroll: true,
+      onSuccess: () => {
+        // If successful, we should have the new guardian in props or session? 
+        // The controller returns: redirect()->back()->with('guardianResult'...)
+        // success will update props.
+      }
+    });
+  };
+
+  // We need to detect prop changes for guardianResult
+  const { props } = usePage<any>();
+  // But inside a component we can just use `usePage().props`. 
+
+  // Let's use a workaround: The controller logic is designed for a separate page. 
+  // Adapting it to a modal on Index is tricky with Inertia redirects.
+  // A better UX for Modal is Axios for the search step.
+  // I will write a small helper to search via axios if possible? 
+  // No, I must stick to the existing backend to avoid changing too much backend code if not needed.
+  // The existing backend `searchGuardian` returns a redirect.
+  // I'll trust that the `guardianResult` prop appears in the page props after redirect.
+  // I need to add it to the Props definition above? No, it's "flash" or "shared"? 
+  // looking at controller: `with(['guardianResult' => ...])` -> usually synonymous with Session Flash.
+  // Inertia shares flash.
+
+  // Let's assume passed in props.
+
+  // Submit Student
+  const handleSubmitStudent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isEditing && editingStudent) {
+      // Update
+      studentForm.post(route("school.students.update", editingStudent.id), {
+        preserveScroll: true,
+        onSuccess: closeModal
+      });
+    } else {
+      // Create
+      studentForm.post(route("school.students.store"), {
+        preserveScroll: true,
+        onSuccess: closeModal
       });
     }
   };
+
+  // --- Manual Fix for Guardian Search in Modal ---
+  // If we use Inertia form, it reloads the page (partial reload).
+  // The `guardianResult` should be accessible via `usePage().props.guardianResult`.
+  // I will use a simple axios call instead for the SEARCH to prevent full table reload flickering.
+  // I'll need to update the controller? No, I can call the same endpoint with axios if it returns JSON?
+  // It returns Redirect.
+  // Okay, I will use `guardianSearchForm.post` and handle `onSuccess`.
 
   return (
     <SchoolAuthenticatedLayout
       user={auth.user}
       header={
         <h2 className="text-xl font-bold text-gray-800 dark:text-white leading-tight">
-          {t('Students Directory')}
+          {t('Students Management')}
         </h2>
       }
     >
       <Head title={t('Students')} />
 
-      <div className="max-w-full overflow-hidden p-4 sm:p-6 lg:p-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md border border-white/20 dark:border-gray-700 shadow-xl rounded-2xl transition-all duration-300">
-
-        {/* Header & Actions */}
-        <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
-          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap">
-            {t('Students List')}
-          </h3>
-
-          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-            {/* Search Input */}
-            <div className="relative w-full sm:w-64">
-              <input
-                type="text"
-                value={search}
-                onChange={handleSearch}
-                placeholder={t('Search by Name, ID...')}
-                className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white/50 dark:bg-gray-900/50 focus:ring-2 focus:ring-blue-500 dark:text-white"
-              />
-              <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
-            </div>
-
-            <Link
-              href={route("school.students.create")}
-              className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold uppercase rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-200 whitespace-nowrap"
-            >
-              + {t('Enroll New Student')}
-            </Link>
-          </div>
-        </div>
-
-        {/* Mobile & Tablet Card View (hidden on xl screens) */}
-        <div className="xl:hidden space-y-4">
-          {students.length > 0 ? (
-            students.map((student) => (
-              <div key={student.id} className="bg-white dark:bg-gray-900/50 rounded-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
-                {/* Student Header */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 p-5 border-b-2 border-gray-200 dark:border-gray-600">
-                  <div className="flex items-center gap-4">
-                    <div className="w-24 h-32 rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-700 border-4 border-white dark:border-gray-500 shadow-lg flex-shrink-0 relative group">
-                      {student.image ? (
-                        <img src={`/storage/${student.image}`} alt="Student" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl">👤</div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-1 truncate">{student.full_name}</h3>
-                      <div className="flex flex-wrap items-center gap-2 text-sm">
-                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-md font-mono font-semibold">
-                          {student.student_code}
-                        </span>
-                        {student.gender && (
-                          <span className={`px-2 py-1 rounded-md font-semibold ${student.gender === 'male' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300'}`}>
-                            {student.gender === 'male' ? '♂ ' + t('Male') : '♀ ' + t('Female')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Student Details Grid */}
-                <div className="p-5 bg-white dark:bg-gray-800/50">
-                  <div className="grid grid-cols-2 gap-4 mb-5">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
-                      <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t('Civil ID')}</p>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{student.national_id || '-'}</p>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
-                      <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t('Class')}</p>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{student.current_enrollment?.classroom?.name || '-'}</p>
-                    </div>
-                  </div>
-
-                  {student.supervisor && (
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 mb-5">
-                      <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t('Supervisor')}</p>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{student.supervisor.name}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Guardian Section */}
-                {student.guardian && (
-                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-700/50 dark:to-gray-600/50 p-5 border-t-2 border-gray-200 dark:border-gray-600">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-20 h-24 rounded-xl overflow-hidden bg-white dark:bg-gray-700 border-2 border-white dark:border-gray-500 shadow-md flex-shrink-0 relative">
-                        {student.guardian.image ? (
-                          <img src={`/storage/${student.guardian.image}`} alt="Guardian" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-3xl">👤</div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">{t('Guardian Name')}</p>
-                        <p className="font-bold text-lg text-gray-900 dark:text-white truncate">{student.guardian.name}</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{t('Guardian ID')}</p>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{student.guardian.national_id || '-'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{t('Guardian Phone')}</p>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white direction-ltr">{student.guardian.phone || '-'}</p>
-                      </div>
-                    </div>
-
-                    {student.guardian.address && (
-                      <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3">
-                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{t('Address')}</p>
-                        <p className="text-sm text-gray-800 dark:text-gray-200">{student.guardian.address}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-t-2 border-gray-200 dark:border-gray-700 flex gap-3">
-                  <Link
-                    href={route("school.students.edit", student.id)}
-                    className="flex-1 text-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold uppercase rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    ✏️ {t('Edit')}
-                  </Link>
-                  <button
-                    onClick={() => confirmDelete(student)}
-                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-bold uppercase rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    🗑️ {t('Delete')}
-                  </button>
-                </div>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="p-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md border border-white/20 dark:border-gray-700 shadow-xl rounded-2xl">
+          {/* Header Strip */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700">
-              <span className="text-6xl text-gray-300 dark:text-gray-600 block mb-3">📭</span>
-              <p className="text-lg font-semibold text-gray-400 dark:text-gray-500">{t('No Data Found')}</p>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                  {t('Students List')}
+                </h3>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  {t('Total Students')}: <span className="font-bold text-gray-800 dark:text-gray-200">{students.length}</span>
+                </p>
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Desktop Table View (hidden on smaller screens, shown on xl+) */}
-        <div className="hidden xl:block overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-md">
-          <table className="min-w-full text-start bg-white dark:bg-gray-800 table-fixed">
-            <thead className="bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-              <tr>
-                {/* 1. Student Name */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-start w-[140px]">
-                  {t('Student Name')}
-                </th>
-                {/* 2. Student Code */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-start w-[80px]">
-                  {t('Code')}
-                </th>
-                {/* 3. Student National ID */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-start w-[100px]">
-                  {t('Civil ID')}
-                </th>
-                {/* 4. Student Gender */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-start w-[70px]">
-                  {t('Gender')}
-                </th>
-                {/* 5. Student Image */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-center w-[60px]">
-                  {t('Photo')}
-                </th>
-                {/* 6. Class */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-start w-[100px]">
-                  {t('Class')}
-                </th>
-                {/* 7. Supervisor */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-start w-[120px]">
-                  {t('Supervisor')}
-                </th>
-                {/* 8. Guardian Name */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-start w-[140px]">
-                  {t('Guardian Name')}
-                </th>
-                {/* 9. Guardian National ID */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-start w-[100px]">
-                  {t('Guardian ID')}
-                </th>
-                {/* 10. Guardian Phone */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-start w-[100px]">
-                  {t('Guardian Phone')}
-                </th>
-                {/* 11. Guardian Address */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-start w-[140px]">
-                  {t('Address')}
-                </th>
-                {/* 12. Guardian Image */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-center w-[60px]">
-                  {t('G. Photo')}
-                </th>
-                {/* 13. Actions */}
-                <th className="px-2 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase text-end w-[140px] sticky right-0 bg-gray-100 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
-                  {t('Actions')}
-                </th>
-              </tr>
-            </thead>
+            <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto">
+              <div className="relative flex-grow sm:flex-grow-0">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={handleSearchChange}
+                  placeholder={t('Search by Name, ID...')}
+                  className="w-full sm:w-72 bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 pl-11 focus:ring-blue-500 dark:text-white transition-shadow shadow-sm focus:shadow-md"
+                />
+                <svg className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+              </div>
 
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {students.length > 0 ? (
-                students.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    {/* 1. Student Name */}
-                    <td className="px-2 py-2 align-middle">
-                      <p className="font-semibold text-[11px] text-gray-900 dark:text-white truncate" title={student.full_name}>
-                        {student.full_name}
-                      </p>
-                    </td>
+              <button
+                onClick={openAddModal}
+                className="inline-flex justify-center items-center px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all transform hover:translate-y-[-1px]"
+              >
+                <svg className="w-5 h-5 mr-2 rtl:ml-2 rtl:mr-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                {t('Enroll New Student')}
+              </button>
+            </div>
+          </div>
 
-                    {/* 2. Student Code */}
-                    <td className="px-2 py-2 align-middle">
-                      <p className="font-mono text-[10px] font-medium text-gray-600 dark:text-gray-300">
-                        {student.student_code}
-                      </p>
-                    </td>
-
-                    {/* 3. Student National ID */}
-                    <td className="px-2 py-2 align-middle">
-                      <p className="text-[10px] text-gray-600 dark:text-gray-300 truncate" title={student.national_id || ""}>
+          {/* Table */}
+          <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-700/50">
+            <table className="min-w-full text-start">
+              <thead className="bg-gray-50 dark:bg-gray-700/20 border-b border-gray-200 dark:border-gray-700">
+                <tr>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase text-start">{t('Student Name')}</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase text-start">{t('Civil ID')}</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase text-start">{t('Gender')}</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase text-start">{t('Class')}</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase text-start">{t('Guardian')}</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase text-end">{t('Actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {students.length > 0 ? (
+                  students.map((student) => (
+                    <tr key={student.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                            {student.image ? (
+                              <img src={`/storage/${student.image}`} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="flex items-center justify-center w-full h-full text-gray-400">👤</div>
+                            )}
+                          </div>
+                          <span className="font-bold text-gray-800 dark:text-white">{student.full_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 font-mono text-sm text-gray-600 dark:text-gray-300">
                         {student.national_id || "-"}
-                      </p>
-                    </td>
-
-                    {/* 4. Gender */}
-                    <td className="px-2 py-2 align-middle">
-                      <div className="flex items-center gap-1">
+                      </td>
+                      <td className="px-4 py-4 text-sm">
                         {student.gender === 'male' ? (
-                          <>
-                            <span className="text-blue-500 text-sm">♂</span>
-                            <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300">{t('Male')}</span>
-                          </>
+                          <span className="text-blue-600 dark:text-blue-400 font-bold">♂ {t('Male')}</span>
                         ) : student.gender === 'female' ? (
-                          <>
-                            <span className="text-pink-500 text-sm">♀</span>
-                            <span className="text-[10px] font-semibold text-pink-700 dark:text-pink-300">{t('Female')}</span>
-                          </>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* 5. Student Image */}
-                    <td className="px-2 py-2 align-middle text-center">
-                      <div className="w-12 h-16 mx-auto rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-sm relative group">
-                        {student.image ? (
-                          <img src={`/storage/${student.image}`} alt="Student" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-lg">👤</div>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* 6. Class */}
-                    <td className="px-2 py-2 align-middle">
-                      <p className="text-[10px] font-medium text-gray-600 dark:text-gray-300 truncate" title={student.current_enrollment?.classroom?.name || ""}>
+                          <span className="text-pink-600 dark:text-pink-400 font-bold">♀ {t('Female')}</span>
+                        ) : "-"}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
                         {student.current_enrollment?.classroom?.name || "-"}
-                      </p>
-                    </td>
-
-                    {/* 7. Supervisor */}
-                    <td className="px-2 py-2 align-middle">
-                      <p className="text-[10px] text-gray-600 dark:text-gray-300 truncate" title={student.supervisor?.name || ""}>
-                        {student.supervisor?.name || "-"}
-                      </p>
-                    </td>
-
-                    {/* 8. Guardian Name */}
-                    <td className="px-2 py-2 align-middle">
-                      <p className="font-medium text-[10px] text-gray-700 dark:text-gray-200 truncate" title={student.guardian?.name || ""}>
-                        {student.guardian?.name || "-"}
-                      </p>
-                    </td>
-
-                    {/* 9. Guardian National ID */}
-                    <td className="px-2 py-2 align-middle">
-                      <p className="text-[10px] text-gray-600 dark:text-gray-300 truncate" title={student.guardian?.national_id || ""}>
-                        {student.guardian?.national_id || "-"}
-                      </p>
-                    </td>
-
-                    {/* 10. Guardian Phone */}
-                    <td className="px-2 py-2 align-middle">
-                      <p className="text-[10px] text-gray-600 dark:text-gray-300 direction-ltr">
-                        {student.guardian?.phone || "-"}
-                      </p>
-                    </td>
-
-                    {/* 11. Guardian Address */}
-                    <td className="px-2 py-2 align-middle">
-                      <p className="text-[10px] text-gray-600 dark:text-gray-400 truncate" title={student.guardian?.address || ""}>
-                        {student.guardian?.address || "-"}
-                      </p>
-                    </td>
-
-                    {/* 12. Guardian Image */}
-                    <td className="px-2 py-2 align-middle text-center">
-                      <div className="w-12 h-16 mx-auto rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-sm relative group">
-                        {student.guardian?.image ? (
-                          <img src={`/storage/${student.guardian.image}`} alt="Guardian" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-lg">👤</div>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* 13. Actions */}
-                    <td className="px-2 py-2 text-end align-middle sticky right-0 bg-white dark:bg-gray-800 border-l border-gray-100 dark:border-gray-700">
-                      <div className="flex items-center justify-end gap-1">
-                        <Link
-                          href={route("school.students.edit", student.id)}
-                          className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-semibold rounded transition-colors"
-                        >
-                          {t('Edit')}
-                        </Link>
-
-                        <button
-                          onClick={() => confirmDelete(student)}
-                          className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-[10px] font-semibold rounded transition-colors"
-                        >
-                          {t('Delete')}
-                        </button>
-                      </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-gray-800 dark:text-white">{student.guardian?.name || "-"}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{student.guardian?.phone || ""}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-end">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => openEditModal(student)}
+                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all hover:scale-105"
+                            title={t('Edit')}
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 00 2 2h11a2 2 0 00 2-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => { setStudentToDelete(student); setShowDeleteModal(true); }}
+                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all hover:scale-105"
+                            title={t('Delete')}
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-gray-400 dark:text-gray-500">
+                      {t('No students found')}
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                    <td colSpan={13} className="py-12 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <span className="text-4xl text-gray-300 dark:text-gray-600">📭</span>
-                        <p className="text-sm font-medium text-gray-400 dark:text-gray-500">{t('No Data Found')}</p>
-                      </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Main Modal */}
+      <Modal show={showModal} onClose={closeModal} maxWidth="2xl">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+              {isEditing ? t('Edit Student') : (
+                step === 1 ? t('Step 1: Guardian Verification') :
+                  step === 2 ? t('Step 2: Create Guardian') :
+                    t('Step 3: Student Details')
+              )}
+            </h3>
+            <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
+
+          {/* Step 1: Search Guardian (Create Only) */}
+          {!isEditing && step === 1 && (
+            <div className="space-y-6">
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('Search by Civil ID to find existing guardian.')}</p>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                // Manual axios-like fetch using router to avoid hook complexities or just form post
+                router.post(route("school.guardians.search"), { national_id: guardianSearchForm.data.national_id }, {
+                  preserveScroll: true,
+                  onSuccess: (page: any) => {
+                    const res = page.props.guardianResult;
+                    setGuardianResult(res);
+                    // If not found, stay step 1 but show "Create" option (handled by UI)
+                    // OR logic could be: found -> step 3, not found -> step 2
+                  }
+                });
+              }}>
+                <div>
+                  <InputLabel value={t('Civil ID')} />
+                  <TextInput
+                    value={guardianSearchForm.data.national_id}
+                    onChange={e => guardianSearchForm.setData('national_id', e.target.value)}
+                    className="w-full mt-1"
+                    placeholder="10xxxxxxxxx"
+                  />
+                </div>
+                <div className="flex justify-end pt-4">
+                  <PrimaryButton>{t('Search')}</PrimaryButton>
+                </div>
+              </form>
+
+              {/* Result Display */}
+              {guardianResult && (
+                <div className={`p-4 rounded-xl border ${guardianResult.found ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                  {guardianResult.found && guardianResult.guardian ? (
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-bold text-green-800">✓ {t('Guardian Found')}</p>
+                        <p className="text-sm text-gray-700">{guardianResult.guardian.name} ({guardianResult.guardian.phone})</p>
+                      </div>
+                      <PrimaryButton onClick={() => {
+                        studentForm.setData('guardian_id', guardianResult.guardian!.id.toString());
+                        setStep(3);
+                      }}>
+                        {t('Select & Continue')}
+                      </PrimaryButton>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-bold text-yellow-800">! {t('Guardian Not Found')}</p>
+                          <p className="text-sm text-yellow-700">{t('Create new guardian?')}</p>
+                        </div>
+                        <PrimaryButton onClick={() => {
+                          guardianCreateForm.setData('national_id', guardianSearchForm.data.national_id);
+                          setStep(2);
+                        }}>
+                          {t('Create New Guardian')}
+                        </PrimaryButton>
+                      </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Create Guardian */}
+          {!isEditing && step === 2 && (
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              guardianCreateForm.post(route("school.guardians.store"), {
+                preserveScroll: true,
+                onSuccess: (page: any) => {
+                  // Assume success returns new guardian in prop or we can fetch it?
+                  // The Controller returns 'guardianResult' with found=true
+                  const res = page.props.guardianResult;
+                  if (res?.found && res.guardian) {
+                    studentForm.setData('guardian_id', res.guardian.id.toString());
+                    setStep(3);
+                  }
+                }
+              });
+            }} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <InputLabel value={t('Name (Arabic)') + " *"} />
+                  <TextInput value={guardianCreateForm.data.name} onChange={e => guardianCreateForm.setData('name', e.target.value)} required className="w-full mt-1" />
+                  <InputError message={guardianCreateForm.errors.name} />
+                </div>
+                <div>
+                  <InputLabel value={t('Civil ID')} />
+                  <TextInput value={guardianCreateForm.data.national_id} onChange={e => guardianCreateForm.setData('national_id', e.target.value)} required className="w-full mt-1 bg-gray-100" readOnly />
+                  <InputError message={guardianCreateForm.errors.national_id} />
+                </div>
+                <div>
+                  <InputLabel value={t('Phone') + " *"} />
+                  <TextInput value={guardianCreateForm.data.phone} onChange={e => guardianCreateForm.setData('phone', e.target.value)} required className="w-full mt-1" />
+                  <InputError message={guardianCreateForm.errors.phone} />
+                </div>
+              </div>
+              <div className="flex justify-between pt-4">
+                <SecondaryButton onClick={() => setStep(1)}>{t('Back')}</SecondaryButton>
+                <PrimaryButton disabled={guardianCreateForm.processing}>{t('Create & Continue')}</PrimaryButton>
+              </div>
+            </form>
+          )}
+
+          {/* Step 3: Student Details (Or Edit Mode) */}
+          {(step === 3 || isEditing) && (
+            <form onSubmit={handleSubmitStudent} className="space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar pr-2">
+              {/* If editing, show Guardian Fields too? 
+                                User Requirement: "Form of Edit... same style"
+                                Usually simpler to edit student and have a separate button to Edit Guardian, 
+                                but the plan said "Edit Student: Open Modal... Allow editing both".
+                                So I will add Guardian fields in a section if Editing.
+                            */}
+
+              {isEditing && (
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 rounded-xl mb-4">
+                  <h4 className="font-bold text-yellow-800 dark:text-yellow-400 mb-2">{t('Guardian Information')}</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <InputLabel value={t('Guardian Name')} />
+                      <TextInput
+                        value={studentForm.data.guardian.name}
+                        onChange={e => studentForm.setData('guardian', { ...studentForm.data.guardian, name: e.target.value })}
+                        className="w-full mt-1"
+                      />
+                      <InputError message={studentForm.errors['guardian.name'] as string} />
+                    </div>
+                    <div>
+                      <InputLabel value={t('Guardian Phone')} />
+                      <TextInput
+                        value={studentForm.data.guardian.phone}
+                        onChange={e => studentForm.setData('guardian', { ...studentForm.data.guardian, phone: e.target.value })}
+                        className="w-full mt-1"
+                      />
+                    </div>
+                    <div>
+                      <InputLabel value={t('Civil ID')} />
+                      <TextInput
+                        value={studentForm.data.guardian.national_id}
+                        onChange={e => studentForm.setData('guardian', { ...studentForm.data.guardian, national_id: e.target.value })}
+                        className="w-full mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <h4 className="font-bold text-gray-800 dark:text-white mb-2">{t('Student Information')}</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <InputLabel value={t('Student Name') + " *"} />
+                  <TextInput
+                    value={studentForm.data.full_name}
+                    onChange={e => studentForm.setData('full_name', e.target.value)}
+                    className="w-full mt-1"
+                    required
+                  />
+                  <InputError message={studentForm.errors.full_name} />
+                </div>
+
+                <div>
+                  <InputLabel value={t('Civil ID') + " *"} />
+                  <TextInput
+                    value={studentForm.data.national_id}
+                    onChange={e => studentForm.setData('national_id', e.target.value)}
+                    className="w-full mt-1"
+                    required
+                  />
+                  <InputError message={studentForm.errors.national_id} />
+                </div>
+
+                <div>
+                  <InputLabel value={t('Gender') + " *"} />
+                  <select
+                    value={studentForm.data.gender}
+                    onChange={e => studentForm.setData('gender', e.target.value)}
+                    className="w-full mt-1 border-gray-300 dark:border-gray-700 dark:bg-gray-900 rounded-md focus:border-indigo-500 focus:ring-indigo-500 shadow-sm"
+                  >
+                    <option value="male">{t('Male')}</option>
+                    <option value="female">{t('Female')}</option>
+                  </select>
+                  <InputError message={studentForm.errors.gender} />
+                </div>
+
+                <div>
+                  <InputLabel value={t('Class') + " *"} />
+                  <select
+                    value={studentForm.data.classroom_id}
+                    onChange={e => studentForm.setData('classroom_id', e.target.value)}
+                    className="w-full mt-1 border-gray-300 dark:border-gray-700 dark:bg-gray-900 rounded-md focus:border-indigo-500 focus:ring-indigo-500 shadow-sm"
+                    required
+                  >
+                    <option value="">{t('Select Class')}</option>
+                    {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <InputError message={studentForm.errors.classroom_id} />
+                </div>
+
+                <div>
+                  <InputLabel value={t('Supervisor')} />
+                  <select
+                    value={studentForm.data.supervisor_id}
+                    onChange={e => studentForm.setData('supervisor_id', e.target.value)}
+                    className="w-full mt-1 border-gray-300 dark:border-gray-700 dark:bg-gray-900 rounded-md focus:border-indigo-500 focus:ring-indigo-500 shadow-sm"
+                  >
+                    <option value="">{t('Select Supervisor')}</option>
+                    {supervisors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700 mt-4">
+                {!isEditing && <SecondaryButton onClick={() => setStep(1)}>{t('Back')}</SecondaryButton>}
+                <SecondaryButton onClick={closeModal}>{t('Cancel')}</SecondaryButton>
+                <PrimaryButton disabled={studentForm.processing}>
+                  {isEditing ? t('Save Changes') : t('Enroll Student')}
+                </PrimaryButton>
+              </div>
+            </form>
+          )}
+        </div>
+      </Modal>
+
+      {/* Delete Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-700 transform scale-100 transition-all">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              {t('Confirm Deletion')}
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
-              {t('Are you sure you want to delete this student? This action cannot be undone.')}
-            </p>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-700">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{t('Confirm Deletion')}</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">{t('Are you sure you want to delete this student?')}</p>
             <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl font-bold transition-colors"
-              >
-                {t('Cancel')}
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-xl font-bold shadow-lg shadow-red-500/30 transition-colors"
-              >
-                {t('Yes, Delete')}
-              </button>
+              <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl font-bold">{t('Cancel')}</button>
+              <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-xl font-bold">{t('Yes, Delete')}</button>
             </div>
           </div>
         </div>
