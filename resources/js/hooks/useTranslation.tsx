@@ -58,7 +58,7 @@ const dictionary = {
     // Classrooms Management
     'Classes Management': { ar: 'إدارة الفصول والمراحل', en: 'Classes & Levels Management' },
     'Classes List': { ar: 'قائمة الفصول', en: 'Classes List' },
-    'Teachers List': { ar: 'قائمة المعلمين', en: 'Teachers List' },
+    'Supervisors List': { ar: 'قائمة المشرفين', en: 'Supervisors List' },
     'Organize and manage school classes and grade levels.': { ar: 'تنظيم وإدارة الفصول والمراحل الدراسية.', en: 'Organize and manage school classes and grade levels.' },
     'Total Classes': { ar: 'إجمالي الفصول', en: 'Total Classes' },
     'Add New Class': { ar: 'إضافة فصل جديد', en: 'Add New Class' },
@@ -89,6 +89,19 @@ const dictionary = {
     'No supervisors found': { ar: 'لم يتم العثور على مشرفين', en: 'No supervisors found' },
     'Edit Supervisor': { ar: 'تعديل بيانات المشرف', en: 'Edit Supervisor' },
     'Add Supervisor': { ar: 'إضافة مشرف', en: 'Add Supervisor' },
+    'Academic': { ar: 'أكاديمي', en: 'Academic' },
+    'Identification': { ar: 'الهوية', en: 'Identification' },
+    'Verify': { ar: 'تحقق', en: 'Verify' },
+    'Follow the steps to register a student': { ar: 'اتبع الخطوات لتسجيل طالب جديد', en: 'Follow the steps to register a student' },
+    'Update student and guardian information': { ar: 'تحديث بيانات الطالب وولي الأمر', en: 'Update student and guardian information' },
+    'Search by Civil ID to find existing guardian.': { ar: 'ابحث بالرقم المدني للعثور على ولي أمر مسجل.', en: 'Search by Civil ID to find existing guardian.' },
+    'Searching...': { ar: 'جاري البحث...', en: 'Searching...' },
+    'Select & Continue': { ar: 'اختيار ومتابعة', en: 'Select & Continue' },
+    'Create & Continue': { ar: 'إنشاء ومتابعة', en: 'Create & Continue' },
+    'Upload Guardian Photo': { ar: 'رفع صورة ولي الأمر', en: 'Upload Guardian Photo' },
+    'Not Assigned': { ar: 'غير معين', en: 'Not Assigned' },
+    'No Supervisor': { ar: 'لا يوجد مشرف', en: 'No Supervisor' },
+    'Student Profile': { ar: 'ملف الطالب', en: 'Student Profile' },
 
     // Students Management
     'Students Directory': { ar: 'دليل الطلاب', en: 'Students Directory' },
@@ -96,9 +109,13 @@ const dictionary = {
     'Enroll New Student': { ar: 'تسجيل طالب جديد', en: 'Enroll New Student' },
     'Enroll Student': { ar: 'تسجيل طالب', en: 'Enroll Student' },
     'Student Name': { ar: 'اسم الطالب', en: 'Student Name' },
+    'Civil ID': { ar: 'الرقم المدني', en: 'Civil ID' },
+    'Student Civil ID': { ar: 'الرقم المدني للطالب', en: 'Student Civil ID' },
+    'Guardian Civil ID': { ar: 'الرقم المدني لولي الأمر', en: 'Guardian Civil ID' },
+    'Guardian Photo': { ar: 'صورة ولي الأمر', en: 'Guardian Photo' },
+    'Student Photo': { ar: 'صورة الطالب', en: 'Student Photo' },
     'Code': { ar: 'الكود', en: 'Code' },
     'Student Code': { ar: 'كود الطالب', en: 'Student Code' },
-    'Civil ID': { ar: 'رقم الهوية', en: 'National ID' },
     'Gender': { ar: 'الجنس', en: 'Gender' },
     'Male': { ar: 'ذكر', en: 'Male' },
     'Female': { ar: 'أنثى', en: 'Female' },
@@ -127,7 +144,6 @@ const dictionary = {
     'Guardian Name (Arabic)': { ar: 'اسم ولي الأمر (عربي)', en: 'Guardian Name (Arabic)' },
     'Guardian Name (English)': { ar: 'اسم ولي الأمر (إنجليزي)', en: 'Guardian Name (English)' },
     'Guardian Information': { ar: 'بيانات ولي الأمر', en: 'Guardian Information' },
-    'Guardian Photo': { ar: 'صورة ولي الأمر', en: 'Guardian Photo' },
     'Click to upload guardian photo': { ar: 'اضغط لرفع صورة ولي الأمر', en: 'Click to upload guardian photo' },
     'Click to upload student photo': { ar: 'اضغط لرفع صورة الطالب', en: 'Click to upload student photo' },
     'Select gender...': { ar: 'اختر الجنس...', en: 'Select gender...' },
@@ -149,7 +165,7 @@ const dictionary = {
     'City, District, Street...': { ar: 'المدينة، الحي، الشارع...', en: 'City, District, Street...' },
     'Home Number': { ar: 'رقم المنزل', en: 'Home Number' },
     'Saving...': { ar: 'جار الحفظ...', en: 'Saving...' },
-    'Student Photo': { ar: 'صورة الطالب', en: 'Student Photo' },
+
 
     // Buses Page
     'Buses Management': { ar: 'إدارة الحافلات', en: 'Buses Management' },
@@ -166,6 +182,10 @@ const dictionary = {
     'License Number': { ar: 'رقم الرخصة', en: 'License Number' },
     'Add Driver': { ar: 'إضافة كابتن', en: 'Add Captain' },
     'Edit Driver': { ar: 'تعديل بيانات الكابتن', en: 'Edit Captain' },
+    'Main Menu': { ar: 'القائمة الرئيسية', en: 'Main Menu' },
+    'School Dashboard': { ar: 'لوحة تحكم المدرسة', en: 'School Dashboard' },
+    'Dark Mode': { ar: 'الوضع الليلي', en: 'Dark Mode' },
+    'Light Mode': { ar: 'الوضع النهاري', en: 'Light Mode' },
 
     // Trips
     'Trips Management': { ar: 'جدولة الرحلات', en: 'Trips Management' },

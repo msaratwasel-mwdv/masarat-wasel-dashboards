@@ -1,10 +1,19 @@
+export interface School {
+    id: number;
+    name: string;
+    logo?: string;
+    location?: string;
+    status: "Active" | "Inactive";
+}
+
 export interface User {
     id: number;
     name: string;
     email: string;
     email_verified_at: string;
     role: "admin" | "school_admin" | "driver" | "parent" | "teacher" | "student";
-    school_id?: number; // ⬅️ أضف هذا إذا كان موجوداً
+    school_id?: number;
+    school?: School;
 }
 
 export interface Guardian {
