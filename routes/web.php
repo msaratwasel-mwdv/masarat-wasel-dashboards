@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Admin\SchoolController;
 use App\Http\Controllers\Admin\SchoolUserController;
+use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\SupervisorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\School\Attendance\AttendanceController;
 use App\Http\Controllers\School\ClassroomController;
@@ -40,6 +42,13 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('schools/{school}/toggle', [SchoolController::class, 'toggleStatus'])->name('schools.toggle');
         Route::get('schools/{school}/admins/create', [SchoolUserController::class, 'create'])->name('schools.users.create');
         Route::post('schools/{school}/admins', [SchoolUserController::class, 'store'])->name('schools.users.store');
+
+    // Drivers Routes
+   Route::get('drivers', [StaffController::class, 'index'])->name('drivers.index');
+    Route::post('drivers', [StaffController::class, 'storeDriver'])->name('drivers.store');
+    Route::put('drivers/{driver}', [StaffController::class, 'updateDriver'])->name('drivers.update'); // للتعديل
+    Route::delete('drivers/{driver}', [StaffController::class, 'destroyDriver'])->name('drivers.destroy'); // لل
+    Route::resource('supervisors', SupervisorController::class)->except(['create', 'edit', 'show']);
     });
 
 // 🔵 ثانياً: روابط مدير المدرسة (School Admin) - (تم الإصلاح والمعالجة الجراحية)
