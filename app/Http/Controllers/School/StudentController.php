@@ -260,36 +260,42 @@ public function store(Request $request)
      */
     public function update(Request $request, Student $student)
     {
+        
         $this->authorize('update', $student);
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->school_id;;
+        // 🛠️ إصلاح مشكلة القيم الفارغة (fix empty strings failing validation)
+  
 
-        $validated = $request->validate([
-            // Student Data
-            'full_name' => 'required|string|max:255',
-            'student_code' => ['required', 'string', 'max:50', Rule::unique('students')->ignore($student->id)],
-            'national_id' => ['nullable', 'string', 'max:50', Rule::unique('students')->ignore($student->id)],
-            'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
-            'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('school_id', $schoolId)],
-            'is_active' => 'required|boolean',
-            'image' => 'nullable|image|max:5120',
-
-            // Guardian Data
-            'guardian.name' => 'required|string|max:255',
-            'guardian.name_en' => 'nullable|string|max:255',
-            'guardian.national_id' => ['required', 'string', 'max:50', Rule::unique('guardians', 'national_id')->ignore($student->guardian_id)],
-            'guardian.phone' => ['required', 'string', 'max:50', Rule::unique('guardians', 'phone')->ignore($student->guardian_id)],
-            'guardian.address' => 'nullable|string|max:255',
-            'guardian.home_number' => 'nullable|string|max:50',
-            'guardian.image' => 'nullable|image|max:5120',
-        ]);
+        try {
+            $validated = $request->validate([
+                // Student Data
+                'full_name' => 'required|string|max:255',
+                'national_id' => ['nullable', 'string', 'max:50', Rule::unique('students')->ignore($student->id)],
+                'gender' => 'required|in:male,female',
+                'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
+                'is_active' => 'required|boolean',
+                'image' => 'nullable|image|max:5120',
+    
+                // Guardian Data
+                'guardian.name' => 'required|string|max:255',
+                'guardian.name_en' => 'nullable|string|max:255',
+                'guardian.national_id' => ['required', 'string', 'max:50', Rule::unique('guardians', 'national_id')->ignore($student->guardian_id)],
+                'guardian.phone' => ['required', 'string', 'max:50', Rule::unique('guardians', 'phone')->ignore($student->guardian_id)],
+                'guardian.address' => 'nullable|string|max:255',
+                'guardian.home_number' => 'nullable|string|max:50',
+                'guardian.image' => 'nullable|image|max:5120',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // 🛑 إظهار أخطاء التحقق لمعرفة المشكلة بالضبط
+            dd($e->errors());
+        }
 
         DB::transaction(function () use ($validated, $request, $student) {
             // Update Student
             $studentData = [
                 'full_name' => $validated['full_name'],
-                'student_code' => $validated['student_code'],
                 'national_id' => $validated['national_id'],
-                'supervisor_id' => $validated['supervisor_id'],
+                'gender' => $validated['gender'],
                 'is_active' => $validated['is_active'],
             ];
 

@@ -61,8 +61,8 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         // 4. إدارة الطلاب
         Route::get('students-api', [StudentController::class, 'apiIndex'])->name('students.api');
         Route::resource('students', StudentController::class);
+        Route::post('students/{student}/update', [StudentController::class, 'update'])->name('students.update_post');
 
-        // التحقق من ولي الأمر (خطوة 1)
         Route::post('guardians/search', [StudentController::class, 'searchGuardian'])->name('guardians.search');
         Route::post('guardians', [StudentController::class, 'storeGuardian'])->name('guardians.store');
 
