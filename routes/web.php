@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\BusController;
 use App\Http\Controllers\Admin\SchoolController;
 use App\Http\Controllers\Admin\SchoolUserController;
 use App\Http\Controllers\Admin\StaffController;
@@ -46,9 +47,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])
     // Drivers Routes
    Route::get('drivers', [StaffController::class, 'index'])->name('drivers.index');
     Route::post('drivers', [StaffController::class, 'storeDriver'])->name('drivers.store');
-    Route::put('drivers/{driver}', [StaffController::class, 'updateDriver'])->name('drivers.update'); // للتعديل
-    Route::delete('drivers/{driver}', [StaffController::class, 'destroyDriver'])->name('drivers.destroy'); // لل
+    Route::put('drivers/{driver}', [StaffController::class, 'updateDriver'])->name('drivers.update');
+    Route::delete('drivers/{driver}', [StaffController::class, 'destroyDriver'])->name('drivers.destroy');
     Route::resource('supervisors', SupervisorController::class)->except(['create', 'edit', 'show']);
+    Route::resource('buses', BusController::class)->except(['create', 'edit', 'show']);
+    Route::post('buses/{bus}/assign', [BusController::class, 'assignToSchool'])->name('buses.assign');
     });
 
 // 🔵 ثانياً: روابط مدير المدرسة (School Admin) - (تم الإصلاح والمعالجة الجراحية)

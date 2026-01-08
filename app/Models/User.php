@@ -55,4 +55,14 @@ public function school()
     {
         return $this->belongsTo(School::class);
     }
+    public function driverProfile()
+    {
+        return $this->hasOne(DriverProfile::class);
+    }
+
+    // علاقة المشرف
+    public function supervisorProfile()
+    {
+        return $this->hasOne(SupervisorProfile::class);
+    }
 }

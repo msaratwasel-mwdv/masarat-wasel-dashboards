@@ -4,6 +4,7 @@ import { Link, usePage } from "@inertiajs/react";
 import ApplicationLogo from "@/Components/ApplicationLogo";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { User } from "@/types";
+import { ToastContainer } from "react-toastify";
 
 // تعريف عناصر القائمة
 const getMenuItems = (isRTL: boolean) => [
@@ -19,18 +20,23 @@ const getMenuItems = (isRTL: boolean) => [
   },
   {
     label: isRTL ? "إدارة الأسطول" : "Fleet Management",
-    route: "",
+    route: "admin.buses.index",
     icon: "bus",
   },
   {
-    label: isRTL ? "الحضور والغياب" : "Attendance",
-    route: "",
+    label: isRTL ? "السائقين" : "Drivers",
+    route: "admin.drivers.index",
     icon: "user",
   },
   {
     label: isRTL ? "الإشعارات" : "Notifications",
     route: "",
     icon: "bell",
+  },
+  {
+    label: isRTL ? "المشرفين" : "Supervisors",
+    route: "admin.supervisors.index",
+    icon: "teacher",
   },
   {
     label: isRTL ? "الإعدادات" : "Settings",
@@ -533,6 +539,7 @@ export default function Authenticated({
           </div>
         </div>
       </main>
+      <ToastContainer />
     </div>
   );
 }
