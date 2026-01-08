@@ -1,8 +1,10 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, Fragment } from "react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
-import { Head, useForm, Link, router } from "@inertiajs/react";
+import { Head, useForm, router } from "@inertiajs/react";
 import useTranslation from "@/hooks/useTranslation";
 import { debounce } from "lodash";
+import Modal from "@/Components/Modal";
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from "@headlessui/react";
 
 export interface Classroom {
     id: number;
@@ -25,24 +27,64 @@ interface Props {
 }
 
 export default function ClassroomIndex({ auth, classrooms, supervisors = [], filters }: Props) {
-    const { t } = useTranslation();
+    const { t, isRtl } = useTranslation();
     const [search, setSearch] = useState(filters.search || "");
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [classToEdit, setClassToEdit] = useState<Classroom | null>(null);
     const [classToDelete, setClassToDelete] = useState<Classroom | null>(null);
 
     // Form for adding new class
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const addForm = useForm({
         name: "",
-        grade_level: "",
-        supervisor_id: "", // Single supervisor selection
+        supervisor_id: "",
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    // Form for editing class
+    const editForm = useForm({
+        name: "",
+        supervisor_id: "",
+    });
+
+    const handleAddSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route("school.classrooms.store"), {
+        addForm.post(route("school.classrooms.store"), {
             preserveScroll: true,
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                setShowAddModal(false);
+                addForm.reset();
+            },
         });
+    };
+
+    const handleEditSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!classToEdit) return;
+
+        // The backend expects teacher_ids (array) for update
+        editForm.transform((data) => ({
+            ...data,
+            teacher_ids: data.supervisor_id ? [parseInt(data.supervisor_id)] : [],
+        }));
+
+        editForm.put(route("school.classrooms.update", classToEdit.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setShowEditModal(false);
+                editForm.reset();
+                setClassToEdit(null);
+            },
+        });
+    };
+
+    const openEditModal = (classroom: Classroom) => {
+        setClassToEdit(classroom);
+        editForm.setData({
+            name: classroom.name,
+            supervisor_id: classroom.teachers && classroom.teachers.length > 0 ? classroom.teachers[0].id.toString() : "",
+        });
+        setShowEditModal(true);
     };
 
     // Debounced search
@@ -79,6 +121,11 @@ export default function ClassroomIndex({ auth, classrooms, supervisors = [], fil
         }
     };
 
+    const getSupervisorName = (id: string) => {
+        const s = supervisors.find(sup => sup.id.toString() === id);
+        return s ? s.name : t("Select Supervisor");
+    };
+
     return (
         <SchoolAuthenticatedLayout
             user={auth.user}
@@ -90,200 +137,100 @@ export default function ClassroomIndex({ auth, classrooms, supervisors = [], fil
         >
             <Head title={t('Classes Management')} />
 
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-                {/* --- Add Class Form (Left) --- */}
-                <div className="lg:col-span-1 space-y-8">
-                    {/* --- Stats Card --- */}
-                    <div className="p-6 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-2xl shadow-xl text-white transform hover:scale-[1.02] transition-transform duration-300">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-yellow-100 text-sm font-medium mb-1">{t('Total Classes')}</p>
-                                <h3 className="text-4xl font-bold">{classrooms.length}</h3>
+            <div className={`max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8`} dir={isRtl ? 'rtl' : 'ltr'}>
+                <div className="bg-white dark:bg-[#0f172a] rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 transition-colors duration-300">
+                    <div className="p-8">
+                        {/* Header Section */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-blue-500/10 rounded-2xl border border-blue-500/20">
+                                    <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-1">{t('Classes List')}</h1>
+                                    <p className="text-gray-500 dark:text-gray-400 text-sm">{t('Total Classes')}: {classrooms.length}</p>
+                                </div>
                             </div>
-                            <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
-                                <span className="text-2xl">🏫</span>
-                            </div>
-                        </div>
-                        <div className="mt-4 flex items-center gap-2 text-xs text-yellow-100">
-                            <span>{t('Active')}</span>
-                            <span>{t('All systems operational')}</span>
-                        </div>
-                    </div>
 
-                    <div className="h-fit p-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md border border-white/20 dark:border-gray-700 shadow-xl rounded-2xl">
-                        <h3 className="mb-2 text-lg font-bold text-gray-800 dark:text-gray-100">
-                            {t('Add New Class')}
-                        </h3>
-                        <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
-                            {t('Organize and manage school classes and grade levels.')}
-                        </p>
-
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            <div>
-                                <label
-                                    htmlFor="name"
-                                    className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-                                >
-                                    {t('Class Name')}
-                                </label>
-                                <input
-                                    id="name"
-                                    type="text"
-                                    className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
-                                    value={data.name}
-                                    onChange={(e) => setData("name", e.target.value)}
-                                    placeholder={t('Class Name')}
-                                    required
-                                />
-                                {errors.name && (
-                                    <div className="mt-1 text-xs text-red-500">
-                                        {errors.name}
+                            <div className="flex flex-col sm:flex-row items-center gap-4">
+                                {/* Search */}
+                                <div className="relative w-full sm:w-80">
+                                    <input
+                                        type="text"
+                                        value={search}
+                                        onChange={handleSearchChange}
+                                        placeholder={t('Search')}
+                                        className="w-full bg-gray-50 dark:bg-[#1e293b] border-gray-200 dark:border-white/10 rounded-2xl py-3 pl-10 pr-4 text-gray-800 dark:text-white placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500 border transition-all"
+                                    />
+                                    <div className={`absolute ${isRtl ? 'right-3' : 'left-3'} top-3.5`}>
+                                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
                                     </div>
-                                )}
-                            </div>
-                            <div>
-                                <label
-                                    htmlFor="grade_level"
-                                    className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-                                >
-                                    {t('Grade Level')} ({t('Optional')})
-                                </label>
-                                <input
-                                    id="grade_level"
-                                    type="text"
-                                    className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
-                                    value={data.grade_level}
-                                    onChange={(e) => setData("grade_level", e.target.value)}
-                                    placeholder={t('Grade Level')}
-                                />
-                            </div>
+                                </div>
 
-                            {/* Supervisor Selection */}
-                            <div>
-                                <label
-                                    htmlFor="supervisor_id"
-                                    className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-                                >
-                                    {t('Assign Supervisor')}
-                                </label>
-                                <select
-                                    id="supervisor_id"
-                                    className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
-                                    value={data.supervisor_id}
-                                    onChange={(e) => setData("supervisor_id", e.target.value)}
-                                >
-                                    <option value="">{t('Select Supervisor')}</option>
-                                    {supervisors && supervisors.length > 0 ? (
-                                        supervisors.map((s) => (
-                                            <option key={s.id} value={s.id}>
-                                                {s.name}
-                                            </option>
-                                        ))
-                                    ) : (
-                                        <option value="" disabled>{t('No supervisors found')}</option>
-                                    )}
-                                </select>
-                            </div>
-
-                            <div className="pt-2">
                                 <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="w-full flex justify-center items-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={() => setShowAddModal(true)}
+                                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-95"
                                 >
-                                    {processing ? t('Saving...') : t('Save')}
+                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    {t('Add New Class')}
                                 </button>
                             </div>
-                        </form>
-                    </div>
-                </div>
-
-                {/* --- Current Classes Table (Right) --- */}
-                <div className="lg:col-span-2">
-                    <div className="p-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md border border-white/20 dark:border-gray-700 shadow-xl rounded-2xl">
-                        {/* Header with Search */}
-                        <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
-                            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
-                                {t('Classes Management')}
-                            </h3>
-
-                            {/* Search Input */}
-                            <div className="relative w-full md:w-auto">
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={handleSearchChange}
-                                    placeholder={t('Search by Class, Grade...')}
-                                    className="w-full md:w-64 bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2 pl-10 text-sm dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
-                            </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full text-start">
-                                <thead className="border-b border-gray-200 dark:border-gray-700">
-                                    <tr>
-                                        <th className="px-4 py-3 text-xs font-bold tracking-wider text-gray-500 dark:text-gray-400 uppercase text-start">
-                                            {t('Class Name')}
-                                        </th>
-                                        <th className="px-4 py-3 text-xs font-bold tracking-wider text-gray-500 dark:text-gray-400 uppercase text-start">
-                                            {t('Grade')}
-                                        </th>
-                                        <th className="px-4 py-3 text-xs font-bold tracking-wider text-gray-500 dark:text-gray-400 uppercase text-start">
-                                            {t('Supervisor')}
-                                        </th>
-                                        <th className="px-4 py-3 text-xs font-bold tracking-wider text-end text-gray-500 dark:text-gray-400 uppercase">
-                                            {t('Actions')}
-                                        </th>
+                        {/* Table */}
+                        <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-[#1e293b]/20 transition-colors duration-300">
+                            <table className={`w-full text-start mb-0`} dir={isRtl ? 'rtl' : 'ltr'}>
+                                <thead>
+                                    <tr className="border-b border-gray-100 dark:border-white/5 bg-gray-100/50 dark:bg-white/[0.02]">
+                                        <th className={`px-6 py-4 text-gray-500 dark:text-gray-400 font-medium text-sm text-start`}>{t('Class Name')}</th>
+                                        <th className={`px-6 py-4 text-gray-500 dark:text-gray-400 font-medium text-sm text-start`}>{t('Supervisor')}</th>
+                                        <th className="px-6 py-4 text-gray-500 dark:text-gray-400 font-medium text-sm text-center">{t('Actions')}</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                                     {classrooms.length > 0 ? (
                                         classrooms.map((classroom) => (
-                                            <tr
-                                                key={classroom.id}
-                                                className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors"
-                                            >
-                                                <td className="px-4 py-4 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
-                                                    {classroom.name}
-                                                </td>
-                                                <td className="px-4 py-4 text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                                    {classroom.grade_level || "-"}
-                                                </td>
-                                                <td className="px-4 py-4 text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                            <tr key={classroom.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+                                                <td className={`px-6 py-4 text-gray-800 dark:text-white font-medium text-start`}>{classroom.name}</td>
+                                                <td className={`px-6 py-4 text-gray-600 dark:text-gray-300 text-start`}>
                                                     {classroom.teachers && classroom.teachers.length > 0
                                                         ? classroom.teachers.map((t) => t.name).join(", ")
                                                         : "-"}
                                                 </td>
-                                                <td className="px-4 py-4 text-end whitespace-nowrap space-x-3 rtl:space-x-reverse">
-                                                    <Link
-                                                        href={route(
-                                                            "school.classrooms.edit",
-                                                            classroom.id
-                                                        )}
-                                                        className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                                                    >
-                                                        {t('Edit')}
-                                                    </Link>
-                                                    <button
-                                                        onClick={() => confirmDelete(classroom)}
-                                                        className="text-sm font-semibold text-red-500 hover:text-red-700 dark:hover:text-red-400"
-                                                    >
-                                                        {t('Delete')}
-                                                    </button>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center justify-center gap-4">
+                                                        <button
+                                                            onClick={() => openEditModal(classroom)}
+                                                            className="p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-xl transition-all"
+                                                            title={t('Edit')}
+                                                        >
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => confirmDelete(classroom)}
+                                                            className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all"
+                                                            title={t('Delete')}
+                                                        >
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))
                                     ) : (
                                         <tr>
-                                            <td
-                                                colSpan={4}
-                                                    className="py-10 text-center text-gray-400 dark:text-gray-500"
-                                            >
-                                                    {t('No Data')}
+                                            <td colSpan={3} className="px-6 py-12 text-center text-gray-400 dark:text-gray-500 italic">
+                                                {t('No Data')}
                                             </td>
                                         </tr>
                                     )}
@@ -294,33 +241,226 @@ export default function ClassroomIndex({ auth, classrooms, supervisors = [], fil
                 </div>
             </div>
 
-            {/* Delete Confirmation Modal */}
-            {showDeleteModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-700 transform scale-100 transition-all">
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                            {t('Confirm Deletion')}
-                        </h3>
-                        <p className="text-gray-500 dark:text-gray-400 mb-6">
-                            {t('Are you sure you want to delete this class? This action cannot be undone.')}
-                        </p>
-                        <div className="flex justify-end gap-3">
+            {/* Add Class Modal */}
+            <Modal show={showAddModal} onClose={() => setShowAddModal(false)} maxWidth="md">
+                <div className="bg-white dark:bg-[#1e293b] p-8 border border-gray-100 dark:border-white/10 rounded-2xl min-h-[450px]" dir={isRtl ? 'rtl' : 'ltr'}>
+                    <div className="flex items-center justify-between mb-8">
+                        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t('Add New Class')}</h2>
+                        <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleAddSubmit} className="space-y-6">
+                        <div>
+                            <label className="block text-gray-600 dark:text-gray-400 text-sm font-medium mb-2">{t('Class Name')}</label>
+                            <input
+                                type="text"
+                                value={addForm.data.name}
+                                onChange={(e) => addForm.setData("name", e.target.value)}
+                                className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 text-gray-800 dark:text-white focus:ring-blue-500 focus:border-blue-500 transition-all border"
+                                placeholder={t('Class Name')}
+                                required
+                            />
+                            {addForm.errors.name && <div className="mt-1 text-xs text-red-500">{addForm.errors.name}</div>}
+                        </div>
+
+                        <div>
+                            <label className="block text-gray-600 dark:text-gray-400 text-sm font-medium mb-2">{t('Assign Supervisor')}</label>
+                            <Listbox
+                                value={addForm.data.supervisor_id}
+                                onChange={(val) => addForm.setData("supervisor_id", val)}
+                            >
+                                <div className="relative mt-1">
+                                    <ListboxButton className={`relative w-full cursor-pointer rounded-2xl bg-gray-50 dark:bg-[#0f172a] py-3 ${isRtl ? 'pl-10 pr-4 text-right' : 'pr-10 pl-4 text-left'} text-gray-800 dark:text-white border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm`}>
+                                        <span className="block truncate">
+                                            {getSupervisorName(addForm.data.supervisor_id)}
+                                        </span>
+                                        <span className={`pointer-events-none absolute inset-y-0 ${isRtl ? 'left-0 pl-4' : 'right-0 pr-4'} flex items-center`}>
+                                            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </span>
+                                    </ListboxButton>
+                                    <Transition
+                                        as={Fragment}
+                                        leave="transition ease-in duration-100"
+                                        leaveFrom="opacity-100"
+                                        leaveTo="opacity-0"
+                                    >
+                                        <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-2xl bg-white dark:bg-[#1e293b] py-1 text-base shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm border border-gray-100 dark:border-white/10">
+                                            <ListboxOption
+                                                value=""
+                                                className={({ active }) =>
+                                                    `relative cursor-pointer select-none py-3 px-4 ${active ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-gray-300'
+                                                    }`
+                                                }
+                                            >
+                                                {t('Select Supervisor')}
+                                            </ListboxOption>
+                                            {supervisors.map((s) => (
+                                                <ListboxOption
+                                                    key={s.id}
+                                                    value={s.id.toString()}
+                                                    className={({ active }) =>
+                                                        `relative cursor-pointer select-none py-3 px-4 ${active ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-gray-300'
+                                                        }`
+                                                    }
+                                                >
+                                                    {s.name}
+                                                </ListboxOption>
+                                            ))}
+                                        </ListboxOptions>
+                                    </Transition>
+                                </div>
+                            </Listbox>
+                            {addForm.errors.supervisor_id && <div className="mt-1 text-xs text-red-500">{addForm.errors.supervisor_id}</div>}
+                        </div>
+
+                        <div className="flex gap-4 pt-4">
                             <button
-                                onClick={() => setShowDeleteModal(false)}
-                                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl font-bold transition-colors"
+                                type="submit"
+                                disabled={addForm.processing}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-bold shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
+                            >
+                                {addForm.processing ? t('Saving...') : t('Add')}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowAddModal(false)}
+                                className="flex-1 bg-gray-100 dark:bg-[#0f172a] hover:bg-gray-200 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400 py-3 rounded-2xl font-bold transition-all border border-gray-200 dark:border-white/10"
                             >
                                 {t('Cancel')}
                             </button>
-                            <button
-                                onClick={handleDelete}
-                                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-xl font-bold shadow-lg shadow-red-500/30 transition-colors"
+                        </div>
+                    </form>
+                </div>
+            </Modal>
+
+            {/* Edit Class Modal */}
+            <Modal show={showEditModal} onClose={() => setShowEditModal(false)} maxWidth="md">
+                <div className="bg-white dark:bg-[#1e293b] p-8 border border-gray-100 dark:border-white/10 rounded-2xl min-h-[450px]" dir={isRtl ? 'rtl' : 'ltr'}>
+                    <div className="flex items-center justify-between mb-8">
+                        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t('Edit Class')}</h2>
+                        <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleEditSubmit} className="space-y-6">
+                        <div>
+                            <label className="block text-gray-600 dark:text-gray-400 text-sm font-medium mb-2">{t('Class Name')}</label>
+                            <input
+                                type="text"
+                                value={editForm.data.name}
+                                onChange={(e) => editForm.setData("name", e.target.value)}
+                                className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 text-gray-800 dark:text-white focus:ring-blue-500 focus:border-blue-500 transition-all border"
+                                placeholder={t('Class Name')}
+                                required
+                            />
+                            {editForm.errors.name && <div className="mt-1 text-xs text-red-500">{editForm.errors.name}</div>}
+                        </div>
+
+                        <div>
+                            <label className="block text-gray-600 dark:text-gray-400 text-sm font-medium mb-2">{t('Assign Supervisor')}</label>
+                            <Listbox
+                                value={editForm.data.supervisor_id}
+                                onChange={(val) => editForm.setData("supervisor_id", val)}
                             >
-                                {t('Yes, Delete')}
+                                <div className="relative mt-1">
+                                    <ListboxButton className={`relative w-full cursor-pointer rounded-2xl bg-gray-50 dark:bg-[#0f172a] py-3 ${isRtl ? 'pl-10 pr-4 text-right' : 'pr-10 pl-4 text-left'} text-gray-800 dark:text-white border border-gray-200 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm`}>
+                                        <span className="block truncate">
+                                            {getSupervisorName(editForm.data.supervisor_id)}
+                                        </span>
+                                        <span className={`pointer-events-none absolute inset-y-0 ${isRtl ? 'left-0 pl-4' : 'right-0 pr-4'} flex items-center`}>
+                                            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </span>
+                                    </ListboxButton>
+                                    <Transition
+                                        as={Fragment}
+                                        leave="transition ease-in duration-100"
+                                        leaveFrom="opacity-100"
+                                        leaveTo="opacity-0"
+                                    >
+                                        <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-2xl bg-white dark:bg-[#1e293b] py-1 text-base shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm border border-gray-100 dark:border-white/10">
+                                            <ListboxOption
+                                                value=""
+                                                className={({ active }) =>
+                                                    `relative cursor-pointer select-none py-3 px-4 ${active ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-gray-300'
+                                                    }`
+                                                }
+                                            >
+                                                {t('Select Supervisor')}
+                                            </ListboxOption>
+                                            {supervisors.map((s) => (
+                                                <ListboxOption
+                                                    key={s.id}
+                                                    value={s.id.toString()}
+                                                    className={({ active }) =>
+                                                        `relative cursor-pointer select-none py-3 px-4 ${active ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-gray-300'
+                                                        }`
+                                                    }
+                                                >
+                                                    {s.name}
+                                                </ListboxOption>
+                                            ))}
+                                        </ListboxOptions>
+                                    </Transition>
+                                </div>
+                            </Listbox>
+                        </div>
+
+                        <div className="flex gap-4 pt-4">
+                            <button
+                                type="submit"
+                                disabled={editForm.processing}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-bold shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
+                            >
+                                {editForm.processing ? t('Saving...') : t('Save Changes')}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowEditModal(false)}
+                                className="flex-1 bg-gray-100 dark:bg-[#0f172a] hover:bg-gray-200 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400 py-3 rounded-2xl font-bold transition-all border border-gray-200 dark:border-white/10"
+                            >
+                                {t('Cancel')}
                             </button>
                         </div>
+                    </form>
+                </div>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)} maxWidth="md">
+                <div className="bg-white dark:bg-[#1e293b] p-8 border border-gray-100 dark:border-white/10 rounded-2xl transition-colors duration-300" dir={isRtl ? 'rtl' : 'ltr'}>
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4">
+                        {t('Confirm Deletion')}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-8">
+                        {t('Are you sure you want to delete this class? This action cannot be undone.')}
+                    </p>
+                    <div className="flex gap-4">
+                        <button
+                            onClick={handleDelete}
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-2xl font-bold shadow-lg shadow-red-500/20 transition-all"
+                        >
+                            {t('Yes, Delete')}
+                        </button>
+                        <button
+                            onClick={() => setShowDeleteModal(false)}
+                            className="flex-1 bg-gray-100 dark:bg-[#0f172a] hover:bg-gray-200 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400 py-3 rounded-2xl font-bold transition-all border border-gray-200 dark:border-white/10"
+                        >
+                            {t('Cancel')}
+                        </button>
                     </div>
                 </div>
-            )}
+            </Modal>
         </SchoolAuthenticatedLayout>
     );
 }

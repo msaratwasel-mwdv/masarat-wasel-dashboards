@@ -45,153 +45,297 @@ export default function SchoolAuthenticatedLayout({
     else document.documentElement.classList.remove('dark');
   };
     // قائمة الروابط الخاصة بك (تم الحفاظ عليها)
+  // قائمة الروابط الخاصة بك
     const menuItems = [
-        { label: "لوحة التحكم", route: "school.dashboard", icon: "grid" },
+      { label: "Dashboard", route: "school.dashboard", icon: "grid" },
         {
-            label: "إدارة الفصول",
+          label: "Classes Management",
             route: "school.classrooms.index",
             icon: "classes",
         },
         {
-            label: "إدارة المعلمين",
+          label: "Supervisors Management",
             route: "school.teachers.index",
             icon: "teacher",
         },
-        { label: "إدارة الطلاب", route: "school.students.index", icon: "user" },
-        { label: "إدارة الحافلات", route: "#", icon: "bus" }, // رابط مؤقت
-      { label: "الحضور اليومي", route: "school.reports.attendance", icon: "report" },
-        { label: "الإعدادات", route: "profile.edit", icon: "cog" },
+      { label: "Students", route: "school.students.index", icon: "user" },
+      { label: "Buses", route: "#", icon: "bus" },
+      { label: "Daily Attendance", route: "school.reports.attendance", icon: "report" },
+      { label: "Settings", route: "profile.edit", icon: "cog" },
     ];
 
     return (
-    <div
-      className="min-h-screen bg-[#f1f5f9] dark:bg-gray-900 flex font-sans"
-      dir={isRtl ? 'rtl' : 'ltr'}
-    >
-      {/* MOBILE HEADER (Visible on small screens) */}
-      <div className="fixed z-50 flex items-center justify-between w-full h-16 px-4 text-white shadow-md md:hidden bg-brand-dark">
-        <div className="flex items-center">
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-          </button>
-            <span className="mx-2 text-lg font-bold text-brand-yellow">{auth.user?.school?.name}</span>
-        </div>
-        <div className="flex items-center justify-center w-8 h-8 font-bold rounded-full bg-brand-yellow text-brand-dark">
-
-        </div>
-      </div>
-
-      {/* OVERLAY for Mobile */}
-      {
-        isSidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/50 md:hidden"
-            onClick={() => setIsSidebarOpen(false)}
-          ></div>
-        )
-      }
-
-      {/* SIDEBAR */}
-      <aside className={`
-          w-64 bg-brand-dark text-white flex flex-col fixed h-full z-50 transition-transform duration-300
-          ${isSidebarOpen ? "translate-x-0" : (isRtl ? "translate-x-full" : "-translate-x-full")}
-          md:translate-x-0
-          ${isRtl ? 'right-0' : 'left-0'}
-      `}>
-        {/* Logo Section */}
-        <div className="flex items-center justify-center h-20 px-6 pt-4 border-b border-gray-700/50">
-          <div className="relative flex items-center justify-center w-full">
-            {/* Background Logo Opacity */}
-            <div className="absolute scale-150 opacity-10">
-              <ApplicationLogo className="w-20 h-20 text-white fill-current" />
-            </div>
-            <span className="relative z-10 text-2xl font-bold tracking-wide text-brand-yellow drop-shadow-md">
-                {auth.user?.school?.name}
-            </span>
-          </div>
-        </div>
-
-        <nav className="flex-1 px-4 mt-6 space-y-2 overflow-y-auto">
-          {menuItems.map((item, index) => {
-                        const routeExists =
-                            item.route !== "#" && route().has(item.route);
-                        const isActive =
-                            routeExists && route().current(item.route + "*");
-            return (
-              <Link
-                key={item.label}
-                                                href={routeExists ? route(item.route) : "#"}
-
-                onClick={() => setIsSidebarOpen(false)} // Close on mobile click
-                className={`
-                    group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200
-                    ${isActive
-                    ? "bg-brand-yellow text-brand-dark font-bold shadow-lg shadow-yellow-500/20"
-                    : "text-gray-300 hover:bg-white/10 hover:text-white"}
-                `}
-              >
-                <span className={`w-6 h-6 ${isRtl ? 'ml-3' : 'mr-3'}`}>
-                  {/* Simple Icons based on keyword */}
-                  {item.icon === 'grid' && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>}
-                  {item.icon === 'user' && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>}
-                  {item.icon === 'truck' && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>}
-                  {item.icon === 'id-card' && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0c0 .884-.896 1.688-2 1.688a1.688 1.688 0 01-2-1.688L6 6z" /></svg>}
-                  {item.icon === 'shield' && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
-                  {item.icon === 'map' && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0121 18.382V7.618a1 1 0 01-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>}
-                  {item.icon === 'document-text' && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
-                  {item.icon === 'cog' && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
-                </span>
-                <span>{t(item.label)}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="p-4 border-t border-gray-700">
-          <button
-            onClick={() => route("logout")} // Inertia link preferred but verify logout method
-            className="flex items-center w-full text-gray-400 transition hover:text-white"
-          >
-            <Link method="post" href={route("logout")} as="span" className="flex items-center w-full cursor-pointer">
-              <svg className={`w-5 h-5 ${isRtl ? 'ml-3' : 'mr-3'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-              <span>{t('Logout')}</span>
-            </Link>
-          </button>
-        </div>
-      </aside>
-
-      {/* MAIN CONTENT */}
-      <main className={`
-          flex-1 transition-all duration-300 pt-16 md:pt-0
-          ${isRtl ? 'md:mr-64' : 'md:ml-64'}
-      `}>
-        <header className="sticky z-10 flex items-center justify-between h-20 px-4 bg-white border-b shadow-sm dark:bg-gray-800 md:px-8 dark:border-gray-700 top-16 md:top-0">
-          <h2 className="hidden text-xl font-bold text-brand-dark dark:text-white md:block">{header}</h2>
-          <h2 className="text-lg font-bold text-brand-dark dark:text-white md:hidden">{t('Dashboard')}</h2>
-
-          <div className="flex items-center space-x-2 md:space-x-4">
-            {/* Theme Toggle */}
-            <button onClick={toggleTheme} className="p-2 text-gray-500 transition hover:text-brand-yellow">
-              {theme === 'light' ? '🌙' : '☀️'}
-            </button>
-
-            {/* Lang Toggle */}
+      <div
+        className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 flex font-sans selection:bg-brand-yellow/30"
+        dir={isRtl ? "rtl" : "ltr"}
+      >
+        {/* MOBILE NAVIGATION BAR */}
+        <div className="fixed top-0 z-[60] flex items-center justify-between w-full h-16 px-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 md:hidden">
+          <div className="flex items-center gap-3">
             <button
-              onClick={toggleLang}
-              className="px-3 py-1 text-sm font-bold transition bg-gray-100 rounded-lg text-brand-dark dark:text-white dark:bg-gray-700 hover:bg-gray-200"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
             >
-              {lang === 'ar' ? 'English' : 'عربي'}
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
             </button>
-
-            <div className="flex items-center justify-center w-8 h-8 font-bold rounded-full shadow-md bg-brand-yellow text-brand-dark">
+            <div className="flex items-center gap-2">
+              {auth.user?.school?.logo ? (
+                <img src={auth.user.school.logo} alt="School Logo" className="w-8 h-8 rounded-lg object-contain" />
+              ) : (
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-yellow/10 text-brand-yellow">
+                  <span className="text-sm font-bold uppercase">{auth.user?.school?.name?.charAt(0)}</span>
+                </div>
+              )}
+              <span className="text-sm font-bold truncate max-w-[150px] text-slate-800 dark:text-white">
+                {auth.user?.school?.name}
+              </span>
             </div>
           </div>
-        </header>
-
-        <div className="p-4 md:p-8 dark:text-white">
-          {children}
+          <div className="flex items-center gap-2">
+            <button onClick={toggleTheme} className="p-2 text-slate-500 dark:text-slate-400">
+              {theme === "light" ? "🌙" : "☀️"}
+            </button>
+            <button onClick={toggleLang} className="px-2 py-1 text-xs font-bold rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              {lang === "ar" ? "EN" : "عربي"}
+            </button>
+          </div>
         </div>
-      </main>
-    </div>
-  );
+
+        {/* SIDEBAR */}
+        <aside
+          className={`
+                    fixed inset-y-0 z-50 w-72 bg-slate-900 dark:bg-slate-950 text-white flex flex-col transition-all duration-300 ease-in-out border-r border-white/5 shadow-2xl
+                    ${isSidebarOpen ? "translate-x-0" : isRtl ? "translate-x-full" : "-translate-x-full"}
+                    md:translate-x-0
+                    ${isRtl ? "right-0 border-l" : "left-0 border-r"}
+                `}
+        >
+          {/* BRANDING SECTION */}
+          <div className="flex flex-col items-center justify-center pt-8 pb-6 px-6">
+            <div className="flex flex-col items-center gap-4">
+              <div className="p-3 bg-white/5 rounded-2xl ring-1 ring-white/10 backdrop-blur-sm">
+                <ApplicationLogo className="w-16 h-16" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-xl font-bold tracking-tight text-white">
+                  {t("Masarat Wasel")}
+                </h3>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-semibold mt-1">
+                  Smart Transport System
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="px-6 py-4">
+            <hr className="border-white/5" />
+          </div>
+
+          {/* MENU SECTION */}
+          <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar pt-2">
+            <p className="px-4 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              {t("Main Menu")}
+            </p>
+            {menuItems.map((item) => {
+              const routeExists = item.route !== "#" && route().has(item.route);
+              const isActive = routeExists && route().current(item.route + "*");
+              return (
+                <Link
+                  key={item.label}
+                  href={routeExists ? route(item.route) : "#"}
+                            onClick={() => setIsSidebarOpen(false)}
+                            className={`
+                                    group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-200 relative overflow-hidden
+                                    ${
+                              isActive
+                                ? "bg-brand-yellow text-slate-900 font-bold shadow-lg shadow-brand-yellow/20"
+                                : "text-slate-400 hover:bg-white/5 hover:text-white"
+                              }
+                                `}
+                          >
+                            <span className={`w-5 h-5 ${isRtl ? "ml-4" : "mr-4"} transition-transform group-hover:scale-110 duration-200`}>
+                              {/* SVG Icons (Simplified) */}
+                              {item.icon === "grid" && (
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                </svg>
+                              )}
+                              {item.icon === "classes" && (
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                              )}
+                              {item.icon === "teacher" && (
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                              )}
+                              {item.icon === "user" && (
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                              )}
+                              {item.icon === "bus" && (
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                              )}
+                              {item.icon === "report" && (
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              )}
+                              {item.icon === "cog" && (
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                              )}
+                            </span>
+                          <span className="relative z-10">{t(item.label)}</span>
+                          {isActive && (
+                            <div className={`absolute ${isRtl ? "left-0" : "right-0"} w-1 h-6 bg-slate-900 rounded-full`} />
+                          )}
+                        </Link>
+                      );
+                    })}
+          </nav>
+
+          {/* USER SECTION AT BOTTOM */}
+          <div className="p-4 mx-4 mb-6 rounded-2xl bg-white/5 border border-white/5">
+            <div className="flex items-center gap-3 px-2 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-brand-yellow flex items-center justify-center text-slate-900 font-bold shadow-lg shadow-brand-yellow/20">
+                {auth.user.name.charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold truncate text-white">{auth.user.name}</p>
+                <p className="text-[10px] text-slate-500 truncate lowercase">{auth.user.email}</p>
+              </div>
+            </div>
+            <Link
+              method="post"
+              href={route("logout")}
+              className="flex items-center justify-center w-full gap-2 py-2.5 text-xs font-bold text-slate-400 transition-colors rounded-xl hover:bg-red-500/10 hover:text-red-400 border border-transparent hover:border-red-500/20"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>{t("Logout")}</span>
+            </Link>
+          </div>
+        </aside>
+
+        {/* MAIN CONTENT AREA */}
+        <main
+          className={`
+                    flex-1 flex flex-col transition-all duration-300 min-h-screen
+                    ${isRtl ? "md:mr-72" : "md:ml-72"}
+                `}
+        >
+          {/* DESKTOP HEADER */}
+          <header className="sticky top-0 z-40 hidden md:flex items-center justify-between h-20 px-8 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3 p-1.5 pr-4 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200/50 dark:border-white/5">
+                {auth.user?.school?.logo ? (
+                  <img
+                    src={auth.user.school.logo}
+                    alt="School Logo"
+                    className="w-11 h-11 rounded-xl object-contain bg-white p-1"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-brand-yellow text-slate-900 shadow-lg shadow-brand-yellow/20">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 14l9-5-9-5-9 5 9 5z" />
+                      <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+                    </svg>
+                  </div>
+                )}
+                <div>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-tight">
+                    {t("School Dashboard")}
+                  </p>
+                  <h2 className="text-lg font-black text-slate-800 dark:text-white leading-tight">
+                    {auth.user?.school?.name}
+                  </h2>
+                </div>
+              </div>
+
+              {header && (
+                <>
+                  <div className="w-px h-8 bg-slate-200 dark:bg-slate-800" />
+                  <div className="text-slate-800 dark:text-white font-bold text-lg">
+                    {header}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* THEME TOGGLE */}
+              <button
+                onClick={toggleTheme}
+                className="p-2.5 text-slate-500 hover:text-brand-yellow transition-colors rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200/50 dark:border-white/5"
+                title={theme === "light" ? t("Dark Mode") : t("Light Mode")}
+              >
+                {theme === "light" ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                )}
+              </button>
+
+              {/* LANGUAGE TOGGLE */}
+              <button
+                onClick={toggleLang}
+                className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:text-brand-yellow border border-slate-200/50 dark:border-white/5 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5a18.022 18.022 0 01-3.827-5.806m6.3 0c-.593 2.515-2.149 4.95-3.596 6.53m4.346-6.53a15.938 15.938 0 01-1.442 4.194m-6.327-4.194c.312.92.744 1.815 1.285 2.651m8.66-8.651L15 7m-5 9.5l-1.5 1.5M11 7L2 7M7 11h8" />
+                </svg>
+                {lang === "ar" ? "English" : "العربية"}
+              </button>
+            </div>
+          </header>
+
+          {/* PAGE CONTENT */}
+          <div className="flex-1 p-4 md:p-8 pt-20 md:pt-8 bg-[#F8FAFC] dark:bg-slate-950 overflow-x-hidden">
+            <div className="max-w-[1600px] mx-auto animate-in fade-in duration-500">
+              {children}
+            </div>
+          </div>
+        </main>
+
+        {/* OVERLAY FOR MOBILE SIDEBAR */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm md:hidden transition-opacity"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
+        <style dangerouslySetInnerHTML={{
+          __html: `
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 4px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 10px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: rgba(255, 255, 255, 0.2);
+                }
+            `}} />
+      </div>
+    );
 }

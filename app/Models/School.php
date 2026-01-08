@@ -12,6 +12,7 @@ class School extends Model
 
     protected $fillable = [
         'name',
+        'logo',
         'location',
         'status',
         'has_transport',
