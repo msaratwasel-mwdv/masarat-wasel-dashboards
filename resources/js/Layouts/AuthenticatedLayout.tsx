@@ -1,11 +1,10 @@
-// resources/js/Layouts/AuthenticatedLayout.tsx
 import { useState, PropsWithChildren, ReactNode } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import ApplicationLogo from "@/Components/ApplicationLogo";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { User } from "@/types";
 import { ToastContainer } from "react-toastify";
-
+import NotificationDropdown from "@/Components/NotificationDropdown";
 // تعريف عناصر القائمة
 const getMenuItems = (isRTL: boolean) => [
   {
@@ -17,6 +16,16 @@ const getMenuItems = (isRTL: boolean) => [
     label: isRTL ? "المدارس" : "Schools",
     route: "admin.schools.index",
     icon: "school",
+  },
+  {
+    label: isRTL ? "الحافلات" : "Buses",
+    route: "admin.buses.index",
+    icon: "bus",
+  },
+  {
+    label: isRTL ? "طلبات الحافلات" : "Bus Requests",
+    route: "admin.bus-requests.index",
+    icon: "clipboard",
   },
   {
     label: isRTL ? "إدارة الأسطول" : "Fleet Management",
@@ -229,7 +238,7 @@ export default function Authenticated({
           </p>
 
           {menuItems.map((item) => {
-            const isActive = item.route && route().current(item.route);
+            const isActive = !!(item.route && route().current(item.route));
 
             return (
               <Link
@@ -452,27 +461,8 @@ export default function Authenticated({
               )}
             </button>
 
-            {/* Notifications */}
-            <button className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all">
-              <span
-                className={`absolute ${
-                  isRTL ? "left-1.5" : "right-1.5"
-                } top-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800`}
-              ></span>
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
-            </button>
+           {/* Notifications Dropdown */}
+<NotificationDropdown isRTL={isRTL} />
 
             {/* User Profile */}
             <div

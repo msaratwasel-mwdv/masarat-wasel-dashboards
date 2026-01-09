@@ -2,19 +2,24 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Bus extends Model
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'bus_code',
+        'bus_number',
         'plate_number',
         'capacity',
         'model',
         'year',
+        'type',
         'school_id',
         'driver_id',
         'supervisor_id',
@@ -22,38 +27,99 @@ class Bus extends Model
         'qr_code_path',
     ];
 
-    // --- Relationships ---
+    protected $casts = [
+        'capacity' => 'integer',
+        'year' => 'integer',
+    ];
 
-    public function school()
+    /**
+     * Get the school that owns the bus.
+     */
+    public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
     }
 
-    public function driver()
+    /**
+     * Get the driver assigned to the bus.
+     */
+    public function driver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'driver_id');
     }
 
-    public function supervisor()
+    /**
+     * Get the supervisor assigned to the bus.
+     */
+    public function supervisor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supervisor_id');
     }
 
-    // --- Helper Methods ---
+    /**
+     * Get the trip schedules for the bus.
+     */
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(TripSchedule::class);
+    }
 
     /**
      * توليد كود الباص تلقائياً
      * Example: BUS-001
      */
-    public static function generateNextCode()
+    public static function generateNextCode(): string
     {
-        // نأخذ آخر باص تم إنشاؤه (حتى لو كان محذوفاً)
         $lastBus = self::withTrashed()->latest('id')->first();
-
-        // إذا وجدنا باص، نزيد 1 على رقمه، وإلا نبدأ بـ 1
         $nextId = $lastBus ? ($lastBus->id + 1) : 1;
-
-        // تنسيق الرقم ليصبح 3 خانات (001)
         return 'BUS-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Check if the bus is active.
+     */
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    /**
+     * Check if the bus is under maintenance.
+     */
+    public function isMaintenance(): bool
+    {
+        return $this->status === 'maintenance';
+    }
+
+    /**
+     * Check if the bus is available for use.
+     */
+    public function isAvailable(): bool
+    {
+        return $this->isActive() && !$this->isMaintenance();
+    }
+
+    /**
+     * Scope for active buses.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    /**
+     * Scope for available buses (not assigned to any school).
+     */
+    public function scopeAvailable($query)
+    {
+        return $query->whereNull('school_id');
+    }
+
+    /**
+     * Get the display name for the bus.
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        return "{$this->bus_number} - {$this->plate_number}";
     }
 }

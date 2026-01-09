@@ -33,4 +33,24 @@ class School extends Model
     {
         return $this->hasMany(StudentSchoolEnrollment::class);
     }
+
+    public function buses(): HasMany
+    {
+        return $this->hasMany(Bus::class);
+    }
+
+    public function busRequests(): HasMany
+    {
+        return $this->hasMany(BusRequest::class);
+    }
+
+    public function tripSchedules(): HasMany
+    {
+        return $this->hasMany(TripSchedule::class);
+    }
+
+    public function fieldTrips(): HasMany
+    {
+        return $this->hasMany(FieldTrip::class);
+    }
 }

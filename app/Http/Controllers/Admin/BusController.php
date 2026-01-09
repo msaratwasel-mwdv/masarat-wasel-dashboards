@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Bus;
 use App\Models\School;
-use App\Models\User; // سنحتاج السائقين والمشرفين للقائمة المنسدلة
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -20,8 +20,7 @@ class BusController extends Controller
             ->latest()
             ->get();
 
-        // 2. جلب السائقين المتاحين (لإظهارهم في المودال)
-        // المتاح = سائق شركة (school_id = null)
+        // 2. جلب السائقين المتاحين
         $drivers = User::where('role', 'driver')
             ->whereNull('school_id')
             ->select('id', 'name')
@@ -33,66 +32,105 @@ class BusController extends Controller
             ->select('id', 'name')
             ->get();
 
+        // 4. جلب المدارس النشطة (من تغيير المدير)
+        $schools = School::where('status', 'active')->get();
+
         return Inertia::render('Admin/Buses/Index', [
             'buses' => $buses,
             'availableDrivers' => $drivers,
             'availableSupervisors' => $supervisors,
-            'schools' => School::select('id', 'name')->get(), // ← مهم
+            'schools' => $schools,
+        ]);
+    }
 
+    public function create()
+    {
+        $schools = School::where('status', 'active')->get();
+        $drivers = User::where('role', 'driver')->whereNull('school_id')->get();
+        $supervisors = User::where('role', 'supervisor')->whereNull('school_id')->get();
+
+        return Inertia::render('Admin/Buses/Create', [
+            'schools' => $schools,
+            'drivers' => $drivers,
+            'supervisors' => $supervisors,
         ]);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'plate_number' => 'required|string|unique:buses,plate_number|max:20',
+        $validated = $request->validate([
+            'school_id' => 'nullable|exists:schools,id',
+            'bus_number' => 'required|string|unique:buses',
+            'plate_number' => 'required|string|unique:buses|max:20',
             'model' => 'required|string|max:100',
             'year' => 'required|integer|min:2000|max:' . (date('Y') + 1),
             'capacity' => 'required|integer|min:5|max:100',
-            // التحقق من صحة المعرفات إذا تم اختيارها
-            'driver_id' => 'nullable|exists:users,id',
-            'supervisor_id' => 'nullable|exists:users,id',
-        ]);
-
-        DB::transaction(function () use ($request) {
-            Bus::create([
-                'bus_code' => Bus::generateNextCode(), // الكود السحري هنا
-                'plate_number' => $request->plate_number,
-                'model' => $request->model,
-                'year' => $request->year,
-                'capacity' => $request->capacity,
-                'status' => 'active',
-                'school_id' => null, // يتبع الشركة افتراضياً
-                'driver_id' => $request->driver_id,
-                'supervisor_id' => $request->supervisor_id,
-                // يمكن إضافة كود توليد QR هنا لاحقاً
-            ]);
-        });
-
-        return redirect()->back()->with('success', 'Bus added successfully');
-    }
-
-    public function update(Request $request, Bus $bus)
-    {
-        $request->validate([
-            'plate_number' => ['required', Rule::unique('buses')->ignore($bus->id)],
-            'model' => 'required|string',
-            'year' => 'required|integer',
-            'capacity' => 'required|integer',
+            'type' => 'required|in:permanent,temporary',
             'status' => 'required|in:active,maintenance,inactive,out_of_service',
             'driver_id' => 'nullable|exists:users,id',
             'supervisor_id' => 'nullable|exists:users,id',
         ]);
 
-        $bus->update($request->all());
+        DB::transaction(function () use ($validated) {
+            Bus::create([
+                'bus_code' => Bus::generateNextCode(),
+                'bus_number' => $validated['bus_number'],
+                'plate_number' => $validated['plate_number'],
+                'model' => $validated['model'],
+                'year' => $validated['year'],
+                'capacity' => $validated['capacity'],
+                'type' => $validated['type'],
+                'status' => $validated['status'],
+                'school_id' => $validated['school_id'],
+                'driver_id' => $validated['driver_id'],
+                'supervisor_id' => $validated['supervisor_id'],
+            ]);
+        });
 
-        return redirect()->back()->with('success', 'Bus updated successfully');
+        return redirect()->route('admin.buses.index')
+            ->with('success', 'تم إضافة الحافلة بنجاح');
+    }
+
+    public function edit(Bus $bus)
+    {
+        $schools = School::where('status', 'active')->get();
+        $drivers = User::where('role', 'driver')->whereNull('school_id')->get();
+        $supervisors = User::where('role', 'supervisor')->whereNull('school_id')->get();
+
+        return Inertia::render('Admin/Buses/Edit', [
+            'bus' => $bus->load(['school', 'driver', 'supervisor']),
+            'schools' => $schools,
+            'drivers' => $drivers,
+            'supervisors' => $supervisors,
+        ]);
+    }
+
+    public function update(Request $request, Bus $bus)
+    {
+        $validated = $request->validate([
+            'school_id' => 'nullable|exists:schools,id',
+            'bus_number' => ['required', 'string', Rule::unique('buses')->ignore($bus->id)],
+            'plate_number' => ['required', 'string', Rule::unique('buses')->ignore($bus->id)],
+            'model' => 'required|string|max:100',
+            'year' => 'required|integer|min:2000|max:' . (date('Y') + 1),
+            'capacity' => 'required|integer|min:5|max:100',
+            'type' => 'required|in:permanent,temporary',
+            'status' => 'required|in:active,maintenance,inactive,out_of_service',
+            'driver_id' => 'nullable|exists:users,id',
+            'supervisor_id' => 'nullable|exists:users,id',
+        ]);
+
+        $bus->update($validated);
+
+        return redirect()->route('admin.buses.index')
+            ->with('success', 'تم تحديث بيانات الحافلة بنجاح');
     }
 
     public function destroy(Bus $bus)
     {
         $bus->delete();
-        return redirect()->back()->with('success', 'Bus deleted successfully');
+        return redirect()->route('admin.buses.index')
+            ->with('success', 'تم حذف الحافلة بنجاح');
     }
 
     public function assignToSchool(Request $request, Bus $bus)

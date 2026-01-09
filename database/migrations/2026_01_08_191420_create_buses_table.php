@@ -12,19 +12,18 @@ return new class extends Migration
             $table->id();
 
             // الهوية التعريفية
-            $table->string('bus_code')->unique(); // BUS-1001 (Code)
+            $table->string('bus_code')->unique(); // BUS-001 (Code)
+            $table->string('bus_number')->unique(); // رقم داخلي (من نسختك)
             $table->string('plate_number')->unique(); // أ ح د 1234
 
             // المواصفات
             $table->integer('capacity');
             $table->string('model'); // Mercedes 2023
             $table->year('year');
+            $table->enum('type', ['permanent', 'temporary'])->default('permanent'); // من نسختك
 
-            // العلاقات (The Relationships)
-            // 1. المدرسة (Null = تابع للشركة مباشرة)
+            // العلاقات
             $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
-
-            // 2. الطاقم الحالي (لسهولة الوصول)
             $table->foreignId('driver_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('supervisor_id')->nullable()->constrained('users')->nullOnDelete();
 

@@ -59,7 +59,9 @@ export default function SchoolAuthenticatedLayout({
             icon: "teacher",
         },
       { label: "Students", route: "school.students.index", icon: "user" },
-      { label: "Buses", route: "#", icon: "bus" },
+      { label: "Buses", route: "school.buses.index", icon: "bus" },
+      { label: "Trip Schedules", route: "school.trip-schedules.index", icon: "calendar" },
+      { label: "Field Trips", route: "school.field-trips.index", icon: "map" },
       { label: "Daily Attendance", route: "school.reports.attendance", icon: "report" },
       { label: "Settings", route: "profile.edit", icon: "cog" },
     ];

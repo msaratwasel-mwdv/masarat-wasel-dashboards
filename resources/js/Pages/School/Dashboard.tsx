@@ -8,7 +8,8 @@ interface DashboardProps {
     stats: {
         students: number;
         classes: number;
-        staff: number;
+        buses: number;
+        active_buses: number;
         attendance_percentage: number;
         attendance_today_count: number;
     };
@@ -48,12 +49,12 @@ export default function SchoolDashboard({ auth, stats, recent_students, system_s
             link: route('school.classrooms.index')
         },
         {
-            title: t('Staff'),
-            value: stats.staff,
-            sub: t('Drivers & Supervisors'),
-            icon: '👔',
+            title: t('Buses'),
+            value: stats.buses,
+            sub: `${stats.active_buses} ${t('Active')}`,
+            icon: '🚌',
             color: 'from-green-500 to-green-600',
-            link: route('school.teachers.index')
+            link: route('school.buses.index')
         },
         {
             title: t('Attendance'),

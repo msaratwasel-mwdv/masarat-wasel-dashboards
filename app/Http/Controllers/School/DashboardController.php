@@ -21,11 +21,9 @@ class DashboardController extends Controller
         $studentsCount = Student::where('school_id', $schoolId)->count();
         $classesCount = Classroom::where('school_id', $schoolId)->count();
         
-        // Supervisors/Teachers (assuming they have role 'school_admin' or similar, or just users in school excluding current one?)
-        // For now, let's count users in the school who are NOT the current user generally, or better, leverage TeacherController logic if existing.
-        // TeacherController logic used: User::where('school_id', $schoolId)->whereHas('roles', fn($q) => $q->where('name', 'teacher'))...
-        // Let's assume 'teacher' or 'supervisor' role. Let's count all users in school for now as simplified staff.
-        $staffCount = User::where('school_id', $schoolId)->count(); 
+        // Buses stats instead of staff
+        $totalBuses = \App\Models\Bus::where('school_id', $schoolId)->count();
+        $activeBuses = \App\Models\Bus::where('school_id', $schoolId)->where('status', 'active')->count();
 
         // 2. Attendance Stats (Today)
         $today = now()->format('Y-m-d');
@@ -50,7 +48,8 @@ class DashboardController extends Controller
             'stats' => [
                 'students' => $studentsCount,
                 'classes' => $classesCount,
-                'staff' => $staffCount,
+                'buses' => $totalBuses,
+                'active_buses' => $activeBuses,
                 'attendance_percentage' => $attendancePercentage,
                 'attendance_today_count' => $totalAttendanceRecords
             ],
