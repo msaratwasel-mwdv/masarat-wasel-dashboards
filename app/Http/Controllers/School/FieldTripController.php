@@ -7,6 +7,7 @@ use App\Models\FieldTrip;
 use App\Models\FieldTripParticipant;
 use App\Models\Bus;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -43,9 +44,23 @@ class FieldTripController extends Controller
             ->with(['driver', 'supervisor'])
             ->get();
 
+        // Fetch Supervisors
+        $supervisors = User::where('school_id', $schoolId)
+            ->where('role', 'supervisor')
+            ->select('id', 'name')
+            ->get();
+
+        // Fetch Drivers (for future use or if needed now)
+        $drivers = User::where('school_id', $schoolId)
+            ->where('role', 'driver')
+            ->select('id', 'name')
+            ->get();
+
         return Inertia::render('School/FieldTrips/Index', [
             'fieldTrips' => $fieldTrips,
             'buses' => $buses,
+            'supervisors' => $supervisors,
+            'drivers' => $drivers,
         ]);
     }
 
@@ -88,6 +103,7 @@ class FieldTripController extends Controller
                 'status' => 'planned',
                 'approved_by_school' => false,
                 'approved_by_company' => false,
+                'teacher_names' => $validated['teacher_names'] ?? [],
             ]);
 
             // Add bus participants
@@ -125,6 +141,52 @@ class FieldTripController extends Controller
             // They could be stored as JSON in the field_trips table or in a separate table
             // For now, we'll handle them in the frontend
 
+            // Send notifications
+            $notificationService = app(NotificationService::class);
+            $schoolName = Auth::user()->school->name ?? 'المدرسة';
+
+            // Notify drivers
+            if (!empty($validated['driver_ids'])) {
+                $notificationService->sendToUsers(
+                    $validated['driver_ids'],
+                    'field_trip_assigned',
+                    'رحلة ميدانية جديدة',
+                    "تم تعيينك سائقًا لرحلة ميدانية جديدة: {$fieldTrip->trip_name}",
+                    ['trip_id' => $fieldTrip->id],
+                    $schoolName
+                );
+            }
+
+            // Notify supervisors
+            if (!empty($validated['supervisor_ids'])) {
+                $notificationService->sendToUsers(
+                    $validated['supervisor_ids'],
+                    'field_trip_assigned',
+                    'رحلة ميدانية جديدة',
+                    "تم تعيينك مشرفًا لرحلة ميدانية جديدة: {$fieldTrip->trip_name}",
+                    ['trip_id' => $fieldTrip->id],
+                    $schoolName
+                );
+            }
+
+            // Notify company admins (same as bus request pattern)
+            $notificationService->notifyCompanyAdmins(
+                'field_trip_request',
+                'طلب رحلة ميدانية جديدة',
+                "تم تقديم طلب رحلة ميدانية من مدرسة {$schoolName}: {$fieldTrip->trip_name} - بتاريخ {$fieldTrip->trip_date}",
+                [
+                    'trip_id' => $fieldTrip->id,
+                    'school_id' => $fieldTrip->school_id,
+                    'trip_name' => $fieldTrip->trip_name,
+                    'trip_date' => $fieldTrip->trip_date,
+                ],
+                $schoolName
+            );
+
+            // Notify company manager (simulated by finding users with company roles or specific logic)
+            // For now, assuming company admins are notified via another channel or system notification
+            // but we can send to school manager confirming creation
+
             DB::commit();
 
             return redirect()->back()
@@ -152,6 +214,29 @@ class FieldTripController extends Controller
         ]);
 
         $fieldTrip->update($validated);
+
+        // Send notifications if approved
+        if (isset($validated['approved_by_school']) && $validated['approved_by_school']) {
+            $notificationService = app(NotificationService::class);
+            $schoolName = Auth::user()->school->name ?? 'المدرسة';
+            
+            // Notify participants
+            $driverIds = $fieldTrip->participants()->where('participant_type', 'driver')->pluck('participant_id')->toArray();
+            $supervisorIds = $fieldTrip->participants()->where('participant_type', 'supervisor')->pluck('participant_id')->toArray();
+            
+            $allParticipants = array_merge($driverIds, $supervisorIds);
+            
+            if (!empty($allParticipants)) {
+                $notificationService->sendToUsers(
+                    $allParticipants,
+                    'field_trip_approved',
+                    'تمت الموافقة على الرحلة',
+                    "وافقت المدرسة على الرحلة الميدانية: {$fieldTrip->trip_name}",
+                    ['trip_id' => $fieldTrip->id],
+                    $schoolName
+                );
+            }
+        }
 
         return redirect()->back()
             ->with('success', 'تم تحديث بيانات الرحلة بنجاح');

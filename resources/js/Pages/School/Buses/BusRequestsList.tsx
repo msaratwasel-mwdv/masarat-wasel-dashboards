@@ -10,10 +10,10 @@ interface BusRequestsProps {
 
 export default function BusRequestsList({ auth, requests: serverRequests }: BusRequestsProps) {
     const { t, isRtl } = useTranslation();
-    
+
     // Use real server data
     const requests = serverRequests || [];
-    
+
     const [showRequestModal, setShowRequestModal] = useState(false);
     const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
@@ -26,13 +26,13 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
         special_requirements: '',
     });
 
-    const filteredRequests = requests.filter(req => 
+    const filteredRequests = requests.filter(req =>
         statusFilter === 'all' || req.status === statusFilter
     );
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         post(route('school.bus-requests.store'), {
             onSuccess: () => {
                 setShowRequestModal(false);
@@ -119,7 +119,7 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
                                     request.status === 'approved' ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
                                     'bg-gradient-to-r from-red-400 to-pink-500'
                                 }`} />
-                                
+
                                 <div className="p-6">
                                     {/* Header */}
                                     <div className="flex items-center justify-between mb-6">
@@ -149,14 +149,14 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                         {/* Number of Buses */}
                                         <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-3xl">🚌</span>
-                                                <div className="flex-1">
-                                                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">{t('Number of Buses')}</p>
-                                                    <p className="text-2xl font-extrabold text-gray-800 dark:text-white">{request.number_of_buses}</p>
-                                                </div>
-                                            </div>
-                                        </div>
+    <div className="flex items-center gap-3">
+        <span className="text-3xl">🚌</span>
+        <div className="flex-1">
+            <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">{t('Number of Buses')}</p>
+            <p className="text-2xl font-extrabold text-gray-800 dark:text-white">{request.number_of_buses}</p>
+        </div>
+    </div>
+</div>
 
                                         {/* Start Date */}
                                         <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">

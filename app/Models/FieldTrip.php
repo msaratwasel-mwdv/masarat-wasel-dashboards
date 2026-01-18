@@ -21,6 +21,7 @@ class FieldTrip extends Model
         'destination_lat',
         'destination_lng',
         'number_of_students',
+        'teacher_names',
         'status',
         'approved_by_school',
         'approved_by_company',
@@ -29,6 +30,7 @@ class FieldTrip extends Model
     protected $casts = [
         'trip_date' => 'date',
         'number_of_students' => 'integer',
+        'teacher_names' => 'array',
         'approved_by_school' => 'boolean',
         'approved_by_company' => 'boolean',
         'destination_lat' => 'decimal:8',

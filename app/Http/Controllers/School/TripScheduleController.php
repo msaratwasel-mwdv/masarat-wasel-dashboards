@@ -5,6 +5,7 @@ namespace App\Http\Controllers\School;
 use App\Http\Controllers\Controller;
 use App\Models\TripSchedule;
 use App\Models\Bus;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -54,8 +55,37 @@ class TripScheduleController extends Controller
         ]);
 
         $validated['school_id'] = Auth::user()->school_id;
+        $schedule = TripSchedule::create($validated);
 
-        TripSchedule::create($validated);
+        // Send notifications to driver and supervisor
+        $bus = Bus::with(['driver', 'supervisor'])->find($validated['bus_id']);
+        $notificationService = app(NotificationService::class);
+        $schoolName = Auth::user()->school->name ?? 'المدرسة';
+        
+        $days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        $dayName = $days[$validated['day_of_week']] ?? '';
+        
+        if ($bus && $bus->driver_id) {
+            $notificationService->sendToUser(
+                $bus->driver_id,
+                'trip_schedule_created',
+                'جدول رحلة جديد',
+                "تم إنشاء جدول رحلة جديد لحافلة {$bus->bus_number} يوم {$dayName}",
+                ['schedule_id' => $schedule->id, 'bus_id' => $bus->id],
+                $schoolName
+            );
+        }
+        
+        if ($bus && $bus->supervisor_id) {
+            $notificationService->sendToUser(
+                $bus->supervisor_id,
+                'trip_schedule_created',
+                'جدول رحلة جديد',
+                "تم إنشاء جدول رحلة جديد لحافلة {$bus->bus_number} يوم {$dayName}",
+                ['schedule_id' => $schedule->id, 'bus_id' => $bus->id],
+                $schoolName
+            );
+        }
 
         return redirect()->back()
             ->with('success', 'تم حفظ الجدول بنجاح');
@@ -83,6 +113,36 @@ class TripScheduleController extends Controller
 
         $tripSchedule->update($validated);
 
+        // Send notifications to driver and supervisor
+        $bus = Bus::with(['driver', 'supervisor'])->find($tripSchedule->bus_id);
+        $notificationService = app(NotificationService::class);
+        $schoolName = Auth::user()->school->name ?? 'المدرسة';
+        
+        $days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        $dayName = $days[$tripSchedule->day_of_week] ?? '';
+        
+        if ($bus && $bus->driver_id) {
+            $notificationService->sendToUser(
+                $bus->driver_id,
+                'trip_schedule_updated',
+                'تحديث جدول الرحلة',
+                "تم تحديث جدول رحلة حافلة {$bus->bus_number} يوم {$dayName}",
+                ['schedule_id' => $tripSchedule->id, 'bus_id' => $bus->id],
+                $schoolName
+            );
+        }
+        
+        if ($bus && $bus->supervisor_id) {
+            $notificationService->sendToUser(
+                $bus->supervisor_id,
+                'trip_schedule_updated',
+                'تحديث جدول الرحلة',
+                "تم تحديث جدول رحلة حافلة {$bus->bus_number} يوم {$dayName}",
+                ['schedule_id' => $tripSchedule->id, 'bus_id' => $bus->id],
+                $schoolName
+            );
+        }
+
         return redirect()->back()
             ->with('success', 'تم تحديث الجدول بنجاح');
     }
@@ -109,6 +169,9 @@ class TripScheduleController extends Controller
         }
 
         $sourceSchedules = $query->get();
+        $notificationService = app(NotificationService::class);
+        $schoolName = Auth::user()->school->name ?? 'المدرسة';
+        $affectedBusIds = [];
 
         // Copy to target week
         foreach ($sourceSchedules as $schedule) {
@@ -122,7 +185,28 @@ class TripScheduleController extends Controller
                 'last_dropoff_time' => $schedule->last_dropoff_time,
                 'is_exception' => false,
             ]);
+            $affectedBusIds[] = $schedule->bus_id;
         }
+
+        // Send notifications to all affected drivers and supervisors
+        $affectedBusIds = array_unique($affectedBusIds);
+        $notificationService->notifyBusDrivers(
+            $affectedBusIds,
+            'trip_schedules_copied',
+            'نسخ جداول الرحلات',
+            "تم نسخ جداول الرحلات للأسبوع الجديد",
+            ['target_week' => $validated['target_week']],
+            $schoolName
+        );
+        
+        $notificationService->notifyBusSupervisors(
+            $affectedBusIds,
+            'trip_schedules_copied',
+            'نسخ جداول الرحلات',
+            "تم نسخ جداول الرحلات للأسبوع الجديد",
+            ['target_week' => $validated['target_week']],
+            $schoolName
+        );
 
         return redirect()->back()
             ->with('success', 'تم نسخ الجدول بنجاح');
