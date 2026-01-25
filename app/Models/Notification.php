@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Notification extends Model
 {
@@ -15,8 +16,15 @@ class Notification extends Model
         'title',
         'message',
         'data',
+        'sender_id',
         'user_id',
         'from_user_name',
+        'recipient_type',
+        'recipient_filter',
+        'template_type',
+        'total_recipients',
+        'sent_count',
+        'failed_count',
         'status',
         'icon',
         'color',
@@ -25,9 +33,18 @@ class Notification extends Model
 
     protected $casts = [
         'data' => 'array',
+        'recipient_filter' => 'array',
         'read_at' => 'datetime',
         'created_at' => 'datetime',
     ];
+
+    /**
+     * Get the sender of the notification.
+     */
+    public function sender(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sender_id');
+    }
 
     /**
      * Get the user that owns the notification.
@@ -35,6 +52,14 @@ class Notification extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the recipients of this notification.
+     */
+    public function recipients(): HasMany
+    {
+        return $this->hasMany(NotificationRecipient::class);
     }
 
     /**

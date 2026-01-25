@@ -49,11 +49,11 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
     });
 
     const days = [
-        { id: 0, name: t('Sunday'), icon: '☀️', color: 'from-yellow-400 to-orange-500' },
-        { id: 1, name: t('Monday'), icon: '🌙', color: 'from-blue-400 to-cyan-500' },
-        { id: 2, name: t('Tuesday'), icon: '💫', color: 'from-purple-400 to-pink-500' },
-        { id: 3, name: t('Wednesday'), icon: '⭐', color: 'from-green-400 to-emerald-500' },
-        { id: 4, name: t('Thursday'), icon: '🌟', color: 'from-red-400 to-pink-500' },
+        { id: 0, name: t('Sunday'), icon: '☀️', color: 'bg-orange-500' },
+        { id: 1, name: t('Monday'), icon: '🌙', color: 'bg-[#0e7490]' },
+        { id: 2, name: t('Tuesday'), icon: '💫', color: 'bg-purple-500' },
+        { id: 3, name: t('Wednesday'), icon: '⭐', color: 'bg-green-500' },
+        { id: 4, name: t('Thursday'), icon: '🌟', color: 'bg-pink-500' },
     ];
 
     const daySchedules = schedules.filter(s => s.day_of_week === selectedDay);
@@ -112,47 +112,63 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
         <SchoolAuthenticatedLayout
             user={auth.user}
             header={
-                <div className="flex justify-between items-center gap-4">
-                    <h2 className="text-3xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                        {t('Trip Schedules')}
-                    </h2>
-                    <div className="flex gap-3">
-                        <button
-                            onClick={() => setShowCopyModal(true)}
-                            className="px-5 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-bold rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                        >
-                            📋 {t('Copy Schedules')}
-                        </button>
-                        <button
-                            onClick={() => openModal()}
-                            className="px-6 py-3 bg-gradient-to-r from-brand-yellow to-orange-500 text-gray-900 font-bold rounded-xl hover:from-yellow-500 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                        >
-                            + {t('Add Schedule')}
-                        </button>
-                    </div>
-                </div>
+                <h2 className="text-3xl font-extrabold text-[#0e7490] dark:text-cyan-400">
+                    {t('Trip Schedules')}
+                </h2>
             }
         >
             <Head title={t('Trip Schedules')} />
 
-            <div className="space-y-6">
-                {/* Week Days Tabs - Premium Design */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4">
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
+                <div className="bg-white dark:bg-gray-800 rounded-[30px] shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div className="p-8">
+                        {/* Header Section */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-[#0e7490] text-white rounded-[20px] shadow-sm">
+                                    <span className="text-3xl">📅</span>
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl font-bold text-[#0e7490] dark:text-cyan-400 mb-1">{t('Schedules List')}</h1>
+                                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                        {t('Total Schedules')}:{" "}
+                                        <span className="font-bold text-[#0e7490] dark:text-cyan-400">
+                                            {daySchedules.length}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-center gap-3">
+                                <button
+                                    onClick={() => setShowCopyModal(true)}
+                                    className="w-full sm:w-auto px-6 py-3.5 bg-gray-600 text-white font-bold rounded-[35px] hover:bg-gray-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                                >
+                                    <span>📋</span> {t('Copy Schedules')}
+                                </button>
+                                <button
+                                    onClick={() => openModal()}
+                                    className="w-full sm:w-auto px-8 py-3.5 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                                >
+                                    <span className="text-xl">+</span> {t('Add Schedule')}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Week Days Tabs */}
+                        <div className="mb-8">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {days.map((day) => (
                             <button
                                 key={day.id}
                                 onClick={() => setSelectedDay(day.id)}
-                                className={`group relative overflow-hidden p-6 rounded-xl transition-all duration-300 transform ${
+                                className={`p-6 rounded-[20px] transition-all ${
                                     selectedDay === day.id
-                                        ? `bg-gradient-to-br ${day.color} shadow-2xl scale-105`
-                                        : 'bg-gray-100 dark:bg-gray-700 hover:scale-102 hover:shadow-lg'
+                                    ? `${day.color} text-white shadow-md`
+                                    : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
                                 }`}
                             >
-                                {selectedDay === day.id && (
-                                    <div className="absolute inset-0 bg-white/20 backdrop-blur-sm" />
-                                )}
-                                <div className="relative text-center space-y-2">
+                                <div className="text-center space-y-2">
                                     <div className="text-4xl">{day.icon}</div>
                                     <div className={`font-bold text-sm ${selectedDay === day.id ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                                         {day.name}
@@ -172,10 +188,10 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                         {daySchedules.map((schedule) => (
                             <div
                                 key={schedule.id}
-                                className="group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300"
+                                className="bg-white dark:bg-gray-800 rounded-[30px] shadow-sm hover:shadow-md transition-all border border-gray-100 dark:border-gray-700 hover:border-cyan-200 dark:hover:border-cyan-800"
                             >
-                                {/* Gradient Header */}
-                                <div className={`p-6 bg-gradient-to-r ${schedule.is_exception ? 'from-amber-500 to-orange-600' : days[selectedDay].color} text-white`}>
+                                {/* Header */}
+                                <div className={`p-6 ${schedule.is_exception ? 'bg-amber-500' : days[selectedDay].color} text-white rounded-t-[30px]`}>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
                                             <div className="w-14 h-14 bg-white/20 backdrop-blur-lg rounded-xl flex items-center justify-center">
@@ -185,7 +201,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                                 <div className="flex items-center gap-2">
                                                     <h3 className="text-2xl font-bold">{schedule.bus_number}</h3>
                                                     {schedule.is_exception && (
-                                                        <span className="px-2 py-1 bg-white/30 backdrop-blur-sm rounded-lg text-xs font-bold">
+                                                        <span className="px-3 py-1 bg-white/30 rounded-[10px] text-xs font-bold">
                                                             {t('EXCEPTION')}
                                                         </span>
                                                     )}
@@ -195,7 +211,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                         </div>
                                         <button
                                             onClick={() => openModal(schedule)}
-                                            className="p-2 bg-white/20 backdrop-blur-lg rounded-lg hover:bg-white/30 transition-colors"
+                                            className="p-2 bg-white/20 rounded-[10px] hover:bg-white/30 transition-colors"
                                         >
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -208,14 +224,14 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                 <div className="p-6 space-y-4">
                                     <div className="relative pl-8">
                                         {/* Timeline Line */}
-                                        <div className="absolute left-2 top-4 bottom-4 w-1 bg-gradient-to-b from-blue-500 via-purple-500 to-pink-500 rounded-full" />
+                                        <div className="absolute left-2 top-4 bottom-4 w-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
 
                                         {/* Time Points */}
                                         <div className="space-y-6">
                                             {/* Gathering */}
                                             <div className="relative flex items-center gap-4">
-                                                <div className="absolute -left-7 w-5 h-5 bg-blue-500 rounded-full border-4 border-white dark:border-gray-800 shadow-lg" />
-                                                <div className="flex-1 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
+                                                <div className="absolute -left-7 w-5 h-5 bg-blue-500 rounded-full border-4 border-white dark:border-gray-800 shadow-sm" />
+                                                <div className="flex-1 bg-blue-50 dark:bg-blue-900/20 rounded-[15px] p-4 border border-blue-100 dark:border-blue-800">
                                                     <div className="flex justify-between items-center">
                                                         <div>
                                                             <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">{t('Gathering Time')}</span>
@@ -228,8 +244,8 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
 
                                             {/* Departure */}
                                             <div className="relative flex items-center gap-4">
-                                                <div className="absolute -left-7 w-5 h-5 bg-green-500 rounded-full border-4 border-white dark:border-gray-800 shadow-lg" />
-                                                <div className="flex-1 bg-green-50 dark:bg-green-900/20 rounded-xl p-4">
+                                                <div className="absolute -left-7 w-5 h-5 bg-green-500 rounded-full border-4 border-white dark:border-gray-800 shadow-sm" />
+                                                <div className="flex-1 bg-green-50 dark:bg-green-900/20 rounded-[15px] p-4 border border-green-100 dark:border-green-800">
                                                     <div className="flex justify-between items-center">
                                                         <div>
                                                             <span className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase">{t('Departure Time')}</span>
@@ -242,8 +258,8 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
 
                                             {/* Return */}
                                             <div className="relative flex items-center gap-4">
-                                                <div className="absolute -left-7 w-5 h-5 bg-orange-500 rounded-full border-4 border-white dark:border-gray-800 shadow-lg" />
-                                                <div className="flex-1 bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4">
+                                                <div className="absolute -left-7 w-5 h-5 bg-orange-500 rounded-full border-4 border-white dark:border-gray-800 shadow-sm" />
+                                                <div className="flex-1 bg-orange-50 dark:bg-orange-900/20 rounded-[15px] p-4 border border-orange-100 dark:border-orange-800">
                                                     <div className="flex justify-between items-center">
                                                         <div>
                                                             <span className="text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase">{t('Return Time')}</span>
@@ -256,8 +272,8 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
 
                                             {/* Last Dropoff */}
                                             <div className="relative flex items-center gap-4">
-                                                <div className="absolute -left-7 w-5 h-5 bg-purple-500 rounded-full border-4 border-white dark:border-gray-800 shadow-lg" />
-                                                <div className="flex-1 bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4">
+                                                <div className="absolute -left-7 w-5 h-5 bg-purple-500 rounded-full border-4 border-white dark:border-gray-800 shadow-sm" />
+                                                <div className="flex-1 bg-purple-50 dark:bg-purple-900/20 rounded-[15px] p-4 border border-purple-100 dark:border-purple-800">
                                                     <div className="flex justify-between items-center">
                                                         <div>
                                                             <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase">{t('Last Dropoff')}</span>
@@ -272,7 +288,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
 
                                     {/* Exception Info */}
                                     {schedule.is_exception && schedule.exception_reason && (
-                                        <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-600 rounded-xl">
+                                        <div className="mt-6 p-5 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded-[20px]">
                                             <div className="flex items-start gap-3">
                                                 <span className="text-2xl">⚠️</span>
                                                 <div className="flex-1">
@@ -296,30 +312,31 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                         ))}
                     </div>
                 ) : (
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 text-center">
-                        <div className="text-8xl mb-6">{days[selectedDay].icon}</div>
+                                <div className="bg-white dark:bg-gray-800 rounded-[30px] shadow-sm p-16 text-center border border-gray-100 dark:border-gray-700">
+                                    <div className="text-8xl mb-6 opacity-20">{days[selectedDay].icon}</div>
                         <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">{t('No schedules for this day')}</h3>
-                        <p className="text-gray-500 dark:text-gray-400 mb-6">{t('Add a schedule to get started')}</p>
+                                    <p className="text-gray-500 mb-8">{t('Add a schedule to get started')}</p>
                         <button
                             onClick={() => openModal()}
-                            className="px-8 py-3 bg-gradient-to-r from-brand-yellow to-orange-500 text-gray-900 font-bold rounded-xl hover:from-yellow-500 hover:to-orange-600 transition-all shadow-lg"
+                                        className="px-8 py-3.5 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl"
                         >
                             + {t('Add Schedule')}
                         </button>
                     </div>
                 )}
+                    </div>
+                </div>
             </div>
 
 
-            {/* Premium Modal */}
+            {/* Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden transform animate-slideUp">
-                        {/* Header with Gradient */}
-                        <div className="relative overflow-hidden bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 p-8">
-                            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30" />
+                    <div className="bg-white dark:bg-gray-800 rounded-[30px] shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden transform animate-slideUp">
+                        {/* Header */}
+                        <div className="relative overflow-hidden bg-[#0e7490] p-8 rounded-t-[30px]">
                             <div className="relative flex items-center gap-4">
-                                <div className="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center">
+                                <div className="w-16 h-16 bg-white/20 rounded-[20px] flex items-center justify-center">
                                     <span className="text-4xl">📅</span>
                                 </div>
                                 <div>
@@ -341,7 +358,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                 <select
                                     value={data.bus_id}
                                     onChange={e => setData('bus_id', e.target.value)}
-                                    className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all font-semibold"
+                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all font-semibold"
                                     required
                                 >
                                     <option value="">{t('Select Bus')}</option>
@@ -365,7 +382,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                         type="time"
                                         value={data.gathering_time}
                                         onChange={e => setData('gathering_time', e.target.value)}
-                                        className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
                                         required
                                     />
                                 </div>
@@ -380,7 +397,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                         type="time"
                                         value={data.departure_time}
                                         onChange={e => setData('departure_time', e.target.value)}
-                                        className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
                                         required
                                     />
                                 </div>
@@ -395,7 +412,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                         type="time"
                                         value={data.return_time}
                                         onChange={e => setData('return_time', e.target.value)}
-                                        className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
                                         required
                                     />
                                 </div>
@@ -410,15 +427,15 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                         type="time"
                                         value={data.last_dropoff_time}
                                         onChange={e => setData('last_dropoff_time', e.target.value)}
-                                        className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
                                         required
                                     />
                                 </div>
                             </div>
 
                             {/* Exception Section */}
-                            <div className="space-y-4 pt-4 border-t-2 border-gray-200 dark:border-gray-700">
-                                <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+                            <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-[20px] border border-amber-200 dark:border-amber-800">
                                     <input
                                         type="checkbox"
                                         id="is_exception"
@@ -433,7 +450,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                 </div>
 
                                 {data.is_exception && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 bg-amber-50 dark:bg-amber-900/20 rounded-[20px] border border-amber-200 dark:border-amber-800">
                                         {/* Exception Date */}
                                         <div className="space-y-2">
                                             <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300">
@@ -444,7 +461,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                                 type="date"
                                                 value={data.exception_date}
                                                 onChange={e => setData('exception_date', e.target.value)}
-                                                className="w-full px-4 py-3.5 border-2 border-amber-300 dark:border-amber-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                                                className="w-full px-6 py-4 border border-amber-300 dark:border-amber-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
                                                 required={data.is_exception}
                                             />
                                         </div>
@@ -459,7 +476,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                                 type="text"
                                                 value={data.exception_reason}
                                                 onChange={e => setData('exception_reason', e.target.value)}
-                                                className="w-full px-4 py-3.5 border-2 border-amber-300 dark:border-amber-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                                                className="w-full px-6 py-4 border border-amber-300 dark:border-amber-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
                                                 placeholder={t('e.g., Holiday, Exam Day, Special Event')}
                                                 required={data.is_exception}
                                             />
@@ -469,7 +486,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                             </div>
 
                             {/* Footer Actions */}
-                            <div className="flex gap-4 pt-6 border-t-2 border-gray-200 dark:border-gray-700">
+                            <div className="flex gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -477,16 +494,16 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                         reset();
                                         setEditingSchedule(null);
                                     }}
-                                    className="flex-1 px-6 py-3.5 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all font-bold"
+                                    className="flex-1 px-6 py-4 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-[35px] hover:bg-gray-300 dark:hover:bg-gray-600 transition-all font-bold"
                                 >
-                                    ❌ {t('Cancel')}
+                                    {t('Cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={processing}
-                                    className="flex-1 px-6 py-3.5 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-extrabold rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                    className="flex-1 px-6 py-4 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {processing ? '⏳ ' + t('Saving...') : '✅ ' + t('Save')}
+                                    {processing ? t('Saving...') : t('Save')}
                                 </button>
                             </div>
                         </form>
@@ -497,12 +514,11 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
             {/* Copy Schedules Modal */}
             {showCopyModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-2xl w-full transform animate-slideUp">
+                    <div className="bg-white dark:bg-gray-800 rounded-[30px] shadow-xl max-w-2xl w-full transform animate-slideUp">
                         {/* Header */}
-                        <div className="relative overflow-hidden bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 p-8">
-                            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30" />
+                        <div className="relative overflow-hidden bg-[#0e7490] p-8 rounded-t-[30px]">
                             <div className="relative flex items-center gap-4">
-                                <div className="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center">
+                                <div className="w-16 h-16 bg-white/20 rounded-[20px] flex items-center justify-center">
                                     <span className="text-4xl">📋</span>
                                 </div>
                                 <div>
@@ -525,7 +541,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                     type="date"
                                     value={copyData.source_week}
                                     onChange={e => setCopyData('source_week', e.target.value)}
-                                    className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
                                     required
                                 />
                                 <p className="text-xs text-gray-500 dark:text-gray-400">{t('Select the Monday of the source week')}</p>
@@ -541,7 +557,7 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                                     type="date"
                                     value={copyData.target_week}
                                     onChange={e => setCopyData('target_week', e.target.value)}
-                                    className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
                                     required
                                 />
                                 <p className="text-xs text-gray-500 dark:text-gray-400">{t('Select the Monday of the target week')}</p>
@@ -578,23 +594,23 @@ export default function Index({ auth, schedules = [], buses = [] }: Props) {
                             </div>
 
                             {/* Actions */}
-                            <div className="flex gap-4 pt-6 border-t-2 border-gray-200 dark:border-gray-700">
+                            <div className="flex gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setShowCopyModal(false);
                                         resetCopy();
                                     }}
-                                    className="flex-1 px-6 py-3.5 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all font-bold"
+                                    className="flex-1 px-6 py-4 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-[35px] hover:bg-gray-300 dark:hover:bg-gray-600 transition-all font-bold"
                                 >
-                                    ❌ {t('Cancel')}
+                                    {t('Cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={copyProcessing}
-                                    className="flex-1 px-6 py-3.5 bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-extrabold rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                    className="flex-1 px-6 py-4 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {copyProcessing ? '⏳ ' + t('Copying...') : '✅ ' + t('Copy Schedules')}
+                                    {copyProcessing ? t('Copying...') : t('Copy Schedules')}
                                 </button>
                             </div>
                         </form>

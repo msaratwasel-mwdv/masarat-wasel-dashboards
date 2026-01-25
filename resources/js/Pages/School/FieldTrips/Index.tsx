@@ -26,6 +26,7 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
     const [statusFilter, setStatusFilter] = useState<'all' | 'planned' | 'approved' | 'in_progress' | 'completed'>('all');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const { data, setData, post, processing, reset } = useForm({
         trip_name: '',
@@ -40,9 +41,12 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
         teacher_names: [] as string[],
     });
 
-    const filteredTrips = fieldTrips.filter(trip => 
-        statusFilter === 'all' || trip.status === statusFilter
-    );
+    const filteredTrips = fieldTrips.filter(trip => {
+        const matchesStatus = statusFilter === 'all' || trip.status === statusFilter;
+        const matchesSearch = trip.trip_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            trip.destination.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesStatus && matchesSearch;
+    });
 
     // Use props for supervisors and drivers
     const availableSupervisors = supervisors && supervisors.length > 0 ? supervisors : [];
@@ -89,15 +93,15 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'planned':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">{t('Planned')}</span>;
+                return <span className="px-4 py-1.5 text-xs font-bold rounded-[15px] bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">{t('Planned')}</span>;
             case 'approved':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">{t('Approved')}</span>;
+                return <span className="px-4 py-1.5 text-xs font-bold rounded-[15px] bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">{t('Approved')}</span>;
             case 'in_progress':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">{t('In Progress')}</span>;
+                return <span className="px-4 py-1.5 text-xs font-bold rounded-[15px] bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">{t('In Progress')}</span>;
             case 'completed':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">{t('Completed')}</span>;
+                return <span className="px-4 py-1.5 text-xs font-bold rounded-[15px] bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">{t('Completed')}</span>;
             default:
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{status}</span>;
+                return <span className="px-4 py-1.5 text-xs font-bold rounded-[15px] bg-gray-100 text-gray-800">{status}</span>;
         }
     };
 
@@ -105,238 +109,242 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
         <SchoolAuthenticatedLayout
             user={auth.user}
             header={
-                <div className="flex justify-between items-center">
-                    <h2 className="text-3xl font-extrabold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent">
-                        {t('Field Trips')}
-                    </h2>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="px-6 py-3 bg-gradient-to-r from-brand-yellow to-orange-500 text-gray-900 font-bold rounded-xl hover:from-yellow-500 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                    >
-                        + {t('New Field Trip')}
-                    </button>
-                </div>
+                <h2 className="text-3xl font-extrabold text-[#0e7490] dark:text-cyan-400">
+                    {t('Field Trips')}
+                </h2>
             }
         >
             <Head title={t('Field Trips')} />
 
             <div className="space-y-6">
-                {/* Premium Stats Cards */}
+                {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 p-6 shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-105">
-                        <div className="absolute inset-0 bg-white/10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="relative">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="text-6xl">📊</span>
-                                <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-xl flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                                    </svg>
-                                </div>
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-[30px] shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="w-14 h-14 bg-[#0e7490] rounded-[20px] flex items-center justify-center text-white text-3xl shadow-sm">
+                                📊
                             </div>
-                            <p className="text-white/90 text-sm font-semibold uppercase tracking-wider mb-1">{t('Total Trips')}</p>
-                            <p className="text-white text-4xl font-extrabold">{fieldTrips.length}</p>
                         </div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{t('Total Trips')}</p>
+                        <p className="text-5xl font-extrabold text-[#0e7490]">{fieldTrips.length}</p>
                     </div>
 
-                    <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 p-6 shadow-2xl hover:shadow-green-500/50 transition-all duration-300 transform hover:scale-105">
-                        <div className="absolute inset-0 bg-white/10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="relative">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="text-6xl">📅</span>
-                                <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-xl flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-[30px] shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="w-14 h-14 bg-green-500 rounded-[20px] flex items-center justify-center text-white text-3xl shadow-sm">
+                                📅
                             </div>
-                            <p className="text-white/90 text-sm font-semibold uppercase tracking-wider mb-1">{t('Upcoming Trips')}</p>
-                            <p className="text-white text-4xl font-extrabold">{filteredTrips.filter(t => t.status === 'planned' || t.status === 'approved').length}</p>
                         </div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{t('Upcoming Trips')}</p>
+                        <p className="text-5xl font-extrabold text-green-600">{filteredTrips.filter(t => t.status === 'planned' || t.status === 'approved').length}</p>
                     </div>
 
-                    <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 p-6 shadow-2xl hover:shadow-orange-500/50 transition-all duration-300 transform hover:scale-105">
-                        <div className="absolute inset-0 bg-white/10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="relative">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="text-6xl">🚀</span>
-                                <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-xl flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
-                                </div>
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-[30px] shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="w-14 h-14 bg-orange-500 rounded-[20px] flex items-center justify-center text-white text-3xl shadow-sm">
+                                🚀
                             </div>
-                            <p className="text-white/90 text-sm font-semibold uppercase tracking-wider mb-1">{t('In Progress')}</p>
-                            <p className="text-white text-4xl font-extrabold">{filteredTrips.filter(t => t.status === 'in_progress').length}</p>
                         </div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{t('In Progress')}</p>
+                        <p className="text-5xl font-extrabold text-orange-600">{filteredTrips.filter(t => t.status === 'in_progress').length}</p>
                     </div>
 
-                    <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 p-6 shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 transform hover:scale-105">
-                        <div className="absolute inset-0 bg-white/10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="relative">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="text-6xl">✅</span>
-                                <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-xl flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                </div>
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-[30px] shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="w-14 h-14 bg-purple-500 rounded-[20px] flex items-center justify-center text-white text-3xl shadow-sm">
+                                ✅
                             </div>
-                            <p className="text-white/90 text-sm font-semibold uppercase tracking-wider mb-1">{t('Completed')}</p>
-                            <p className="text-white text-4xl font-extrabold">{filteredTrips.filter(t => t.status === 'completed').length}</p>
                         </div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{t('Completed')}</p>
+                        <p className="text-5xl font-extrabold text-purple-600">{filteredTrips.filter(t => t.status === 'completed').length}</p>
                     </div>
                 </div>
 
-                {/* Filter Bar */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-                    <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value as any)}
-                            className="px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all font-semibold"
-                        >
-                            <option value="all">🔍 {t('All Status')}</option>
-                            <option value="planned">📅 {t('Planned')}</option>
-                            <option value="approved">✅ {t('Approved')}</option>
-                            <option value="in_progress">🚀 {t('In Progress')}</option>
-                            <option value="completed">🏁 {t('Completed')}</option>
-                        </select>
-                    </div>
-                </div>
+                {/* Main Content Container */}
+                <div className="bg-white dark:bg-gray-800 rounded-[30px] shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div className="p-8">
+                        {/* Header Section */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-[#0e7490] text-white rounded-[20px] shadow-sm">
+                                    <span className="text-3xl">🎒</span>
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl font-bold text-[#0e7490] dark:text-cyan-400 mb-1">{t('Trips List')}</h1>
+                                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                        {t('Total Trips')}:{" "}
+                                        <span className="font-bold text-[#0e7490] dark:text-cyan-400">
+                                            {filteredTrips.length}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
 
-                {/* Field Trips Grid */}
-                <div className="grid grid-cols-1 gap-6">
-                    {filteredTrips.length > 0 ? (
-                        filteredTrips.map((trip) => (
-                            <div key={trip.id} className="group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300">
-                                {/* Top Gradient Bar */}
-                                <div className={`h-2 ${
-                                    trip.status === 'planned' ? 'bg-gradient-to-r from-blue-400 to-cyan-500' :
-                                    trip.status === 'approved' ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
-                                    trip.status === 'in_progress' ? 'bg-gradient-to-r from-orange-400 to-red-500' :
-                                    'bg-gradient-to-r from-purple-400 to-pink-500'
-                                }`} />
-                                
-                                <div className="p-6">
-                                    {/* Header */}
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-                                                {trip.trip_name}
-                                            </h3>
-                                            <p className="text-gray-600 dark:text-gray-400 text-sm">
-                                                {trip.description}
-                                            </p>
-                                        </div>
-                                        {getStatusBadge(trip.status)}
+                            <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                                {/* Search Bar */}
+                                <div className="relative w-full md:w-64">
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder={t('Search trips...')}
+                                        className="w-full pl-10 pr-4 py-3.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-[35px] text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent font-medium"
+                                    />
+                                    <div className={`absolute ${isRtl ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 pointer-events-none text-gray-400`}>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                     </div>
+                                </div>
 
-                                    {/* Info Grid */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                                        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-3xl">📅</span>
-                                                <div className="flex-1">
-                                                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">{t('Date')}</p>
-                                                    <p className="text-lg font-bold text-gray-800 dark:text-white">{trip.trip_date}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-3xl">🕐</span>
-                                                <div className="flex-1">
-                                                    <p className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase">{t('Time')}</p>
-                                                    <p className="text-lg font-bold text-gray-800 dark:text-white">{trip.trip_time}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 rounded-xl border border-purple-200 dark:border-purple-800">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-3xl">👥</span>
-                                                <div className="flex-1">
-                                                    <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase">{t('Students')}</p>
-                                                    <p className="text-lg font-bold text-gray-800 dark:text-white">{trip.number_of_students}</p>
-                                                </div>
-                                            </div>
-                                        </div>
+                                {/* Filter Dropdown */}
+                                <div className="relative w-full md:w-auto">
+                                    <select
+                                        value={statusFilter}
+                                        onChange={(e) => setStatusFilter(e.target.value as any)}
+                                        className="w-full appearance-none pl-10 pr-10 py-3.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-[35px] text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent font-medium cursor-pointer min-w-[160px]"
+                                    >
+                                        <option value="all">{t('All Status')}</option>
+                                        <option value="planned">{t('Planned')}</option>
+                                        <option value="approved">{t('Approved')}</option>
+                                        <option value="in_progress">{t('In Progress')}</option>
+                                        <option value="completed">{t('Completed')}</option>
+                                    </select>
+                                    <div className={`absolute ${isRtl ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 pointer-events-none text-gray-400`}>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                                     </div>
-
-                                    {/* Destination and other info */}
-                                    <div className="mb-4">
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">📍 {t('Destination')}:</p>
-                                        <p className="text-sm font-medium text-gray-800 dark:text-white">{trip.destination}</p>
+                                    <div className={`absolute ${isRtl ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 pointer-events-none text-gray-400`}>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                                     </div>
+                                </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                        <div>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">🚌 {t('Buses')}:</p>
-                                            <p className="text-sm text-gray-800 dark:text-white">{trip.buses.length} {t('buses assigned')}</p>
-                                        </div>
+                                <button
+                                    onClick={() => setShowCreateModal(true)}
+                                    className="w-full sm:w-auto px-6 py-3.5 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 whitespace-nowrap"
+                                >
+                                    <span className="text-xl">+</span> {t('New Trip')}
+                                </button>
+                            </div>
+                        </div>
 
-                                        <div>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">👨‍🏫 {t('Teachers')}:</p>
-                                            <p className="text-sm text-gray-800 dark:text-white">{trip.teachers.join(', ')}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-2 justify-between items-center mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                                        <div className="flex gap-2">
-                                            {trip.approved_by_school && (
-                                                <span className="flex items-center gap-1 px-3 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 rounded-full font-bold">
-                                                    ✓ {t('School Approved')}
-                                                </span>
-                                            )}
-                                            {trip.approved_by_company && (
-                                                <span className="flex items-center gap-1 px-3 py-1 text-xs bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400 rounded-full font-bold">
-                                                    ✓ {t('Company Approved')}
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {!trip.approved_by_school && trip.status === 'planned' && (
-                                            <button
-                                                onClick={() => handleApprove(trip.id)}
-                                                className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm font-bold rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+                        {/* Field Trips Table */}
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-start">
+                                <thead className="bg-gray-50 dark:bg-gray-700/50 border-b-2 border-gray-200 dark:border-gray-600">
+                                    <tr>
+                                        <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">{t('Trip Info')}</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">{t('Date & Time')}</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">{t('Destination')}</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">{t('Students')}</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">{t('Resources')}</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">{t('Status')}</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">{t('Actions')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                    {filteredTrips.length > 0 ? (
+                                        filteredTrips.map((trip) => (
+                                            <tr
+                                                key={trip.id}
+                                                className="transition-colors hover:bg-cyan-50 dark:hover:bg-cyan-900/10"
                                             >
-                                                ✅ {t('Approve Trip')}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center">
-                            <div className="text-6xl mb-4">🚌</div>
-                            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
-                                {t('No Field Trips')}
-                            </h3>
-                            <p className="text-gray-500 dark:text-gray-400 mb-6">
-                                {t('Create your first field trip')}
-                            </p>
-                            <button
-                                onClick={() => setShowCreateModal(true)}
-                                className="px-6 py-2 bg-brand-yellow text-gray-900 font-bold rounded-lg hover:bg-yellow-500 transition-colors"
-                            >
-                                {t('Create Trip')}
-                            </button>
+                                                {/* Trip Info */}
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold text-gray-800 dark:text-white mb-1">
+                                                        {trip.trip_name}
+                                            </div>
+                                            <div className="text-sm text-gray-500 max-w-xs truncate">
+                                                {trip.description}
+                                            </div>
+                                        </td>
+
+                                        {/* Date & Time */}
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                                    📅 {trip.trip_date}
+                                                </span>
+                                                <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                                                    🕐 {trip.trip_time}
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        {/* Destination */}
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                                📍 {trip.destination}
+                                            </div>
+                                        </td>
+
+                                        {/* Students */}
+                                        <td className="px-6 py-4 text-center">
+                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-bold text-sm">
+                                                {trip.number_of_students}
+                                            </span>
+                                        </td>
+
+                                        {/* Resources */}
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1 text-xs">
+                                                <span className="text-gray-600 dark:text-gray-400">
+                                                    🚌 <b>{trip.buses.length}</b> {t('Buses')}
+                                                </span>
+                                                <span className="text-gray-600 dark:text-gray-400">
+                                                    👨‍🏫 <b>{trip.teachers.length}</b> {t('Teachers')}
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        {/* Status */}
+                                        <td className="px-6 py-4 text-center">
+                                            {getStatusBadge(trip.status)}
+                                            {trip.approved_by_school && (
+                                                <div className="flex items-center justify-center gap-1 mt-1 text-[10px] text-green-600 font-bold">
+                                                    ✓ {t('School')}
+                                                </div>
+                                            )}
+                                        </td>
+
+                                        {/* Actions */}
+                                        <td className="px-6 py-4 text-center">
+                                            {!trip.approved_by_school && trip.status === 'planned' ? (
+                                                <button
+                                                    onClick={() => handleApprove(trip.id)}
+                                                    className="px-4 py-2 bg-[#0e7490] text-white text-xs font-bold rounded-[15px] hover:bg-[#155e75] transition-all shadow-sm hover:shadow-md"
+                                                >
+                                                    ✅ {t('Approve')}
+                                                </button>
+                                            ) : (
+                                                <button className="p-2 text-gray-400 hover:text-[#0e7490] transition-colors">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                                    ) : (
+                                            <tr>
+                                                <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                                    <div className="flex flex-col items-center gap-3">
+                                                        <span className="text-4xl opacity-50">🚌</span>
+                                                        <p className="font-medium">{t('No trips found')}</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
-                    )}
+                    </div>
                 </div>
 
-                {/* Premium Create Modal */}
+                {/* Create Modal */}
                 {showCreateModal && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn">
-                        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden transform animate-slideUp">
-                            {/* Header with Gradient */}
-                            <div className="relative overflow-hidden bg-gradient-to-r from-green-500 via-teal-500 to-cyan-500 p-8">
-                                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30" />
+                        <div className="bg-white dark:bg-gray-800 rounded-[30px] shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden transform animate-slideUp">
+                            {/* Header */}
+                            <div className="relative overflow-hidden bg-[#0e7490] p-8 rounded-t-[30px]">
                                 <div className="relative flex items-center gap-4">
-                                    <div className="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center">
+                                    <div className="w-16 h-16 bg-white/20 rounded-[20px] flex items-center justify-center">
                                         <span className="text-4xl">🎒</span>
                                     </div>
                                     <div>
@@ -369,7 +377,7 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
                                                 type="text"
                                                 value={data.trip_name}
                                                 onChange={e => setData('trip_name', e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                                 placeholder={t('Enter trip name...')}
                                                 required
                                             />
@@ -383,7 +391,7 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
                                                 value={data.description}
                                                 onChange={e => setData('description', e.target.value)}
                                                 rows={4}
-                                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[25px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                                 placeholder={t('Describe the trip...')}
                                                 required
                                             />
@@ -398,7 +406,7 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
                                                     type="date"
                                                     value={data.trip_date}
                                                     onChange={e => setData('trip_date', e.target.value)}
-                                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                                     required
                                                 />
                                             </div>
@@ -411,7 +419,7 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
                                                     type="time"
                                                     value={data.trip_time}
                                                     onChange={e => setData('trip_time', e.target.value)}
-                                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                                     required
                                                 />
                                             </div>
@@ -429,7 +437,7 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
                                                 type="text"
                                                 value={data.destination}
                                                 onChange={e => setData('destination', e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                                 placeholder={t('Enter destination...')}
                                                 required
                                             />
@@ -444,7 +452,7 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
                                                 min="1"
                                                 value={data.number_of_students}
                                                 onChange={e => setData('number_of_students', parseInt(e.target.value))}
-                                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                                 required
                                             />
                                         </div>
@@ -504,7 +512,7 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
                                                                 newTeachers[index] = e.target.value;
                                                                 setData('teacher_names', newTeachers);
                                                             }}
-                                                            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                                            className="flex-1 px-6 py-3 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                                             placeholder={t('Enter teacher name...')}
                                                         />
                                                         <button
@@ -642,7 +650,7 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
                                             <button
                                                 type="button"
                                                 onClick={() => setCurrentStep(currentStep - 1)}
-                                                className="px-6 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+                                                className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-[35px] hover:bg-gray-50 dark:hover:bg-gray-700 transition-all font-bold"
                                             >
                                                 {t('Previous')}
                                             </button>
@@ -652,7 +660,7 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
                                             <button
                                                 type="button"
                                                 onClick={() => setCurrentStep(currentStep + 1)}
-                                                className="px-8 py-2.5 bg-brand-yellow text-gray-900 font-bold rounded-xl hover:bg-yellow-500 shadow-lg shadow-yellow-500/30 transition-all transform hover:scale-105"
+                                                className="px-8 py-3 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] shadow-lg hover:shadow-xl transition-all"
                                             >
                                                 {t('Next')}
                                             </button>
@@ -660,7 +668,7 @@ export default function Index({ auth, fieldTrips: serverTrips, buses: serverBuse
                                             <button
                                                 type="submit"
                                                 disabled={processing}
-                                                    className="px-8 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-700 shadow-lg shadow-green-500/30 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="px-8 py-3 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                 {processing ? (
                                                     <span className="flex items-center gap-2">

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Bus extends Model
@@ -25,11 +26,19 @@ class Bus extends Model
         'supervisor_id',
         'status',
         'qr_code_path',
+        'color',
+        'current_latitude',
+        'current_longitude',
+        'last_location_update',
+        'trip_status',
     ];
 
     protected $casts = [
         'capacity' => 'integer',
         'year' => 'integer',
+        'current_latitude' => 'decimal:7',
+        'current_longitude' => 'decimal:7',
+        'last_location_update' => 'datetime',
     ];
 
     /**
@@ -116,10 +125,28 @@ class Bus extends Model
     }
 
     /**
+     * Get the students assigned to this bus.
+     */
+    public function students(): BelongsToMany
+    {
+        return $this->belongsToMany(Student::class, 'bus_students')
+                    ->withPivot('is_active')
+                    ->withTimestamps();
+    }
+
+    /**
      * Get the display name for the bus.
      */
     public function getDisplayNameAttribute(): string
     {
         return "{$this->bus_number} - {$this->plate_number}";
+    }
+
+    /**
+     * Get the count of active students.
+     */
+    public function getStudentsCountAttribute(): int
+    {
+        return $this->students()->wherePivot('is_active', true)->count();
     }
 }

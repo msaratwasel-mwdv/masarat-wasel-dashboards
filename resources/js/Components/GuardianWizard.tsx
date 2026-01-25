@@ -78,19 +78,19 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
             {/* Step 1: Search Guardian */}
             {!showCreateForm && (
                 <div className="space-y-4">
-                    <div className="text-right rtl:text-right">
+                    <div className="text-start rtl:text-start">
                         <h3 className="mb-2 text-lg font-bold text-gray-900 dark:text-white">
-                            {t("البحث عن ولي الأمر")}
+                            {t("Search Guardian")}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {t("ابحث بالرقم المدني للتحقق من وجود ولي الأمر")}
+                            {t("Search by Civil ID to find existing guardian.")}
                         </p>
                     </div>
 
                     <form onSubmit={onSearchSubmit} className="space-y-4">
                         <div>
                             <InputLabel
-                                value={t("الرقم المدني")}
+                                value={t("Civil ID")}
                                 className="mb-2"
                             />
                             <div className="flex gap-3">
@@ -111,8 +111,8 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
                                     disabled={searchProcessing}
                                 >
                                     {searchProcessing
-                                        ? t("جاري البحث...")
-                                        : t("بحث")}
+                                        ? t("Searching...")
+                                        : t("Search")}
                                 </PrimaryButton>
                             </div>
                         </div>
@@ -131,14 +131,14 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="font-bold text-green-700 dark:text-green-400">
-                                            ✓ {t("تم العثور على ولي الأمر")}
+                                            ✓ {t("Guardian Found")}
                                         </p>
                                         <p className="text-sm text-gray-700 dark:text-gray-300">
                                             {guardianResult.guardian.name} (
                                             {guardianResult.guardian.phone})
                                         </p>
                                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                            {t("الرقم المدني")}:{" "}
+                                            {t("Civil ID")}:{" "}
                                             {
                                                 guardianResult.guardian
                                                     .national_id
@@ -148,7 +148,7 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
                                     <PrimaryButton
                                         onClick={() => onStepChange?.(3)}
                                     >
-                                        {t("اختيار ومتابعة")}
+                                        {t("Select & Continue")}
                                     </PrimaryButton>
                                 </div>
                             ) : (
@@ -156,16 +156,16 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
                                     <div>
                                         <p className="font-bold text-yellow-700 dark:text-yellow-400">
                                             ⚠️{" "}
-                                            {t("لم يتم العثور على ولي الأمر")}
+                                                {t("Guardian Not Found")}
                                         </p>
                                         <p className="text-sm text-yellow-600 dark:text-yellow-300">
-                                            {t("يرجى إنشاء ولي أمر جديد")}
+                                                {t("No guardian was found with this national ID. Create a new guardian below")}
                                         </p>
                                     </div>
                                     <PrimaryButton
                                         onClick={() => setShowCreateForm(true)}
                                     >
-                                        {t("إنشاء ولي أمر جديد")}
+                                            {t("Create New Guardian")}
                                     </PrimaryButton>
                                 </div>
                             )}
@@ -177,12 +177,12 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
             {/* Step 2: Create Guardian Form */}
             {showCreateForm && (
                 <div className="space-y-6">
-                    <div className="text-right rtl:text-right">
+                    <div className="text-start rtl:text-start">
                         <h3 className="mb-2 text-lg font-bold text-gray-900 dark:text-white">
-                            {t("إنشاء ولي أمر جديد")}
+                            {t("Create New Guardian")}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {t("أدخل بيانات ولي الأمر الجديد")}
+                            {t("Enter supervisor details")}
                         </p>
                     </div>
 
@@ -191,7 +191,7 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
                             {/* الاسم بالعربي */}
                             <div className="md:col-span-2">
                                 <InputLabel
-                                    value={t("اسم ولي الأمر (عربي) *")}
+                                    value={t("Guardian Name (Arabic)") + " *"}
                                 />
                                 <TextInput
                                     value={guardianCreateForm.data.name}
@@ -212,7 +212,7 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
                             {/* الاسم بالإنجليزي */}
                             <div className="md:col-span-2">
                                 <InputLabel
-                                    value={t("اسم ولي الأمر (إنجليزي)")}
+                                    value={t("Guardian Name (English)")}
                                 />
                                 <TextInput
                                     value={guardianCreateForm.data.name_en}
@@ -228,7 +228,7 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
 
                             {/* الرقم المدني */}
                             <div>
-                                <InputLabel value={t("الرقم المدني *")} />
+                                <InputLabel value={t("Civil ID") + " *"} />
                                 <TextInput
                                     value={guardianCreateForm.data.national_id}
                                     onChange={(e) =>
@@ -249,7 +249,7 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
 
                             {/* رقم الهاتف */}
                             <div>
-                                <InputLabel value={t("رقم الهاتف *")} />
+                                <InputLabel value={t("Phone Number") + " *"} />
                                 <TextInput
                                     value={guardianCreateForm.data.phone}
                                     onChange={(e) =>
@@ -269,7 +269,7 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
 
                             {/* البريد الإلكتروني */}
                             <div className="md:col-span-2">
-                                <InputLabel value={t("البريد الإلكتروني")} />
+                                <InputLabel value={t("Email")} />
                                 <TextInput
                                     type="email"
                                     value={guardianCreateForm.data.email}
@@ -286,7 +286,7 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
 
                             {/* العنوان */}
                             <div className="md:col-span-2">
-                                <InputLabel value={t("العنوان")} />
+                                <InputLabel value={t("Address")} />
                                 <TextInput
                                     value={guardianCreateForm.data.address}
                                     onChange={(e) =>
@@ -301,7 +301,7 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
 
                             {/* رقم المنزل */}
                             <div>
-                                <InputLabel value={t("رقم المنزل")} />
+                                <InputLabel value={t("Home Number")} />
                                 <TextInput
                                     value={guardianCreateForm.data.home_number}
                                     onChange={(e) =>
@@ -316,7 +316,7 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
 
                             {/* صورة ولي الأمر */}
                             <div className="md:col-span-2">
-                                <InputLabel value={t("صورة ولي الأمر")} />
+                                <InputLabel value={t("Guardian Photo")} />
                                 <div className="relative flex flex-col items-center justify-center gap-4 p-6 transition-colors border-2 border-gray-300 border-dashed cursor-pointer dark:border-gray-600 rounded-xl hover:border-blue-500 dark:hover:border-blue-400">
                                     {guardianCreateForm.data.image ||
                                     previewImage ? (
@@ -335,21 +335,21 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
                                                             : "")
                                                     }
                                                     className="object-cover w-full h-full"
-                                                    alt={t("صورة ولي الأمر")}
+                                                        alt={t("Guardian Photo")}
                                                 />
                                             </div>
                                             <div className="flex-1">
                                                 <p className="font-medium text-gray-900 dark:text-white">
                                                     {guardianCreateForm.data
                                                         .image?.name ||
-                                                        t("صورة ولي الأمر")}
+                                                            t("Guardian Photo")}
                                                 </p>
                                                 <button
                                                     type="button"
                                                     onClick={handleRemoveImage}
                                                     className="mt-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                                                 >
-                                                    {t("إزالة")}
+                                                        {t("Remove")}
                                                 </button>
                                             </div>
                                         </div>
@@ -360,10 +360,10 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
                                             </div>
                                             <div className="text-center">
                                                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    {t("انقر لرفع الصورة")}
+                                                        {t("Click to upload guardian photo")}
                                                 </p>
                                                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                    PNG, JPG حتى 5MB
+                                                        PNG, JPG {t("up to 5MB")}
                                                 </p>
                                             </div>
                                             <input
@@ -386,15 +386,15 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
                                 type="button"
                                 onClick={() => setShowCreateForm(false)}
                             >
-                                {t("رجوع")}
+                                {t("Back")}
                             </SecondaryButton>
                             <PrimaryButton
                                 type="submit"
                                 disabled={createProcessing}
                             >
                                 {createProcessing
-                                    ? t("جاري الحفظ...")
-                                    : t("إنشاء ولي الأمر")}
+                                    ? t("Saving...")
+                                    : t("Create Guardian")}
                             </PrimaryButton>
                         </div>
                     </form>

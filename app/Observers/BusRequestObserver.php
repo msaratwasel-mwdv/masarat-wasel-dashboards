@@ -30,6 +30,8 @@ class BusRequestObserver
                     'start_date' => $busRequest->start_date,
                 ],
                 'user_id' => $admin->id,
+                'sender_id' => $busRequest->school->user_id ?? null, // School admin who created the request
+                'recipient_type' => 'specific_user',
                 'from_user_name' => $busRequest->school->name,
                 'status' => 'unread',
                 'icon' => 'bus',
@@ -64,6 +66,8 @@ class BusRequestObserver
                         'number_of_buses' => $busRequest->number_of_buses,
                     ],
                     'user_id' => $schoolAdmin->id,
+                    'sender_id' => $busRequest->approvedBy->id ?? null,
+                    'recipient_type' => 'specific_user',
                     'from_user_name' => 'الإدارة',
                     'status' => 'unread',
                     'icon' => $busRequest->status === 'approved' ? 'check-circle' : 'x-circle',

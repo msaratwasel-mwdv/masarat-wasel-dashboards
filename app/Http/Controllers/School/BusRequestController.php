@@ -33,7 +33,7 @@ class BusRequestController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'request_type' => 'required|in:permanent,temporary,field_trip',
+            'request_type' => 'required|in:permanent,temporary',
             'number_of_buses' => 'required|integer|min:1',
             'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'nullable|date|after:start_date',
@@ -48,6 +48,37 @@ class BusRequestController extends Controller
 
         return redirect()->back()
             ->with('success', 'تم إرسال طلب الحافلة بنجاح. سيتم مراجعته من قبل إدارة الشركة.');
+    }
+
+    /**
+     * Update a bus request (only if pending).
+     */
+    public function update(Request $request, BusRequest $busRequest)
+    {
+        // Ensure the request belongs to the authenticated user's school
+        if ($busRequest->school_id !== Auth::user()->school_id) {
+            abort(403);
+        }
+
+        // Only allow editing of pending requests
+        if ($busRequest->status !== 'pending') {
+            return redirect()->back()
+                ->with('error', 'لا يمكن تعديل طلب تمت الموافقة عليه أو رفضه');
+        }
+
+        $validated = $request->validate([
+            'request_type' => 'required|in:permanent,temporary',
+            'number_of_buses' => 'required|integer|min:1',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after:start_date',
+            'reason' => 'required|string|max:1000',
+            'special_requirements' => 'nullable|string|max:1000',
+        ]);
+
+        $busRequest->update($validated);
+
+        return redirect()->back()
+            ->with('success', 'تم تحديث الطلب بنجاح');
     }
 
     /**

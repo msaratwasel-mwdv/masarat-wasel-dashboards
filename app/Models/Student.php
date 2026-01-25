@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Student extends Model
 {
@@ -49,5 +50,15 @@ class Student extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
+    }
+
+    /**
+     * Get the buses this student is assigned to.
+     */
+    public function buses(): BelongsToMany
+    {
+        return $this->belongsToMany(Bus::class, 'bus_students')
+                    ->withPivot('is_active')
+                    ->withTimestamps();
     }
 }

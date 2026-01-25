@@ -103,11 +103,18 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         });
 
         // 6. الحافلات والرحلات
-        Route::get('buses', [\App\Http\Controllers\School\BusController::class, 'index'])->name('buses.index');
+        Route::resource('buses', \App\Http\Controllers\School\BusController::class);
+        Route::post('buses/bulk-destroy', [\App\Http\Controllers\School\BusController::class, 'bulkDestroy'])->name('buses.bulk-destroy');
+        Route::get('buses/tracking/api', [\App\Http\Controllers\School\BusController::class, 'trackingApi'])->name('buses.tracking.api');
 
-        Route::get('bus-requests', [\App\Http\Controllers\School\BusRequestController::class, 'index'])->name('bus-requests.index');
+        // طلبات الحافلات (ما زالت موجودة كـ API/Controller لكن الواجهة موحدة)
         Route::post('bus-requests', [\App\Http\Controllers\School\BusRequestController::class, 'store'])->name('bus-requests.store');
+        Route::put('bus-requests/{busRequest}', [\App\Http\Controllers\School\BusRequestController::class, 'update'])->name('bus-requests.update');
         Route::delete('bus-requests/{busRequest}', [\App\Http\Controllers\School\BusRequestController::class, 'destroy'])->name('bus-requests.destroy');
+
+        // 7. الإشعارات
+        Route::resource('notifications', \App\Http\Controllers\School\NotificationController::class);
+        Route::post('notifications/preview', [\App\Http\Controllers\School\NotificationController::class, 'preview'])->name('notifications.preview');
 
         Route::resource('trip-schedules', \App\Http\Controllers\School\TripScheduleController::class);
         Route::post('trip-schedules/copy', [\App\Http\Controllers\School\TripScheduleController::class, 'copy'])->name('trip-schedules.copy');

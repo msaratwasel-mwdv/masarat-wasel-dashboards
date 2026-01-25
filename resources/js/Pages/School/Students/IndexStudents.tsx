@@ -409,7 +409,7 @@ export default function IndexStudents({
         <SchoolAuthenticatedLayout
             user={auth.user}
             header={
-                <h2 className="text-xl font-bold leading-tight text-gray-800 dark:text-white">
+                <h2 className="text-3xl font-extrabold text-[#0e7490] dark:text-cyan-400">
                     {t("Students Management")}
                 </h2>
             }
@@ -418,11 +418,11 @@ export default function IndexStudents({
 
             {/* Main Content */}
             <div className="py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
-                <div className="p-8 border shadow-xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-md border-white/20 dark:border-gray-700 rounded-2xl">
+                <div className="p-8 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm rounded-[30px]">
                     {/* Header Strip */}
                     <div className="flex flex-col justify-between gap-6 mb-8 xl:flex-row xl:items-center">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl">
+                            <div className="p-3 bg-[#0e7490] text-white rounded-[20px] shadow-sm">
                                 <svg
                                     className="w-8 h-8"
                                     fill="none"
@@ -438,12 +438,12 @@ export default function IndexStudents({
                                 </svg>
                             </div>
                             <div>
-                                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                                    {t("Students List")}
+                                <h3 className="text-2xl font-bold text-[#0e7490] dark:text-cyan-400">
+                                    📚 {t("Students List")}
                                 </h3>
                                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                                     {t("Total Students")}:{" "}
-                                    <span className="font-bold text-gray-800 dark:text-gray-200">
+                                    <span className="font-bold text-[#0e7490] dark:text-cyan-400">
                                         {students.length}
                                     </span>
                                 </p>
@@ -457,7 +457,7 @@ export default function IndexStudents({
                                     value={search}
                                     onChange={handleSearchChange}
                                     placeholder={t("Search by Name, ID...")}
-                                    className="w-full px-4 py-3 transition-shadow border border-gray-200 shadow-sm sm:w-72 bg-white/50 dark:bg-gray-900/50 dark:border-gray-600 rounded-xl pl-11 focus:ring-blue-500 dark:text-white focus:shadow-md"
+                                    className="w-full px-4 py-3.5 border border-gray-200 dark:border-gray-600 shadow-sm sm:w-72 bg-gray-50 dark:bg-gray-700 rounded-[35px] pl-11 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent dark:text-white transition-all"
                                 />
                                 <svg
                                     className="absolute left-4 top-3.5 w-5 h-5 text-gray-400"
@@ -476,10 +476,10 @@ export default function IndexStudents({
 
                             <button
                                 onClick={openAddModal}
-                                className="inline-flex justify-center items-center px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all transform hover:translate-y-[-1px]"
+                                className="inline-flex justify-center items-center px-8 py-3.5 bg-[#0e7490] text-white hover:bg-[#155e75] rounded-[35px] font-bold shadow-lg hover:shadow-xl transition-all"
                             >
                                 <svg
-                                    className="w-5 h-5 mr-2 rtl:ml-2 rtl:mr-0"
+                                    className="w-5 h-5 me-2"
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -497,44 +497,44 @@ export default function IndexStudents({
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto border border-gray-100 rounded-xl dark:border-gray-700/50">
+                    <div className="overflow-x-auto border border-gray-100 dark:border-gray-700 rounded-[20px]">
                         <table className="min-w-full text-start">
-                            <thead className="border-b border-gray-200 bg-gray-50 dark:bg-gray-700/20 dark:border-gray-700">
+                            <thead className="bg-gray-50 dark:bg-gray-700/50 border-b-2 border-gray-200 dark:border-gray-600">
                                 <tr>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase dark:text-gray-400 text-start">
+                                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
                                         {t("Student Name")}
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase dark:text-gray-400 text-start">
-                                        {t("الرقم المدني")}
+                                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
+                                        {t("Civil ID")}
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase dark:text-gray-400 text-start">
+                                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
                                         {t("Gender")}
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase dark:text-gray-400 text-start">
+                                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
                                         {t("Student Photo")}
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase dark:text-gray-400 text-start">
+                                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
                                         {t("Class")}
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase dark:text-gray-400 text-start">
-                                        {t("معلم")}
+                                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
+                                        {t("Supervisor")}
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase dark:text-gray-400 text-start">
+                                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
                                         {t("Guardian Name")}
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase dark:text-gray-400 text-start">
+                                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
                                         {t("Guardian Civil ID")}
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase dark:text-gray-400 text-start">
+                                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
                                         {t("Guardian Phone")}
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase dark:text-gray-400 text-start">
+                                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
                                         {t("Address")}
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase dark:text-gray-400 text-start">
+                                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
                                         {t("Guardian Photo")}
                                     </th>
-                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase dark:text-gray-400 text-end">
+                                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-end">
                                         {t("Actions")}
                                     </th>
                                 </tr>
@@ -545,7 +545,7 @@ export default function IndexStudents({
                                     students.map((student) => (
                                         <tr
                                             key={student.id}
-                                            className="transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-700/50"
+                                            className="transition-colors hover:bg-cyan-50 dark:hover:bg-cyan-900/10"
                                         >
                                             {/* اسم الطالب */}
                                             <td className="px-4 py-4">
@@ -597,7 +597,7 @@ export default function IndexStudents({
 
                                             {/* صورة الطالب */}
                                             <td className="px-4 py-4">
-                                                <div className="w-12 h-12 overflow-hidden bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600">
+                                                <div className="w-12 h-12 overflow-hidden bg-gray-100 border border-gray-200 rounded-[15px] dark:bg-gray-700 dark:border-gray-600">
                                                     <img
                                                         src={getImageUrl(
                                                             student.image,
@@ -651,7 +651,7 @@ export default function IndexStudents({
 
                                             {/* صورة ولي الأمر */}
                                             <td className="px-4 py-4">
-                                                <div className="w-12 h-12 overflow-hidden bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600">
+                                                <div className="w-12 h-12 overflow-hidden bg-gray-100 border border-gray-200 rounded-[15px] dark:bg-gray-700 dark:border-gray-600">
                                                     <img
                                                         src={getImageUrl(
                                                             student.guardian
@@ -683,7 +683,7 @@ export default function IndexStudents({
                                                                 student
                                                             )
                                                         }
-                                                        className="p-2 text-blue-600 transition-all rounded-lg dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:scale-105"
+                                                        className="p-2.5 text-[#0e7490] bg-cyan-50 dark:bg-cyan-900/20 transition-all rounded-[15px] hover:bg-cyan-100 dark:hover:bg-cyan-900/40 hover:scale-105 border border-cyan-100 dark:border-cyan-800"
                                                         title={t("Edit")}
                                                     >
                                                         ✏️
@@ -697,7 +697,7 @@ export default function IndexStudents({
                                                                 true
                                                             );
                                                         }}
-                                                        className="p-2 text-red-500 transition-all rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 hover:scale-105"
+                                                        className="p-2.5 text-red-600 bg-red-50 dark:bg-red-900/20 transition-all rounded-[15px] hover:bg-red-100 dark:hover:bg-red-900/40 hover:scale-105 border border-red-100 dark:border-red-800"
                                                         title={t("Delete")}
                                                     >
                                                         🗑️
@@ -710,9 +710,10 @@ export default function IndexStudents({
                                     <tr>
                                         <td
                                             colSpan={12}
-                                            className="py-10 text-center text-gray-400 dark:text-gray-500"
+                                                className="py-16 text-center"
                                         >
-                                            {t("No students found")}
+                                                <div className="text-6xl mb-4 opacity-20">👨‍🎓</div>
+                                                <p className="text-gray-400 dark:text-gray-500 font-medium">{t("No students found")}</p>
                                         </td>
                                     </tr>
                                 )}
@@ -723,49 +724,66 @@ export default function IndexStudents({
             </div>
 
             {/* Main Modal */}
-            <Modal show={showModal} onClose={closeModal} maxWidth="2xl">
-                <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                            {isEditing
-                                ? t("Edit Student")
-                                : step === 1
-                                ? t("Step 1: Guardian Verification")
-                                : step === 2
-                                ? t("Step 2: Create Guardian")
-                                : t("Step 3: Student Details")}
-                        </h3>
-                        <button
-                            onClick={closeModal}
-                            className="text-gray-400 transition-colors hover:text-gray-600"
-                        >
-                            <svg
-                                className="w-6 h-6"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M6 18L18 6M6 6l12 12"
-                                ></path>
-                            </svg>
-                        </button>
-                    </div>
+            {showModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeModal}>
+                    <div
+                        className="bg-white dark:bg-gray-800 rounded-[30px] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="bg-[#0e7490] p-6 text-white">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-2xl font-bold text-white">
+                                        {isEditing
+                                            ? t("Edit Student")
+                                            : step === 1
+                                                ? t("Guardian Verification")
+                                                : step === 2
+                                                    ? t("Create New Guardian")
+                                                    : t("Student Details")}
+                                    </h3>
+                                    {!isEditing && (
+                                        <p className="mt-1 text-sm text-blue-100">
+                                            {step === 1 && t("Guardian Verification")}
+                                            {step === 2 && t("Create New Guardian")}
+                                            {step === 3 && t("Enter student details")}
+                                        </p>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={closeModal}
+                                    className="p-2 transition-colors rounded-lg text-white/80 hover:text-white hover:bg-white/10"
+                                >
+                                    <svg
+                                        className="w-8 h-8"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M6 18L18 6M6 6l12 12"
+                                        ></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content Wrapper */}
+                        <div className="p-8 space-y-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
 
                     {/* Step 1: Search Guardian */}
                     {!isEditing && step === 1 && (
                         <div className="space-y-6">
-                            <div className="text-right rtl:text-right">
-                                <h4 className="mb-2 text-lg font-bold text-gray-800 dark:text-white">
-                                    {t("البحث عن ولي الأمر")}
+                                    <div className="p-6 bg-cyan-50 dark:bg-cyan-900/10 rounded-[25px] border border-cyan-100 dark:border-cyan-800">
+                                        <h4 className="text-lg font-bold text-[#0e7490] dark:text-cyan-400 mb-2">
+                                            {t("Search Guardian")}
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                                    {t(
-                                        "ابحث بالرقم المدني للتحقق من وجود ولي الأمر"
-                                    )}
+                                            {t("Search by Civil ID to find existing guardian.")}
                                 </p>
                             </div>
 
@@ -775,8 +793,8 @@ export default function IndexStudents({
                             >
                                 <div>
                                     <InputLabel
-                                        value={t("الرقم المدني")}
-                                        className="mb-2"
+                                                value={t("Civil ID")}
+                                                className="mb-2 font-bold text-gray-700 dark:text-gray-300"
                                     />
                                     <div className="flex gap-3">
                                         <TextInput
@@ -790,20 +808,21 @@ export default function IndexStudents({
                                                     e.target.value
                                                 )
                                             }
-                                            className="flex-1"
+                                                    className="flex-1 px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                             placeholder="10xxxxxxxxx"
                                             required
                                         />
-                                        <PrimaryButton
+                                                <button
                                             type="submit"
                                             disabled={
                                                 guardianSearchForm.processing
                                             }
+                                                    className="px-8 py-4 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {guardianSearchForm.processing
-                                                ? t("جاري البحث...")
-                                                : t("بحث")}
-                                        </PrimaryButton>
+                                                        ? t("Searching...")
+                                                        : t("Search")}
+                                                </button>
                                     </div>
                                 </div>
                             </form>
@@ -811,68 +830,53 @@ export default function IndexStudents({
                             {/* Search Results */}
                             {guardianResult && (
                                 <div
-                                    className={`p-4 rounded-xl border ${
+                                            className={`p-6 rounded-[25px] border ${
                                         guardianResult.found
                                             ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700"
-                                            : "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700"
+                                                : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700"
                                     }`}
                                 >
                                     {guardianResult.found &&
                                     guardianResult.guardian ? (
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="font-bold text-green-700 dark:text-green-400">
-                                                    ✓{" "}
-                                                    {t(
-                                                        "تم العثور على ولي الأمر"
-                                                    )}
+                                                            <p className="font-bold text-green-700 dark:text-green-400 text-lg">
+                                                                ✓ {t("Guardian Found")}
                                                 </p>
-                                                <p className="text-sm text-gray-700 dark:text-gray-300">
-                                                    {
-                                                        guardianResult.guardian
-                                                            .name
-                                                    }{" "}
-                                                    (
-                                                    {
-                                                        guardianResult.guardian
-                                                            .phone
-                                                    }
-                                                    )
+                                                            <p className="mt-2 text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                                {guardianResult.guardian.name}
                                                 </p>
                                                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                    {t("الرقم المدني")}:{" "}
+                                                                {t("Civil ID")}:{" "}
                                                     {
                                                         guardianResult.guardian
                                                             .national_id
                                                     }
                                                 </p>
                                             </div>
-                                            <PrimaryButton
+                                                        <button
                                                 onClick={() => setStep(3)}
+                                                            className="px-6 py-3 bg-green-600 text-white font-bold rounded-[25px] hover:bg-green-700 shadow-md hover:shadow-lg transition-all"
                                             >
-                                                {t("اختيار ومتابعة")}
-                                            </PrimaryButton>
+                                                            {t("Select & Continue")}
+                                                        </button>
                                         </div>
                                     ) : (
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="font-bold text-yellow-700 dark:text-yellow-400">
-                                                    ⚠️{" "}
-                                                    {t(
-                                                        "لم يتم العثور على ولي الأمر"
-                                                    )}
+                                                            <p className="font-bold text-amber-700 dark:text-amber-400 text-lg">
+                                                                ⚠️ {t("Guardian Not Found")}
                                                 </p>
-                                                <p className="text-sm text-yellow-600 dark:text-yellow-300">
-                                                    {t(
-                                                        "يرجى إنشاء ولي أمر جديد"
-                                                    )}
+                                                            <p className="text-sm text-amber-600 dark:text-amber-300 mt-1">
+                                                                {t("Please create a new guardian")}
                                                 </p>
                                             </div>
-                                            <PrimaryButton
+                                                        <button
                                                 onClick={() => setStep(2)}
+                                                            className="px-6 py-3 bg-[#0e7490] text-white font-bold rounded-[25px] hover:bg-[#155e75] shadow-md hover:shadow-lg transition-all"
                                             >
-                                                {t("إنشاء ولي أمر جديد")}
-                                            </PrimaryButton>
+                                                            {t("Create New Guardian")}
+                                                        </button>
                                         </div>
                                     )}
                                 </div>
@@ -883,12 +887,12 @@ export default function IndexStudents({
                     {/* Step 2: Create Guardian */}
                     {!isEditing && step === 2 && (
                         <div className="space-y-6">
-                            <div className="text-right rtl:text-right">
+                                    <div className="text-start rtl:text-start">
                                 <h4 className="mb-2 text-lg font-bold text-gray-800 dark:text-white">
-                                    {t("إنشاء ولي أمر جديد")}
+                                            {t("Create New Guardian")}
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                                    {t("أدخل بيانات ولي الأمر الجديد")}
+                                            {t("Enter new guardian details")}
                                 </p>
                             </div>
 
@@ -896,11 +900,12 @@ export default function IndexStudents({
                                 onSubmit={handleGuardianCreate}
                                 className="space-y-6"
                             >
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                     {/* الاسم بالعربي */}
                                     <div className="md:col-span-2">
                                         <InputLabel
-                                            value={t("اسم ولي الأمر (عربي) *")}
+                                                    value={t("Guardian Name (Arabic)") + " *"}
+                                                    className="mb-2 font-bold text-gray-700 dark:text-gray-300"
                                         />
                                         <TextInput
                                             value={guardianCreateForm.data.name}
@@ -910,7 +915,7 @@ export default function IndexStudents({
                                                     e.target.value
                                                 )
                                             }
-                                            className="w-full"
+                                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                             required
                                         />
                                         <InputError
@@ -923,7 +928,8 @@ export default function IndexStudents({
                                     {/* الاسم بالإنجليزي */}
                                     <div className="md:col-span-2">
                                         <InputLabel
-                                            value={t("اسم ولي الأمر (إنجليزي)")}
+                                                    value={t("Guardian Name (English)")}
+                                                    className="mb-2 font-bold text-gray-700 dark:text-gray-300"
                                         />
                                         <TextInput
                                             value={
@@ -935,14 +941,15 @@ export default function IndexStudents({
                                                     e.target.value
                                                 )
                                             }
-                                            className="w-full"
+                                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                         />
                                     </div>
 
                                     {/* الرقم المدني */}
                                     <div>
                                         <InputLabel
-                                            value={t("الرقم المدني *")}
+                                                    value={t("Civil ID") + " *"}
+                                                    className="mb-2 font-bold text-gray-700 dark:text-gray-300"
                                         />
                                         <TextInput
                                             value={
@@ -955,7 +962,7 @@ export default function IndexStudents({
                                                     e.target.value
                                                 )
                                             }
-                                            className="w-full"
+                                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                             required
                                         />
                                         <InputError
@@ -968,7 +975,7 @@ export default function IndexStudents({
 
                                     {/* رقم الهاتف */}
                                     <div>
-                                        <InputLabel value={t("رقم الهاتف *")} />
+                                                <InputLabel value={t("Phone Number") + " *"} className="mb-2 font-bold text-gray-700 dark:text-gray-300" />
                                         <TextInput
                                             value={
                                                 guardianCreateForm.data.phone
@@ -979,7 +986,7 @@ export default function IndexStudents({
                                                     e.target.value
                                                 )
                                             }
-                                            className="w-full"
+                                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                             required
                                             placeholder="+966XXXXXXXXX"
                                         />
@@ -993,7 +1000,8 @@ export default function IndexStudents({
                                     {/* البريد الإلكتروني */}
                                     <div className="md:col-span-2">
                                         <InputLabel
-                                            value={t("البريد الإلكتروني")}
+                                                    value={t("Email")}
+                                                    className="mb-2 font-bold text-gray-700 dark:text-gray-300"
                                         />
                                         <TextInput
                                             type="email"
@@ -1006,14 +1014,14 @@ export default function IndexStudents({
                                                     e.target.value
                                                 )
                                             }
-                                            className="w-full"
+                                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                             placeholder="example@email.com"
                                         />
                                     </div>
 
                                     {/* العنوان */}
                                     <div className="md:col-span-2">
-                                        <InputLabel value={t("العنوان")} />
+                                                <InputLabel value={t("Address")} className="mb-2 font-bold text-gray-700 dark:text-gray-300" />
                                         <TextInput
                                             value={
                                                 guardianCreateForm.data.address
@@ -1024,13 +1032,13 @@ export default function IndexStudents({
                                                     e.target.value
                                                 )
                                             }
-                                            className="w-full"
+                                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                         />
                                     </div>
 
                                     {/* رقم المنزل */}
                                     <div>
-                                        <InputLabel value={t("رقم المنزل")} />
+                                                <InputLabel value={t("Home Number")} className="mb-2 font-bold text-gray-700 dark:text-gray-300" />
                                         <TextInput
                                             value={
                                                 guardianCreateForm.data
@@ -1042,16 +1050,16 @@ export default function IndexStudents({
                                                     e.target.value
                                                 )
                                             }
-                                            className="w-full"
+                                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                         />
                                     </div>
 
                                     {/* صورة ولي الأمر */}
                                     <div className="md:col-span-2">
                                         <InputLabel
-                                            value={t("صورة ولي الأمر")}
+                                                    value={t("Guardian Photo")}
                                         />
-                                        <div className="relative flex flex-col items-center justify-center gap-4 p-6 transition-colors border-2 border-gray-300 border-dashed cursor-pointer dark:border-gray-600 rounded-xl hover:border-blue-500 dark:hover:border-blue-400">
+                                                <div className="relative flex flex-col items-center justify-center gap-4 p-6 transition-colors border-2 border-gray-300 border-dashed cursor-pointer dark:border-gray-600 rounded-[25px] hover:border-[#0e7490] dark:hover:border-cyan-400">
                                             {guardianCreateForm.data.image ||
                                             guardianImagePreview ? (
                                                 <div className="flex items-center w-full gap-4">
@@ -1070,7 +1078,7 @@ export default function IndexStudents({
                                                             }
                                                             className="object-cover w-full h-full"
                                                             alt={t(
-                                                                "صورة ولي الأمر"
+                                                                "Guardian Photo"
                                                             )}
                                                         />
                                                     </div>
@@ -1080,7 +1088,7 @@ export default function IndexStudents({
                                                                 .data.image
                                                                 ?.name ||
                                                                 t(
-                                                                    "صورة ولي الأمر"
+                                                                    "Guardian Photo"
                                                                 )}
                                                         </p>
                                                         <button
@@ -1090,7 +1098,7 @@ export default function IndexStudents({
                                                             }
                                                             className="mt-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                                                         >
-                                                            {t("إزالة")}
+                                                                        {t("Remove")}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1102,11 +1110,11 @@ export default function IndexStudents({
                                                     <div className="text-center">
                                                         <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             {t(
-                                                                "انقر لرفع الصورة"
+                                                                "Click to upload guardian photo"
                                                             )}
                                                         </p>
                                                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                            PNG, JPG حتى 5MB
+                                                                        PNG, JPG {t("up to 5MB")}
                                                         </p>
                                                     </div>
                                                     <input
@@ -1128,21 +1136,23 @@ export default function IndexStudents({
                                     </div>
                                 </div>
 
-                                <div className="flex justify-between pt-4">
-                                    <SecondaryButton
+                                        <div className="flex justify-between pt-6 border-t border-gray-100 dark:border-gray-700">
+                                            <button
                                         type="button"
                                         onClick={() => setStep(1)}
+                                                className="px-6 py-3 font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-[25px] transition-all"
                                     >
-                                        {t("رجوع")}
-                                    </SecondaryButton>
-                                    <PrimaryButton
+                                                {t("Back")}
+                                            </button>
+                                            <button
                                         type="submit"
                                         disabled={guardianCreateForm.processing}
+                                                className="px-8 py-3 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
                                     >
                                         {guardianCreateForm.processing
-                                            ? t("جاري الحفظ...")
-                                            : t("إنشاء ولي الأمر")}
-                                    </PrimaryButton>
+                                                    ? t("Saving...")
+                                                    : t("Create Guardian")}
+                                            </button>
                                 </div>
                             </form>
                         </div>
@@ -1155,15 +1165,16 @@ export default function IndexStudents({
                             className="space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar pr-2"
                         >
                             {isEditing && (
-                                <div className="p-4 mb-4 border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10 dark:border-yellow-700 rounded-xl">
-                                    <h4 className="mb-2 font-bold text-yellow-800 dark:text-yellow-400">
+                                        <div className="p-6 mb-6 border border-cyan-100 bg-cyan-50 dark:bg-cyan-900/10 dark:border-cyan-800 rounded-[25px]">
+                                            <h4 className="mb-4 text-lg font-bold text-[#0e7490] dark:text-cyan-400">
                                         {t("Guardian Information")}
                                     </h4>
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="col-span-2">
+                                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                                <div className="md:col-span-2">
                                             <InputLabel
                                                 value={t("Guardian Name")}
+                                                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
                                             />
                                             <TextInput
                                                 value={
@@ -1181,7 +1192,7 @@ export default function IndexStudents({
                                                         }
                                                     )
                                                 }
-                                                className="w-full"
+                                                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-white dark:bg-gray-800 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                             />
                                             <InputError
                                                 message={
@@ -1195,6 +1206,7 @@ export default function IndexStudents({
                                         <div>
                                             <InputLabel
                                                 value={t("Guardian Phone")}
+                                                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
                                             />
                                             <TextInput
                                                 value={
@@ -1212,13 +1224,14 @@ export default function IndexStudents({
                                                         }
                                                     )
                                                 }
-                                                className="w-full"
+                                                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-white dark:bg-gray-800 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                             />
                                         </div>
 
                                         <div>
                                             <InputLabel
-                                                value={t("الرقم المدني")}
+                                                        value={t("Civil ID")}
+                                                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
                                             />
                                             <TextInput
                                                 value={
@@ -1236,21 +1249,22 @@ export default function IndexStudents({
                                                         }
                                                     )
                                                 }
-                                                className="w-full"
+                                                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-white dark:bg-gray-800 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                             />
                                         </div>
                                     </div>
                                 </div>
                             )}
 
-                            <h4 className="mb-2 font-bold text-gray-800 dark:text-white">
+                                    <h4 className="mb-4 text-lg font-bold text-gray-800 dark:text-white">
                                 {t("Student Information")}
                             </h4>
 
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 <div className="md:col-span-2">
                                     <InputLabel
                                         value={t("Student Name") + " *"}
+                                                className="mb-2 font-bold text-gray-700 dark:text-gray-300"
                                     />
                                     <TextInput
                                         value={studentForm.data.full_name}
@@ -1260,7 +1274,7 @@ export default function IndexStudents({
                                                 e.target.value
                                             )
                                         }
-                                        className="w-full"
+                                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                         required
                                     />
                                     <InputError
@@ -1270,7 +1284,8 @@ export default function IndexStudents({
 
                                 <div>
                                     <InputLabel
-                                        value={t("الرقم المدني") + " *"}
+                                                value={t("Civil ID") + " *"}
+                                                className="mb-2 font-bold text-gray-700 dark:text-gray-300"
                                     />
                                     <TextInput
                                         value={studentForm.data.national_id}
@@ -1280,7 +1295,7 @@ export default function IndexStudents({
                                                 e.target.value
                                             )
                                         }
-                                        className="w-full"
+                                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                         required
                                     />
                                     <InputError
@@ -1289,7 +1304,7 @@ export default function IndexStudents({
                                 </div>
 
                                 <div>
-                                    <InputLabel value={t("Gender") + " *"} />
+                                            <InputLabel value={t("Gender") + " *"} className="mb-2 font-bold text-gray-700 dark:text-gray-300" />
                                     <select
                                         value={studentForm.data.gender}
                                         onChange={(e) =>
@@ -1298,7 +1313,7 @@ export default function IndexStudents({
                                                 e.target.value
                                             )
                                         }
-                                        className="w-full border-gray-300 rounded-md shadow-sm dark:border-gray-700 dark:bg-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+                                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                     >
                                         <option value="male">
                                             {t("Male")}
@@ -1313,7 +1328,7 @@ export default function IndexStudents({
                                 </div>
 
                                 <div>
-                                    <InputLabel value={t("Class") + " *"} />
+                                            <InputLabel value={t("Class") + " *"} className="mb-2 font-bold text-gray-700 dark:text-gray-300" />
                                     <select
                                         value={studentForm.data.classroom_id}
                                         onChange={(e) =>
@@ -1322,7 +1337,7 @@ export default function IndexStudents({
                                                 e.target.value
                                             )
                                         }
-                                        className="w-full border-gray-300 rounded-md shadow-sm dark:border-gray-700 dark:bg-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+                                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                                         required
                                     >
                                         <option value="">
@@ -1344,7 +1359,7 @@ export default function IndexStudents({
                                 {/* صورة الطالب */}
                                 <div className="md:col-span-2">
                                     <InputLabel value={t("Student Photo")} />
-                                    <div className="relative flex flex-col items-center justify-center gap-4 p-6 transition-colors border-2 border-gray-300 border-dashed cursor-pointer dark:border-gray-600 rounded-xl hover:border-blue-500 dark:hover:border-blue-400">
+                                            <div className="relative flex flex-col items-center justify-center gap-4 p-6 transition-colors border-2 border-gray-300 border-dashed cursor-pointer dark:border-gray-600 rounded-[25px] hover:border-[#0e7490] dark:hover:border-cyan-400">
                                         {studentForm.data.image ||
                                         studentImagePreview ? (
                                             <div className="flex items-center w-full gap-4">
@@ -1362,14 +1377,14 @@ export default function IndexStudents({
                                                                 : "")
                                                         }
                                                         className="object-cover w-full h-full"
-                                                        alt={t("صورة الطالب")}
+                                                                    alt={t("Student Photo")}
                                                     />
                                                 </div>
                                                 <div className="flex-1">
                                                     <p className="font-medium text-gray-900 dark:text-white">
                                                         {studentForm.data.image
                                                             ?.name ||
-                                                            t("صورة الطالب")}
+                                                                        t("Student Photo")}
                                                     </p>
                                                     <button
                                                         type="button"
@@ -1378,7 +1393,7 @@ export default function IndexStudents({
                                                         }
                                                         className="mt-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                                                     >
-                                                        {t("إزالة")}
+                                                                    {t("Remove")}
                                                     </button>
                                                 </div>
                                             </div>
@@ -1390,11 +1405,11 @@ export default function IndexStudents({
                                                 <div className="text-center">
                                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                                         {t(
-                                                            "انقر لرفع صورة الطالب"
+                                                            "Click to upload student photo"
                                                         )}
                                                     </p>
                                                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                        PNG, JPG حتى 5MB
+                                                                    PNG, JPG {t("up to 5MB")}
                                                     </p>
                                                 </div>
                                                 <input
@@ -1414,48 +1429,63 @@ export default function IndexStudents({
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-gray-100 dark:border-gray-700">
+                                    <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100 dark:border-gray-700">
                                 {!isEditing && (
-                                    <SecondaryButton onClick={() => setStep(1)}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setStep(1)}
+                                                className="px-6 py-3 font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-[25px] transition-all"
+                                            >
                                         {t("Back")}
-                                    </SecondaryButton>
+                                            </button>
                                 )}
-                                <SecondaryButton onClick={closeModal}>
+                                        <button
+                                            type="button"
+                                            onClick={closeModal}
+                                            className="px-6 py-3 font-bold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-[25px] transition-all border border-gray-200 dark:border-gray-600"
+                                        >
                                     {t("Cancel")}
-                                </SecondaryButton>
-                                <PrimaryButton
+                                        </button>
+                                        <button
+                                            type="submit"
                                     disabled={studentForm.processing}
+                                            className="px-8 py-3 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
                                 >
                                     {isEditing
                                         ? t("Save Changes")
                                         : t("Enroll Student")}
-                                </PrimaryButton>
+                                        </button>
                             </div>
                         </form>
-                    )}
+                            )}
+                        </div>
+                    </div>
                 </div>
-            </Modal>
+            )}
 
             {/* Delete Modal */}
             {showDeleteModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-                    <div className="w-full max-w-md p-6 bg-white border border-gray-200 shadow-2xl dark:bg-gray-800 rounded-2xl dark:border-gray-700">
-                        <h3 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">
-                            {t("Confirm Deletion")}
-                        </h3>
-                        <p className="mb-6 text-gray-500 dark:text-gray-400">
-                            {t("Are you sure you want to delete this student?")}
-                        </p>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fadeIn">
+                    <div className="w-full max-w-md p-8 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-xl rounded-[30px]">
+                        <div className="text-center mb-6">
+                            <div className="text-6xl mb-4">⚠️</div>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                                {t("Confirm Deletion")}
+                            </h3>
+                            <p className="text-gray-500 dark:text-gray-400">
+                                {t("Are you sure you want to delete this student?")}
+                            </p>
+                        </div>
                         <div className="flex justify-end gap-3">
                             <button
                                 onClick={() => setShowDeleteModal(false)}
-                                className="px-4 py-2 font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl"
+                                className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-[25px] transition-all"
                             >
                                 {t("Cancel")}
                             </button>
                             <button
                                 onClick={handleDelete}
-                                className="px-4 py-2 font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl"
+                                className="px-6 py-3 font-bold text-white bg-red-600 hover:bg-red-700 rounded-[25px] shadow-lg hover:shadow-xl transition-all"
                             >
                                 {t("Yes, Delete")}
                             </button>
