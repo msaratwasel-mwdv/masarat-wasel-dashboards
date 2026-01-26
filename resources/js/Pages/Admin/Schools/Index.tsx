@@ -1,6 +1,13 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, Link, router } from "@inertiajs/react";
-import { useTheme } from "@/Contexts/ThemeContext"; // تأكد من المسار الصحيح
+import { Head, Link, useForm } from "@inertiajs/react";
+import { useTheme } from "@/Contexts/ThemeContext";
+import { useState } from "react";
+import Modal from "@/Components/Modal";
+import InputLabel from "@/Components/InputLabel";
+import TextInput from "@/Components/TextInput";
+import InputError from "@/Components/InputError";
+import PrimaryButton from "@/Components/PrimaryButton";
+import SecondaryButton from "@/Components/SecondaryButton";
 
 // 1. تعريف شكل البيانات القادمة من الـ DB
 interface School {
@@ -16,6 +23,55 @@ interface School {
 export default function SchoolsIndex({ schools }: { schools: School[] }) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
+
+  // --- State Management ---
+  const [modalState, setModalState] = useState<{
+    type: "add" | "edit" | null;
+    school: School | null;
+  }>({ type: null, school: null });
+
+  // --- Form Handling ---
+  const { data, setData, post, put, processing, errors, reset, clearErrors } =
+    useForm({
+      name: "",
+      location: "",
+      status: "Active",
+      has_transport: true,
+      has_attendance: true,
+    });
+
+  // --- Handlers ---
+  const openModal = (type: "add" | "edit", school: School | null = null) => {
+    setModalState({ type, school });
+    clearErrors();
+    if (type === "edit" && school) {
+      setData({
+        name: school.name,
+        location: school.location,
+        status: school.status,
+        has_transport: school.has_transport === 1,
+        has_attendance: school.has_attendance === 1,
+      });
+    } else {
+      reset();
+    }
+  };
+
+  const closeModal = () => {
+    setModalState({ type: null, school: null });
+    reset();
+  };
+
+  const submitForm = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (modalState.type === "add") {
+      post(route("admin.schools.store"), { onSuccess: closeModal });
+    } else if (modalState.type === "edit" && modalState.school) {
+      put(route("admin.schools.update", modalState.school.id), {
+        onSuccess: closeModal,
+      });
+    }
+  };
 
   return (
     <AuthenticatedLayout
@@ -54,8 +110,8 @@ export default function SchoolsIndex({ schools }: { schools: School[] }) {
           </p>
         </div>
 
-        <Link
-          href={route("admin.schools.create")}
+        <PrimaryButton
+          onClick={() => openModal("add")}
           className={`flex items-center px-6 py-3 bg-brand-yellow text-brand-dark font-bold rounded-full shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 ${
             isRTL ? "flex-row-reverse" : ""
           }`}
@@ -74,7 +130,7 @@ export default function SchoolsIndex({ schools }: { schools: School[] }) {
             />
           </svg>
           {isRTL ? "تسجيل مدرسة جديدة" : "Register New School"}
-        </Link>
+        </PrimaryButton>
       </div>
 
       {/* --- Schools Grid --- */}
@@ -434,8 +490,8 @@ export default function SchoolsIndex({ schools }: { schools: School[] }) {
                 </Link>
 
                 {/* Edit Button */}
-                <Link
-                  href={route("admin.schools.edit", school.id)}
+                <button
+                  onClick={() => openModal("edit", school)}
                   className="flex flex-col items-center justify-center text-gray-400 hover:text-brand-yellow transition-colors group"
                 >
                   <div
@@ -462,7 +518,7 @@ export default function SchoolsIndex({ schools }: { schools: School[] }) {
                   <span className="text-[10px] font-bold uppercase tracking-wide">
                     {isRTL ? "تعديل" : "Edit"}
                   </span>
-                </Link>
+                </button>
 
                 {/* Delete Button */}
                 <button
@@ -540,6 +596,202 @@ export default function SchoolsIndex({ schools }: { schools: School[] }) {
           ))
         )}
       </div>
+
+      {/* --- Add/Edit Modal --- */}
+      <Modal
+        show={modalState.type !== null}
+        onClose={closeModal}
+        maxWidth="2xl"
+      >
+        <div className={`flex flex-col ${isDark ? "bg-gray-800" : "bg-white"}`}>
+          {/* Header */}
+          <div
+            className={`p-6 border-b ${
+              isDark
+                ? "border-gray-700 bg-gray-900/50"
+                : "bg-gray-50 border-gray-200"
+            }`}
+          >
+            <div
+              className={`flex justify-between items-center ${
+                isRTL ? "flex-row-reverse" : ""
+              }`}
+            >
+              <h2
+                className={`text-xl font-black tracking-tight ${
+                  isDark ? "text-white" : "text-gray-900"
+                }`}
+              >
+                {modalState.type === "edit"
+                  ? isRTL
+                    ? "تحديث بيانات المدرسة"
+                    : "Update School Details"
+                  : isRTL
+                  ? "تسجيل مدرسة جديدة"
+                  : "Register New School"}
+              </h2>
+              {modalState.type === "edit" && (
+                <span className="text-xs font-bold px-2 py-1 rounded bg-brand-yellow/20 text-brand-navy border border-brand-yellow/50">
+                  ID: {modalState.school?.id}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Form Content */}
+          <div className="p-6">
+            <form onSubmit={submitForm} className="space-y-6">
+              {/* Name & Location */}
+              <div
+                className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${
+                  isRTL ? "rtl" : ""
+                }`}
+              >
+                <div className={isRTL ? "text-right" : ""}>
+                  <InputLabel value={isRTL ? "اسم المدرسة" : "School Name"} />
+                  <TextInput
+                    value={data.name}
+                    onChange={(e) => setData("name", e.target.value)}
+                    className="w-full mt-1"
+                    placeholder={
+                      isRTL
+                        ? "مثال: مدرسة الأفق الدولية"
+                        : "e.g. Horizon Academy"
+                    }
+                  />
+                  <InputError message={errors.name} className="mt-1" />
+                </div>
+                <div className={isRTL ? "text-right" : ""}>
+                  <InputLabel
+                    value={isRTL ? "الموقع / المدينة" : "Location / City"}
+                  />
+                  <TextInput
+                    value={data.location}
+                    onChange={(e) => setData("location", e.target.value)}
+                    className="w-full mt-1"
+                    placeholder={isRTL ? "مثال: دبي" : "e.g. Dubai"}
+                  />
+                  <InputError message={errors.location} className="mt-1" />
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className={isRTL ? "text-right" : ""}>
+                <InputLabel value={isRTL ? "حالة المدرسة" : "School Status"} />
+                <select
+                  value={data.status}
+                  onChange={(e) => setData("status", e.target.value)}
+                  className={`w-full rounded-lg mt-1 border-gray-300 focus:border-brand-yellow focus:ring-brand-yellow shadow-sm ${
+                    isDark
+                      ? "bg-gray-700 border-gray-600 text-white"
+                      : "bg-white border-gray-300"
+                  }`}
+                >
+                  <option value="Active">{isRTL ? "نشط" : "Active"}</option>
+                  <option value="Inactive">
+                    {isRTL ? "غير نشط" : "Inactive"}
+                  </option>
+                </select>
+              </div>
+
+              {/* Services Section */}
+              <div
+                className={`p-4 rounded-xl border ${
+                  isDark
+                    ? "bg-gray-700/30 border-gray-600"
+                    : "bg-gray-50 border-gray-200"
+                }`}
+              >
+                <h3
+                  className={`text-xs font-bold uppercase tracking-widest mb-4 ${
+                    isDark ? "text-gray-400" : "text-gray-500"
+                  } ${isRTL ? "text-right" : ""}`}
+                >
+                  {isRTL ? "الخدمات المفعلة" : "Enabled Services"}
+                </h3>
+                <div className="space-y-3">
+                  <label
+                    className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition border ${
+                      data.has_transport
+                        ? isDark
+                          ? "bg-blue-900/20 border-blue-800"
+                          : "bg-blue-50 border-blue-200"
+                        : "border-transparent hover:bg-gray-100 dark:hover:bg-gray-700"
+                    } ${isRTL ? "flex-row-reverse space-x-reverse" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={data.has_transport}
+                      onChange={(e) =>
+                        setData("has_transport", e.target.checked)
+                      }
+                      className="rounded text-brand-yellow focus:ring-brand-yellow w-5 h-5 border-gray-300"
+                    />
+                    <span
+                      className={`font-bold ${
+                        isDark ? "text-gray-200" : "text-gray-800"
+                      }`}
+                    >
+                      {isRTL
+                        ? "نظام النقل والتتبع"
+                        : "Transport & Tracking System"}
+                    </span>
+                  </label>
+
+                  <label
+                    className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition border ${
+                      data.has_attendance
+                        ? isDark
+                          ? "bg-green-900/20 border-green-800"
+                          : "bg-green-50 border-green-200"
+                        : "border-transparent hover:bg-gray-100 dark:hover:bg-gray-700"
+                    } ${isRTL ? "flex-row-reverse space-x-reverse" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={data.has_attendance}
+                      onChange={(e) =>
+                        setData("has_attendance", e.target.checked)
+                      }
+                      className="rounded text-green-500 focus:ring-green-500 w-5 h-5 border-gray-300"
+                    />
+                    <span
+                      className={`font-bold ${
+                        isDark ? "text-gray-200" : "text-gray-800"
+                      }`}
+                    >
+                      {isRTL ? "نظام الحضور والغياب" : "Attendance System"}
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div
+                className={`flex gap-3 pt-4 border-t ${
+                  isDark ? "border-gray-700" : "border-gray-100"
+                } ${isRTL ? "flex-row-reverse" : "justify-end"}`}
+              >
+                <SecondaryButton onClick={closeModal}>
+                  {isRTL ? "إلغاء" : "Cancel"}
+                </SecondaryButton>
+                <PrimaryButton
+                  disabled={processing}
+                  className="bg-brand-dark px-8"
+                >
+                  {processing
+                    ? isRTL
+                      ? "جاري الحفظ..."
+                      : "Saving..."
+                    : isRTL
+                    ? "حفظ البيانات"
+                    : "Save School"}
+                </PrimaryButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Modal>
     </AuthenticatedLayout>
   );
 }

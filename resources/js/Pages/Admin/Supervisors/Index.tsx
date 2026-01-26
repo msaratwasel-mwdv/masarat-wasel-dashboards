@@ -7,6 +7,7 @@ import TextInput from "@/Components/TextInput";
 import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
+import { useTheme } from "@/Contexts/ThemeContext";
 
 // تعريف نوع البيانات
 interface Supervisor {
@@ -27,6 +28,9 @@ export default function SupervisorsIndex({
 }: {
   supervisors: Supervisor[];
 }) {
+  const { isRTL, theme } = useTheme();
+  const isDark = theme === "dark";
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<number | null>(null);
@@ -85,7 +89,13 @@ export default function SupervisorsIndex({
   };
 
   const deleteSupervisor = (id: number) => {
-    if (confirm("Are you sure? This action cannot be undone.")) {
+    if (
+      confirm(
+        isRTL
+          ? "هل أنت متأكد؟ لا يمكن التراجع عن هذا الإجراء."
+          : "Are you sure? This action cannot be undone."
+      )
+    ) {
       router.delete(route("admin.supervisors.destroy", id));
     }
   };
@@ -93,120 +103,255 @@ export default function SupervisorsIndex({
   return (
     <AuthenticatedLayout
       header={
-        <h2 className="font-bold text-xl text-gray-800">
-          Supervisors Management
+        <h2
+          className={`font-bold text-xl ${
+            isDark ? "text-gray-200" : "text-gray-800"
+          }`}
+        >
+          {isRTL ? "إدارة المشرفين" : "Supervisors Management"}
         </h2>
       }
     >
-      <Head title="Supervisors" />
+      <Head title={isRTL ? "المشرفين" : "Supervisors"} />
 
-      <div className="py-6">
+      <div className={`py-6 dir-${isRTL ? "rtl" : "ltr"}`}>
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-brand-dark">
-                Bus Supervisors
+          <div
+            className={`flex justify-between items-center mb-6 ${
+              isRTL ? "flex-row-reverse" : ""
+            }`}
+          >
+            <div className={isRTL ? "text-right" : ""}>
+              <h1
+                className={`text-2xl font-bold ${
+                  isDark ? "text-white" : "text-brand-dark"
+                }`}
+              >
+                {isRTL ? "مشرفي الحافلات" : "Bus Supervisors"}
               </h1>
-              <p className="text-sm text-gray-500">
-                Manage supervisors and emergency contacts.
+              <p
+                className={`text-sm ${
+                  isDark ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
+                {isRTL
+                  ? "إدارة المشرفين وبيانات الطوارئ."
+                  : "Manage supervisors and emergency contacts."}
               </p>
             </div>
             <PrimaryButton
               onClick={openAddModal}
               className="bg-brand-yellow text-brand-dark hover:bg-yellow-500"
             >
-              + Add New Supervisor
+              {isRTL ? "+ إضافة مشرف جديد" : "+ Add New Supervisor"}
             </PrimaryButton>
           </div>
 
           {/* Table */}
-          <div className="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div
+            className={`${
+              isDark
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-100"
+            } overflow-hidden shadow-sm sm:rounded-2xl border`}
+          >
+            <table
+              className={`min-w-full divide-y ${
+                isDark ? "divide-gray-700" : "divide-gray-200"
+              }`}
+            >
+              <thead className={`${isDark ? "bg-gray-900/50" : "bg-gray-50"}`}>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Supervisor
+                  <th
+                    className={`px-6 py-3 text-xs font-bold ${
+                      isDark ? "text-gray-400" : "text-gray-500"
+                    } uppercase tracking-wider ${
+                      isRTL ? "text-right" : "text-left"
+                    }`}
+                  >
+                    {isRTL ? "المشرف" : "Supervisor"}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Contact
+                  <th
+                    className={`px-6 py-3 text-xs font-bold ${
+                      isDark ? "text-gray-400" : "text-gray-500"
+                    } uppercase tracking-wider ${
+                      isRTL ? "text-right" : "text-left"
+                    }`}
+                  >
+                    {isRTL ? "الاتصال" : "Contact"}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Emergency Contact
+                  <th
+                    className={`px-6 py-3 text-xs font-bold ${
+                      isDark ? "text-gray-400" : "text-gray-500"
+                    } uppercase tracking-wider ${
+                      isRTL ? "text-right" : "text-left"
+                    }`}
+                  >
+                    {isRTL ? "اتصال الطوارئ" : "Emergency Contact"}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Status
+                  <th
+                    className={`px-6 py-3 text-xs font-bold ${
+                      isDark ? "text-gray-400" : "text-gray-500"
+                    } uppercase tracking-wider ${
+                      isRTL ? "text-right" : "text-left"
+                    }`}
+                  >
+                    {isRTL ? "الحالة" : "Status"}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Actions
+                  <th
+                    className={`px-6 py-3 text-xs font-bold ${
+                      isDark ? "text-gray-400" : "text-gray-500"
+                    } uppercase tracking-wider ${
+                      isRTL ? "text-left" : "text-right"
+                    }`}
+                  >
+                    {isRTL ? "الإجراءات" : "Actions"}
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody
+                className={`${
+                  isDark
+                    ? "bg-gray-800 divide-gray-700"
+                    : "bg-white divide-gray-200"
+                } divide-y`}
+              >
                 {supervisors.length === 0 ? (
                   <tr>
                     <td
                       colSpan={5}
-                      className="px-6 py-10 text-center text-gray-400"
+                      className={`px-6 py-10 text-center ${
+                        isDark ? "text-gray-500" : "text-gray-400"
+                      }`}
                     >
-                      No supervisors found.
+                      {isRTL ? "لا يوجد مشرفين." : "No supervisors found."}
                     </td>
                   </tr>
                 ) : (
                   supervisors.map((sup) => (
-                    <tr key={sup.id} className="hover:bg-gray-50 transition">
+                    <tr
+                      key={sup.id}
+                      className={`${
+                        isDark ? "hover:bg-gray-700/50" : "hover:bg-gray-50"
+                      } transition`}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
+                        <div
+                          className={`flex items-center ${
+                            isRTL ? "flex-row-reverse" : ""
+                          }`}
+                        >
+                          <div
+                            className={`flex-shrink-0 h-10 w-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold ${
+                              isRTL ? "ml-4" : "mr-4"
+                            }`}
+                          >
                             {sup.name.charAt(0)}
                           </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
+                          <div className={isRTL ? "text-right" : "text-left"}>
+                            <div
+                              className={`text-sm font-medium ${
+                                isDark ? "text-white" : "text-gray-900"
+                              }`}
+                            >
                               {sup.name}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div
+                              className={`text-xs ${
+                                isDark ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
                               {sup.user_code}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{sup.phone}</div>
-                        <div className="text-xs text-gray-500">{sup.email}</div>
+                        <div
+                          className={`text-sm ${
+                            isDark ? "text-gray-300" : "text-gray-900"
+                          } ${isRTL ? "text-right" : "text-left"}`}
+                        >
+                          {sup.phone}
+                        </div>
+                        <div
+                          className={`text-xs ${
+                            isDark ? "text-gray-500" : "text-gray-500"
+                          } ${isRTL ? "text-right" : "text-left"}`}
+                        >
+                          {sup.email}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div
+                          className={`text-sm ${
+                            isDark ? "text-gray-300" : "text-gray-900"
+                          } ${isRTL ? "text-right" : "text-left"}`}
+                        >
                           {sup.supervisor_profile?.emergency_contact_name}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div
+                          className={`text-xs ${
+                            isDark ? "text-gray-500" : "text-gray-500"
+                          } ${isRTL ? "text-right" : "text-left"}`}
+                        >
                           {sup.supervisor_profile?.emergency_contact_phone}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td
+                        className={`px-6 py-4 whitespace-nowrap ${
+                          isRTL ? "text-right" : "text-left"
+                        }`}
+                      >
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
                                                     ${
                                                       sup.supervisor_profile
                                                         ?.status === "Active"
-                                                        ? "bg-green-100 text-green-800"
+                                                        ? isDark
+                                                          ? "bg-green-900/30 text-green-400"
+                                                          : "bg-green-100 text-green-800"
+                                                        : isDark
+                                                        ? "bg-gray-700 text-gray-400"
                                                         : "bg-gray-100 text-gray-800"
                                                     }`}
                         >
-                          {sup.supervisor_profile?.status}
+                          {isRTL
+                            ? ["Active", "Trainee"].includes(
+                                sup.supervisor_profile?.status || ""
+                              )
+                              ? sup.supervisor_profile?.status === "Active"
+                                ? "نشط"
+                                : "متدرب"
+                              : sup.supervisor_profile?.status
+                            : sup.supervisor_profile?.status || "Active"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td
+                        className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                          isRTL ? "text-left" : "text-right"
+                        }`}
+                      >
                         <button
                           onClick={() => openEditModal(sup)}
-                          className="text-indigo-600 hover:text-indigo-900 mr-4 font-bold"
+                          className={`text-indigo-600 hover:text-indigo-900 font-bold ${
+                            isRTL ? "ml-4" : "mr-4"
+                          } ${
+                            isDark
+                              ? "text-indigo-400 hover:text-indigo-300"
+                              : ""
+                          }`}
                         >
-                          Edit
+                          {isRTL ? "تعديل" : "Edit"}
                         </button>
                         <button
                           onClick={() => deleteSupervisor(sup.id)}
-                          className="text-red-600 hover:text-red-900 font-bold"
+                          className={`text-red-600 hover:text-red-900 font-bold ${
+                            isDark ? "text-red-400 hover:text-red-300" : ""
+                          }`}
                         >
-                          Delete
+                          {isRTL ? "حذف" : "Delete"}
                         </button>
                       </td>
                     </tr>
@@ -218,29 +363,49 @@ export default function SupervisorsIndex({
 
           {/* --- MODAL --- */}
           <Modal show={isModalOpen} onClose={closeModal}>
-            <div className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">
-                {isEditing ? "Edit Supervisor" : "New Supervisor"}
+            <div
+              className={`p-6 ${
+                isDark ? "bg-gray-800 text-gray-200" : "bg-white"
+              }`}
+            >
+              <h2
+                className={`text-lg font-medium mb-4 ${
+                  isDark ? "text-white" : "text-gray-900"
+                } ${isRTL ? "text-right" : ""}`}
+              >
+                {isEditing
+                  ? isRTL
+                    ? "تعديل بيانات المشرف"
+                    : "Edit Supervisor"
+                  : isRTL
+                  ? "تسجيل مشرف جديد"
+                  : "New Supervisor"}
               </h2>
 
               <form onSubmit={submit} className="space-y-4">
                 {/* Name */}
-                <div>
-                  <InputLabel htmlFor="name" value="Full Name" />
+                <div className={isRTL ? "text-right" : ""}>
+                  <InputLabel
+                    htmlFor="name"
+                    value={isRTL ? "الاسم الكامل" : "Full Name"}
+                  />
                   <TextInput
                     id="name"
                     value={data.name}
                     onChange={(e) => setData("name", e.target.value)}
                     className="mt-1 block w-full"
-                    placeholder="Supervisor Name"
+                    placeholder={isRTL ? "اسم المشرف" : "Supervisor Name"}
                   />
                   <InputError message={errors.name} className="mt-2" />
                 </div>
 
                 {/* Phone & Email */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <InputLabel htmlFor="phone" value="Phone Number" />
+                <div className={`grid grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}>
+                  <div className={isRTL ? "text-right" : ""}>
+                    <InputLabel
+                      htmlFor="phone"
+                      value={isRTL ? "رقم الهاتف" : "Phone Number"}
+                    />
                     <TextInput
                       id="phone"
                       value={data.phone}
@@ -249,8 +414,11 @@ export default function SupervisorsIndex({
                     />
                     <InputError message={errors.phone} className="mt-2" />
                   </div>
-                  <div>
-                    <InputLabel htmlFor="email" value="Email" />
+                  <div className={isRTL ? "text-right" : ""}>
+                    <InputLabel
+                      htmlFor="email"
+                      value={isRTL ? "البريد الإلكتروني" : "Email"}
+                    />
                     <TextInput
                       id="email"
                       type="email"
@@ -263,35 +431,61 @@ export default function SupervisorsIndex({
                 </div>
 
                 {/* Emergency Contact Section */}
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                  <h3 className="text-xs font-bold text-purple-700 uppercase tracking-wide mb-3">
-                    Emergency Contact
+                <div
+                  className={`p-4 rounded-lg border ${
+                    isDark
+                      ? "bg-purple-900/20 border-purple-800"
+                      : "bg-purple-50 border-purple-100"
+                  }`}
+                >
+                  <h3
+                    className={`text-xs font-bold uppercase tracking-wide mb-3 ${
+                      isDark ? "text-purple-400" : "text-purple-700"
+                    } ${isRTL ? "text-right" : ""}`}
+                  >
+                    {isRTL ? "بيانات الطوارئ" : "Emergency Contact"}
                   </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <InputLabel htmlFor="ec_name" value="Contact Name" />
+                  <div
+                    className={`grid grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}
+                  >
+                    <div className={isRTL ? "text-right" : ""}>
+                      <InputLabel
+                        htmlFor="ec_name"
+                        value={isRTL ? "اسم جهة الاتصال" : "Contact Name"}
+                      />
                       <TextInput
                         id="ec_name"
                         value={data.emergency_contact_name}
                         onChange={(e) =>
                           setData("emergency_contact_name", e.target.value)
                         }
-                        className="mt-1 block w-full bg-white"
+                        className={`mt-1 block w-full ${
+                          isDark
+                            ? "bg-gray-700 border-gray-600 text-white"
+                            : "bg-white"
+                        }`}
                       />
                       <InputError
                         message={errors.emergency_contact_name}
                         className="mt-2"
                       />
                     </div>
-                    <div>
-                      <InputLabel htmlFor="ec_phone" value="Contact Phone" />
+                    <div className={isRTL ? "text-right" : ""}>
+                      <InputLabel
+                        htmlFor="ec_phone"
+                        value={isRTL ? "رقم هاتف الطوارئ" : "Contact Phone"}
+                      />
                       <TextInput
                         id="ec_phone"
                         value={data.emergency_contact_phone}
                         onChange={(e) =>
                           setData("emergency_contact_phone", e.target.value)
                         }
-                        className="mt-1 block w-full bg-white"
+                        className={`mt-1 block w-full ${
+                          isDark
+                            ? "bg-gray-700 border-gray-600 text-white"
+                            : "bg-white"
+                        }`}
                       />
                       <InputError
                         message={errors.emergency_contact_phone}
@@ -303,29 +497,54 @@ export default function SupervisorsIndex({
 
                 {/* Status (Only show when editing) */}
                 {isEditing && (
-                  <div>
-                    <InputLabel htmlFor="status" value="Status" />
+                  <div className={isRTL ? "text-right" : ""}>
+                    <InputLabel
+                      htmlFor="status"
+                      value={isRTL ? "الحالة" : "Status"}
+                    />
                     <select
                       id="status"
-                      className="mt-1 block w-full border-gray-300 focus:border-brand-yellow focus:ring-brand-yellow rounded-md shadow-sm"
+                      className={`mt-1 block w-full rounded-md shadow-sm focus:border-brand-yellow focus:ring-brand-yellow ${
+                        isDark
+                          ? "bg-gray-800 border-gray-600 text-white"
+                          : "border-gray-300"
+                      }`}
                       value={data.status}
                       onChange={(e) => setData("status", e.target.value)}
                     >
-                      <option value="Trainee">Trainee</option>
-                      <option value="Active">Active</option>
-                      <option value="On Leave">On Leave</option>
-                      <option value="Inactive">Inactive</option>
+                      <option value="Trainee">
+                        {isRTL ? "متدرب" : "Trainee"}
+                      </option>
+                      <option value="Active">{isRTL ? "نشط" : "Active"}</option>
+                      <option value="On Leave">
+                        {isRTL ? "في إجازة" : "On Leave"}
+                      </option>
+                      <option value="Inactive">
+                        {isRTL ? "غير نشط" : "Inactive"}
+                      </option>
                     </select>
                   </div>
                 )}
 
-                <div className="mt-6 flex justify-end gap-3">
-                  <SecondaryButton onClick={closeModal}>Cancel</SecondaryButton>
+                <div
+                  className={`mt-6 flex gap-3 ${
+                    isRTL ? "flex-row-reverse" : "justify-end"
+                  }`}
+                >
+                  <SecondaryButton onClick={closeModal}>
+                    {isRTL ? "إلغاء" : "Cancel"}
+                  </SecondaryButton>
                   <PrimaryButton
                     disabled={processing}
                     className="bg-brand-dark"
                   >
-                    {isEditing ? "Update Supervisor" : "Save Supervisor"}
+                    {isEditing
+                      ? isRTL
+                        ? "تحديث المشرف"
+                        : "Update Supervisor"
+                      : isRTL
+                      ? "حفظ المشرف"
+                      : "Save Supervisor"}
                   </PrimaryButton>
                 </div>
               </form>

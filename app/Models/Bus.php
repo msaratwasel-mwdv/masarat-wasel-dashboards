@@ -72,6 +72,11 @@ class Bus extends Model
     {
         return $this->hasMany(TripSchedule::class);
     }
+    public function documents()
+    {
+        return $this->hasMany(BusDocument::class);
+    }
+    // --- Helper Methods ---
 
     /**
      * توليد كود الباص تلقائياً

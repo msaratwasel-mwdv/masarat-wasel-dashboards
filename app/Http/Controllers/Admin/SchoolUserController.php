@@ -39,9 +39,67 @@ class SchoolUserController extends Controller
             'status' => 'active',
         ]);
 
-        return redirect()->route('admin.schools.index')
-        ->with('message', 'تم تعيين مدير للمدرسة بنجاح');
+        return redirect()->route('admin.schools.show', $school->id)
+            ->with('message', 'تم تعيين مدير للمدرسة بنجاح');
     }
 
-   
+    // عرض صفحة تعديل مدير المدرسة
+    public function edit(School $school, User $user)
+    {
+        // التأكد من أن المستخدم تابع لهذه المدرسة
+        if ($user->school_id !== $school->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        return Inertia::render('Admin/SchoolUsers/Edit', [
+            'school' => $school,
+            'user' => $user
+        ]);
+    }
+
+    // تحديث بيانات مدير المدرسة
+    public function update(Request $request, School $school, User $user)
+    {
+        // التأكد من أن المستخدم تابع لهذه المدرسة
+        if ($user->school_id !== $school->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'phone' => 'required|string|max:20',
+            'password' => 'nullable|min:8',
+        ]);
+
+        $updateData = [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+        ];
+
+        // تحديث كلمة المرور فقط إذا تم إدخالها
+        if (!empty($validated['password'])) {
+            $updateData['password'] = Hash::make($validated['password']);
+        }
+
+        $user->update($updateData);
+
+        return redirect()->route('admin.schools.show', $school->id)
+            ->with('message', 'تم تحديث بيانات المدير بنجاح');
+    }
+
+    // حذف مدير المدرسة
+    public function destroy(School $school, User $user)
+    {
+        // التأكد من أن المستخدم تابع لهذه المدرسة
+        if ($user->school_id !== $school->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $user->delete();
+
+        return redirect()->route('admin.schools.show', $school->id)
+            ->with('message', 'تم حذف المدير بنجاح');
+    }
 }

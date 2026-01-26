@@ -35,17 +35,44 @@ class SchoolController extends Controller
 
     public function show(School $school)
     {
+        // تحميل المشرفين التابعين للمدرسة
         $school->load(['users' => function ($query) {
             $query->where('role', 'school_admin');
         }]);
 
+        // حساب الإحصائيات الحقيقية
+        $stats = [
+            // عدد الطلاب التابعين للمدرسة
+            'students_count' => \App\Models\Student::where('school_id', $school->id)->count(),
+
+            // عدد الباصات المخصصة للمدرسة
+            'buses_count' => \App\Models\Bus::where('school_id', $school->id)->count(),
+            'active_buses' => \App\Models\Bus::where('school_id', $school->id)
+                ->where('status', 'active')
+                ->count(),
+            'maintenance_buses' => \App\Models\Bus::where('school_id', $school->id)
+                ->where('status', 'maintenance')
+                ->count(),
+
+            // عدد السائقين المخصصين لباصات هذه المدرسة
+            'drivers_count' => \App\Models\Bus::where('school_id', $school->id)
+                ->whereNotNull('driver_id')
+                ->distinct('driver_id')
+                ->count(),
+
+            // عدد المشرفين المخصصين لباصات هذه المدرسة
+            'supervisors_count' => \App\Models\Bus::where('school_id', $school->id)
+                ->whereNotNull('supervisor_id')
+                ->distinct('supervisor_id')
+                ->count(),
+
+            // عدد مدراء المدرسة
+            'admins_count' => $school->users->count(),
+        ];
+
         return Inertia::render('Admin/Schools/Show', [
             'school' => $school,
-            'stats' => [
-                'students_count' => 0,
-                'buses_count' => 0,
-                'drivers_count' => 0,
-            ]
+            'stats' => $stats
         ]);
     }
 

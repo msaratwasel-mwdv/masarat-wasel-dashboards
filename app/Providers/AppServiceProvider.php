@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Bus;
 use App\Models\Student;
+use App\Observers\BusObserver;
 use App\Policies\StudentPolicy;
 // ✅ 1. استيراد "البوابة" و "المودل" و "البوليسي"
 use Illuminate\Support\Facades\Gate;
@@ -36,5 +38,6 @@ class AppServiceProvider extends ServiceProvider
 
         // Register BusRequest Observer for Notifications
         \App\Models\BusRequest::observe(\App\Observers\BusRequestObserver::class);
+        Bus::observe(BusObserver::class);
     }
 }

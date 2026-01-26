@@ -38,8 +38,8 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "user",
   },
   {
-    label: isRTL ? "الإشعارات" : "Notifications",
-    route: "",
+    label: isRTL ? "المراقبه" : "assignmentHistory",
+    route: "admin.assignmentHistory",
     icon: "bell",
   },
   {

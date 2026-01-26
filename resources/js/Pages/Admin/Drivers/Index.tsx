@@ -8,6 +8,7 @@ import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton"; // زر إلغاء
 import { toast } from "react-toastify";
+import { useTheme } from "@/Contexts/ThemeContext";
 
 // تعريف نوع البيانات القادمة من الباك إند
 interface Driver {
@@ -25,6 +26,9 @@ interface Driver {
 }
 
 export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
+  const { isRTL, theme } = useTheme();
+  const isDark = theme === "dark";
+
   // --- State Management ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -78,20 +82,15 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
     if (isEditing && currentDriverId) {
       put(route("admin.drivers.update", currentDriverId), {
         onSuccess: () => {
-      toast("تم العديل بانجاح");
-            closeModal()
-        }
-
-            ,
+          toast(isRTL ? "تم التعديل بنجاح" : "Updated Successfully");
+          closeModal();
+        },
       });
     } else {
       post(route("admin.drivers.store"), {
         onSuccess: () => {
-      toast(
-        "تم الحفظ بانجاح"
-      );
-
-            closeModal()
+          toast(isRTL ? "تم الحفظ بنجاح" : "Saved Successfully");
+          closeModal();
         },
       });
     }
@@ -100,8 +99,11 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
   // الحذف
   const deleteDriver = (driverId: number) => {
     if (
-
-      toast("Are you sure you want to delete this driver? This action cannot be undone.")
+      confirm(
+        isRTL
+          ? "هل أنت متأكد من حذف هذا السائق؟ لا يمكن التراجع عن هذا الإجراء."
+          : "Are you sure you want to delete this driver? This action cannot be undone."
+      )
     ) {
       router.delete(route("admin.drivers.destroy", driverId));
     }
@@ -110,122 +112,253 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
   return (
     <AuthenticatedLayout
       header={
-        <h2 className="font-bold text-xl text-gray-800">Drivers Management</h2>
+        <h2
+          className={`font-bold text-xl ${
+            isDark ? "text-gray-200" : "text-gray-800"
+          }`}
+        >
+          {isRTL ? "إدارة السائقين" : "Drivers Management"}
+        </h2>
       }
     >
-      <Head title="Drivers" />
+      <Head title={isRTL ? "السائقين" : "Drivers"} />
 
-      <div className="py-6">
+      <div className={`py-6 dir-${isRTL ? "rtl" : "ltr"}`}>
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
           {/* Header: Title + Add Button */}
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-brand-dark">
-                Fleet Drivers
+          <div
+            className={`flex justify-between items-center mb-6 ${
+              isRTL ? "flex-row-reverse" : ""
+            }`}
+          >
+            <div className={isRTL ? "text-right" : ""}>
+              <h1
+                className={`text-2xl font-bold ${
+                  isDark ? "text-white" : "text-brand-dark"
+                }`}
+              >
+                {isRTL ? "سائقي الأسطول" : "Fleet Drivers"}
               </h1>
-              <p className="text-sm text-gray-500">
-                Manage your company drivers pool.
+              <p
+                className={`text-sm ${
+                  isDark ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
+                {isRTL
+                  ? "إدارة مجموعة السائقين الخاصة بالشركة."
+                  : "Manage your company drivers pool."}
               </p>
             </div>
             <PrimaryButton
               onClick={openAddModal}
               className="bg-brand-yellow text-brand-dark hover:bg-yellow-500"
             >
-              + Add New Driver
+              {isRTL ? "+ إضافة سائق جديد" : "+ Add New Driver"}
             </PrimaryButton>
           </div>
 
           {/* Drivers Table */}
-          <div className="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div
+            className={`${
+              isDark
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-100"
+            } overflow-hidden shadow-sm sm:rounded-2xl border`}
+          >
+            <table
+              className={`min-w-full divide-y ${
+                isDark ? "divide-gray-700" : "divide-gray-200"
+              }`}
+            >
+              <thead className={`${isDark ? "bg-gray-900/50" : "bg-gray-50"}`}>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Driver Info
+                  <th
+                    className={`px-6 py-3 text-xs font-bold ${
+                      isDark ? "text-gray-400" : "text-gray-500"
+                    } uppercase tracking-wider ${
+                      isRTL ? "text-right" : "text-left"
+                    }`}
+                  >
+                    {isRTL ? "بيانات السائق" : "Driver Info"}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Contact
+                  <th
+                    className={`px-6 py-3 text-xs font-bold ${
+                      isDark ? "text-gray-400" : "text-gray-500"
+                    } uppercase tracking-wider ${
+                      isRTL ? "text-right" : "text-left"
+                    }`}
+                  >
+                    {isRTL ? "معلومات الاتصال" : "Contact"}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    License
+                  <th
+                    className={`px-6 py-3 text-xs font-bold ${
+                      isDark ? "text-gray-400" : "text-gray-500"
+                    } uppercase tracking-wider ${
+                      isRTL ? "text-right" : "text-left"
+                    }`}
+                  >
+                    {isRTL ? "الرخص" : "License"}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Status
+                  <th
+                    className={`px-6 py-3 text-xs font-bold ${
+                      isDark ? "text-gray-400" : "text-gray-500"
+                    } uppercase tracking-wider ${
+                      isRTL ? "text-right" : "text-left"
+                    }`}
+                  >
+                    {isRTL ? "الحالة" : "Status"}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Actions
+                  <th
+                    className={`px-6 py-3 text-xs font-bold ${
+                      isDark ? "text-gray-400" : "text-gray-500"
+                    } uppercase tracking-wider ${
+                      isRTL ? "text-left" : "text-right"
+                    }`}
+                  >
+                    {isRTL ? "الإجراءات" : "Actions"}
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody
+                className={`${
+                  isDark
+                    ? "bg-gray-800 divide-gray-700"
+                    : "bg-white divide-gray-200"
+                } divide-y`}
+              >
                 {drivers.length === 0 ? (
                   <tr>
                     <td
                       colSpan={5}
-                      className="px-6 py-10 text-center text-gray-400"
+                      className={`px-6 py-10 text-center ${
+                        isDark ? "text-gray-500" : "text-gray-400"
+                      }`}
                     >
-                      No drivers found. Click "Add New Driver" to start.
+                      {isRTL
+                        ? "لا يوجد سائقين. اضغط على 'إضافة سائق جديد' للبدء."
+                        : 'No drivers found. Click "Add New Driver" to start.'}
                     </td>
                   </tr>
                 ) : (
                   drivers.map((driver) => (
-                    <tr key={driver.id} className="hover:bg-gray-50 transition">
+                    <tr
+                      key={driver.id}
+                      className={`${
+                        isDark ? "hover:bg-gray-700/50" : "hover:bg-gray-50"
+                      } transition`}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-brand-navy/10 text-brand-navy flex items-center justify-center font-bold">
+                        <div
+                          className={`flex items-center ${
+                            isRTL ? "flex-row-reverse" : ""
+                          }`}
+                        >
+                          <div
+                            className={`flex-shrink-0 h-10 w-10 rounded-full bg-brand-navy/10 text-brand-navy flex items-center justify-center font-bold ${
+                              isRTL ? "ml-4" : "mr-4"
+                            }`}
+                          >
                             {driver.name.charAt(0)}
                           </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
+                          <div className={isRTL ? "text-right" : "text-left"}>
+                            <div
+                              className={`text-sm font-medium ${
+                                isDark ? "text-white" : "text-gray-900"
+                              }`}
+                            >
                               {driver.name}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div
+                              className={`text-xs ${
+                                isDark ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
                               ID: {driver.national_id}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div
+                          className={`text-sm ${
+                            isDark ? "text-gray-300" : "text-gray-900"
+                          } ${isRTL ? "text-right" : "text-left"}`}
+                        >
                           {driver.phone}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div
+                          className={`text-xs ${
+                            isDark ? "text-gray-500" : "text-gray-500"
+                          } ${isRTL ? "text-right" : "text-left"}`}
+                        >
                           {driver.email}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div
+                          className={`text-sm ${
+                            isDark ? "text-gray-300" : "text-gray-900"
+                          } ${isRTL ? "text-right" : "text-left"}`}
+                        >
                           {driver.driver_profile?.license_number}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div
+                          className={`text-xs ${
+                            isDark ? "text-gray-500" : "text-gray-500"
+                          } ${isRTL ? "text-right" : "text-left"}`}
+                        >
                           Exp: {driver.driver_profile?.license_expiry_date}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td
+                        className={`px-6 py-4 whitespace-nowrap ${
+                          isRTL ? "text-right" : "text-left"
+                        }`}
+                      >
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
                                                     ${
                                                       driver.driver_profile
                                                         ?.status === "Active"
-                                                        ? "bg-green-100 text-green-800"
+                                                        ? isDark
+                                                          ? "bg-green-900/30 text-green-400"
+                                                          : "bg-green-100 text-green-800"
+                                                        : isDark
+                                                        ? "bg-yellow-900/30 text-yellow-400"
                                                         : "bg-yellow-100 text-yellow-800"
                                                     }`}
                         >
-                          {driver.driver_profile?.status || "N/A"}
+                          {isRTL
+                            ? driver.driver_profile?.status === "Active"
+                              ? "نشط"
+                              : driver.driver_profile?.status || "غير محدد"
+                            : driver.driver_profile?.status || "N/A"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td
+                        className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                          isRTL ? "text-left" : "text-right"
+                        }`}
+                      >
                         <button
                           onClick={() => openEditModal(driver)}
-                          className="text-indigo-600 hover:text-indigo-900 mr-4 font-bold"
+                          className={`text-indigo-600 hover:text-indigo-900 font-bold ${
+                            isRTL ? "ml-4" : "mr-4"
+                          } ${
+                            isDark
+                              ? "text-indigo-400 hover:text-indigo-300"
+                              : ""
+                          }`}
                         >
-                          Edit
+                          {isRTL ? "تعديل" : "Edit"}
                         </button>
                         <button
                           onClick={() => deleteDriver(driver.id)}
-                          className="text-red-600 hover:text-red-900 font-bold"
+                          className={`text-red-600 hover:text-red-900 font-bold ${
+                            isDark ? "text-red-400 hover:text-red-300" : ""
+                          }`}
                         >
-                          Delete
+                          {isRTL ? "حذف" : "Delete"}
                         </button>
                       </td>
                     </tr>
@@ -237,29 +370,49 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
 
           {/* --- MODAL FOR CREATE / EDIT --- */}
           <Modal show={isModalOpen} onClose={closeModal}>
-            <div className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">
-                {isEditing ? "Edit Driver Details" : "Register New Driver"}
+            <div
+              className={`p-6 ${
+                isDark ? "bg-gray-800 text-gray-200" : "bg-white"
+              }`}
+            >
+              <h2
+                className={`text-lg font-medium mb-4 ${
+                  isDark ? "text-white" : "text-gray-900"
+                } ${isRTL ? "text-right" : ""}`}
+              >
+                {isEditing
+                  ? isRTL
+                    ? "تعديل بيانات السائق"
+                    : "Edit Driver Details"
+                  : isRTL
+                  ? "تسجيل سائق جديد"
+                  : "Register New Driver"}
               </h2>
 
               <form onSubmit={submit} className="space-y-4">
                 {/* Name */}
-                <div>
-                  <InputLabel htmlFor="name" value="Full Name" />
+                <div className={isRTL ? "text-right" : ""}>
+                  <InputLabel
+                    htmlFor="name"
+                    value={isRTL ? "الاسم الكامل" : "Full Name"}
+                  />
                   <TextInput
                     id="name"
                     value={data.name}
                     onChange={(e) => setData("name", e.target.value)}
                     className="mt-1 block w-full"
-                    placeholder="Driver Name"
+                    placeholder={isRTL ? "اسم السائق" : "Driver Name"}
                   />
                   <InputError message={errors.name} className="mt-2" />
                 </div>
 
                 {/* Grid for ID & Phone */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <InputLabel htmlFor="national_id" value="National ID" />
+                <div className={`grid grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}>
+                  <div className={isRTL ? "text-right" : ""}>
+                    <InputLabel
+                      htmlFor="national_id"
+                      value={isRTL ? "رقم الهوية" : "National ID"}
+                    />
                     <TextInput
                       id="national_id"
                       value={data.national_id}
@@ -268,8 +421,11 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
                     />
                     <InputError message={errors.national_id} className="mt-2" />
                   </div>
-                  <div>
-                    <InputLabel htmlFor="phone" value="Phone Number" />
+                  <div className={isRTL ? "text-right" : ""}>
+                    <InputLabel
+                      htmlFor="phone"
+                      value={isRTL ? "رقم الهاتف" : "Phone Number"}
+                    />
                     <TextInput
                       id="phone"
                       value={data.phone}
@@ -281,8 +437,11 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
                 </div>
 
                 {/* Email */}
-                <div>
-                  <InputLabel htmlFor="email" value="Email Address" />
+                <div className={isRTL ? "text-right" : ""}>
+                  <InputLabel
+                    htmlFor="email"
+                    value={isRTL ? "البريد الإلكتروني" : "Email Address"}
+                  />
                   <TextInput
                     id="email"
                     type="email"
@@ -294,11 +453,17 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
                 </div>
 
                 {/* Grid for License */}
-                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-3 rounded-lg border">
-                  <div>
+                <div
+                  className={`grid grid-cols-2 gap-4 p-3 rounded-lg border ${
+                    isDark
+                      ? "bg-gray-700 border-gray-600"
+                      : "bg-gray-50 border-gray-200"
+                  } ${isRTL ? "rtl" : ""}`}
+                >
+                  <div className={isRTL ? "text-right" : ""}>
                     <InputLabel
                       htmlFor="license_number"
-                      value="License Number"
+                      value={isRTL ? "رقم الرخصة" : "License Number"}
                     />
                     <TextInput
                       id="license_number"
@@ -306,17 +471,21 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
                       onChange={(e) =>
                         setData("license_number", e.target.value)
                       }
-                      className="mt-1 block w-full border-gray-300"
+                      className={`mt-1 block w-full ${
+                        isDark
+                          ? "border-gray-600 bg-gray-800"
+                          : "border-gray-300"
+                      }`}
                     />
                     <InputError
                       message={errors.license_number}
                       className="mt-2"
                     />
                   </div>
-                  <div>
+                  <div className={isRTL ? "text-right" : ""}>
                     <InputLabel
                       htmlFor="license_expiry_date"
-                      value="Expiry Date"
+                      value={isRTL ? "تاريخ الانتهاء" : "Expiry Date"}
                     />
                     <TextInput
                       id="license_expiry_date"
@@ -325,7 +494,11 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
                       onChange={(e) =>
                         setData("license_expiry_date", e.target.value)
                       }
-                      className="mt-1 block w-full border-gray-300"
+                      className={`mt-1 block w-full ${
+                        isDark
+                          ? "border-gray-600 bg-gray-800"
+                          : "border-gray-300"
+                      }`}
                     />
                     <InputError
                       message={errors.license_expiry_date}
@@ -334,13 +507,25 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
                   </div>
                 </div>
 
-                <div className="mt-6 flex justify-end gap-3">
-                  <SecondaryButton onClick={closeModal}>Cancel</SecondaryButton>
+                <div
+                  className={`mt-6 flex gap-3 ${
+                    isRTL ? "flex-row-reverse" : "justify-end"
+                  }`}
+                >
+                  <SecondaryButton onClick={closeModal}>
+                    {isRTL ? "إلغاء" : "Cancel"}
+                  </SecondaryButton>
                   <PrimaryButton
                     disabled={processing}
                     className="bg-brand-dark"
                   >
-                    {isEditing ? "Update Driver" : "Save Driver"}
+                    {isEditing
+                      ? isRTL
+                        ? "تحديث السائق"
+                        : "Update Driver"
+                      : isRTL
+                      ? "حفظ السائق"
+                      : "Save Driver"}
                   </PrimaryButton>
                 </div>
               </form>
