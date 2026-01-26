@@ -28,11 +28,6 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "clipboard",
   },
   {
-    label: isRTL ? "إدارة الأسطول" : "Fleet Management",
-    route: "admin.buses.index",
-    icon: "bus",
-  },
-  {
     label: isRTL ? "السائقين" : "Drivers",
     route: "admin.drivers.index",
     icon: "user",
