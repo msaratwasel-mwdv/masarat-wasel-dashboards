@@ -6,11 +6,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasApiTokens;
 
     /**
      * The attributes that are mass assignable.
@@ -51,18 +56,49 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
-public function school()
+
+    // ── العلاقات الأساسية ──────────────────────────────
+
+    public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
     }
-    public function driverProfile()
+
+    public function driverProfile(): HasOne
     {
         return $this->hasOne(DriverProfile::class);
     }
 
-    // علاقة المشرف
-    public function supervisorProfile()
+    public function supervisorProfile(): HasOne
     {
         return $this->hasOne(SupervisorProfile::class);
+    }
+
+    /**
+     * ولي الأمر المرتبط بهذا المستخدم
+     */
+    public function guardian(): HasOne
+    {
+        return $this->hasOne(Guardian::class);
+    }
+
+    // ── علاقات الشات ──────────────────────────────────
+
+    /**
+     * المحادثات التي يشارك فيها المستخدم
+     */
+    public function conversations(): BelongsToMany
+    {
+        return $this->belongsToMany(Conversation::class, 'chat_participants')
+            ->withPivot('role', 'last_read_at')
+            ->withTimestamps();
+    }
+
+    /**
+     * الرسائل المرسلة من هذا المستخدم
+     */
+    public function sentMessages(): HasMany
+    {
+        return $this->hasMany(Message::class, 'sender_id');
     }
 }

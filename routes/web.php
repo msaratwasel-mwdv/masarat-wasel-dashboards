@@ -70,7 +70,67 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('bus-requests/{busRequest}/reject', [\App\Http\Controllers\Admin\BusRequestController::class, 'reject'])->name('bus-requests.reject');
 
         Route::get('assignmentHistory', [ReportController::class, 'assignmentHistory'])->name('assignmentHistory');
+
+        // مراقبة المحادثات
+        Route::get('chat', [\App\Http\Controllers\Admin\ChatMonitorController::class, 'index'])->name('chat.index');
+        Route::get('chat/simulator', [\App\Http\Controllers\Admin\ChatSimulatorController::class, 'index'])->name('chat.simulator');
+        Route::get('chat/{conversation}', [\App\Http\Controllers\Admin\ChatMonitorController::class, 'show'])->name('chat.show');
+        Route::delete('chat/messages/{message}', [\App\Http\Controllers\Admin\ChatMonitorController::class, 'deleteMessage'])->name('chat.messages.destroy');
+        Route::post('chat/alert/{user}', [\App\Http\Controllers\Admin\ChatMonitorController::class, 'alertUser'])->name('chat.alert');
     });
+
+// ═══ Chat Simulator Token Endpoint (for public/chat-test.html) ═══
+Route::get('/chat-simulator/tokens', function () {
+    $tokens = cache()->get('simulator_tokens');
+    if (!$tokens) {
+        return response()->json([]);
+    }
+
+    // Build a list of all demo users with their tokens
+    $users = [];
+
+    // Parent
+    $parent = \App\Models\User::find($tokens['parent_id']);
+    if ($parent) {
+        $users[] = [
+            'id'    => $parent->id,
+            'name'  => $parent->name,
+            'role'  => $parent->role,
+            'token' => $tokens['parent'],
+            'desc'  => '4 أبناء في 3 باصات',
+        ];
+    }
+
+    // Load all driver/supervisor tokens
+    $tokenMap = [
+        'driverA' => 'سائق باص A (مدرسة الأمل)',
+        'driverB' => 'سائق باص B (مدرسة النور)',
+        'driverC' => 'سائق باص C (مدرسة النور)',
+        'superA'  => 'مشرفة باص A (مدرسة الأمل)',
+        'superB'  => 'مشرفة باص B (مدرسة النور)',
+        'superC'  => 'مشرفة باص C (مدرسة النور)',
+    ];
+
+    foreach ($tokenMap as $key => $desc) {
+        if (isset($tokens[$key])) {
+            $pat = \Laravel\Sanctum\PersonalAccessToken::findToken(
+                explode('|', $tokens[$key])[1] ?? ''
+            );
+            if ($pat && $pat->tokenable) {
+                $user = $pat->tokenable;
+                $users[] = [
+                    'id'    => $user->id,
+                    'name'  => $user->name,
+                    'role'  => $user->role,
+                    'token' => $tokens[$key],
+                    'desc'  => $desc,
+                ];
+            }
+        }
+    }
+
+    return response()->json($users);
+});
 
 // 🔵 ثانياً: روابط مدير المدرسة (School Admin)
 Route::middleware(['auth', 'verified', 'role:school_admin'])
