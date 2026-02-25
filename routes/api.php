@@ -51,6 +51,18 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- إشعارات ولي الأمر ---
     Route::get('/guardian/notifications', [GuardianNotificationController::class, 'index']);
     Route::post('/guardian/notifications/{id}/read', [GuardianNotificationController::class, 'markAsRead']);
+
+    // ========== الشات والمحادثات ==========
+    // 1. عرض جهات الاتصال (لأولياء الأمور والمشرفات والسائقين)
+    Route::get('/contacts', [\App\Http\Controllers\Api\ChatController::class, 'getContacts']);
+    // 2. عرض المحادثات السابقة
+    Route::get('/conversations', [\App\Http\Controllers\Api\ChatController::class, 'getConversations']);
+    // 3. بدء أو استرجاع محادثة بناءً على ID المستخدم الآخر
+    Route::post('/conversations', [\App\Http\Controllers\Api\ChatController::class, 'startConversation']);
+    // 4. إرسال رسالة داخل محادثة معينة
+    Route::post('/conversations/{conversation}/messages', [\App\Http\Controllers\Api\ChatController::class, 'sendMessage']);
+    // 5. جلب رسائل المحادثة
+    Route::get('/conversations/{conversation}/messages', [\App\Http\Controllers\Api\ChatController::class, 'getMessages']);
     // 6. تحديد المحادثة كمقروءة
     Route::post('/conversations/{conversation}/read', [\App\Http\Controllers\Api\ChatController::class, 'markAsRead']);
 });
