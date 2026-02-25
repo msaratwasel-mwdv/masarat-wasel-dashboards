@@ -75,7 +75,7 @@ export default function CreateStudent({
         if (!guardianResult?.found && guardianSearch.data.national_id) {
             guardianCreate.setData(
                 "national_id",
-                guardianSearch.data.national_id
+                guardianSearch.data.national_id,
             );
         }
     }, [guardianResult, guardianSearch.data.national_id]);
@@ -88,7 +88,7 @@ export default function CreateStudent({
     };
 
     const handleGuardianImageChange = (
-        e: React.ChangeEvent<HTMLInputElement>
+        e: React.ChangeEvent<HTMLInputElement>,
     ) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -114,7 +114,7 @@ export default function CreateStudent({
     };
 
     const handleStudentImageChange = (
-        e: React.ChangeEvent<HTMLInputElement>
+        e: React.ChangeEvent<HTMLInputElement>,
     ) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -176,7 +176,7 @@ export default function CreateStudent({
                                 </h3>
                                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                                     {t(
-                                        "Search by name, National ID or Father ID..."
+                                        "Search by name, National ID or Father ID...",
                                     )}
                                 </p>
                             </div>
@@ -194,7 +194,7 @@ export default function CreateStudent({
                                         onChange={(e) =>
                                             guardianSearch.setData(
                                                 "national_id",
-                                                e.target.value
+                                                e.target.value,
                                             )
                                         }
                                         className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
@@ -268,7 +268,7 @@ export default function CreateStudent({
                                                 className="px-6 py-3 text-sm text-white bg-green-600 dark:bg-green-700 rounded-xl hover:bg-green-700 dark:hover:bg-green-600 font-bold shadow-lg shadow-green-500/20 transition-all"
                                             >
                                                 {t(
-                                                    "Select Guardian & Continue"
+                                                    "Select Guardian & Continue",
                                                 )}
                                             </button>
                                         </div>
@@ -280,7 +280,7 @@ export default function CreateStudent({
                                                 </div>
                                                 <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-500">
                                                     {t(
-                                                        "No guardian was found with this national ID. Create a new guardian below"
+                                                        "No guardian was found with this national ID. Create a new guardian below",
                                                     )}
                                                 </p>
                                             </div>
@@ -298,8 +298,15 @@ export default function CreateStudent({
                                                     <div className="md:col-span-2">
                                                         <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             {t(
-                                                                "Guardian Name (Arabic)"
-                                                            )}
+                                                                "Guardian Name (Arabic)",
+                                                            )}{" "}
+                                                            <span className="text-gray-400 font-normal text-xs">
+                                                                (
+                                                                {t(
+                                                                    "Optional if English name provided",
+                                                                )}
+                                                                )
+                                                            </span>
                                                         </label>
                                                         <input
                                                             value={
@@ -310,21 +317,36 @@ export default function CreateStudent({
                                                                 guardianCreate.setData(
                                                                     "name",
                                                                     e.target
-                                                                        .value
+                                                                        .value,
                                                                 )
                                                             }
                                                             className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:ring-blue-500 dark:text-white"
-                                                            required
                                                             placeholder={t(
-                                                                "Guardian Name (Arabic)"
+                                                                "Guardian Name (Arabic)",
                                                             )}
                                                         />
+                                                        {guardianCreate.errors
+                                                            .name && (
+                                                            <div className="mt-1 text-xs font-medium text-red-500">
+                                                                {
+                                                                    guardianCreate
+                                                                        .errors
+                                                                        .name
+                                                                }
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     <div className="md:col-span-2">
                                                         <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             {t(
-                                                                "Guardian Name (English)"
+                                                                "Guardian Name (English)",
+                                                            )}{" "}
+                                                            {!guardianCreate
+                                                                .data.name && (
+                                                                <span className="text-red-500 text-xs">
+                                                                    *
+                                                                </span>
                                                             )}
                                                         </label>
                                                         <input
@@ -337,14 +359,28 @@ export default function CreateStudent({
                                                                 guardianCreate.setData(
                                                                     "name_en",
                                                                     e.target
-                                                                        .value
+                                                                        .value,
                                                                 )
                                                             }
                                                             className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:ring-blue-500 dark:text-white"
                                                             placeholder={t(
-                                                                "Guardian Name (English)"
+                                                                "Guardian Name (English)",
                                                             )}
+                                                            required={
+                                                                !guardianCreate
+                                                                    .data.name
+                                                            }
                                                         />
+                                                        {guardianCreate.errors
+                                                            .name_en && (
+                                                            <div className="mt-1 text-xs font-medium text-red-500">
+                                                                {
+                                                                    guardianCreate
+                                                                        .errors
+                                                                        .name_en
+                                                                }
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     <div>
@@ -361,7 +397,7 @@ export default function CreateStudent({
                                                                 guardianCreate.setData(
                                                                     "national_id",
                                                                     e.target
-                                                                        .value
+                                                                        .value,
                                                                 )
                                                             }
                                                             className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:ring-blue-500 dark:text-white"
@@ -383,7 +419,7 @@ export default function CreateStudent({
                                                                 guardianCreate.setData(
                                                                     "phone",
                                                                     e.target
-                                                                        .value
+                                                                        .value,
                                                                 )
                                                             }
                                                             className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:ring-blue-500 dark:text-white"
@@ -407,7 +443,7 @@ export default function CreateStudent({
                                                                 guardianCreate.setData(
                                                                     "email",
                                                                     e.target
-                                                                        .value
+                                                                        .value,
                                                                 )
                                                             }
                                                             className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:ring-blue-500 dark:text-white"
@@ -431,19 +467,19 @@ export default function CreateStudent({
                                                                     guardianCreate.setData(
                                                                         "address",
                                                                         e.target
-                                                                            .value
+                                                                            .value,
                                                                     )
                                                                 }
                                                                 className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:ring-blue-500 dark:text-white"
                                                                 placeholder={t(
-                                                                    "City, District, Street..."
+                                                                    "City, District, Street...",
                                                                 )}
                                                             />
                                                         </div>
                                                         <div>
                                                             <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                                                                 {t(
-                                                                    "Home Number"
+                                                                    "Home Number",
                                                                 )}
                                                             </label>
                                                             <input
@@ -456,7 +492,7 @@ export default function CreateStudent({
                                                                     guardianCreate.setData(
                                                                         "home_number",
                                                                         e.target
-                                                                            .value
+                                                                            .value,
                                                                     )
                                                                 }
                                                                 className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:ring-blue-500 dark:text-white"
@@ -469,7 +505,7 @@ export default function CreateStudent({
                                                     <div className="md:col-span-2">
                                                         <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                                                             {t(
-                                                                "Guardian Photo"
+                                                                "Guardian Photo",
                                                             )}{" "}
                                                             ({t("Optional")})
                                                         </label>
@@ -496,7 +532,7 @@ export default function CreateStudent({
                                                                                 src={URL.createObjectURL(
                                                                                     guardianCreate
                                                                                         .data
-                                                                                        .image
+                                                                                        .image,
                                                                                 )}
                                                                                 alt="Preview"
                                                                                 className="w-full h-full object-cover"
@@ -519,26 +555,26 @@ export default function CreateStudent({
                                                                                         .size /
                                                                                     1024
                                                                                 ).toFixed(
-                                                                                    2
+                                                                                    2,
                                                                                 )}{" "}
                                                                                 KB
                                                                             </p>
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={(
-                                                                                    e
+                                                                                    e,
                                                                                 ) => {
                                                                                     e.stopPropagation();
                                                                                     guardianCreate.setData(
                                                                                         "image",
-                                                                                        null
+                                                                                        null,
                                                                                     );
                                                                                 }}
                                                                                 className="mt-2 text-xs text-red-500 hover:text-red-700 font-bold flex items-center gap-1"
                                                                             >
                                                                                 🗑️{" "}
                                                                                 {t(
-                                                                                    "Delete"
+                                                                                    "Delete",
                                                                                 )}
                                                                             </button>
                                                                         </div>
@@ -550,7 +586,7 @@ export default function CreateStudent({
                                                                         </div>
                                                                         <p className="font-medium text-gray-700 dark:text-gray-300">
                                                                             {t(
-                                                                                "Click to upload guardian photo"
+                                                                                "Click to upload guardian photo",
                                                                             )}
                                                                         </p>
                                                                         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -588,7 +624,7 @@ export default function CreateStudent({
                                                             {guardianCreate.processing
                                                                 ? t("Saving...")
                                                                 : t(
-                                                                      "Create Guardian"
+                                                                      "Create Guardian",
                                                                   )}
                                                         </button>
                                                     </div>
@@ -656,7 +692,7 @@ export default function CreateStudent({
                                             onChange={(e) =>
                                                 studentForm.setData(
                                                     "full_name",
-                                                    e.target.value
+                                                    e.target.value,
                                                 )
                                             }
                                             className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
@@ -681,7 +717,7 @@ export default function CreateStudent({
                                             onChange={(e) =>
                                                 studentForm.setData(
                                                     "student_code",
-                                                    e.target.value
+                                                    e.target.value,
                                                 )
                                             }
                                             className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
@@ -708,7 +744,7 @@ export default function CreateStudent({
                                             onChange={(e) =>
                                                 studentForm.setData(
                                                     "gender",
-                                                    e.target.value
+                                                    e.target.value,
                                                 )
                                             }
                                             className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
@@ -740,7 +776,7 @@ export default function CreateStudent({
                                             onChange={(e) =>
                                                 studentForm.setData(
                                                     "national_id",
-                                                    e.target.value
+                                                    e.target.value,
                                                 )
                                             }
                                             className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
@@ -765,7 +801,7 @@ export default function CreateStudent({
                                             onChange={(e) =>
                                                 studentForm.setData(
                                                     "classroom_id",
-                                                    e.target.value
+                                                    e.target.value,
                                                 )
                                             }
                                             className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
@@ -805,14 +841,14 @@ export default function CreateStudent({
                                                 onChange={(e) =>
                                                     studentForm.setData(
                                                         "supervisor_id",
-                                                        e.target.value
+                                                        e.target.value,
                                                     )
                                                 }
                                                 className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
                                             >
                                                 <option value="">
                                                     {t(
-                                                        "Select a supervisor..."
+                                                        "Select a supervisor...",
                                                     )}
                                                 </option>
                                                 {supervisors.map((s) => (
@@ -863,7 +899,7 @@ export default function CreateStudent({
                                                                 src={URL.createObjectURL(
                                                                     studentForm
                                                                         .data
-                                                                        .image
+                                                                        .image,
                                                                 )}
                                                                 alt="Preview"
                                                                 className="w-full h-full object-cover"
@@ -886,19 +922,19 @@ export default function CreateStudent({
                                                                         .size /
                                                                     1024
                                                                 ).toFixed(
-                                                                    2
+                                                                    2,
                                                                 )}{" "}
                                                                 KB
                                                             </p>
                                                             <button
                                                                 type="button"
                                                                 onClick={(
-                                                                    e
+                                                                    e,
                                                                 ) => {
                                                                     e.stopPropagation();
                                                                     studentForm.setData(
                                                                         "image",
-                                                                        null
+                                                                        null,
                                                                     );
                                                                 }}
                                                                 className="mt-3 px-3 py-1 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 transition"
@@ -914,7 +950,7 @@ export default function CreateStudent({
                                                         </div>
                                                         <p className="font-medium text-gray-700 dark:text-gray-300">
                                                             {t(
-                                                                "Click to upload student photo"
+                                                                "Click to upload student photo",
                                                             )}
                                                         </p>
                                                         <p className="text-sm text-gray-500 dark:text-gray-400">

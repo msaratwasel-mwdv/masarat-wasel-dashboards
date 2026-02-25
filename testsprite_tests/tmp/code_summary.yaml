@@ -1,0 +1,203 @@
+version: "2"
+type: frontend
+tech_stack:
+  - PHP 8.x (Laravel 11)
+  - Inertia.js
+  - Vue 3
+  - Tailwind CSS
+  - Vite
+  - MySQL
+
+routes:
+  - path: /login
+    file: resources/js/Pages/Auth/Login.vue
+    auth_required: false
+    description: صفحة تسجيل دخول المستخدمين
+  - path: /
+    file: resources/js/Pages/Welcome.vue
+    auth_required: false
+    description: الصفحة الرئيسية
+  - path: /admin/dashboard
+    file: resources/js/Pages/Admin/Dashboard.vue
+    auth_required: true
+    description: لوحة تحكم مدير الشركة
+  - path: /admin/schools
+    file: resources/js/Pages/Admin/Schools/Index.vue
+    auth_required: true
+    description: إدارة المدارس
+  - path: /admin/buses
+    file: resources/js/Pages/Admin/Buses/Index.vue
+    auth_required: true
+    description: إدارة الحافلات
+  - path: /admin/drivers
+    file: resources/js/Pages/Admin/Drivers/Index.vue
+    auth_required: true
+    description: إدارة السائقين
+  - path: /admin/supervisors
+    file: resources/js/Pages/Admin/Supervisors/Index.vue
+    auth_required: true
+    description: إدارة المشرفين
+  - path: /admin/bus-requests
+    file: resources/js/Pages/Admin/BusRequests/Index.vue
+    auth_required: true
+    description: طلبات الحافلات
+  - path: /school/dashboard
+    file: resources/js/Pages/School/Dashboard.vue
+    auth_required: true
+    description: لوحة تحكم مدير المدرسة
+  - path: /school/classrooms
+    file: resources/js/Pages/School/Classrooms/Index.vue
+    auth_required: true
+    description: إدارة الفصول الدراسية
+  - path: /school/teachers
+    file: resources/js/Pages/School/Teachers/Index.vue
+    auth_required: true
+    description: إدارة المعلمين
+  - path: /school/students
+    file: resources/js/Pages/School/Students/Index.vue
+    auth_required: true
+    description: إدارة الطلاب
+  - path: /school/buses
+    file: resources/js/Pages/School/Buses/Index.vue
+    auth_required: true
+    description: إدارة حافلات المدرسة
+  - path: /school/notifications
+    file: resources/js/Pages/School/Notifications/Index.vue
+    auth_required: true
+    description: قائمة الإشعارات
+  - path: /school/notifications/create
+    file: resources/js/Pages/School/Notifications/Create.vue
+    auth_required: true
+    description: إنشاء وإرسال إشعار جديد
+  - path: /school/trip-schedules
+    file: resources/js/Pages/School/TripSchedules/Index.vue
+    auth_required: true
+    description: جداول الرحلات
+  - path: /school/field-trips
+    file: resources/js/Pages/School/FieldTrips/Index.vue
+    auth_required: true
+    description: الرحلات الميدانية
+  - path: /school/attendance
+    file: resources/js/Pages/School/Attendance/Index.vue
+    auth_required: true
+    description: سجل الحضور
+
+features:
+  - name: تسجيل الدخول
+    description: تسجيل دخول المستخدمين (admin / school_admin) بالبريد الإلكتروني وكلمة المرور
+    files:
+      - resources/js/Pages/Auth/Login.vue
+      - app/Http/Controllers/Auth/AuthenticatedSessionController.php
+    entry_route: /login
+    user_interactions:
+      - إدخال البريد الإلكتروني
+      - إدخال كلمة المرور
+      - الضغط على زر تسجيل الدخول
+      - عرض رسالة خطأ عند بيانات غير صحيحة
+    api_calls:
+      - method: POST
+        endpoint: /login
+    auth_required: false
+
+  - name: إرسال الإشعارات للأولياء (School Notifications)
+    description: يتيح لمدير المدرسة إنشاء وإرسال إشعارات لأولياء الأمور بعدة تصنيفات - لكل الأولياء، أو حسب الفصل، أو حسب الحافلة
+    files:
+      - resources/js/Pages/School/Notifications/Create.vue
+      - resources/js/Pages/School/Notifications/Index.vue
+      - app/Http/Controllers/School/NotificationController.php
+    entry_route: /school/notifications/create
+    user_interactions:
+      - إدخال عنوان الإشعار
+      - إدخال نص الإشعار
+      - اختيار نوع المستلم (All Parents / By Classroom / By Bus)
+      - الضغط على زر Preview لمعاينة عدد المستلمين
+      - الضغط على زر Send Notification لإرسال الإشعار
+      - عرض رسالة نجاح أو خطأ
+    api_calls:
+      - method: POST
+        endpoint: /school/notifications/preview
+      - method: POST
+        endpoint: /school/notifications
+    auth_required: true
+
+  - name: إشعارات ركوب الطلاب (Student Boarding)
+    description: عرض الإشعارات المتعلقة بركوب الطلاب للحافلات (student_boarded) في قائمة الإشعارات
+    files:
+      - resources/js/Pages/School/Notifications/Index.vue
+      - app/Http/Controllers/School/NotificationController.php
+    entry_route: /school/notifications
+    user_interactions:
+      - تصفح قائمة الإشعارات
+      - الضغط على إشعار لعرض تفاصيله
+    api_calls:
+      - method: GET
+        endpoint: /school/notifications
+    auth_required: true
+
+  - name: إدارة المدارس (Admin)
+    description: يتيح للـ admin إضافة وتعديل وحذف وتفعيل/تعطيل المدارس وإضافة مديريها
+    files:
+      - app/Http/Controllers/Admin/SchoolController.php
+      - app/Http/Controllers/Admin/SchoolUserController.php
+    entry_route: /admin/schools
+    user_interactions:
+      - عرض قائمة المدارس
+      - إضافة مدرسة جديدة
+      - تعديل بيانات مدرسة
+      - حذف مدرسة
+      - تفعيل أو تعطيل مدرسة
+    api_calls:
+      - method: GET
+        endpoint: /admin/schools
+      - method: POST
+        endpoint: /admin/schools
+      - method: PUT
+        endpoint: /admin/schools/{id}
+      - method: DELETE
+        endpoint: /admin/schools/{id}
+    auth_required: true
+
+  - name: إدارة الطلاب (School)
+    description: يتيح لمدير المدرسة إضافة وتعديل وحذف الطلاب وربطهم بأولياء الأمور
+    files:
+      - app/Http/Controllers/School/StudentController.php
+      - resources/js/Pages/School/Students/Index.vue
+    entry_route: /school/students
+    user_interactions:
+      - عرض قائمة الطلاب
+      - إضافة طالب جديد
+      - تعديل بيانات طالب
+      - حذف طالب
+      - البحث عن ولي أمر وربطه بالطالب
+    api_calls:
+      - method: GET
+        endpoint: /school/students
+      - method: POST
+        endpoint: /school/students
+    auth_required: true
+
+  - name: إدارة الحضور (Attendance)
+    description: تسجيل حضور وغياب الطلاب بشكل فردي أو جماعي
+    files:
+      - app/Http/Controllers/School/Attendance/AttendanceController.php
+    entry_route: /school/attendance
+    user_interactions:
+      - عرض سجلات الحضور
+      - تسجيل حضور طالب
+      - تسجيل حضور جماعي (bulk)
+    api_calls:
+      - method: GET
+        endpoint: /school/attendance
+      - method: POST
+        endpoint: /school/attendance
+      - method: POST
+        endpoint: /school/attendance/bulk
+    auth_required: true
+
+known_limitations:
+  - issue: يتطلب تسجيل الدخول قبل الوصول إلى أي صفحة في لوحة التحكم
+    location: routes/web.php
+    impact: جميع الروابط محمية بـ auth middleware
+  - issue: إرسال الإشعارات عبر FCM قد يفشل إذا لم يكن لدى المستخدم fcm_token مسجّل
+    location: app/Services/NotificationService.php
+    impact: الإشعار يُحفظ في قاعدة البيانات لكن لا يُرسل push notification

@@ -130,42 +130,79 @@ class StudentController extends Controller
         ]);
     }
 
-   /**
- * Step 1 (alternative): Create a new guardian
- */
-public function storeGuardian(Request $request)
-{
-    $schoolId = Auth::user()->school_id; // ⬅️ أضف هذا
-    
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'name_en' => 'nullable|string|max:255',
-        'national_id' => 'required|string|max:50|unique:guardians,national_id',
-        'phone' => 'required|string|max:50|unique:guardians,phone',
-        'email' => 'nullable|email|max:255',
-        'address' => 'nullable|string|max:500',
-        'home_number' => 'nullable|string|max:50',
-        'preferred_language' => 'nullable|in:ar,en',
-        'image' => 'nullable|image|max:5120',
-    ]);
+       /**
+     * Step 1 (alternative): Create a new guardian
+     */
+    public function storeGuardian(Request $request)
+    {
+        $schoolId = Auth::user()->school_id;
 
-    // ⬅️ أضف school_id للبيانات
-    $guardianData = array_merge($validated, ['school_id' => $schoolId]);
-    
-    // ⬅️ معالجة صورة ولي الأمر
-    if ($request->hasFile('image')) {
-        $guardianData['image'] = $request->file('image')->store('guardians', 'public');
+        $validated = $request->validate([
+            'name'    => 'nullable|string|max:255',   // Arabic name (optional — falls back to name_en)
+            'name_en' => 'nullable|string|max:255',
+            'national_id' => 'required|string|max:50|unique:guardians,national_id',
+            'phone' => 'required|string|max:50|unique:guardians,phone',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:500',
+            'home_number' => 'nullable|string|max:50',
+            'preferred_language' => 'nullable|in:ar,en',
+            'image' => 'nullable|image|max:5120',
+        ]);
+
+        // Clean phone number from spaces/formatting
+        $cleanPhone = preg_replace('/\s+/', '', $validated['phone']);
+        $validated['phone'] = $cleanPhone;
+
+        // Ensure at least one name is present
+        if (empty($validated['name']) && empty($validated['name_en'])) {
+            return back()->withErrors(['name' => 'يجب إدخال اسم ولي الأمر (عربي أو إنجليزي).']);
+        }
+        
+        // Fall back: if Arabic name is empty, copy from English name
+        if (empty($validated['name'])) {
+            $validated['name'] = $validated['name_en'];
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            // 1. Create User account first for authentication
+            $user = \App\Models\User::create([
+                'name' => $validated['name'],
+                'national_id' => $validated['national_id'],
+                'phone' => $validated['phone'],
+                'email' => $validated['email'] ?? ($validated['national_id'] . '@wasel.com'),
+                'password' => \Illuminate\Support\Facades\Hash::make($validated['phone']), // الجوال هو كلمة المرور
+                'role' => 'guardian',
+                'school_id' => $schoolId,
+                'is_active' => true,
+            ]);
+
+            // 2. Create Guardian record and link to user
+            $guardianData = array_merge($validated, [
+                'school_id' => $schoolId,
+                'user_id' => $user->id
+            ]);
+
+            if ($request->hasFile('image')) {
+                $guardianData['image'] = $request->file('image')->store('guardians', 'public');
+            }
+
+            $guardian = \App\Models\Guardian::create($guardianData);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return redirect()->back()->with([
+                'guardianResult' => [
+                    'found' => true,
+                    'guardian' => $guardian,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return back()->withErrors(['error' => 'حدث خطأ أثناء حفظ البيانات: ' . $e->getMessage()]);
+        }
     }
 
-    $guardian = Guardian::create($guardianData);
-
-    return redirect()->back()->with([
-        'guardianResult' => [
-            'found' => true,
-            'guardian' => $guardian,
-        ],
-    ]);
-}
 
     /**
      * [Create] تخزين الطالب الجديد

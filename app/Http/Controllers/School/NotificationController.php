@@ -12,9 +12,24 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use App\Services\NotificationService;
 
 class NotificationController extends Controller
 {
+    /**
+     * @var NotificationService
+     */
+    protected $notificationService;
+
+    /**
+     * NotificationController constructor.
+     * @param NotificationService $notificationService
+     */
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     /**
      * Display a listing of notifications sent by this school.
      */
@@ -84,17 +99,17 @@ class NotificationController extends Controller
         $templates = NotificationTemplate::active()->get();
         $classrooms = Classroom::where('school_id', $schoolId)->get();
         $buses = Bus::where('school_id', $schoolId)->get();
+        // تم إضافة guardians هنا لأن الواجهة Create.tsx تتوقعها في الـ Props
+        $guardians = Guardian::where('school_id', $schoolId)->with('user')->get();
 
         return Inertia::render('School/Notifications/Create', [
             'templates' => $templates,
             'classrooms' => $classrooms,
             'buses' => $buses,
+            'guardians' => $guardians,
         ]);
     }
 
-    /**
-     * Preview recipient count and list.
-     */
     public function preview(Request $request)
     {
         $schoolId = Auth::user()->school_id;
@@ -105,15 +120,24 @@ class NotificationController extends Controller
         $recipients = $this->getRecipients($schoolId, $recipientType, $filter);
 
         return response()->json([
-            'count' => $recipients->count(),
+            'count'      => $recipients->count(),
+            'total_recipients' => $recipients->count(),
+            'title'      => $request->title,
+            'message'    => $request->message,
             'recipients' => $recipients->take(5)->map(function ($guardian) {
+                $name = $guardian->name
+                    ?? $guardian->name_en
+                    ?? ($guardian->user ? $guardian->user->name : null)
+                    ?? $guardian->phone
+                    ?? 'Unknown';
                 return [
-                    'name' => $guardian->user->name ?? $guardian->full_name,
-                    'has_fcm_token' => !empty($guardian->user->fcm_token) || !empty($guardian->fcm_token),
+                    'name'          => $name,
+                    'has_fcm_token' => !empty($guardian->user?->fcm_token),
                 ];
             }),
         ]);
     }
+
 
     /**
      * Store a newly created notification.
@@ -121,11 +145,9 @@ class NotificationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'title_en' => 'required|string|max:255',
-            'title_ar' => 'required|string|max:255',
-            'body_en' => 'required|string',
-            'body_ar' => 'required|string',
-            'type' => 'required|string', // Matches 'type' from modal
+            'title' => 'required|string|max:255',
+            'message' => 'required|string',
+            'type' => 'required|string', 
             'recipient_type' => 'required|string',
             'recipient_filter' => 'nullable|array',
             'template_id' => 'nullable|exists:notification_templates,id',
@@ -134,59 +156,64 @@ class NotificationController extends Controller
         $schoolId = Auth::user()->school_id;
         $recipients = $this->getRecipients($schoolId, $validated['recipient_type'], $validated['recipient_filter'] ?? []);
 
-        // Concatenate English and Arabic for storage
-        // Format: "English | Arabic"
-        $title = $validated['title_en'] . ' | ' . $validated['title_ar'];
-        $message = $validated['body_en'] . ' | ' . $validated['body_ar'];
-
         DB::beginTransaction();
         try {
             // Create the notification
             $notification = Notification::create([
-                'title' => $title,
-                'message' => $message,
-                'type' => $validated['type'], // Store the selected type directly
-                'template_type' => $validated['type'], // Optional: store as template_type too if needed
+                'title' => $validated['title'],
+                'message' => $validated['message'],
+                'type' => $validated['type'],
+                'template_type' => $validated['type'],
                 'sender_id' => Auth::id(),
                 'recipient_type' => $validated['recipient_type'],
                 'recipient_filter' => $validated['recipient_filter'],
                 'total_recipients' => $recipients->count(),
                 'status' => 'pending',
-                // Store original bilingual data in 'data' column if needed for future editing
                 'data' => [
-                    'title_en' => $validated['title_en'],
-                    'title_ar' => $validated['title_ar'],
-                    'body_en' => $validated['body_en'],
-                    'body_ar' => $validated['body_ar'],
                     'template_id' => $validated['template_id'] ?? null,
                 ]
             ]);
 
+            $fcmTokens = [];
+
             // Create recipient records
             foreach ($recipients as $guardian) {
-                // Check if user relation exists, otherwise fallback or skip
                 $userId = $guardian->user_id ?? ($guardian->user ? $guardian->user->id : null);
-                
-                // If guardian has no user account, we might not be able to send in-app/fcm notification easily
-                // But we still record it. Using guardian ID if user_id is missing might be an option if table supports it,
-                // but assuming 'notification_recipients' links to 'users'.
+                $token = $guardian->user->fcm_token ?? null;
                 
                 if ($userId) {
                     $notification->recipients()->create([
                         'user_id' => $userId,
-                        'fcm_token' => $guardian->user->fcm_token ?? null,
+                        'fcm_token' => $token,
                         'status' => 'pending',
                     ]);
+
+                    if ($token) {
+                        $fcmTokens[] = $token;
+                    }
                 }
             }
 
             DB::commit();
 
-            // TODO: Dispatch job to send real notifications
-            // SendNotificationJob::dispatch($notification);
+            // إرسال الإشعار فعلياً عبر Firebase
+            if (!empty($fcmTokens)) {
+                $this->notificationService->sendMulticast(
+                    $fcmTokens,
+                    $validated['title'],
+                    $validated['message'],
+                    [
+                        'notification_id' => (string) $notification->id,
+                        'type' => $validated['type'],
+                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
+                    ]
+                );
+                
+                $notification->update(['status' => 'sent', 'sent_count' => count($fcmTokens)]);
+            }
 
             return redirect()->route('school.notifications.index')
-                ->with('success', 'تم إنشاء الإشعار وسيتم إرساله قريباً');
+                ->with('success', 'تم إرسال الإشعار بنجاح لـ ' . count($fcmTokens) . ' مستخدم');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -220,14 +247,15 @@ class NotificationController extends Controller
             case 'all_parents':
                 return Guardian::where('school_id', $schoolId)->with('user')->get();
 
+            case 'by_classroom': // تم تحديث المسمى ليطابق Create.tsx
             case 'class_students':
                 $classroomIds = $filter['classroom_ids'] ?? [];
-                // Find guardians linked to students in these classrooms
                 return Guardian::where('school_id', $schoolId)
                     ->whereHas('students', function ($q) use ($classroomIds) {
-                        $q->whereIn('classroom_id', $classroomIds); // Assuming student has classroom_id directly or through enrollment
+                        $q->whereIn('classroom_id', $classroomIds); 
                     })->with('user')->get();
 
+            case 'by_bus': // تم تحديث المسمى ليطابق Create.tsx
             case 'bus_students':
                 $busIds = $filter['bus_ids'] ?? [];
                 return Guardian::where('school_id', $schoolId)
@@ -235,6 +263,7 @@ class NotificationController extends Controller
                         $q->whereIn('buses.id', $busIds);
                     })->with('user')->get();
 
+            case 'specific_parent': // تم تحديث المسمى ليطابق Create.tsx
             case 'specific_guardian':
                 $guardianId = $filter['guardian_id'] ?? null;
                 return Guardian::where('id', $guardianId)->with('user')->get();

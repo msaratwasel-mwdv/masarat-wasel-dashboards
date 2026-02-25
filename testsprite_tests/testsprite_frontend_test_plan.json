@@ -1,0 +1,603 @@
+[
+  {
+    "id": "TC001",
+    "title": "Send notification to All Parents with preview recipient count",
+    "description": "Verifies an authenticated school admin can compose a notification for All Parents, preview recipient count, and send successfully.",
+    "category": "School Notification Sending",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the Login button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/school\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Notifications\" in the navigation menu"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Send New\" or \"Create Notification\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/school/notifications/create\""
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "All Parents preview shows recipient count before sending",
+    "description": "Verifies preview action displays a visible recipient count for All Parents after entering title and message.",
+    "category": "School Notification Sending",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the Login button"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /school/notifications/create"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Trip Reminder\" into the notification title field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Please ensure your child is ready 10 minutes before pickup.\" into the notification message field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"All Parents\" from the recipient type dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Click Preview to see recipient count"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Recipient\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Send notification to All Parents after successful preview",
+    "description": "Verifies sending succeeds and a success confirmation is shown after previewing recipients for All Parents.",
+    "category": "School Notification Sending",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the Login button"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /school/notifications/create"
+      },
+      {
+        "type": "action",
+        "description": "Type \"School Update\" into the notification title field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Tomorrow is a regular school day. Buses run on schedule.\" into the notification message field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"All Parents\" from the recipient type dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Click Preview to see recipient count"
+      },
+      {
+        "type": "action",
+        "description": "Click Send Notification button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"success\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "By Classroom: validation error when title is missing on preview",
+    "description": "Verifies preview shows a visible validation error when attempting to preview a By Classroom notification without a title.",
+    "category": "School Notification Sending",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the Login button"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /school/notifications/create"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Classroom meeting at 2 PM.\" into the notification message field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"By Classroom\" from the recipient type dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Click Preview to see recipient count"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Title is required\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "By Classroom: recover from missing title and send successfully",
+    "description": "Verifies user can correct missing title, preview recipient count, and send a By Classroom notification successfully.",
+    "category": "School Notification Sending",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the Login button"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /school/notifications/create"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Classroom Notice\" into the notification title field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Please review today’s homework notes.\" into the notification message field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"By Classroom\" from the recipient type dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Click Preview to see recipient count"
+      },
+      {
+        "type": "action",
+        "description": "Click Send Notification button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"success\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "By Bus: require selecting a bus filter before preview (if enforced)",
+    "description": "Verifies that when recipient type is By Bus, the UI enforces selecting at least one bus before previewing recipients (if the product enforces this validation).",
+    "category": "School Notification Sending",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the Login button"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /school/notifications/create"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Bus Route Change\" into the notification title field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Bus pickup time is delayed by 10 minutes today.\" into the notification message field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"By Bus\" from the recipient type dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Click Preview to see recipient count"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Bus\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "By Bus: preview recipient count after selecting a specific bus and send",
+    "description": "Verifies selecting a bus filter enables preview recipient count and allows sending successfully.",
+    "category": "School Notification Sending",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the Login button"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /school/notifications/create"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Bus Update\" into the notification title field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Please be at the stop 5 minutes early.\" into the notification message field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"By Bus\" from the recipient type dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Select a bus from the buses filter dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Click Preview to see recipient count"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Recipient\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click Send Notification button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"success\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Send Notification button is blocked or errors when message is missing",
+    "description": "Verifies the UI prevents sending (or shows a visible validation error) when the notification message is missing.",
+    "category": "School Notification Sending",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the Login button"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /school/notifications/create"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Empty Message Check\" into the notification title field"
+      },
+      {
+        "type": "action",
+        "description": "Select \"All Parents\" from the recipient type dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Click Send Notification button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Message\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Persisted student boarded notification appears in school notifications list after login",
+    "description": "Verifies that an authenticated school user can see a newly persisted student boarding notification in the notifications list UI.",
+    "category": "Guardian Notification for Student Boarding",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/school\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Notifications\" navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/school/notifications\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"student_boarded\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Open student boarded notification details from the notifications list",
+    "description": "Verifies that a user can open a student boarding notification from the list and view its details screen/panel.",
+    "category": "Guardian Notification for Student Boarding",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Notifications\" navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"student_boarded\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the notification list item that contains text \"student_boarded\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"student_boarded\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Notifications list remains usable when no boarding notifications exist",
+    "description": "Verifies the notifications list page loads and shows an empty-state or non-error UI when no student boarding notifications are present.",
+    "category": "Guardian Notification for Student Boarding",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Notifications\" navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/school/notifications\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Notifications\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"student_boarded\" is not visible"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Create page for notifications is accessible to authenticated school user",
+    "description": "Verifies that an authenticated school user can reach the Send new notification page from the notifications list UI.",
+    "category": "Guardian Notification for Student Boarding",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Notifications\" navigation item"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Create\" or \"Send Notification\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/school/notifications/create\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Send new notification\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Persisted boarding notification is visible even if push delivery fails (FCM token missing)",
+    "description": "Verifies that the UI still shows the persisted 'student_boarded' notification in the list, independent of push delivery status.",
+    "category": "Guardian Notification for Student Boarding",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Notifications\" navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/school/notifications\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"student_boarded\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Notifications\" is visible"
+      }
+    ]
+  }
+]

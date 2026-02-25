@@ -18,11 +18,20 @@ class Guardian extends Model
         'phone',
         'email',
         'address',
+        'home_latitude',
+        'home_longitude',
+        'proximity_alert_distance',
         'home_number',
         'preferred_language',
         'image',
         'school_id',
         'user_id',
+    ];
+
+    protected $casts = [
+        'home_latitude' => 'decimal:7',
+        'home_longitude' => 'decimal:7',
+        'proximity_alert_distance' => 'integer',
     ];
 
     public function students(): HasMany

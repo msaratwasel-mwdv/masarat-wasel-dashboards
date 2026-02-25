@@ -1,0 +1,17 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:80",
+  "loginUser": "school@wasel.com",
+  "loginPassword": "password",
+  "executionArgs": {
+    "projectName": "masarat-wasel-dashboards",
+    "projectPath": "c:\\laragon\\www\\masarat-wasel-dashboards",
+    "testIds": [],
+    "additionalInstruction": "Use Chrome browser. The app runs on http://localhost/masarat-wasel-dashboards/public or http://masarat-wasel-dashboards.test depending on Laragon config. Login credentials: use school_admin account. The app is a Laravel 11 + Inertia.js + Vue 3 project running locally via Laragon on port 80.",
+    "envs": {
+      "API_KEY": "sk-user-KIUXBtPuaD2PXSxdY7vAmaA_1uggDPRegCftFcQhQWkE7QOOmaR_ubDP3qGRG8CVZw0ovjuGk1g7hdTh7U4nhXqJ3c9Nmwh0GE7C8fftojIGSIA6aLiHL63NkaqjOqXPTBM"
+    }
+  }
+}
