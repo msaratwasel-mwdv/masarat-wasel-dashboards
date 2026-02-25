@@ -4,7 +4,6 @@ namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
 use App\Models\Student;
-use App\Models\Guardian;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,24 +17,24 @@ class SearchController extends Controller
     {
         $schoolId = Auth::user()->school_id;
         $query = $request->q;
-        
+
         if (!$query || strlen($query) < 2) {
             return response()->json([]);
         }
-        
+
         $results = [];
-        
+
         // 1. البحث في الطلاب
         $students = Student::where('school_id', $schoolId)
-            ->where(function($q) use ($query) {
+            ->where(function ($q) use ($query) {
                 $q->where('full_name', 'like', "%{$query}%")
-                  ->orWhere('national_id', 'like', "%{$query}%")
-                  ->orWhere('student_code', 'like', "%{$query}%");
+                    ->orWhere('national_id', 'like', "%{$query}%")
+                    ->orWhere('student_code', 'like', "%{$query}%");
             })
             ->with(['guardian:id,name,national_id,phone', 'currentEnrollment.classroom:id,name'])
             ->limit(5)
             ->get(['id', 'full_name', 'national_id', 'student_code', 'guardian_id']);
-        
+
         foreach ($students as $student) {
             $results[] = [
                 'type' => 'student',
@@ -49,43 +48,44 @@ class SearchController extends Controller
                 ]
             ];
         }
-        
-        // 2. البحث في الأولياء
-        $guardians = Guardian::where('school_id', $schoolId)
-            ->where(function($q) use ($query) {
+
+        // 2. البحث في الأولياء (الآن من جدول users بشرط role = parent)
+        $guardians = User::where('school_id', $schoolId)
+            ->where('role', 'parent')
+            ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('national_id', 'like', "%{$query}%")
-                  ->orWhere('phone', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%");
+                    ->orWhere('national_id', 'like', "%{$query}%")
+                    ->orWhere('phone', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%");
             })
             ->limit(5)
             ->get(['id', 'name', 'national_id', 'phone', 'email']);
-        
+
         foreach ($guardians as $guardian) {
             $results[] = [
                 'type' => 'guardian',
                 'data' => $guardian
             ];
         }
-        
+
         // 3. البحث في المشرفين
         $supervisors = User::where('school_id', $schoolId)
             ->whereIn('role', ['supervisor', 'teacher', 'school_admin'])
-            ->where(function($q) use ($query) {
+            ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%")
-                  ->orWhere('phone', 'like', "%{$query}%");
+                    ->orWhere('email', 'like', "%{$query}%")
+                    ->orWhere('phone', 'like', "%{$query}%");
             })
             ->limit(5)
             ->get(['id', 'name', 'email', 'phone', 'role']);
-        
+
         foreach ($supervisors as $supervisor) {
             $results[] = [
                 'type' => 'supervisor',
                 'data' => $supervisor
             ];
         }
-        
+
         return response()->json($results);
     }
 }

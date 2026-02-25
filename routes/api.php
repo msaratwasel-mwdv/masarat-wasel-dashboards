@@ -1,10 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BusBoardingController;
 use App\Http\Controllers\Api\BusLocationController;
 use App\Http\Controllers\Api\GuardianNotificationController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,8 +16,21 @@ use App\Http\Controllers\Api\GuardianNotificationController;
 |
 */
 
-// ========== المصادقة (بدون حماية) ==========
+// ========== المصادقة ==========
 Route::post('/auth/login', [AuthController::class, 'login']);
+
+Route::get('/user', function (Request $request) {
+    return $request->user();
+})->middleware('auth:sanctum');
+
+// ═══ Broadcasting Auth for Sanctum (API Tokens) ═══
+Route::post('/broadcasting/auth', function (Request $request) {
+    $user = $request->user();
+    if (!$user) {
+        return response()->json(['message' => 'Unauthenticated'], 401);
+    }
+    return \Illuminate\Support\Facades\Broadcast::auth($request);
+})->middleware('auth:sanctum');
 
 // ========== الروابط المحمية بـ Sanctum ==========
 Route::middleware('auth:sanctum')->group(function () {
@@ -37,4 +51,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- إشعارات ولي الأمر ---
     Route::get('/guardian/notifications', [GuardianNotificationController::class, 'index']);
     Route::post('/guardian/notifications/{id}/read', [GuardianNotificationController::class, 'markAsRead']);
+    // 6. تحديد المحادثة كمقروءة
+    Route::post('/conversations/{conversation}/read', [\App\Http\Controllers\Api\ChatController::class, 'markAsRead']);
 });

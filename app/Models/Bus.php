@@ -66,6 +66,22 @@ class Bus extends Model
     }
 
     /**
+     * Get the users (drivers/supervisors) associated with this bus through a pivot table.
+     */
+    public function user_buses(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_buses', 'bus_id', 'user_id');
+    }
+
+    /**
+     * Get the groups assigned to this bus.
+     */
+    public function groups(): HasMany
+    {
+        return $this->hasMany(BusGroup::class);
+    }
+
+    /**
      * Get the trip schedules for the bus.
      */
     public function schedules(): HasMany
@@ -135,8 +151,8 @@ class Bus extends Model
     public function students(): BelongsToMany
     {
         return $this->belongsToMany(Student::class, 'bus_students')
-                    ->withPivot('is_active')
-                    ->withTimestamps();
+            ->withPivot('is_active', 'trip_type')
+            ->withTimestamps();
     }
 
     /**

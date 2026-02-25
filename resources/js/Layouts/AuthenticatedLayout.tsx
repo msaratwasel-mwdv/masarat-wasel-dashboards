@@ -43,6 +43,16 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "teacher",
   },
   {
+    label: isRTL ? "المحادثات" : "Conversations",
+    route: "admin.chat.index",
+    icon: "chat",
+  },
+  {
+    label: isRTL ? "تجربة الشات المباشرة" : "Chat Simulator",
+    route: "admin.chat.simulator",
+    icon: "chat-sim",
+  },
+  {
     label: isRTL ? "الإعدادات" : "Settings",
     route: "profile.edit",
     icon: "cog",
@@ -177,6 +187,38 @@ export default function Authenticated({
               strokeLinejoin="round"
               strokeWidth={2}
               d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+        );
+      case "chat":
+        return (
+          <svg
+            className={baseClass}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+        );
+      case "chat-sim":
+        return (
+          <svg
+            className={baseClass}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 10V3L4 14h7v7l9-11h-7z"
             />
           </svg>
         );
@@ -456,8 +498,8 @@ export default function Authenticated({
               )}
             </button>
 
-           {/* Notifications Dropdown */}
-<NotificationDropdown isRTL={isRTL} />
+            {/* Notifications Dropdown */}
+            <NotificationDropdown isRTL={isRTL} />
 
             {/* User Profile */}
             <div

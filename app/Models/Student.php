@@ -15,15 +15,18 @@ class Student extends Model
 
     // ⬅️ أضف الحقول الجديدة هنا
     protected $fillable = [
-        'full_name', 
-        'student_code', 
+        'full_name',
+        'full_name_en',
+        'student_code',
         'national_id', // ⬅️ أضف
         'gender',      // ⬅️ أضف
-        'guardian_id', 
-        'supervisor_id', 
+        'guardian_id',
+        'supervisor_id',
         'school_id',   // ⬅️ أضف
         'image',       // ⬅️ أضف
-        'is_active'
+        'is_active',
+        'morning_group_id',
+        'afternoon_group_id',
     ];
 
     public function enrollments(): HasMany
@@ -38,14 +41,14 @@ class Student extends Model
 
     public function guardian(): BelongsTo
     {
-        return $this->belongsTo(Guardian::class);
+        return $this->belongsTo(User::class, 'guardian_id');
     }
 
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supervisor_id');
     }
-    
+
     // ⬅️ أضف هذه العلاقة
     public function school(): BelongsTo
     {
@@ -58,7 +61,17 @@ class Student extends Model
     public function buses(): BelongsToMany
     {
         return $this->belongsToMany(Bus::class, 'bus_students')
-                    ->withPivot('is_active')
-                    ->withTimestamps();
+            ->withPivot('is_active')
+            ->withTimestamps();
+    }
+
+    public function morningGroup(): BelongsTo
+    {
+        return $this->belongsTo(BusGroup::class, 'morning_group_id');
+    }
+
+    public function afternoonGroup(): BelongsTo
+    {
+        return $this->belongsTo(BusGroup::class, 'afternoon_group_id');
     }
 }

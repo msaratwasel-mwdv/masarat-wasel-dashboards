@@ -21,6 +21,14 @@ return new class extends Migration
             $table->string('phone')->nullable()->unique(); // رقم الجوال
             $table->string('user_code')->nullable()->unique(); // الكود التعريفي (OD-001)
             $table->string('role')->default('parent'); // نوع المستخدم (admin, school_admin, driver...)
+
+            // بيانات ولي الأمر (الأساسية)
+            $table->string('name_en')->nullable();
+            $table->text('address')->nullable();
+            $table->string('home_number')->nullable();
+            $table->enum('preferred_language', ['ar', 'en'])->default('ar');
+            $table->string('image')->nullable();
+
             $table->foreignId('school_id')->nullable(); // ربط المستخدم بالمدرسة (فارغ لمدير الشركة)
             $table->boolean('is_active')->default(true); // حالة الحساب
             // ------------------------------------------

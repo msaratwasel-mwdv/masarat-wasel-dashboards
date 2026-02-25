@@ -27,10 +27,8 @@ class NotificationTestSeeder extends Seeder
         // 2. Create Classroom
         $classroom = Classroom::create([
             'name' => 'فصل النخبة (أ)',
-            'grade' => '1',
-            'section' => 'A',
+            'grade_level' => '1',
             'school_id' => $school->id,
-            'teacher_id' => null,
         ]);
 
         // 3. Create Bus
@@ -39,9 +37,18 @@ class NotificationTestSeeder extends Seeder
             'bus_code' => 'B001',
             'plate_number' => 'أ ب ج 1234',
             'capacity' => 14,
+            'model' => 'Toyota Coaster',
+            'year' => 2023,
             'type' => 'permanent',
             'status' => 'active',
             'school_id' => $school->id,
+        ]);
+
+        // 3.5 Create Bus Group
+        $busGroup = \App\Models\BusGroup::create([
+            'name' => 'مجموعة أ',
+            'school_id' => $school->id,
+            'bus_id' => $bus->id,
         ]);
 
         // 4. Create Guardian User
@@ -49,7 +56,7 @@ class NotificationTestSeeder extends Seeder
             'name' => 'ولي أمر تجريبي',
             'email' => 'parent@wasel.com',
             'password' => Hash::make('password'),
-            'role' => 'guardian',
+            'role' => 'parent',
             'user_code' => 'GD-001',
             'phone' => '966500000003',
             'national_id' => '1000200030',
@@ -57,29 +64,27 @@ class NotificationTestSeeder extends Seeder
             'fcm_token' => 'fcm_token_test_123', 
         ]);
 
-        // 5. Create Guardian Record
-        $guardian = Guardian::create([
-            'user_id' => $parentUser->id,
-            'school_id' => $school->id,
-            'name' => $parentUser->name,
-            'phone' => $parentUser->phone,
-            'national_id' => $parentUser->national_id,
-        ]);
-
         // 6. Create Student
         $student = Student::create([
             'full_name' => 'طالب تجريبي',
+            'full_name_en' => 'Test Student',
             'student_code' => 'ST-001',
             'national_id' => '999888777',
             'gender' => 'male',
-            'guardian_id' => $guardian->id,
+            'guardian_id' => $parentUser->id,
             'school_id' => $school->id,
-            'classroom_id' => $classroom->id,
+            'morning_group_id' => $busGroup->id,
+            'afternoon_group_id' => $busGroup->id,
             'is_active' => true,
         ]);
 
-        // 7. Link Student to Bus
-        $bus->students()->attach($student->id, ['is_active' => true]);
+        // Enroll Student
+        $student->enrollments()->create([
+            'school_id' => $school->id,
+            'classroom_id' => $classroom->id,
+            'status' => 'active',
+            'is_active' => true,
+        ]);
 
         echo "✅ Notification Test Data Seeded Successfuly!\n";
         echo "   Guardian Email: parent@wasel.com\n";

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\School;
 // 1. استيراد كل الأدوات التي نحتاجها
 use App\Http\Controllers\Controller;
 use App\Models\Classroom;
-use App\Models\Guardian;
 use App\Models\Student;
 use App\Models\Attendance;
 use App\Models\User;
@@ -26,21 +25,21 @@ class StudentController extends Controller
     public function apiIndex()
     {
         $schoolId = Auth::user()->school_id;
-        
+
         $students = Student::where('school_id', $schoolId)
             ->with([
                 'guardian:id,name,name_en,phone,national_id,address,home_number',
                 'currentEnrollment.classroom:id,name'
             ])
             ->get(['id', 'full_name as name', 'student_code', 'national_id as student_national_id', 'guardian_id']);
-            // Note: classroom_id is not in students table, it's in enrollments.
-            
+        // Note: classroom_id is not in students table, it's in enrollments.
+
         // Map data to include classroom_id at root level for frontend convenience
         $students->transform(function ($student) {
             $student->classroom_id = $student->currentEnrollment?->classroom_id;
             return $student;
         });
-        
+
         return response()->json($students);
     }
 
@@ -48,62 +47,68 @@ class StudentController extends Controller
      * [Read] عرض قائمة الطلاب
      */
     public function index(Request $request)
-{
-    $schoolId = Auth::user()->school_id;
-    $search = $request->input('search');
+    {
+        $schoolId = Auth::user()->school_id;
+        $search = $request->input('search');
 
-    // ⬅️ أضف where لفلترة حسب المدرسة
-    $students = Student::where('school_id', $schoolId) // ⬅️ أضف هذا السطر
-        ->with([
-            'guardian:id,name,name_en,phone,national_id,address,home_number,image',
-            'supervisor:id,name,email',
-            'currentEnrollment.classroom:id,name'
-        ])
-        ->when($search, function ($query, $search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('full_name', 'like', "%{$search}%")
-                  ->orWhere('student_code', 'like', "%{$search}%")
-                  ->orWhere('national_id', 'like', "%{$search}%")
-                  ->orWhereHas('guardian', function ($q) use ($search) {
-                      $q->where('name', 'like', "%{$search}%")
+        // ⬅️ أضف where لفلترة حسب المدرسة
+        $students = Student::where('school_id', $schoolId) // ⬅️ أضف هذا السطر
+            ->with([
+                'guardian:id,name,name_en,phone,national_id,address,home_number,image',
+                'supervisor:id,name,email',
+                'currentEnrollment.classroom:id,name',
+                'morningGroup.bus',
+                'afternoonGroup.bus'
+            ])
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('full_name', 'like', "%{$search}%")
+                        ->orWhere('student_code', 'like', "%{$search}%")
                         ->orWhere('national_id', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%"); // ⬅️ أضف هذا
-                  });
-            });
-        })
-        ->orderBy('created_at', 'desc')
-        ->get();
+                        ->orWhereHas('guardian', function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%")
+                                ->orWhere('national_id', 'like', "%{$search}%")
+                                ->orWhere('phone', 'like', "%{$search}%"); // ⬅️ أضف هذا
+                        });
+                });
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-    return Inertia::render('School/Students/IndexStudents', [
-        'students' => $students,
-        'filters' => $request->only(['search']),
-        'classrooms' => Classroom::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
-        'supervisors' => User::where('school_id', $schoolId)
-            ->whereIn('role', ['supervisor', 'teacher', 'school_admin'])
-            ->orderBy('name')
-            ->get(['id', 'name', 'email']),
-        'guardianResult' => session('guardianResult'),
-    ]);
-}
+        return Inertia::render('School/Students/IndexStudents', [
+            'students' => $students,
+            'filters' => $request->only(['search']),
+            'classrooms' => Classroom::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
+            'supervisors' => User::where('school_id', $schoolId)
+                ->whereIn('role', ['supervisor', 'teacher', 'school_admin'])
+                ->orderBy('name')
+                ->get(['id', 'name', 'email']),
+            'busGroups' => \App\Models\BusGroup::with('bus')->where('school_id', $schoolId)->orderBy('name')->get(),
+            'guardianResult' => session('guardianResult'),
+        ]);
+    }
     /**
      * [Create] عرض صفحة إنشاء طالب جديد
      */
     public function create()
     {
         $schoolId = Auth::user()->school_id;
-        
+
         // جلب الفصول المتاحة في مدرسة المدير لوضعها في قائمة منسدلة
         $classrooms = Classroom::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']);
-        
+
         // جلب المشرفين المتاحين في نفس المدرسة
         $supervisors = User::where('school_id', $schoolId)
             ->whereIn('role', ['supervisor', 'teacher', 'school_admin'])
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
 
+        $busGroups = \App\Models\BusGroup::with('bus')->where('school_id', $schoolId)->orderBy('name')->get();
+
         return Inertia::render('School/Students/CreateStudent', [
             'classrooms' => $classrooms,
             'supervisors' => $supervisors,
+            'busGroups' => $busGroups,
             'guardianResult' => session('guardianResult'),
         ]);
     }
@@ -117,7 +122,9 @@ class StudentController extends Controller
             'national_id' => 'required|string|max:50',
         ]);
 
-        $guardian = Guardian::where('national_id', $validated['national_id'])->first();
+        $guardian = User::where('role', 'parent')
+            ->where('national_id', $validated['national_id'])
+            ->first();
 
         return redirect()->back()->with([
             'guardianResult' => $guardian ? [
@@ -130,7 +137,7 @@ class StudentController extends Controller
         ]);
     }
 
-       /**
+    /**
      * Step 1 (alternative): Create a new guardian
      */
     public function storeGuardian(Request $request)
@@ -138,10 +145,10 @@ class StudentController extends Controller
         $schoolId = Auth::user()->school_id;
 
         $validated = $request->validate([
-            'name'    => 'nullable|string|max:255',   // Arabic name (optional — falls back to name_en)
+            'name' => 'nullable|string|max:255',
             'name_en' => 'nullable|string|max:255',
-            'national_id' => 'required|string|max:50|unique:guardians,national_id',
-            'phone' => 'required|string|max:50|unique:guardians,phone',
+            'national_id' => 'required|string|max:50|unique:users,national_id',
+            'phone' => 'required|string|max:50|unique:users,phone',
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:500',
             'home_number' => 'nullable|string|max:50',
@@ -163,99 +170,83 @@ class StudentController extends Controller
             $validated['name'] = $validated['name_en'];
         }
 
-        \Illuminate\Support\Facades\DB::beginTransaction();
-        try {
-            // 1. Create User account first for authentication
-            $user = \App\Models\User::create([
-                'name' => $validated['name'],
-                'national_id' => $validated['national_id'],
-                'phone' => $validated['phone'],
-                'email' => $validated['email'] ?? ($validated['national_id'] . '@wasel.com'),
-                'password' => \Illuminate\Support\Facades\Hash::make($validated['phone']), // الجوال هو كلمة المرور
-                'role' => 'guardian',
-                'school_id' => $schoolId,
-                'is_active' => true,
-            ]);
+        $guardianData = array_merge($validated, [
+            'school_id' => $schoolId,
+            'role' => 'parent',
+            'password' => \Illuminate\Support\Facades\Hash::make($cleanPhone), // الجوال هو كلمة المرور بدل 'password'
+        ]);
 
-            // 2. Create Guardian record and link to user
-            $guardianData = array_merge($validated, [
-                'school_id' => $schoolId,
-                'user_id' => $user->id
-            ]);
-
-            if ($request->hasFile('image')) {
-                $guardianData['image'] = $request->file('image')->store('guardians', 'public');
-            }
-
-            $guardian = \App\Models\Guardian::create($guardianData);
-
-            \Illuminate\Support\Facades\DB::commit();
-
-            return redirect()->back()->with([
-                'guardianResult' => [
-                    'found' => true,
-                    'guardian' => $guardian,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
-            return back()->withErrors(['error' => 'حدث خطأ أثناء حفظ البيانات: ' . $e->getMessage()]);
+        if ($request->hasFile('image')) {
+            $guardianData['image'] = $request->file('image')->store('guardians', 'public');
         }
+
+        $guardian = User::create($guardianData);
+
+        return redirect()->back()->with([
+            'guardianResult' => [
+                'found' => true,
+                'guardian' => $guardian,
+            ],
+        ]);
     }
-
-
     /**
      * [Create] تخزين الطالب الجديد
      */
     /**
- * [Create] تخزين الطالب الجديد
- */
-public function store(Request $request)
-{
-    $schoolId = Auth::user()->school_id;
+     * [Create] تخزين الطالب الجديد
+     */
+    public function store(Request $request)
+    {
+        $schoolId = Auth::user()->school_id;
 
-    // ⬅️ تحديث validation rules لإضافة الحقول الجديدة
-    $validated = $request->validate([
-        'full_name' => 'required|string|max:255',
-        'student_code' => 'nullable|string|max:50|unique:students,student_code',
-        'national_id' => 'required|string|max:50|unique:students,national_id',
-        'gender' => 'required|in:male,female',
-        'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
-        'guardian_id' => 'required|integer|exists:guardians,id',
-        'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('school_id', $schoolId)],
-        'image' => 'nullable|image|max:5120',
-    ]);
-
-    // استخدام Transaction لضمان سلامة البيانات
-    DB::transaction(function () use ($validated, $schoolId, $request) {
-        // ⬅️ تحديث بيانات إنشاء الطالب
-        $studentData = [
-            'full_name' => $validated['full_name'],
-            'student_code' => $validated['student_code'] ?? 'ST-' . $validated['national_id'],
-            'national_id' => $validated['national_id'],
-            'gender' => $validated['gender'],
-            'guardian_id' => $validated['guardian_id'],
-            'supervisor_id' => $validated['supervisor_id'] ?? null,
-            'school_id' => $schoolId,
-        ];
-
-        // ⬅️ معالجة صورة الطالب
-        if ($request->hasFile('image')) {
-            $studentData['image'] = $request->file('image')->store('students', 'public');
-        }
-
-        $student = Student::create($studentData);
-
-        $student->enrollments()->create([
-            'school_id' => $schoolId,
-            'classroom_id' => $validated['classroom_id'],
-            'status' => 'active',
-            'is_active' => true,
+        // ⬅️ تحديث validation rules لإضافة الحقول الجديدة
+        $validated = $request->validate([
+            'full_name' => 'required|string|max:255',
+            'full_name_en' => 'required|string|max:255',
+            'student_code' => 'nullable|string|max:50|unique:students,student_code',
+            'national_id' => 'required|string|max:50|unique:students,national_id',
+            'gender' => 'required|in:male,female',
+            'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
+            'guardian_id' => 'required|integer|exists:users,id',
+            'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('school_id', $schoolId)],
+            'morning_group_id' => ['nullable', 'integer', Rule::exists('bus_groups', 'id')->where('school_id', $schoolId)],
+            'afternoon_group_id' => ['nullable', 'integer', Rule::exists('bus_groups', 'id')->where('school_id', $schoolId)],
+            'image' => 'nullable|image|max:5120',
         ]);
-    });
 
-    return redirect()->route('school.students.index')->with('success', 'Student created successfully.');
-}
+        // استخدام Transaction لضمان سلامة البيانات
+        DB::transaction(function () use ($validated, $schoolId, $request) {
+            // ⬅️ تحديث بيانات إنشاء الطالب
+            $studentData = [
+                'full_name' => $validated['full_name'],
+                'full_name_en' => $validated['full_name_en'],
+                'student_code' => $validated['student_code'] ?? 'ST-' . $validated['national_id'],
+                'national_id' => $validated['national_id'],
+                'gender' => $validated['gender'],
+                'guardian_id' => $validated['guardian_id'],
+                'supervisor_id' => $validated['supervisor_id'] ?? null,
+                'morning_group_id' => $validated['morning_group_id'] ?? null,
+                'afternoon_group_id' => $validated['afternoon_group_id'] ?? null,
+                'school_id' => $schoolId,
+            ];
+
+            // ⬅️ معالجة صورة الطالب
+            if ($request->hasFile('image')) {
+                $studentData['image'] = $request->file('image')->store('students', 'public');
+            }
+
+            $student = Student::create($studentData);
+
+            $student->enrollments()->create([
+                'school_id' => $schoolId,
+                'classroom_id' => $validated['classroom_id'],
+                'status' => 'active',
+                'is_active' => true,
+            ]);
+        });
+
+        return redirect()->route('school.students.index')->with('success', 'Student created successfully.');
+    }
 
     /**
      * View attendance history for a student
@@ -283,12 +274,13 @@ public function store(Request $request)
         $this->authorize('update', $student);
 
         return Inertia::render('School/Students/EditStudent', [
-            'student' => $student->load(['currentEnrollment', 'guardian', 'supervisor:id,name']),
+            'student' => $student->load(['currentEnrollment', 'guardian', 'supervisor:id,name', 'morningGroup', 'afternoonGroup']),
             'classrooms' => Classroom::where('school_id', Auth::user()->school_id)->orderBy('name')->get(['id', 'name']),
             'supervisors' => User::where('school_id', Auth::user()->school_id)
                 ->whereIn('role', ['supervisor', 'teacher', 'school_admin'])
                 ->orderBy('name')
                 ->get(['id', 'name', 'email']),
+            'busGroups' => \App\Models\BusGroup::with('bus')->where('school_id', Auth::user()->school_id)->orderBy('name')->get(),
         ]);
     }
 
@@ -297,27 +289,30 @@ public function store(Request $request)
      */
     public function update(Request $request, Student $student)
     {
-        
+
         $this->authorize('update', $student);
         $schoolId = Auth::user()->school_id;;
         // 🛠️ إصلاح مشكلة القيم الفارغة (fix empty strings failing validation)
-  
+
 
         try {
             $validated = $request->validate([
                 // Student Data
                 'full_name' => 'required|string|max:255',
+                'full_name_en' => 'required|string|max:255',
                 'national_id' => ['nullable', 'string', 'max:50', Rule::unique('students')->ignore($student->id)],
                 'gender' => 'required|in:male,female',
                 'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
+                'morning_group_id' => ['nullable', 'integer', Rule::exists('bus_groups', 'id')->where('school_id', $schoolId)],
+                'afternoon_group_id' => ['nullable', 'integer', Rule::exists('bus_groups', 'id')->where('school_id', $schoolId)],
                 'is_active' => 'required|boolean',
                 'image' => 'nullable|image|max:5120',
-    
-                // Guardian Data
+
+                // Guardian Data (now referencing users table)
                 'guardian.name' => 'required|string|max:255',
                 'guardian.name_en' => 'nullable|string|max:255',
-                'guardian.national_id' => ['required', 'string', 'max:50', Rule::unique('guardians', 'national_id')->ignore($student->guardian_id)],
-                'guardian.phone' => ['required', 'string', 'max:50', Rule::unique('guardians', 'phone')->ignore($student->guardian_id)],
+                'guardian.national_id' => ['required', 'string', 'max:50', Rule::unique('users', 'national_id')->ignore($student->guardian_id)],
+                'guardian.phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($student->guardian_id)],
                 'guardian.address' => 'nullable|string|max:255',
                 'guardian.home_number' => 'nullable|string|max:50',
                 'guardian.image' => 'nullable|image|max:5120',
@@ -331,8 +326,11 @@ public function store(Request $request)
             // Update Student
             $studentData = [
                 'full_name' => $validated['full_name'],
+                'full_name_en' => $validated['full_name_en'],
                 'national_id' => $validated['national_id'],
                 'gender' => $validated['gender'],
+                'morning_group_id' => $validated['morning_group_id'] ?? null,
+                'afternoon_group_id' => $validated['afternoon_group_id'] ?? null,
                 'is_active' => $validated['is_active'],
             ];
 
@@ -349,7 +347,7 @@ public function store(Request $request)
                 ]);
             }
 
-            // Update Guardian
+            // Update Guardian (now a User record)
             $guardianData = [
                 'name' => $validated['guardian']['name'],
                 'name_en' => $validated['guardian']['name_en'],
@@ -360,7 +358,7 @@ public function store(Request $request)
             ];
 
             if ($request->hasFile('guardian.image')) {
-                 $guardianData['image'] = $request->file('guardian.image')->store('guardians', 'public');
+                $guardianData['image'] = $request->file('guardian.image')->store('guardians', 'public');
             }
 
             $student->guardian->update($guardianData);

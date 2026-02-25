@@ -131,7 +131,12 @@ export default function Index({
     if (modalState.type === "add") {
       busForm.post(route("admin.buses.store"), { onSuccess: closeModal });
     } else if (modalState.type === "edit" && modalState.bus) {
-      busForm.put(route("admin.buses.update", modalState.bus.id), {
+      // Use POST with _method=put to emulate PUT for multipart/form-data
+      busForm.transform((data) => ({
+        ...data,
+        _method: "put",
+      }));
+      busForm.post(route("admin.buses.update", modalState.bus.id), {
         onSuccess: closeModal,
       });
     } else if (modalState.type === "assign" && modalState.bus) {
@@ -1275,6 +1280,10 @@ export default function Index({
                           {isRTL ? "🔴 خارج الخدمة" : "🔴 Out of Service"}
                         </option>
                       </select>
+                      <InputError
+                        message={busForm.errors.status}
+                        className="mt-2"
+                      />
                     </div>
                   )}
                 </form>
