@@ -145,10 +145,10 @@ class BusController extends Controller
         ]);
 
         $schoolId = Auth::user()->school_id;
-        
+
         Bus::whereIn('id', $validated['ids'])
-           ->where('school_id', $schoolId)
-           ->delete();
+            ->where('school_id', $schoolId)
+            ->delete();
 
         return back()->with('success', 'تم حذف الحافلات المحددة بنجاح');
     }
@@ -159,7 +159,7 @@ class BusController extends Controller
     public function trackingApi()
     {
         $schoolId = Auth::user()->school_id;
-        
+
         $buses = Bus::where('school_id', $schoolId)
             ->whereNotNull('current_latitude')
             ->whereNotNull('current_longitude')
@@ -179,5 +179,93 @@ class BusController extends Controller
             'success' => true,
             'buses' => $buses,
         ]);
+    }
+
+    /**
+     * Show the generic page to assign students to buses.
+     */
+    public function assignStudentsPage(Request $request)
+    {
+        $schoolId = Auth::user()->school_id;
+
+        // Fetch all bus groups
+        $groups = \App\Models\BusGroup::with('bus')->where('school_id', $schoolId)->get();
+
+        // Fetch all active students in the school
+        $students = \App\Models\Student::where('school_id', $schoolId)
+            ->where('is_active', true)
+            ->orderBy('full_name') // Using full_name based on Student model
+            ->get(['id', 'full_name', 'student_code', 'national_id', 'gender', 'morning_group_id', 'afternoon_group_id']) // Select only what's needed
+            ->map(function ($student) {
+                return [
+                    'id' => $student->id,
+                    'name' => $student->full_name,
+                    'student_code' => $student->student_code,
+                    'national_id' => $student->national_id,
+                    'gender' => $student->gender,
+                    'morning_group_id' => $student->morning_group_id,
+                    'afternoon_group_id' => $student->afternoon_group_id,
+                ];
+            });
+
+        return Inertia::render('School/Buses/AssignStudents', [
+            'groups' => $groups,
+            'students' => $students,
+            'selectedGroupId' => $request->query('group_id'), // Pre-select group if provided in query
+        ]);
+    }
+
+    /**
+     * Save assigned students to a specific bus.
+     */
+    public function saveAssignedStudents(Request $request)
+    {
+        $validated = $request->validate([
+            'group_id' => 'required|exists:bus_groups,id',
+            'morning_student_ids' => 'array',
+            'morning_student_ids.*' => 'exists:students,id',
+            'afternoon_student_ids' => 'array',
+            'afternoon_student_ids.*' => 'exists:students,id',
+        ]);
+
+        $groupId = $validated['group_id'];
+        $schoolId = Auth::user()->school_id;
+
+        $group = \App\Models\BusGroup::where('id', $groupId)
+            ->where('school_id', $schoolId)
+            ->firstOrFail();
+
+        $morningIds = collect($validated['morning_student_ids'] ?? [])->unique()->values()->all();
+        $afternoonIds = collect($validated['afternoon_student_ids'] ?? [])->unique()->values()->all();
+
+        // Transaction for safety
+        \Illuminate\Support\Facades\DB::transaction(function () use ($schoolId, $groupId, $morningIds, $afternoonIds) {
+            // 1. Remove this group from any students who currently have it, but aren't in the new lists
+            \App\Models\Student::where('school_id', $schoolId)
+                ->where('morning_group_id', $groupId)
+                ->whereNotIn('id', $morningIds)
+                ->update(['morning_group_id' => null]);
+
+            \App\Models\Student::where('school_id', $schoolId)
+                ->where('afternoon_group_id', $groupId)
+                ->whereNotIn('id', $afternoonIds)
+                ->update(['afternoon_group_id' => null]);
+
+            // 2. Add group to morning students
+            if (!empty($morningIds)) {
+                \App\Models\Student::where('school_id', $schoolId)
+                    ->whereIn('id', $morningIds)
+                    ->update(['morning_group_id' => $groupId]);
+            }
+
+            // 3. Add group to afternoon students
+            if (!empty($afternoonIds)) {
+                \App\Models\Student::where('school_id', $schoolId)
+                    ->whereIn('id', $afternoonIds)
+                    ->update(['afternoon_group_id' => $groupId]);
+            }
+        });
+
+        return redirect()->back()->with('success', 'تم حفظ تعيينات المجموعات بنجاح');
     }
 }

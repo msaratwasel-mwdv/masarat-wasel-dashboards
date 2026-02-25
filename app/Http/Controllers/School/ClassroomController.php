@@ -19,7 +19,7 @@ class ClassroomController extends Controller
             ->with(['teachers:id,name,national_id']) // load supervisors with national_id for search
             ->orderBy('name')
             ->get(['id', 'name', 'grade_level']);
-            
+
         return response()->json($classrooms);
     }
 
@@ -35,21 +35,21 @@ class ClassroomController extends Controller
         $classrooms = Classroom::where('school_id', $schoolId)
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('grade_level', 'like', "%{$search}%");
+                    ->orWhere('grade_level', 'like', "%{$search}%");
             })
             ->latest()
             ->with('teachers') // Eager load teachers to display supervisor
             ->get();
 
-        // Fetch supervisors to populate the dropdown
-        $supervisors = User::where('school_id', $schoolId)
-            ->where('role', 'supervisor')
+        // Fetch teachers to populate the dropdown
+        $teachers = User::where('school_id', $schoolId)
+            ->where('role', 'teacher')
             ->orderBy('name')
             ->get(['id', 'name']);
 
         return Inertia::render('School/Classrooms/Index', [
             'classrooms' => $classrooms,
-            'supervisors' => $supervisors,
+            'teachers' => $teachers,
             'filters' => $request->only(['search']),
         ]);
     }
@@ -66,7 +66,7 @@ class ClassroomController extends Controller
 
         $teachers = User::query()
             ->where('school_id', $user->school_id)
-            ->where('role', 'supervisor') // Changed to show supervisors
+            ->where('role', 'teacher') // Show teachers
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
@@ -103,7 +103,7 @@ class ClassroomController extends Controller
         $teacherIds = collect($validated['teacher_ids'] ?? [])->unique()->values();
         $teacherIds = User::query()
             ->where('school_id', $user->school_id)
-            ->where('role', 'supervisor')
+            ->where('role', 'teacher')
             ->whereIn('id', $teacherIds)
             ->pluck('id')
             ->all();
@@ -123,7 +123,7 @@ class ClassroomController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'grade_level' => 'nullable|string|max:255',
-            'supervisor_id' => 'nullable|exists:users,id', // Added validation
+            'teacher_id' => 'nullable|exists:users,id', // Added validation
         ]);
 
         /** @var \App\Models\User $user */
@@ -135,9 +135,9 @@ class ClassroomController extends Controller
             'school_id' => $user->school_id, // ✅ استخدام المتغير المعرف
         ]);
 
-        // Attach supervisor if selected
-        if ($request->supervisor_id) {
-            $classroom->teachers()->attach($request->supervisor_id, ['school_id' => $user->school_id]);
+        // Attach teacher if selected
+        if ($request->teacher_id) {
+            $classroom->teachers()->attach($request->teacher_id, ['school_id' => $user->school_id]);
         }
 
         return redirect()->back()->with('success', 'Class created successfully');

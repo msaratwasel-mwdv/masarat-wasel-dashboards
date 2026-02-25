@@ -178,7 +178,10 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         // 6. الحافلات والرحلات
         Route::resource('buses', \App\Http\Controllers\School\BusController::class);
         Route::post('buses/bulk-destroy', [\App\Http\Controllers\School\BusController::class, 'bulkDestroy'])->name('buses.bulk-destroy');
+        Route::resource('bus-groups', \App\Http\Controllers\School\BusGroupController::class);
         Route::get('buses/tracking/api', [\App\Http\Controllers\School\BusController::class, 'trackingApi'])->name('buses.tracking.api');
+        Route::get('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'assignStudentsPage'])->name('buses.students.assign');
+        Route::post('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'saveAssignedStudents'])->name('buses.students.save');
 
         // طلبات الحافلات (ما زالت موجودة كـ API/Controller لكن الواجهة موحدة)
         Route::post('bus-requests', [\App\Http\Controllers\School\BusRequestController::class, 'store'])->name('bus-requests.store');

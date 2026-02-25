@@ -7,7 +7,7 @@ use App\Models\Notification;
 use App\Models\NotificationTemplate;
 use App\Models\Classroom;
 use App\Models\Bus;
-use App\Models\Guardian;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +21,7 @@ class NotificationController extends Controller
     public function index(Request $request)
     {
         $schoolId = Auth::user()->school_id;
-        
+
         $query = Notification::where('sender_id', Auth::id())
             ->with('sender')
             ->latest();
@@ -30,7 +30,7 @@ class NotificationController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        
+
         if ($request->filled('type')) {
             $query->where('template_type', $request->type);
         }
@@ -48,18 +48,16 @@ class NotificationController extends Controller
         $templates = NotificationTemplate::active()->get();
         $classrooms = Classroom::where('school_id', $schoolId)->get();
         $buses = Bus::where('school_id', $schoolId)->get();
-        
-        // Parents (Guardians) - optimizing query to only select needed fields
-        $parents = Guardian::where('school_id', $schoolId)
-            ->with(['user' => function($q) {
-                $q->select('id', 'name', 'email');
-            }])
-            ->get()
-            ->map(function($guardian) {
+
+        // Parents — الآن من جدول users مباشرة
+        $parents = User::where('school_id', $schoolId)
+            ->where('role', 'parent')
+            ->get(['id', 'name', 'email'])
+            ->map(function ($user) {
                 return [
-                    'id' => $guardian->id,
-                    'name' => $guardian->full_name ?? ($guardian->user ? $guardian->user->name : 'Unknown'),
-                    'email' => $guardian->email ?? ($guardian->user ? $guardian->user->email : ''),
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email ?? '',
                 ];
             });
 
@@ -80,7 +78,7 @@ class NotificationController extends Controller
     public function create()
     {
         $schoolId = Auth::user()->school_id;
-        
+
         $templates = NotificationTemplate::active()->get();
         $classrooms = Classroom::where('school_id', $schoolId)->get();
         $buses = Bus::where('school_id', $schoolId)->get();
@@ -98,7 +96,7 @@ class NotificationController extends Controller
     public function preview(Request $request)
     {
         $schoolId = Auth::user()->school_id;
-        
+
         $recipientType = $request->recipient_type;
         $filter = $request->recipient_filter ?? [];
 
@@ -106,10 +104,10 @@ class NotificationController extends Controller
 
         return response()->json([
             'count' => $recipients->count(),
-            'recipients' => $recipients->take(5)->map(function ($guardian) {
+            'recipients' => $recipients->take(5)->map(function ($user) {
                 return [
-                    'name' => $guardian->user->name ?? $guardian->full_name,
-                    'has_fcm_token' => !empty($guardian->user->fcm_token) || !empty($guardian->fcm_token),
+                    'name' => $user->name,
+                    'has_fcm_token' => !empty($user->fcm_token),
                 ];
             }),
         ]);
@@ -145,14 +143,13 @@ class NotificationController extends Controller
             $notification = Notification::create([
                 'title' => $title,
                 'message' => $message,
-                'type' => $validated['type'], // Store the selected type directly
-                'template_type' => $validated['type'], // Optional: store as template_type too if needed
+                'type' => $validated['type'],
+                'template_type' => $validated['type'],
                 'sender_id' => Auth::id(),
                 'recipient_type' => $validated['recipient_type'],
                 'recipient_filter' => $validated['recipient_filter'],
                 'total_recipients' => $recipients->count(),
                 'status' => 'pending',
-                // Store original bilingual data in 'data' column if needed for future editing
                 'data' => [
                     'title_en' => $validated['title_en'],
                     'title_ar' => $validated['title_ar'],
@@ -163,21 +160,12 @@ class NotificationController extends Controller
             ]);
 
             // Create recipient records
-            foreach ($recipients as $guardian) {
-                // Check if user relation exists, otherwise fallback or skip
-                $userId = $guardian->user_id ?? ($guardian->user ? $guardian->user->id : null);
-                
-                // If guardian has no user account, we might not be able to send in-app/fcm notification easily
-                // But we still record it. Using guardian ID if user_id is missing might be an option if table supports it,
-                // but assuming 'notification_recipients' links to 'users'.
-                
-                if ($userId) {
-                    $notification->recipients()->create([
-                        'user_id' => $userId,
-                        'fcm_token' => $guardian->user->fcm_token ?? null,
-                        'status' => 'pending',
-                    ]);
-                }
+            foreach ($recipients as $parentUser) {
+                $notification->recipients()->create([
+                    'user_id' => $parentUser->id,
+                    'fcm_token' => $parentUser->fcm_token ?? null,
+                    'status' => 'pending',
+                ]);
             }
 
             DB::commit();
@@ -187,7 +175,6 @@ class NotificationController extends Controller
 
             return redirect()->route('school.notifications.index')
                 ->with('success', 'تم إنشاء الإشعار وسيتم إرساله قريباً');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'حدث خطأ أثناء إنشاء الإشعار: ' . $e->getMessage()]);
@@ -213,31 +200,36 @@ class NotificationController extends Controller
 
     /**
      * Helper: Get recipients based on type and filter.
+     * الآن يرجع مجموعة من User (role=parent) بدلاً من Guardian
      */
     private function getRecipients($schoolId, $recipientType, $filter)
     {
         switch ($recipientType) {
             case 'all_parents':
-                return Guardian::where('school_id', $schoolId)->with('user')->get();
+                return User::where('school_id', $schoolId)->where('role', 'parent')->get();
 
             case 'class_students':
                 $classroomIds = $filter['classroom_ids'] ?? [];
-                // Find guardians linked to students in these classrooms
-                return Guardian::where('school_id', $schoolId)
+                // أولياء الأمور الذين لديهم طلاب في هذه الفصول
+                return User::where('school_id', $schoolId)
+                    ->where('role', 'parent')
                     ->whereHas('students', function ($q) use ($classroomIds) {
-                        $q->whereIn('classroom_id', $classroomIds); // Assuming student has classroom_id directly or through enrollment
-                    })->with('user')->get();
+                        $q->whereHas('currentEnrollment', function ($eq) use ($classroomIds) {
+                            $eq->whereIn('classroom_id', $classroomIds);
+                        });
+                    })->get();
 
             case 'bus_students':
                 $busIds = $filter['bus_ids'] ?? [];
-                return Guardian::where('school_id', $schoolId)
+                return User::where('school_id', $schoolId)
+                    ->where('role', 'parent')
                     ->whereHas('students.buses', function ($q) use ($busIds) {
                         $q->whereIn('buses.id', $busIds);
-                    })->with('user')->get();
+                    })->get();
 
             case 'specific_guardian':
                 $guardianId = $filter['guardian_id'] ?? null;
-                return Guardian::where('id', $guardianId)->with('user')->get();
+                return User::where('id', $guardianId)->where('role', 'parent')->get();
 
             default:
                 return collect();

@@ -30,6 +30,11 @@ class User extends Authenticatable
         'phone',
         'user_code',
         'role',
+        'name_en',
+        'address',
+        'home_number',
+        'preferred_language',
+        'image',
         'school_id',
         'is_active',
     ];
@@ -75,11 +80,11 @@ class User extends Authenticatable
     }
 
     /**
-     * ولي الأمر المرتبط بهذا المستخدم
+     * الطلاب المرتبطون بولي الأمر هذا
      */
-    public function guardian(): HasOne
+    public function students(): HasMany
     {
-        return $this->hasOne(Guardian::class);
+        return $this->hasMany(Student::class, 'guardian_id');
     }
 
     // ── علاقات الشات ──────────────────────────────────

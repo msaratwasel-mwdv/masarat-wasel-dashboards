@@ -14,20 +14,18 @@ export interface User {
     role: "admin" | "school_admin" | "driver" | "parent" | "teacher" | "student";
     school_id?: number;
     school?: School;
-}
-
-export interface Guardian {
-    id: number;
-    name: string;
+    // حقول ولي الأمر (متاحة عندما يكون role = parent)
     name_en?: string;
     national_id?: string;
     phone?: string;
-    email?: string;
     address?: string;
     home_number?: string;
+    preferred_language?: "ar" | "en";
     image?: string;
-    school_id?: number; // ⬅️ أضف هذا
 }
+
+// Guardian هو الآن نفس User (للتوافق مع الكود القديم)
+export type Guardian = User;
 
 export interface Supervisor {
     id: number;

@@ -7,7 +7,6 @@ use App\Models\Message;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
-use App\Models\Guardian;
 use App\Models\DriverProfile;
 use App\Models\SupervisorProfile;
 use App\Models\Conversation;
@@ -55,16 +54,6 @@ class ChatDemoSeeder extends Seeder
         );
         $parentUser->tokens()->where('name', 'simulator')->delete();
         $parentToken = $parentUser->createToken('simulator')->plainTextToken;
-
-        $guardian = Guardian::firstOrCreate(
-            ['user_id' => $parentUser->id],
-            [
-                'name'        => $parentUser->name,
-                'phone'       => $parentUser->phone,
-                'school_id'   => $school1->id,
-                'national_id' => '1000000001',
-            ]
-        );
 
         // ═══════════════════════════════════════════════════════
         //  3. إنشاء سائقين ومشرفات (3 باصات = 3 سائقين + 3 مشرفات)
@@ -120,19 +109,19 @@ class ChatDemoSeeder extends Seeder
         // ═══════════════════════════════════════════════════════
         $studentAhmed = Student::firstOrCreate(
             ['student_code' => 'STU-DEMO-001'],
-            ['full_name' => 'أحمد', 'guardian_id' => $guardian->id, 'school_id' => $school1->id, 'is_active' => true]
+            ['full_name' => 'أحمد', 'guardian_id' => $parentUser->id, 'school_id' => $school1->id, 'is_active' => true]
         );
         $studentFatima = Student::firstOrCreate(
             ['student_code' => 'STU-DEMO-002'],
-            ['full_name' => 'فاطمة', 'guardian_id' => $guardian->id, 'school_id' => $school1->id, 'is_active' => true]
+            ['full_name' => 'فاطمة', 'guardian_id' => $parentUser->id, 'school_id' => $school1->id, 'is_active' => true]
         );
         $studentMohammed = Student::firstOrCreate(
             ['student_code' => 'STU-DEMO-003'],
-            ['full_name' => 'محمد', 'guardian_id' => $guardian->id, 'school_id' => $school2->id, 'is_active' => true]
+            ['full_name' => 'محمد', 'guardian_id' => $parentUser->id, 'school_id' => $school2->id, 'is_active' => true]
         );
         $studentSara = Student::firstOrCreate(
             ['student_code' => 'STU-DEMO-004'],
-            ['full_name' => 'سارة', 'guardian_id' => $guardian->id, 'school_id' => $school2->id, 'is_active' => true]
+            ['full_name' => 'سارة', 'guardian_id' => $parentUser->id, 'school_id' => $school2->id, 'is_active' => true]
         );
 
         // ═══════════════════════════════════════════════════════

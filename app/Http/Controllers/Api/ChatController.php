@@ -9,7 +9,6 @@ use App\Http\Resources\ConversationResource;
 use App\Http\Resources\MessageResource;
 use App\Models\Bus;
 use App\Models\Conversation;
-use App\Models\Guardian;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -33,11 +32,9 @@ class ChatController extends Controller
 
         switch ($user->role) {
             case 'parent':
-                $guardian = Guardian::where('user_id', $user->id)->first();
-                if (!$guardian) return collect();
-
                 // طلاب ولي الأمر الناشطين في حافلات
-                $studentIds = $guardian->students()->pluck('students.id')->toArray();
+                $studentIds = $user->students()->pluck('students.id')->toArray();
+                if (empty($studentIds)) return collect();
 
                 $buses = Bus::whereHas('students', function ($q) use ($studentIds) {
                     $q->whereIn('students.id', $studentIds)
@@ -85,15 +82,15 @@ class ChatController extends Controller
 
     private function getGuardianUsersForBus(Bus $bus): \Illuminate\Support\Collection
     {
-        $students = $bus->students()->wherePivot('is_active', true)->with('guardian.user')->get();
+        $students = $bus->students()->wherePivot('is_active', true)->with('guardian')->get();
         $usersMap = [];
 
         foreach ($students as $student) {
-            $guardian = $student->guardian;
-            if ($guardian && $guardian->user) {
-                $userId = $guardian->user->id;
+            $guardianUser = $student->guardian; // هذا الآن User مباشرة
+            if ($guardianUser) {
+                $userId = $guardianUser->id;
                 if (!isset($usersMap[$userId])) {
-                    $usersMap[$userId] = clone $guardian->user;
+                    $usersMap[$userId] = clone $guardianUser;
                     $usersMap[$userId]->student_names = [];
                 }
                 $names = $usersMap[$userId]->student_names;

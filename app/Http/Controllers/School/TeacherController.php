@@ -23,12 +23,12 @@ class TeacherController extends Controller
 
         $teachers = User::query()
             ->where('school_id', $user->school_id)
-            ->where('role', 'supervisor')
+            ->where('role', 'teacher')
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('national_id', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('national_id', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             })
             ->orderBy('created_at', 'desc')
@@ -64,14 +64,14 @@ class TeacherController extends Controller
             'password' => Hash::make(
                 $validated['password'] ?? $validated['national_id']
             ),
-            'role' => 'supervisor',
+            'role' => 'teacher',
             'school_id' => $user->school_id,
             'is_active' => true,
         ]);
 
         return redirect()
             ->back()
-            ->with('success', 'Supervisor created successfully.');
+            ->with('success', 'Teacher created successfully.');
     }
 
     /**
@@ -85,7 +85,7 @@ class TeacherController extends Controller
         // 🔐 حماية: لا تعدّل مشرف من مدرسة ثانية
         if (
             $teacher->school_id !== $user->school_id ||
-            $teacher->role !== 'supervisor'
+            $teacher->role !== 'teacher'
         ) {
             abort(403);
         }
@@ -105,7 +105,7 @@ class TeacherController extends Controller
 
         if (
             $teacher->school_id !== $user->school_id ||
-            $teacher->role !== 'supervisor'
+            $teacher->role !== 'teacher'
         ) {
             abort(403);
         }
@@ -132,7 +132,7 @@ class TeacherController extends Controller
 
         return redirect()
             ->route('school.teachers.index')
-            ->with('success', 'Supervisor updated successfully.');
+            ->with('success', 'Teacher updated successfully.');
     }
 
     /**
@@ -145,7 +145,7 @@ class TeacherController extends Controller
 
         if (
             $teacher->school_id !== $user->school_id ||
-            $teacher->role !== 'supervisor'
+            $teacher->role !== 'teacher'
         ) {
             abort(403);
         }
@@ -154,6 +154,6 @@ class TeacherController extends Controller
 
         return redirect()
             ->route('school.teachers.index')
-            ->with('success', 'Supervisor deleted successfully.');
+            ->with('success', 'Teacher deleted successfully.');
     }
 }

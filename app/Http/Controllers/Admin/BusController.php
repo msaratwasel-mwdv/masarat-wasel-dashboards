@@ -63,7 +63,6 @@ class BusController extends Controller
             'schools' => $schools,
             'drivers' => $drivers,
             'supervisors' => $supervisors,
-            'schools' => School::select('id', 'name')->get(),
         ]);
     }
 
@@ -71,12 +70,7 @@ class BusController extends Controller
     {
         $validated = $request->validate([
             'school_id' => 'nullable|exists:schools,id',
-            'bus_number' => 'required|string|unique:buses',
-            'plate_number' => 'required|string|unique:buses|max:20',
-            'model' => 'required|string|max:100',
-            'year' => 'required|integer|min:2000|max:' . (date('Y') + 1),
-            'capacity' => 'required|integer|min:5|max:100',
-            'type' => 'required|in:permanent,temporary',
+            // 'bus_number' and 'type' are auto-generated or defaulted below since the frontend doesn't send them.
             'driver_id' => 'nullable|exists:users,id',
             'supervisor_id' => 'nullable|exists:users,id',
             'photos.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -88,10 +82,12 @@ class BusController extends Controller
 
             $bus = Bus::create([
                 'bus_code' => $busCode,
+                'bus_number' => $busCode, // Fallback since frontend removed it
                 'plate_number' => $request->plate_number,
                 'model' => $request->model,
                 'year' => $request->year,
                 'capacity' => $request->capacity,
+                'type' => 'permanent', // Default type
                 'status' => 'active',
                 'school_id' => null,
                 'driver_id' => $request->driver_id,
@@ -167,12 +163,11 @@ class BusController extends Controller
     {
         $validated = $request->validate([
             'school_id' => 'nullable|exists:schools,id',
-            'bus_number' => ['required', 'string', Rule::unique('buses')->ignore($bus->id)],
+            // 'bus_number' and 'type' are missing from frontend form, so we remove them from required rules.
             'plate_number' => ['required', 'string', Rule::unique('buses')->ignore($bus->id)],
             'model' => 'required|string|max:100',
             'year' => 'required|integer|min:2000|max:' . (date('Y') + 1),
             'capacity' => 'required|integer|min:5|max:100',
-            'type' => 'required|in:permanent,temporary',
             'status' => 'required|in:active,maintenance,inactive,out_of_service',
             'driver_id' => 'nullable|exists:users,id',
             'supervisor_id' => 'nullable|exists:users,id',
