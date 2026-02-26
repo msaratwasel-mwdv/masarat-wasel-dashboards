@@ -45,6 +45,11 @@ export default function Welcome({
           name="description"
           content="مسارات واصل - منصة ذكية لإدارة النقل المدرسي. آمنة وفعالة وشفافة للمدارس الحديثة."
         />
+        {/* تحسين سرعة تحميل CSS (Preloading) لمنع التغيير البشع في بداية التحميل */}
+        <link rel="preload" href="/css/main.css" as="style" />
+        <link rel="preload" href="/css/landing.css" as="style" />
+        <link rel="preload" href="/css/enhanced.css" as="style" />
+
         <link rel="stylesheet" href="/css/main.css" />
         <link rel="stylesheet" href="/css/landing.css" />
         <link rel="stylesheet" href="/css/enhanced.css" />

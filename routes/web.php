@@ -227,6 +227,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('chat/{conversation}', [\App\Http\Controllers\Admin\ChatMonitorController::class, 'show'])->name('chat.show');
         Route::delete('chat/messages/{message}', [\App\Http\Controllers\Admin\ChatMonitorController::class, 'deleteMessage'])->name('chat.messages.destroy');
         Route::post('chat/alert/{user}', [\App\Http\Controllers\Admin\ChatMonitorController::class, 'alertUser'])->name('chat.alert');
+
+        // أزرار لوحة التحكم
+        Route::post('system/execute', [\App\Http\Controllers\Admin\SystemCommandController::class, 'execute'])->name('system.execute');
     });
 
 // 🔵 ثانياً: روابط مدير المدرسة (School Admin)

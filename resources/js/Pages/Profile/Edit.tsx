@@ -5,6 +5,7 @@ import { Head, usePage } from "@inertiajs/react";
 import DeleteUserForm from "./Partials/DeleteUserForm";
 import UpdatePasswordForm from "./Partials/UpdatePasswordForm";
 import UpdateProfileInformationForm from "./Partials/UpdateProfileInformationForm";
+import SystemCommands from "./Partials/SystemCommands";
 
 export default function Edit({
   mustVerifyEmail,
@@ -46,6 +47,12 @@ export default function Edit({
           <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
             <DeleteUserForm className="max-w-xl" />
           </div>
+
+          {user.role === "admin" && (
+            <div id="system-commands-section">
+              <SystemCommands />
+            </div>
+          )}
         </div>
       </div>
     </Layout>
