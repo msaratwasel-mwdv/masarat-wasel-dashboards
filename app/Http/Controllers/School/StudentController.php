@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -164,7 +165,7 @@ class StudentController extends Controller
         if (empty($validated['name']) && empty($validated['name_en'])) {
             return back()->withErrors(['name' => 'يجب إدخال اسم ولي الأمر (عربي أو إنجليزي).']);
         }
-        
+
         // Fall back: if Arabic name is empty, copy from English name
         if (empty($validated['name'])) {
             $validated['name'] = $validated['name_en'];
@@ -173,7 +174,7 @@ class StudentController extends Controller
         $guardianData = array_merge($validated, [
             'school_id' => $schoolId,
             'role' => 'parent',
-            'password' => \Illuminate\Support\Facades\Hash::make($cleanPhone), // الجوال هو كلمة المرور بدل 'password'
+            'password' => \Illuminate\Support\Facades\Hash::make($cleanPhone), // الجوال هو كلمة المرور
         ]);
 
         if ($request->hasFile('image')) {

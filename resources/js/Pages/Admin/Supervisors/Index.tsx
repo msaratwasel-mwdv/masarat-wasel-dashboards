@@ -13,14 +13,17 @@ import { useTheme } from "@/Contexts/ThemeContext";
 interface Supervisor {
   id: number;
   name: string;
+  name_en: string | null;
   email: string;
   phone: string;
+  national_id: string;
   user_code: string;
   supervisor_profile: {
     emergency_contact_name: string;
     emergency_contact_phone: string;
     status: string;
   } | null;
+  image?: string | null;
 }
 
 export default function SupervisorsIndex({
@@ -35,20 +38,25 @@ export default function SupervisorsIndex({
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<number | null>(null);
 
-  const { data, setData, post, put, processing, errors, reset, clearErrors } =
+  const { data, setData, post, processing, errors, reset, clearErrors } =
     useForm({
+      _method: "post",
       name: "",
+      name_en: "",
+      national_id: "",
       email: "",
       phone: "",
       emergency_contact_name: "",
       emergency_contact_phone: "",
       status: "Trainee", // Default
+      image: null as File | null,
     });
 
   const openAddModal = () => {
     setIsEditing(false);
     setCurrentId(null);
     reset();
+    setData("_method", "post");
     clearErrors();
     setIsModalOpen(true);
   };
@@ -57,7 +65,10 @@ export default function SupervisorsIndex({
     setIsEditing(true);
     setCurrentId(sup.id);
     setData({
+      _method: "put",
       name: sup.name,
+      name_en: sup.name_en || "",
+      national_id: sup.national_id || "",
       email: sup.email,
       phone: sup.phone || "",
       emergency_contact_name:
@@ -65,6 +76,7 @@ export default function SupervisorsIndex({
       emergency_contact_phone:
         sup.supervisor_profile?.emergency_contact_phone || "",
       status: sup.supervisor_profile?.status || "Trainee",
+      image: null,
     });
     clearErrors();
     setIsModalOpen(true);
@@ -78,7 +90,8 @@ export default function SupervisorsIndex({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isEditing && currentId) {
-      put(route("admin.supervisors.update", currentId), {
+      post(route("admin.supervisors.update", currentId), {
+        forceFormData: true,
         onSuccess: () => closeModal(),
       });
     } else {
@@ -243,11 +256,19 @@ export default function SupervisorsIndex({
                           }`}
                         >
                           <div
-                            className={`flex-shrink-0 h-10 w-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold ${
+                            className={`flex-shrink-0 h-10 w-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold overflow-hidden ${
                               isRTL ? "ml-4" : "mr-4"
                             }`}
                           >
-                            {sup.name.charAt(0)}
+                            {sup.image ? (
+                              <img
+                                src={`/storage/${sup.image}`}
+                                alt={sup.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              sup.name.charAt(0)
+                            )}
                           </div>
                           <div className={isRTL ? "text-right" : "text-left"}>
                             <div
@@ -262,7 +283,7 @@ export default function SupervisorsIndex({
                                 isDark ? "text-gray-400" : "text-gray-500"
                               }`}
                             >
-                              {sup.user_code}
+                              Code: {sup.user_code} • ID: {sup.national_id}
                             </div>
                           </div>
                         </div>
@@ -383,24 +404,56 @@ export default function SupervisorsIndex({
               </h2>
 
               <form onSubmit={submit} className="space-y-4">
-                {/* Name */}
-                <div className={isRTL ? "text-right" : ""}>
-                  <InputLabel
-                    htmlFor="name"
-                    value={isRTL ? "الاسم الكامل" : "Full Name"}
-                  />
-                  <TextInput
-                    id="name"
-                    value={data.name}
-                    onChange={(e) => setData("name", e.target.value)}
-                    className="mt-1 block w-full"
-                    placeholder={isRTL ? "اسم المشرف" : "Supervisor Name"}
-                  />
-                  <InputError message={errors.name} className="mt-2" />
+                {/* Names */}
+                <div className={`grid grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}>
+                  <div className={isRTL ? "text-right" : ""}>
+                    <InputLabel
+                      htmlFor="name"
+                      value={
+                        isRTL ? "الاسم الكامل (عربي)" : "Full Name (Arabic)"
+                      }
+                    />
+                    <TextInput
+                      id="name"
+                      value={data.name}
+                      onChange={(e) => setData("name", e.target.value)}
+                      className="mt-1 block w-full"
+                      placeholder={isRTL ? "اسم المشرف" : "Supervisor Name"}
+                    />
+                    <InputError message={errors.name} className="mt-2" />
+                  </div>
+                  <div className={isRTL ? "text-right" : ""}>
+                    <InputLabel
+                      htmlFor="name_en"
+                      value={isRTL ? "الاسم بالإنجليزية" : "English Name"}
+                    />
+                    <TextInput
+                      id="name_en"
+                      value={data.name_en}
+                      onChange={(e) => setData("name_en", e.target.value)}
+                      className="mt-1 block w-full text-left"
+                      dir="ltr"
+                      placeholder="e.g. John Doe"
+                    />
+                    <InputError message={errors.name_en} className="mt-2" />
+                  </div>
                 </div>
 
-                {/* Phone & Email */}
+                {/* Grid for ID & Phone */}
                 <div className={`grid grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}>
+                  <div className={isRTL ? "text-right" : ""}>
+                    <InputLabel
+                      htmlFor="national_id"
+                      value={isRTL ? "الرقم الوطني" : "National ID"}
+                    />
+                    <TextInput
+                      id="national_id"
+                      value={data.national_id}
+                      onChange={(e) => setData("national_id", e.target.value)}
+                      className="mt-1 block w-full"
+                    />
+                    <InputError message={errors.national_id} className="mt-2" />
+                  </div>
                   <div className={isRTL ? "text-right" : ""}>
                     <InputLabel
                       htmlFor="phone"
@@ -414,20 +467,46 @@ export default function SupervisorsIndex({
                     />
                     <InputError message={errors.phone} className="mt-2" />
                   </div>
-                  <div className={isRTL ? "text-right" : ""}>
-                    <InputLabel
-                      htmlFor="email"
-                      value={isRTL ? "البريد الإلكتروني" : "Email"}
-                    />
-                    <TextInput
-                      id="email"
-                      type="email"
-                      value={data.email}
-                      onChange={(e) => setData("email", e.target.value)}
-                      className="mt-1 block w-full"
-                    />
-                    <InputError message={errors.email} className="mt-2" />
-                  </div>
+                </div>
+
+                {/* Email */}
+                <div className={isRTL ? "text-right" : ""}>
+                  <InputLabel
+                    htmlFor="email"
+                    value={isRTL ? "البريد الإلكتروني" : "Email"}
+                  />
+                  <TextInput
+                    id="email"
+                    type="email"
+                    value={data.email}
+                    onChange={(e) => setData("email", e.target.value)}
+                    className="mt-1 block w-full"
+                  />
+                  <InputError message={errors.email} className="mt-2" />
+                </div>
+
+                {/* Profile Picture */}
+                <div className={isRTL ? "text-right" : ""}>
+                  <InputLabel
+                    value={isRTL ? "الصورة الشخصية" : "Profile Picture"}
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      setData(
+                        "image",
+                        e.target.files ? e.target.files[0] : null
+                      )
+                    }
+                    className={`mt-1 block w-full text-sm ${
+                      isDark
+                        ? "text-gray-400 file:bg-gray-700 file:text-gray-200"
+                        : "text-gray-500 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                    }
+                    file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold transition-all cursor-pointer`}
+                  />
+                  <InputError message={errors.image} className="mt-2" />
                 </div>
 
                 {/* Emergency Contact Section */}

@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Validation\Rule;
 
@@ -29,8 +30,11 @@ class SupervisorController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'name_en' => 'nullable|string|max:255',
+            'national_id' => 'required|numeric|unique:users,national_id',
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|unique:users,phone',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             // بيانات البروفايل
             'emergency_contact_name' => 'required|string|max:255',
             'emergency_contact_phone' => 'required|string|max:20',
@@ -39,6 +43,8 @@ class SupervisorController extends Controller
         DB::transaction(function () use ($request) {
             $user = User::create([
                 'name' => $request->name,
+                'name_en' => $request->name_en,
+                'national_id' => $request->national_id,
                 'email' => $request->email,
                 'phone' => $request->phone,
                 // كلمة المرور الافتراضية هي رقم الجوال
@@ -46,6 +52,7 @@ class SupervisorController extends Controller
                 'role' => 'supervisor',
                 'school_id' => null,
                 'user_code' => 'SUP-' . rand(1000, 9999),
+                'image' => $request->hasFile('image') ? $request->file('image')->store('avatars', 'public') : null,
                 'is_active' => true,
             ]);
 
@@ -63,19 +70,33 @@ class SupervisorController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'name_en' => 'nullable|string|max:255',
+            'national_id' => ['required', 'numeric', Rule::unique('users')->ignore($supervisor->id)],
             'email' => ['required', 'email', Rule::unique('users')->ignore($supervisor->id)],
             'phone' => ['required', Rule::unique('users')->ignore($supervisor->id)],
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'emergency_contact_name' => 'required|string',
             'emergency_contact_phone' => 'required|string',
             'status' => 'required|in:Trainee,Active,On Leave,Inactive',
         ]);
 
         DB::transaction(function () use ($request, $supervisor) {
-            $supervisor->update([
+            $data = [
                 'name' => $request->name,
+                'name_en' => $request->name_en,
+                'national_id' => $request->national_id,
                 'email' => $request->email,
                 'phone' => $request->phone,
-            ]);
+            ];
+
+            if ($request->hasFile('image')) {
+                if ($supervisor->image) {
+                    Storage::disk('public')->delete($supervisor->image);
+                }
+                $data['image'] = $request->file('image')->store('avatars', 'public');
+            }
+
+            $supervisor->update($data);
 
             $supervisor->supervisorProfile()->update([
                 'emergency_contact_name' => $request->emergency_contact_name,

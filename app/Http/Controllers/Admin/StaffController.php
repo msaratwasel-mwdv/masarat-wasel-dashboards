@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Validation\Rule;
 
@@ -33,9 +34,11 @@ class StaffController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'name_en' => 'nullable|string|max:255',
             'national_id' => 'required|numeric|unique:users,national_id',
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|unique:users,phone',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'license_number' => 'required|unique:driver_profiles,license_number',
             'license_expiry_date' => 'required|date|after:today',
         ]);
@@ -43,6 +46,7 @@ class StaffController extends Controller
         DB::transaction(function () use ($request) {
             $user = User::create([
                 'name' => $request->name,
+                'name_en' => $request->name_en,
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'national_id' => $request->national_id,
@@ -50,6 +54,7 @@ class StaffController extends Controller
                 'role' => 'driver',
                 'school_id' => null, // يتبع الشركة
                 'user_code' => 'DRV-' . rand(10000, 99999),
+                'image' => $request->hasFile('image') ? $request->file('image')->store('avatars', 'public') : null,
                 'is_active' => true,
             ]);
 
@@ -68,10 +73,12 @@ class StaffController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'name_en' => 'nullable|string|max:255',
             // نستخدم ignore لتجاهل السائق الحالي عند التحقق من التكرار
             'national_id' => ['required', 'numeric', Rule::unique('users')->ignore($driver->id)],
             'email' => ['required', 'email', Rule::unique('users')->ignore($driver->id)],
             'phone' => ['required', Rule::unique('users')->ignore($driver->id)],
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             // التحقق من جدول البروفايل
             'license_number' => ['required', Rule::unique('driver_profiles')->ignore($driver->driverProfile->id ?? 0)],
             'license_expiry_date' => 'required|date',
@@ -79,12 +86,22 @@ class StaffController extends Controller
 
         DB::transaction(function () use ($request, $driver) {
             // تحديث البيانات الأساسية
-            $driver->update([
+            $data = [
                 'name' => $request->name,
+                'name_en' => $request->name_en,
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'national_id' => $request->national_id,
-            ]);
+            ];
+
+            if ($request->hasFile('image')) {
+                if ($driver->image) {
+                    Storage::disk('public')->delete($driver->image);
+                }
+                $data['image'] = $request->file('image')->store('avatars', 'public');
+            }
+
+            $driver->update($data);
 
             // تحديث البروفايل
             $driver->driverProfile()->update([

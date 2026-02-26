@@ -62,7 +62,7 @@ class TeacherController extends Controller
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
             'password' => Hash::make(
-                $validated['password'] ?? $validated['national_id']
+                $validated['password'] ?? $validated['phone'] // كلمة المرور = رقم الهاتف افتراضياً
             ),
             'role' => 'teacher',
             'school_id' => $user->school_id,
@@ -126,9 +126,21 @@ class TeacherController extends Controller
             ],
             'phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($teacher->id)],
             'is_active' => 'required|boolean',
+            'password' => 'nullable|string|min:6',
         ]);
 
-        $teacher->update($validated);
+        $teacher->update([
+            'name'        => $validated['name'],
+            'national_id' => $validated['national_id'],
+            'email'       => $validated['email'] ?? null,
+            'phone'       => $validated['phone'],
+            'is_active'   => $validated['is_active'],
+        ]);
+
+        // تحديث كلمة المرور إذا أُدخلت
+        if (!empty($validated['password'])) {
+            $teacher->update(['password' => Hash::make($validated['password'])]);
+        }
 
         return redirect()
             ->route('school.teachers.index')

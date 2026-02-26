@@ -33,24 +33,19 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "user",
   },
   {
-    label: isRTL ? "المراقبه" : "assignmentHistory",
-    route: "admin.assignmentHistory",
-    icon: "bell",
-  },
-  {
     label: isRTL ? "المشرفين" : "Supervisors",
     route: "admin.supervisors.index",
     icon: "teacher",
   },
   {
+    label: isRTL ? "المراقبه" : "assignmentHistory",
+    route: "admin.assignmentHistory",
+    icon: "bell",
+  },
+  {
     label: isRTL ? "المحادثات" : "Conversations",
     route: "admin.chat.index",
     icon: "chat",
-  },
-  {
-    label: isRTL ? "تجربة الشات المباشرة" : "Chat Simulator",
-    route: "admin.chat.simulator",
-    icon: "chat-sim",
   },
   {
     label: isRTL ? "الإعدادات" : "Settings",
@@ -60,10 +55,11 @@ const getMenuItems = (isRTL: boolean) => [
 ];
 
 export default function Authenticated({
+  user: defaultUser,
   header,
   children,
-}: PropsWithChildren<{ header?: ReactNode }>) {
-  const user = usePage().props.auth.user;
+}: PropsWithChildren<{ user?: User; header?: ReactNode }>) {
+  const user = defaultUser || usePage().props.auth.user;
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { theme, language, toggleTheme, toggleLanguage, isRTL } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
@@ -206,7 +202,7 @@ export default function Authenticated({
             />
           </svg>
         );
-      case "chat-sim":
+      case "clipboard":
         return (
           <svg
             className={baseClass}
@@ -218,7 +214,23 @@ export default function Authenticated({
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+            />
+          </svg>
+        );
+      case "teacher":
+        return (
+          <svg
+            className={baseClass}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17 20h5V19a6 6 0 00-12 0v1h7m-3-7a4 4 0 110-8 4 4 0 010 8zm-8 4H4v-1a6 6 0 0110.19-4.3M9 11a4 4 0 110-8 4 4 0 010 8z"
             />
           </svg>
         );

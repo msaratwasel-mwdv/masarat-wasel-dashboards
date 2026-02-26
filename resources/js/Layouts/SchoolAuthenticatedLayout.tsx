@@ -7,7 +7,7 @@ import ApplicationLogo from "@/Components/ApplicationLogo";
 // ✅ المعالجة الجذرية: تعريف "عقد" واضح للمكون
 // الآن هو يعرف أنه يجب أن يستقبل "user" و "header" و "children"
 interface LayoutProps {
-  user: User;
+  user?: User;
   header?: ReactNode;
 }
 
@@ -44,42 +44,66 @@ export default function SchoolAuthenticatedLayout({
   // قائمة الروابط الخاصة بك (تم الحفاظ عليها)
   // قائمة الروابط الخاصة بك
   const menuItems = [
-    { label: "Dashboard", route: "school.dashboard", icon: "grid" },
     {
-      label: "Classes Management",
+      label: isRtl ? "الرئيسية" : "Dashboard",
+      route: "school.dashboard",
+      icon: "grid",
+    },
+    {
+      label: isRtl ? "إدارة الفصول" : "Classes Management",
       route: "school.classrooms.index",
       icon: "classes",
     },
     {
-      label: "Teachers Management",
+      label: isRtl ? "إدارة الأساتذة" : "Teachers Management",
       route: "school.teachers.index",
       icon: "teacher",
     },
-    { label: "Students", route: "school.students.index", icon: "user" },
-    { label: "Buses", route: "school.buses.index", icon: "bus" },
-    { label: "Bus Groups", route: "school.bus-groups.index", icon: "users" },
     {
-      label: "Bus Students",
+      label: isRtl ? "الطلاب" : "Students",
+      route: "school.students.index",
+      icon: "user",
+    },
+    {
+      label: isRtl ? "الباصات" : "Buses",
+      route: "school.buses.index",
+      icon: "bus",
+    },
+    {
+      label: isRtl ? "مجموعات الباص" : "Bus Groups",
+      route: "school.bus-groups.index",
+      icon: "users",
+    },
+    {
+      label: isRtl ? "تعيين الطلاب للباص" : "Assign Bus Students",
       route: "school.buses.students.assign",
       icon: "users",
     },
     {
-      label: "Notifications",
+      label: isRtl ? "الإشعارات" : "Notifications",
       route: "school.notifications.index",
       icon: "bell",
     },
     {
-      label: "Trip Schedules",
+      label: isRtl ? "جداول الرحلات" : "Trip Schedules",
       route: "school.trip-schedules.index",
       icon: "calendar",
     },
-    { label: "Field Trips", route: "school.field-trips.index", icon: "map" },
     {
-      label: "Daily Attendance",
+      label: isRtl ? "الرحلات الميدانية" : "Field Trips",
+      route: "school.field-trips.index",
+      icon: "map",
+    },
+    {
+      label: isRtl ? "تقرير الحضور اليومي" : "Daily Attendance",
       route: "school.reports.attendance",
       icon: "report",
     },
-    { label: "Settings", route: "profile.edit", icon: "cog" },
+    {
+      label: isRtl ? "الإعدادات" : "Settings",
+      route: "profile.edit",
+      icon: "cog",
+    },
   ];
 
   return (
@@ -324,7 +348,7 @@ export default function SchoolAuthenticatedLayout({
                     </svg>
                   )}
                 </span>
-                <span className="relative z-10">{t(item.label)}</span>
+                <span className="relative z-10">{item.label}</span>
                 {isActive && (
                   <div
                     className={`absolute ${

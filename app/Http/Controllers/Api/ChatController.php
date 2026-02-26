@@ -32,19 +32,46 @@ class ChatController extends Controller
 
         switch ($user->role) {
             case 'parent':
-                // طلاب ولي الأمر الناشطين في حافلات
-                $studentIds = $user->students()->pluck('students.id')->toArray();
-                if (empty($studentIds)) return collect();
+                // طلاب ولي الأمر الناشطين
+                $myStudents = $user->students()->where('is_active', true)->get();
+                if ($myStudents->isEmpty()) return collect();
 
-                $buses = Bus::whereHas('students', function ($q) use ($studentIds) {
-                    $q->whereIn('students.id', $studentIds)
-                        ->where('bus_students.is_active', true);
-                })->with(['driver', 'supervisor', 'students'])->get();
+                $busesMap = [];
 
-                foreach ($buses as $bus) {
-                    // أسماء أبنائي في هذه الحافلة
-                    $myStudentsInBus = $bus->students->whereIn('id', $studentIds)->pluck('full_name')->toArray();
-                    $studentsNames = implode('، ', array_unique($myStudentsInBus));
+                foreach ($myStudents as $student) {
+                    $studentBuses = collect();
+
+                    // 1. From legacy/override pivot
+                    foreach ($student->buses()->wherePivot('is_active', true)->get() as $bus) {
+                        $studentBuses->push($bus);
+                    }
+
+                    // 2. From morning group
+                    if ($student->morningGroup && $student->morningGroup->bus) {
+                        $studentBuses->push($student->morningGroup->bus);
+                    }
+
+                    // 3. From afternoon group
+                    if ($student->afternoonGroup && $student->afternoonGroup->bus) {
+                        $studentBuses->push($student->afternoonGroup->bus);
+                    }
+
+                    $studentBuses = $studentBuses->unique('id');
+
+                    foreach ($studentBuses as $bus) {
+                        if (!isset($busesMap[$bus->id])) {
+                            $busesMap[$bus->id] = [
+                                'bus' => $bus,
+                                'student_names' => []
+                            ];
+                        }
+                        $busesMap[$bus->id]['student_names'][] = $student->full_name;
+                    }
+                }
+
+                foreach ($busesMap as $busData) {
+                    $bus = $busData['bus'];
+                    $studentsNames = implode('، ', array_unique($busData['student_names']));
 
                     if ($bus->driver) {
                         $driver = clone $bus->driver;
@@ -53,6 +80,7 @@ class ChatController extends Controller
                     }
                     if ($bus->supervisor) {
                         $supervisor = clone $bus->supervisor;
+                        // For display, you can still call them supervisors or teachers based on the UI logic.
                         $supervisor->chat_description = "مشرفة مسار - الطالب: " . $studentsNames;
                         $contacts->push($supervisor);
                     }
@@ -82,10 +110,21 @@ class ChatController extends Controller
 
     private function getGuardianUsersForBus(Bus $bus): \Illuminate\Support\Collection
     {
-        $students = $bus->students()->wherePivot('is_active', true)->with('guardian')->get();
         $usersMap = [];
 
-        foreach ($students as $student) {
+        // 1. Students via legacy/override pivot
+        $studentsViaPivot = $bus->students()->wherePivot('is_active', true)->with('guardian')->get();
+
+        // 2. Students via groups
+        $groupIds = $bus->groups()->pluck('id')->toArray();
+        $studentsViaGroups = \App\Models\Student::where(function ($q) use ($groupIds) {
+            $q->whereIn('morning_group_id', $groupIds)
+                ->orWhereIn('afternoon_group_id', $groupIds);
+        })->where('is_active', true)->with('guardian')->get();
+
+        $allStudents = $studentsViaPivot->merge($studentsViaGroups)->unique('id');
+
+        foreach ($allStudents as $student) {
             $guardianUser = $student->guardian; // هذا الآن User مباشرة
             if ($guardianUser) {
                 $userId = $guardianUser->id;

@@ -25,6 +25,11 @@ interface Supervisor {
   name: string;
 }
 
+interface Teacher {
+  id: number;
+  name: string;
+}
+
 interface Props {
   auth: any;
   classrooms: Classroom[];

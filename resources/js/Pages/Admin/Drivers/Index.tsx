@@ -14,6 +14,7 @@ import { useTheme } from "@/Contexts/ThemeContext";
 interface Driver {
   id: number;
   name: string;
+  name_en: string | null;
   email: string;
   phone: string;
   national_id: string;
@@ -23,6 +24,7 @@ interface Driver {
     license_expiry_date: string;
     status: string;
   } | null;
+  image?: string | null;
 }
 
 export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
@@ -35,14 +37,17 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
   const [currentDriverId, setCurrentDriverId] = useState<number | null>(null);
 
   // --- Form Handling ---
-  const { data, setData, post, put, processing, errors, reset, clearErrors } =
+  const { data, setData, post, processing, errors, reset, clearErrors } =
     useForm({
+      _method: "post",
       name: "",
+      name_en: "",
       national_id: "",
       email: "",
       phone: "",
       license_number: "",
       license_expiry_date: "",
+      image: null as File | null,
     });
 
   // فتح المودال للإضافة
@@ -50,6 +55,7 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
     setIsEditing(false);
     setCurrentDriverId(null);
     reset();
+    setData("_method", "post");
     clearErrors();
     setIsModalOpen(true);
   };
@@ -60,12 +66,15 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
     setCurrentDriverId(driver.id);
     // تعبئة البيانات الموجودة
     setData({
+      _method: "put",
       name: driver.name,
+      name_en: driver.name_en || "",
       national_id: driver.national_id || "",
       email: driver.email,
       phone: driver.phone || "",
       license_number: driver.driver_profile?.license_number || "",
       license_expiry_date: driver.driver_profile?.license_expiry_date || "",
+      image: null,
     });
     clearErrors();
     setIsModalOpen(true);
@@ -80,7 +89,8 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isEditing && currentDriverId) {
-      put(route("admin.drivers.update", currentDriverId), {
+      post(route("admin.drivers.update", currentDriverId), {
+        forceFormData: true,
         onSuccess: () => {
           toast(isRTL ? "تم التعديل بنجاح" : "Updated Successfully");
           closeModal();
@@ -254,11 +264,19 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
                           }`}
                         >
                           <div
-                            className={`flex-shrink-0 h-10 w-10 rounded-full bg-brand-navy/10 text-brand-navy flex items-center justify-center font-bold ${
+                            className={`flex-shrink-0 h-10 w-10 rounded-full bg-brand-navy/10 text-brand-navy flex items-center justify-center font-bold overflow-hidden ${
                               isRTL ? "ml-4" : "mr-4"
                             }`}
                           >
-                            {driver.name.charAt(0)}
+                            {driver.image ? (
+                              <img
+                                src={`/storage/${driver.image}`}
+                                alt={driver.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              driver.name.charAt(0)
+                            )}
                           </div>
                           <div className={isRTL ? "text-right" : "text-left"}>
                             <div
@@ -390,20 +408,39 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
               </h2>
 
               <form onSubmit={submit} className="space-y-4">
-                {/* Name */}
-                <div className={isRTL ? "text-right" : ""}>
-                  <InputLabel
-                    htmlFor="name"
-                    value={isRTL ? "الاسم الكامل" : "Full Name"}
-                  />
-                  <TextInput
-                    id="name"
-                    value={data.name}
-                    onChange={(e) => setData("name", e.target.value)}
-                    className="mt-1 block w-full"
-                    placeholder={isRTL ? "اسم السائق" : "Driver Name"}
-                  />
-                  <InputError message={errors.name} className="mt-2" />
+                {/* Names */}
+                <div className={`grid grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}>
+                  <div className={isRTL ? "text-right" : ""}>
+                    <InputLabel
+                      htmlFor="name"
+                      value={
+                        isRTL ? "الاسم الكامل (عربي)" : "Full Name (Arabic)"
+                      }
+                    />
+                    <TextInput
+                      id="name"
+                      value={data.name}
+                      onChange={(e) => setData("name", e.target.value)}
+                      className="mt-1 block w-full"
+                      placeholder={isRTL ? "اسم السائق" : "Driver Name"}
+                    />
+                    <InputError message={errors.name} className="mt-2" />
+                  </div>
+                  <div className={isRTL ? "text-right" : ""}>
+                    <InputLabel
+                      htmlFor="name_en"
+                      value={isRTL ? "الاسم بالإنجليزية" : "English Name"}
+                    />
+                    <TextInput
+                      id="name_en"
+                      value={data.name_en}
+                      onChange={(e) => setData("name_en", e.target.value)}
+                      className="mt-1 block w-full text-left"
+                      dir="ltr"
+                      placeholder="e.g. John Doe"
+                    />
+                    <InputError message={errors.name_en} className="mt-2" />
+                  </div>
                 </div>
 
                 {/* Grid for ID & Phone */}
@@ -450,6 +487,30 @@ export default function DriversIndex({ drivers }: { drivers: Driver[] }) {
                     className="mt-1 block w-full"
                   />
                   <InputError message={errors.email} className="mt-2" />
+                </div>
+
+                {/* Profile Picture */}
+                <div className={isRTL ? "text-right" : ""}>
+                  <InputLabel
+                    value={isRTL ? "الصورة الشخصية" : "Profile Picture"}
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      setData(
+                        "image",
+                        e.target.files ? e.target.files[0] : null
+                      )
+                    }
+                    className={`mt-1 block w-full text-sm ${
+                      isDark
+                        ? "text-gray-400 file:bg-gray-700 file:text-gray-200"
+                        : "text-gray-500 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                    }
+                    file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold transition-all cursor-pointer`}
+                  />
+                  <InputError message={errors.image} className="mt-2" />
                 </div>
 
                 {/* Grid for License */}

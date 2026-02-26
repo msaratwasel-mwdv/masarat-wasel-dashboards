@@ -1,5 +1,5 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, Link, useForm } from "@inertiajs/react";
+import { Head, Link, useForm, router } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { useState } from "react";
 import Modal from "@/Components/Modal";

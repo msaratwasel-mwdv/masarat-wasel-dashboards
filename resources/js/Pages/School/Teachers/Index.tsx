@@ -35,6 +35,7 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
     national_id: "",
     email: "",
     phone: "",
+    password: "",
     role: "teacher",
   });
 
@@ -44,7 +45,8 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
     national_id: "",
     email: "",
     phone: "",
-    is_active: true,
+    password: "",
+    is_active: true as boolean,
   });
 
   const handleAddSubmit = (e: React.FormEvent) => {
@@ -79,6 +81,7 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
       national_id: teacher.national_id,
       email: teacher.email || "",
       phone: teacher.phone || "",
+      password: "",
       is_active: teacher.is_active,
     });
     setShowEditModal(true);
@@ -400,6 +403,32 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
                     </div>
                   )}
                 </div>
+
+                <div>
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                    {t("Password")}
+                  </label>
+                  <input
+                    type="password"
+                    value={addForm.data.password}
+                    onChange={(e) =>
+                      addForm.setData("password", e.target.value)
+                    }
+                    className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border"
+                    placeholder={
+                      addForm.data.phone ||
+                      t("Leave empty to use phone as password")
+                    }
+                  />
+                  <p className="text-xs text-gray-400 mt-1.5 px-2">
+                    💡 {t("Default password is the phone number")}
+                  </p>
+                  {addForm.errors.password && (
+                    <div className="mt-2 text-sm text-red-500">
+                      {addForm.errors.password}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-white/10 mt-6">
@@ -556,6 +585,29 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
                       {t("Active Account")}
                     </span>
                   </label>
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                    {t("New Password")} ({t("Optional")})
+                  </label>
+                  <input
+                    type="password"
+                    value={editForm.data.password}
+                    onChange={(e) =>
+                      editForm.setData("password", e.target.value)
+                    }
+                    className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border"
+                    placeholder={t("Leave empty to keep current password")}
+                  />
+                  <p className="text-xs text-gray-400 mt-1.5 px-2">
+                    💡 {t("Leave empty to keep current password")}
+                  </p>
+                  {editForm.errors.password && (
+                    <div className="mt-2 text-sm text-red-500">
+                      {editForm.errors.password}
+                    </div>
+                  )}
                 </div>
               </div>
 

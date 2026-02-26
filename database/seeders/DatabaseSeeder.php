@@ -55,6 +55,20 @@ class DatabaseSeeder extends Seeder
             ]));
         }
 
+        // 4.5️⃣ Drivers (سائقين للحافلات)
+        $drivers = collect();
+        for ($i = 1; $i <= 3; $i++) {
+            $drivers->push(User::factory()->create([
+                'name' => "Driver $i",
+                'email' => "driver$i@wasel.com",
+                'password' => Hash::make('password'),
+                'role' => 'driver',
+                'school_id' => $school->id,
+                'user_code' => "DRV-00$i",
+                'phone' => "96659000000$i",
+            ]));
+        }
+
         // 5️⃣ Buses (حافلات)
         $buses = collect();
         foreach ($supervisors as $index => $supervisor) {
@@ -67,6 +81,7 @@ class DatabaseSeeder extends Seeder
                 'model' => 'Mercedes',
                 'year' => 2024,
                 'supervisor_id' => $supervisor->id,
+                'driver_id' => $drivers[$index]->id, // تعيين السائق
                 'status' => 'active',
                 'type' => 'permanent',
             ]));
