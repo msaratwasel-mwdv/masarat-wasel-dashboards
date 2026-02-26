@@ -1,11 +1,18 @@
 import { PageProps } from "@/types";
 import { Head, Link } from "@inertiajs/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function Welcome({
   auth,
 }: PageProps<{ laravelVersion: string; phpVersion: string }>) {
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
+    // إخفاء الـ Loading Overlay لمنع ظهور FOUC
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 600); // 600ms لتغطية تحميل الملفات
+
     // Smooth scroll implementation
     document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
       anchor.addEventListener("click", function (this: HTMLAnchorElement, e) {
@@ -31,6 +38,7 @@ export default function Welcome({
     document.body.appendChild(script);
 
     return () => {
+      clearTimeout(timer);
       if (document.body.contains(script)) {
         document.body.removeChild(script);
       }
@@ -56,6 +64,52 @@ export default function Welcome({
         <script src="https://unpkg.com/@phosphor-icons/web"></script>
         <link rel="icon" type="image/png" href="/assets/images/icon 3.png" />
       </Head>
+
+      {/* Loading Overlay لمنع الفلاش بدون تنسيقات */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "#ffffff",
+          zIndex: 9999999,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          opacity: isLoading ? 1 : 0,
+          visibility: isLoading ? "visible" : "hidden",
+          transition: "opacity 0.6s ease, visibility 0.6s ease",
+          direction: "rtl",
+        }}
+      >
+        <div
+          style={{
+            width: "60px",
+            height: "60px",
+            border: "5px solid #f1f5f9",
+            borderTop: "5px solid #facc15",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite",
+          }}
+        ></div>
+        <p
+          style={{
+            marginTop: "24px",
+            color: "#475569",
+            fontWeight: "bold",
+            fontSize: "16px",
+            fontFamily: "system-ui, sans-serif",
+          }}
+        >
+          جاري التحميل...
+        </p>
+        <style>{`
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        `}</style>
+      </div>
 
       <div dir="rtl">
         {/* Navigation */}
