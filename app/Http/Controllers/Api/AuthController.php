@@ -17,49 +17,31 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
-        // إذا كان التطبيق يرسل email نستخدمه، وإلا نستخدم national_id و phone كما في نسخة Flutter
-        if ($request->has('email')) {
-            $request->validate([
-                'email'       => 'required|email',
-                'password'    => 'required',
-                'device_name' => 'required|string|max:255',
+        // تسجيل الدخول حصرياً عبر "رقم الهوية" و "كلمة السر"
+        $request->validate([
+            'national_id' => 'required|string',
+            'password'    => 'required|string',
+            'device_name' => 'required|string|max:255',
+        ]);
+
+        $nationalId = trim($request->national_id);
+
+        $user = User::where('national_id', $nationalId)->first();
+
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            Log::warning('[Auth] Failed login attempt', [
+                'input_id' => $nationalId,
+                'found_user' => $user ? 'Yes' : 'No',
             ]);
 
-            $user = User::where('email', $request->email)->first();
-
-            if (! $user || ! Hash::check($request->password, $user->password)) {
-                throw ValidationException::withMessages([
-                    'email' => ['بيانات الدخول غير صحيحة.'],
-                ]);
-            }
-        } else {
-            $request->validate([
-                'national_id'  => 'required|string',
-                'phone'        => 'required|string',
-                'device_name'  => 'required|string',
+            throw ValidationException::withMessages([
+                'national_id' => ['رقم الهوية أو كلمة السر غير صحيحة.'],
             ]);
-
-            $nationalId = trim($request->national_id);
-            $phone = trim($request->phone);
-
-            $user = User::where('national_id', $nationalId)->first();
-
-            if (! $user || ! Hash::check($phone, $user->password)) {
-                Log::warning('[Auth] Failed login attempt', [
-                    'input_id' => $nationalId,
-                    'input_phone' => $phone,
-                    'found_user' => $user ? 'Yes' : 'No',
-                ]);
-
-                throw ValidationException::withMessages([
-                    'national_id' => ['بيانات الدخول غير صحيحة.'],
-                ]);
-            }
         }
 
         if (! $user->is_active) {
             throw ValidationException::withMessages([
-                'email' => ['الحساب معطّل. تواصل مع الإدارة.'],
+                'national_id' => ['الحساب معطّل. تواصل مع الإدارة.'],
             ]);
         }
 

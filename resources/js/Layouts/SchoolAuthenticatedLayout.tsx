@@ -204,7 +204,7 @@ export default function SchoolAuthenticatedLayout({
         </div>
 
         {/* MENU SECTION */}
-        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar pt-2">
+        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar pt-2 hide-scrollbar">
           <p className="px-4 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
             {t("Main Menu")}
           </p>

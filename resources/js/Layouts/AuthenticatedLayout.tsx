@@ -277,7 +277,7 @@ export default function Authenticated({
         </div>
 
         {/* Navigation Section */}
-        <nav className="flex-1 px-4 space-y-2 mt-8 overflow-y-auto">
+        <nav className="flex-1 px-4 space-y-2 mt-8 overflow-y-auto custom-scrollbar hide-scrollbar">
           <p
             className={`px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 ${
               isRTL ? "text-right" : "text-left"
