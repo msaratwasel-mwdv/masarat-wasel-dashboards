@@ -40,7 +40,7 @@ class SystemCommandController extends Controller
                     break;
 
                 case 'npm_build':
-                    $process = new Process(['npm', 'install']);
+                    $process = new Process(['npm', 'install', '--include=dev']);
                     $process->setWorkingDirectory(base_path());
                     $process->setTimeout(300);
                     $process->run();
