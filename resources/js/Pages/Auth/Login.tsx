@@ -1,239 +1,215 @@
-import Checkbox from "@/Components/Checkbox";
-import InputError from "@/Components/InputError";
-import InputLabel from "@/Components/InputLabel";
-import PrimaryButton from "@/Components/PrimaryButton";
-import TextInput from "@/Components/TextInput";
-import GuestLayout from "@/Layouts/GuestLayout";
-import ApplicationLogo from "@/Components/ApplicationLogo";
-import { Head, Link, useForm } from "@inertiajs/react";
-import { FormEventHandler } from "react";
+import { Head, Link, useForm } from '@inertiajs/react';
+import { FormEventHandler, useState } from 'react';
+import InputError from '@/Components/InputError';
+import { Mail, Lock, ArrowRight, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
 
 export default function Login({
-  status,
-  canResetPassword,
+    status,
 }: {
-  status?: string;
-  canResetPassword: boolean;
+    status?: string;
 }) {
-  const { data, setData, post, processing, errors, reset } = useForm({
-    email: "",
-    password: "",
-    remember: false,
-  });
-
-  const submit: FormEventHandler = (e) => {
-    e.preventDefault();
-
-    post(route("login"), {
-      onFinish: () => reset("password"),
+    const { data, setData, post, processing, errors, reset } = useForm({
+        email: '',
+        password: '',
+        remember: false,
     });
-  };
 
-  return (
-    <div className="mt-28 w-full">
-      <Head title="Log in" />
+    const [showPassword, setShowPassword] = useState(false);
 
-      {/* --- Main Login Card Container --- */}
-      <div className="w-full max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-        {/* 1. Header Section (Logo & Branding) */}
-        <div className="pt-10 pb-6 text-center bg-gradient-to-b from-gray-50 to-white">
-          <div className="flex justify-center mb-4 relative">
-            {/* Decorative Circle behind Logo */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-brand-yellow/10 rounded-full blur-xl"></div>
+    const submit: FormEventHandler = (e) => {
+        e.preventDefault();
 
-            <div className="relative z-10 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-              <ApplicationLogo className="w-16 h-16 fill-current text-brand-dark" />
-            </div>
-          </div>
-          <h2 className="text-2xl font-extrabold text-brand-dark tracking-tight">
-            مسارات <span className="text-brand-yellow">واصل</span>
-          </h2>
-          <p className="text-sm text-gray-500 mt-2 font-medium">
-            School Transport Management System
-          </p>
-        </div>
+        post(route('login'), {
+            onFinish: () => reset('password'),
+        });
+    };
 
-        <div className="px-8 pb-10">
-          {/* --- Status Message --- */}
-          {status && (
-            <div className="mb-6 p-4 rounded-xl bg-green-50 text-sm font-medium text-green-700 border border-green-200 flex items-center">
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-              </svg>
-              {status}
-            </div>
-          )}
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-[#f8f9fa] relative overflow-hidden font-sans" dir="rtl">
+            <Head>
+                <title>تسجيل الدخول - مسارات واصل</title>
+                <meta name="description" content="تسجيل الدخول إلى منصة وصل للنقل المدرسي" />
+                <link rel="icon" type="image/png" href="/assets/images/icon 3.png" />
+            </Head>
 
-          <form onSubmit={submit} className="space-y-5">
-            {/* 2. Email Field with Icon */}
-            <div className="space-y-1">
-              <InputLabel
-                htmlFor="email"
-                value="Email / Username"
-                className="text-gray-700 font-bold ml-1"
-              />
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <svg
-                    className="h-5 w-5 text-gray-400 group-focus-within:text-brand-yellow transition-colors"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <TextInput
-                  id="email"
-                  type="email"
-                  name="email"
-                  value={data.email}
-                  className="block w-full pl-11 pr-4 py-3.5 bg-gray-50 border-gray-200 rounded-xl focus:bg-white focus:border-brand-yellow focus:ring-4 focus:ring-brand-yellow/20 transition-all duration-200 text-sm"
-                  autoComplete="username"
-                  isFocused={true}
-                  placeholder="Enter your email"
-                  onChange={(e) => setData("email", e.target.value)}
-                />
-              </div>
-              <InputError message={errors.email} className="ml-1" />
-            </div>
+            {/* Decorative Background Elements */}
+            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
+            <div className="absolute top-0 left-0 -ml-20 -mt-20 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
+            <div className="absolute -bottom-32 left-1/2 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-4000"></div>
 
-            {/* 3. Password Field with Icon */}
-            <div className="space-y-1">
-              <InputLabel
-                htmlFor="password"
-                value="Password"
-                className="text-gray-700 font-bold ml-1"
-              />
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <svg
-                    className="h-5 w-5 text-gray-400 group-focus-within:text-brand-yellow transition-colors"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <TextInput
-                  id="password"
-                  type="password"
-                  name="password"
-                  value={data.password}
-                  className="block w-full pl-11 pr-4 py-3.5 bg-gray-50 border-gray-200 rounded-xl focus:bg-white focus:border-brand-yellow focus:ring-4 focus:ring-brand-yellow/20 transition-all duration-200 text-sm"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  onChange={(e) => setData("password", e.target.value)}
-                />
-              </div>
-              <InputError message={errors.password} className="ml-1" />
-            </div>
-
-            {/* 4. Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between py-2">
-              <label className="flex items-center cursor-pointer">
-                <Checkbox
-                  name="remember"
-                  checked={data.remember}
-                  onChange={(e) => setData("remember", e.target.checked)}
-                  className="w-5 h-5 text-brand-yellow border-gray-300 rounded focus:ring-brand-yellow"
-                />
-                <span className="ms-2 text-sm text-gray-600 font-medium">
-                  Remember me
-                </span>
-              </label>
-
-              {canResetPassword && (
-                <Link
-                  href={route("password.request")}
-                  className="text-sm font-semibold text-brand-dark hover:text-brand-yellow transition-colors"
-                >
-                  Forgot Password?
-                </Link>
-              )}
-            </div>
-
-            {/* 5. Submit Button (Main Action) */}
-            <PrimaryButton
-              className="w-full justify-center py-4 text-base font-bold rounded-xl shadow-lg shadow-brand-dark/20 bg-brand-dark hover:bg-brand-navy active:scale-[0.98] transition-all duration-200 border-none group"
-              disabled={processing}
+            {/* Back to Home */}
+            <Link 
+                href="/" 
+                className="absolute top-6 right-6 lg:top-10 lg:right-10 flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors font-medium z-10 bg-white/50 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm hover:shadow-md border border-slate-100"
             >
-              {processing ? (
-                <span className="flex items-center gap-2">
-                  <svg
-                    className="animate-spin h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Logging in...
-                </span>
-              ) : (
-                <span className="group-hover:text-brand-yellow transition-colors">
-                  Sign In
-                </span>
-              )}
-            </PrimaryButton>
+                <ArrowRight size={18} />
+                <span>العودة للرئيسية</span>
+            </Link>
 
-            {/* 6. Help / Support Link */}
-            <div className="pt-4 text-center">
-              <a
-                href="#"
-                className="inline-flex items-center text-sm text-gray-400 hover:text-brand-dark transition-colors gap-2"
-              >
-                <svg
-                  className="w-5 h-5 text-green-500"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
-                </svg>
-                Need help? Contact Support
-              </a>
+            <div className="w-full max-w-md px-6 relative z-10">
+                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100 p-8 sm:p-10 transition-transform hover:-translate-y-1 duration-500">
+                    
+                    {/* Header */}
+                    <div className="text-center mb-10">
+                        <Link href="/" className="inline-block group">
+                            <div className="w-20 h-20 mx-auto bg-gradient-to-tr from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center mb-4 shadow-sm border border-blue-100/50 group-hover:shadow-md transition-all duration-300 group-hover:scale-105">
+                                <img src="/assets/images/icon 3.png" alt="Wasal Logo" className="w-12 h-12 object-contain" />
+                            </div>
+                            <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 tracking-tight">مسارات واصل</h1>
+                        </Link>
+                        <p className="text-slate-500 mt-3 font-medium text-sm">منصة النقل المدرسي الذكية</p>
+                    </div>
+
+                    {status && (
+                        <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-medium text-emerald-700 text-center flex items-center justify-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            {status}
+                        </div>
+                    )}
+
+                    {/* Login Form */}
+                    <form onSubmit={submit} className="space-y-6">
+                        <div className="text-center mb-6">
+                            <h2 className="text-xl font-bold text-slate-800">تسجيل الدخول</h2>
+                            <p className="text-slate-500 text-sm mt-1">أدخل بيانات الاعتماد للمتابعة للوحة التحكم</p>
+                        </div>
+
+                        {/* Email Field */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700 block" htmlFor="email">
+                                عنوان البريد الإلكتروني
+                            </label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                                    <Mail size={18} />
+                                </div>
+                                <input
+                                    type="email"
+                                    id="email"
+                                    name="email"
+                                    className={`block w-full rounded-xl border-0 py-3.5 pr-11 pl-4 text-slate-800 bg-slate-50 shadow-sm ring-1 ring-inset ${errors.email ? 'ring-red-400 focus:ring-red-500 bg-red-50/50' : 'ring-slate-200 focus:ring-blue-500 focus:bg-white'} hover:bg-slate-100 transition-all duration-200 sm:text-sm sm:leading-6 focus:ring-2`}
+                                    placeholder="name@example.com"
+                                    value={data.email}
+                                    onChange={(e) => setData('email', e.target.value)}
+                                    required
+                                    autoFocus
+                                />
+                            </div>
+                            <InputError message={errors.email} className="mt-1 text-red-500 text-xs" />
+                        </div>
+
+                        {/* Password Field */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700 block" htmlFor="password">
+                                كلمة المرور
+                            </label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                                    <Lock size={18} />
+                                </div>
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    id="password"
+                                    name="password"
+                                    className={`block w-full rounded-xl border-0 py-3.5 pr-11 pl-12 text-slate-800 bg-slate-50 shadow-sm ring-1 ring-inset ${errors.password ? 'ring-red-400 focus:ring-red-500 bg-red-50/50' : 'ring-slate-200 focus:ring-blue-500 focus:bg-white'} hover:bg-slate-100 transition-all duration-200 sm:text-sm sm:leading-6 focus:ring-2`}
+                                    placeholder="••••••••"
+                                    value={data.password}
+                                    onChange={(e) => setData('password', e.target.value)}
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
+                            <InputError message={errors.password} className="mt-1 text-red-500 text-xs" />
+                        </div>
+
+                        {/* Options */}
+                        <div className="flex items-center justify-between pt-1">
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                                <div className="relative flex items-center justify-center">
+                                    <input
+                                        type="checkbox"
+                                        className="peer sr-only"
+                                        checked={data.remember}
+                                        onChange={(e) => setData('remember', e.target.checked)}
+                                    />
+                                    <div className="w-5 h-5 rounded border border-slate-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all flex items-center justify-center group-hover:border-blue-500">
+                                        <svg className={`w-3 h-3 text-white fill-current transition-opacity ${data.remember ? 'opacity-100' : 'opacity-0'}`} viewBox="0 0 20 20">
+                                            <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <span className="text-sm font-medium text-slate-600 group-hover:text-slate-800 transition-colors">تذكرني</span>
+                            </label>
+                            
+                            <Link href={route('password.request')} className="text-sm font-semibold text-blue-600 hover:text-blue-500 transition-colors">
+                                نسيت كلمة المرور؟
+                            </Link>
+                        </div>
+
+                        {/* Submit Button */}
+                        <button 
+                            type="submit" 
+                            disabled={processing}
+                            className="w-full relative group overflow-hidden rounded-xl bg-slate-900 px-8 py-3.5 text-sm font-bold text-white shadow-lg transition-all duration-300 hover:bg-slate-800 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+                        >
+                            <span className="relative z-10 flex items-center justify-center gap-2">
+                                {processing ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        جاري تسجيل الدخول...
+                                    </>
+                                ) : (
+                                    'تسجيل الدخول'
+                                )}
+                            </span>
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                        </button>
+
+                        {/* Divider */}
+                        <div className="relative py-4">
+                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                <div className="w-full border-t border-slate-200"></div>
+                            </div>
+                            <div className="relative flex justify-center text-sm font-medium leading-6">
+                                <span className="bg-white px-4 text-slate-400">أو</span>
+                            </div>
+                        </div>
+
+                        {/* Create Account */}
+                        <div className="text-center pb-2">
+                            <p className="text-slate-500 text-sm">
+                                ليس لديك حساب؟{' '}
+                                <Link 
+                                    href={route('subscription')} 
+                                    className="font-bold text-blue-600 hover:text-blue-500 transition-colors inline-block"
+                                >
+                                    إنشاء حساب مجاني
+                                </Link>
+                            </p>
+                        </div>
+                    </form>
+                </div>
+                
+                {/* Minimal Footer */}
+                <div className="mt-8 text-center px-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 font-medium">
+                    <p>© {new Date().getFullYear()} مسارات واصل. جميع الحقوق محفوظة.</p>
+                    <ul className="flex items-center gap-4 mt-4 sm:mt-0">
+                        <li><a href="#" className="hover:text-slate-800 transition-colors">سياسة الخصوصية</a></li>
+                        <li><a href="#" className="hover:text-slate-800 transition-colors">شروط الاستخدام</a></li>
+                        <li><a href="#" className="hover:text-slate-800 transition-colors">المساعدة</a></li>
+                    </ul>
+                </div>
             </div>
-          </form>
+            
         </div>
-      </div>
-
-      {/* Footer Copyright */}
-      <div className="mt-8 text-center text-xs text-gray-400">
-        &copy; {new Date().getFullYear()} Masarat-Wa. All rights reserved.
-      </div>
-    </div>
-  );
+    );
 }

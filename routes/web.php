@@ -17,15 +17,19 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-// الصفحة الرئيسية للمشروع
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
+        'canRegister' => false,
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+// Subscription UI Page
+Route::get('/subscription', function () {
+    return Inertia::render('Subscription');
+})->name('subscription');
 
 // 🌱 رابط بذر البيانات التجريبية مباشرة من المتصفح (للتطوير فقط)
 Route::get('/seed-test-data', function () {
@@ -128,7 +132,7 @@ Route::get('/seed-test-data', function () {
 Route::get('/boarding-test', function () {
     $student = \App\Models\Student::with('guardian.user')->first();
     $bus = \App\Models\Bus::first();
-    
+
     if (!$student || !$bus || !$student->guardian || !$student->guardian->user) {
         return "❌ خطأ: البيانات غير كافية في قاعدة البيانات. يرجى تشغيل seeder أولاً.";
     }
@@ -139,7 +143,7 @@ Route::get('/boarding-test', function () {
             <p><strong>الطالب:</strong> {$student->full_name}</p>
             <p><strong>ولي الأمر:</strong> {$student->guardian->user->name}</p>
             <p><strong>الجهاز المستهدف (FCM Token):</strong> " . substr($student->guardian->user->fcm_token, 0, 20) . "...</p>
-            
+
             <form action='/boarding-test/trigger' method='POST'>
                 <input type='hidden' name='_token' value='" . csrf_token() . "'>
                 <button type='submit' style='background: #4CAF50; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px;'>
@@ -153,7 +157,7 @@ Route::get('/boarding-test', function () {
 Route::post('/boarding-test/trigger', function () {
     $student = \App\Models\Student::first();
     $bus = \App\Models\Bus::first();
-    
+
     if (!$student || !$bus) {
         return "❌ خطأ في البيانات.";
     }
