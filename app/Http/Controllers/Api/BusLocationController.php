@@ -91,7 +91,7 @@ class BusLocationController extends Controller
                 (float) $guardian->home_latitude, (float) $guardian->home_longitude
             );
 
-            $alertDistance = $guardian->proximity_alert_distance ?? 500;
+            $alertDistance = $guardian->proximity_alert_distance ?? 1000;
 
             if ($distance <= $alertDistance) {
                 // تجنب إرسال إشعار مكرر (كل 10 دقائق كحد أدنى)

@@ -136,7 +136,7 @@ class BusBoardingController extends Controller
         if ($request->direction === 'to_home') {
             $this->notificationService->notifyStudentGuardian(
                 studentId: $student->id,
-                type: 'bus_alighting',
+                type: 'student_alighted',
                 title: 'وصول الطالب',
                 message: "{$student->full_name} نزل من الباص بالقرب من المنزل.",
                 data: [
