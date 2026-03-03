@@ -16,10 +16,17 @@ class SupervisorController extends Controller
     public function index()
     {
         $supervisors = User::where('role', 'supervisor')
-            ->whereNull('school_id') // مشرفو الشركة
             ->with('supervisorProfile')
             ->latest()
-            ->get();
+            ->get()
+            ->map(function ($supervisor) {
+                $bus = \App\Models\Bus::where('supervisor_id', $supervisor->id)
+                    ->select('id', 'bus_code', 'school_id')
+                    ->with('school:id,name')
+                    ->first();
+                $supervisor->assigned_bus = $bus;
+                return $supervisor;
+            });
 
         return Inertia::render('Admin/Supervisors/Index', [
             'supervisors' => $supervisors

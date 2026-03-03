@@ -16,13 +16,20 @@ class StaffController extends Controller
     // --- 1. عرض القائمة (READ) ---
     public function index()
     {
-        // جلب السائقين التابعين للشركة (school_id = null)
-        // مع بيانات البروفايل الخاص بهم
+        // جلب جميع السائقين (سواء مرتبطين بمدرسة أو لا)
         $drivers = User::where('role', 'driver')
-            ->whereNull('school_id') // أو حسب منطقك إذا كانوا مرتبطين بمدرسة
             ->with('driverProfile')
             ->latest()
-            ->get();
+            ->get()
+            ->map(function ($driver) {
+                // هل هذا السائق مُعيَّن لباص؟
+                $bus = \App\Models\Bus::where('driver_id', $driver->id)
+                    ->select('id', 'bus_code', 'school_id')
+                    ->with('school:id,name')
+                    ->first();
+                $driver->assigned_bus = $bus;
+                return $driver;
+            });
 
         return Inertia::render('Admin/Drivers/Index', [
             'drivers' => $drivers

@@ -23,26 +23,21 @@ class BusController extends Controller
             ->latest()
             ->get();
 
-        // 2. جلب السائقين المتاحين
-        // 2. جلب السائقين: HQ + أي سائق مرتبط حالياً بباص
+        // 2. جلب السائقين المتاحين: فقط من ليس مُعيَّناً لأي باص حالياً
+        $assignedDriverIds = Bus::whereNotNull('driver_id')->pluck('driver_id')->toArray();
         $drivers = User::where('role', 'driver')
-            ->where(function ($q) {
-                $q->whereNull('school_id')
-                    ->orWhereIn('id', Bus::whereNotNull('driver_id')->pluck('driver_id'));
-            })
+            ->whereNotIn('id', $assignedDriverIds)
             ->select('id', 'name')
             ->get();
 
-        // 3. جلب المشرفين: HQ + أي مشرف مرتبط حالياً بباص
+        // 3. جلب المشرفين المتاحين: فقط من ليس مُعيَّناً لأي باص حالياً
+        $assignedSupervisorIds = Bus::whereNotNull('supervisor_id')->pluck('supervisor_id')->toArray();
         $supervisors = User::where('role', 'supervisor')
-            ->where(function ($q) {
-                $q->whereNull('school_id')
-                    ->orWhereIn('id', Bus::whereNotNull('supervisor_id')->pluck('supervisor_id'));
-            })
+            ->whereNotIn('id', $assignedSupervisorIds)
             ->select('id', 'name')
             ->get();
 
-        // 4. جلب المدارس النشطة (من تغيير المدير)
+        // 4. جلب المدارس النشطة
         $schools = School::where('status', 'active')->get();
 
         return Inertia::render('Admin/Buses/Index', [
@@ -68,12 +63,29 @@ class BusController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'school_id' => 'nullable|exists:schools,id',
-            // 'bus_number' and 'type' are auto-generated or defaulted below since the frontend doesn't send them.
-            'driver_id' => 'nullable|exists:users,id',
-            'supervisor_id' => 'nullable|exists:users,id',
-            'photos.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        $request->validate([
+            'school_id'         => 'nullable|exists:schools,id',
+            'driver_id'         => [
+                'nullable',
+                'exists:users,id',
+                // يمنع تعيين سائق مرتبط بباص آخر
+                function ($attribute, $value, $fail) {
+                    if ($value && Bus::where('driver_id', $value)->exists()) {
+                        $fail('هذا السائق مُعيَّن لباص آخر بالفعل.');
+                    }
+                },
+            ],
+            'supervisor_id'     => [
+                'nullable',
+                'exists:users,id',
+                // يمنع تعيين مشرف مرتبط بباص آخر
+                function ($attribute, $value, $fail) {
+                    if ($value && Bus::where('supervisor_id', $value)->exists()) {
+                        $fail('هذا المشرف مُعيَّن لباص آخر بالفعل.');
+                    }
+                },
+            ],
+            'photos.*'          => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'registration_file' => 'nullable|mimes:pdf,jpg,png|max:2048',
         ]);
 
@@ -81,16 +93,16 @@ class BusController extends Controller
             $busCode = Bus::generateNextCode();
 
             $bus = Bus::create([
-                'bus_code' => $busCode,
-                'bus_number' => $busCode, // Fallback since frontend removed it
-                'plate_number' => $request->plate_number,
-                'model' => $request->model,
-                'year' => $request->year,
-                'capacity' => $request->capacity,
-                'type' => 'permanent', // Default type
-                'status' => 'active',
-                'school_id' => null,
-                'driver_id' => $request->driver_id,
+                'bus_code'      => $busCode,
+                'bus_number'    => $busCode,
+                'plate_number'  => $request->plate_number,
+                'model'         => $request->model,
+                'year'          => $request->year,
+                'capacity'      => $request->capacity,
+                'type'          => 'permanent',
+                'status'        => 'active',
+                'school_id'     => null,
+                'driver_id'     => $request->driver_id,
                 'supervisor_id' => $request->supervisor_id,
             ]);
 
@@ -148,8 +160,24 @@ class BusController extends Controller
     public function edit(Bus $bus)
     {
         $schools = School::where('status', 'active')->get();
-        $drivers = User::where('role', 'driver')->whereNull('school_id')->get();
-        $supervisors = User::where('role', 'supervisor')->whereNull('school_id')->get();
+
+        // السائقون المتاحون: غير مُعيَّنين لأي باص + السائق الحالي لهذا الباص
+        $assignedDriverIds = Bus::whereNotNull('driver_id')
+            ->where('id', '!=', $bus->id)
+            ->pluck('driver_id')
+            ->toArray();
+        $drivers = User::where('role', 'driver')
+            ->whereNotIn('id', $assignedDriverIds)
+            ->get();
+
+        // المشرفون المتاحون: غير مُعيَّنين لأي باص + المشرف الحالي لهذا الباص
+        $assignedSupervisorIds = Bus::whereNotNull('supervisor_id')
+            ->where('id', '!=', $bus->id)
+            ->pluck('supervisor_id')
+            ->toArray();
+        $supervisors = User::where('role', 'supervisor')
+            ->whereNotIn('id', $assignedSupervisorIds)
+            ->get();
 
         return Inertia::render('Admin/Buses/Edit', [
             'bus' => $bus->load(['school', 'driver', 'supervisor']),
@@ -161,19 +189,66 @@ class BusController extends Controller
 
     public function update(Request $request, Bus $bus)
     {
+        $busId = $bus->id;
+
         $validated = $request->validate([
-            'school_id' => 'nullable|exists:schools,id',
-            // 'bus_number' and 'type' are missing from frontend form, so we remove them from required rules.
+            'school_id'    => 'nullable|exists:schools,id',
             'plate_number' => ['required', 'string', Rule::unique('buses')->ignore($bus->id)],
-            'model' => 'required|string|max:100',
-            'year' => 'required|integer|min:2000|max:' . (date('Y') + 1),
-            'capacity' => 'required|integer|min:5|max:100',
-            'status' => 'required|in:active,maintenance,inactive,out_of_service',
-            'driver_id' => 'nullable|exists:users,id',
-            'supervisor_id' => 'nullable|exists:users,id',
+            'model'        => 'required|string|max:100',
+            'year'         => 'required|integer|min:2000|max:' . (date('Y') + 1),
+            'capacity'     => 'required|integer|min:5|max:100',
+            'status'       => 'required|in:active,maintenance,inactive,out_of_service',
+            'driver_id'    => [
+                'nullable',
+                'exists:users,id',
+                // يمنع تعيين سائق مرتبط بباص آخر (غير هذا الباص)
+                function ($attribute, $value, $fail) use ($busId) {
+                    if ($value && Bus::where('driver_id', $value)->where('id', '!=', $busId)->exists()) {
+                        $fail('هذا السائق مُعيَّن لباص آخر بالفعل.');
+                    }
+                },
+            ],
+            'supervisor_id' => [
+                'nullable',
+                'exists:users,id',
+                // يمنع تعيين مشرف مرتبط بباص آخر (غير هذا الباص)
+                function ($attribute, $value, $fail) use ($busId) {
+                    if ($value && Bus::where('supervisor_id', $value)->where('id', '!=', $busId)->exists()) {
+                        $fail('هذا المشرف مُعيَّن لباص آخر بالفعل.');
+                    }
+                },
+            ],
         ]);
 
-        $bus->update($validated);
+        DB::transaction(function () use ($bus, $validated) {
+            $oldDriverId     = $bus->driver_id;
+            $oldSupervisorId = $bus->supervisor_id;
+            $newDriverId     = $validated['driver_id'] ?? null;
+            $newSupervisorId = $validated['supervisor_id'] ?? null;
+            $schoolId        = $bus->school_id; // احتفظ بمدرسة الباص الحالية
+
+            $bus->update($validated);
+
+            // إذا تغيّر السائق: حرِّر القديم وأسند الجديد لنفس مدرسة الباص
+            if ($oldDriverId !== $newDriverId) {
+                if ($oldDriverId) {
+                    User::where('id', $oldDriverId)->update(['school_id' => null]);
+                }
+                if ($newDriverId) {
+                    User::where('id', $newDriverId)->update(['school_id' => $schoolId]);
+                }
+            }
+
+            // إذا تغيّر المشرف: حرِّر القديم وأسند الجديد لنفس مدرسة الباص
+            if ($oldSupervisorId !== $newSupervisorId) {
+                if ($oldSupervisorId) {
+                    User::where('id', $oldSupervisorId)->update(['school_id' => null]);
+                }
+                if ($newSupervisorId) {
+                    User::where('id', $newSupervisorId)->update(['school_id' => $schoolId]);
+                }
+            }
+        });
 
         return redirect()->route('admin.buses.index')
             ->with('success', 'تم تحديث بيانات الحافلة بنجاح');

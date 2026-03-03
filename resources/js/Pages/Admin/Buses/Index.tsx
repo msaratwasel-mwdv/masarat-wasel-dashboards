@@ -150,6 +150,31 @@ export default function Index({
     }
   };
 
+  // --- قائمة السائقين للعرض في نافذة التعديل ---
+  // تشمل السائقين المتاحين + السائق الحالي للباص المُعدَّل (إن وجد)
+  const editDriverOptions = useMemo(() => {
+    if (modalState.type !== "edit" || !modalState.bus) return availableDrivers;
+    const currentDriver = modalState.bus.driver;
+    if (!currentDriver) return availableDrivers;
+    // أضف السائق الحالي فقط إذا لم يكن موجوداً في القائمة
+    const alreadyIn = availableDrivers.some((d) => d.id === currentDriver.id);
+    return alreadyIn ? availableDrivers : [currentDriver, ...availableDrivers];
+  }, [modalState, availableDrivers]);
+
+  // --- قائمة المشرفين للعرض في نافذة التعديل ---
+  const editSupervisorOptions = useMemo(() => {
+    if (modalState.type !== "edit" || !modalState.bus)
+      return availableSupervisors;
+    const currentSupervisor = modalState.bus.supervisor;
+    if (!currentSupervisor) return availableSupervisors;
+    const alreadyIn = availableSupervisors.some(
+      (s) => s.id === currentSupervisor.id
+    );
+    return alreadyIn
+      ? availableSupervisors
+      : [currentSupervisor, ...availableSupervisors];
+  }, [modalState, availableSupervisors]);
+
   const getStatusStyle = (status: string) => {
     switch (status) {
       case "active":
@@ -1093,9 +1118,17 @@ export default function Index({
                           <option value="">
                             {isRTL ? "-- غير مسند --" : "-- Unassigned --"}
                           </option>
-                          {availableDrivers.map((d) => (
+                          {(modalState.type === "edit"
+                            ? editDriverOptions
+                            : availableDrivers
+                          ).map((d) => (
                             <option key={d.id} value={d.id}>
                               {d.name}
+                              {modalState.bus?.driver_id === d.id
+                                ? isRTL
+                                  ? " (الحالي)"
+                                  : " (current)"
+                                : ""}
                             </option>
                           ))}
                         </select>
@@ -1116,9 +1149,17 @@ export default function Index({
                           <option value="">
                             {isRTL ? "-- غير مسند --" : "-- Unassigned --"}
                           </option>
-                          {availableSupervisors.map((s) => (
+                          {(modalState.type === "edit"
+                            ? editSupervisorOptions
+                            : availableSupervisors
+                          ).map((s) => (
                             <option key={s.id} value={s.id}>
                               {s.name}
+                              {modalState.bus?.supervisor_id === s.id
+                                ? isRTL
+                                  ? " (الحالي)"
+                                  : " (current)"
+                                : ""}
                             </option>
                           ))}
                         </select>

@@ -14,10 +14,16 @@
         @routes
         @viteReactRefresh
         @vite(['resources/js/app.tsx', "resources/js/Pages/{$page['component']}.tsx"])
-        
+
         <!-- Google Maps API -->
         <script src="https://maps.googleapis.com/maps/api/js?key={{ env('VITE_GOOGLE_MAPS_API_KEY') }}&libraries=places" defer></script>
-        
+
+        @if(isset($page['component']) && $page['component'] === 'Welcome')
+            <link rel="stylesheet" href="{{ asset('css/main.css') }}" />
+            <link rel="stylesheet" href="{{ asset('css/landing.css') }}" />
+            <link rel="stylesheet" href="{{ asset('css/enhanced.css') }}" />
+        @endif
+
         @inertiaHead
     </head>
     <body class="font-sans antialiased">
