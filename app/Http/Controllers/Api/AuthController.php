@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Bus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -61,6 +62,7 @@ class AuthController extends Controller
                     'phone'     => $user->phone,
                     'role'      => $user->role,
                     'school_id' => $user->school_id,
+                    'bus_id'    => $this->getBusId($user),
                 ],
                 'token' => $token,
             ],
@@ -72,6 +74,7 @@ class AuthController extends Controller
                 'phone'     => $user->phone,
                 'role'      => $user->role,
                 'school_id' => $user->school_id,
+                'bus_id'    => $this->getBusId($user),
             ],
             'token' => $token,
         ]);
@@ -110,6 +113,7 @@ class AuthController extends Controller
                 'phone'     => $user->phone,
                 'role'      => $user->role,
                 'school_id' => $user->school_id,
+                'bus_id'    => $this->getBusId($user),
             ],
             // Backward compability
             'user' => [
@@ -119,6 +123,7 @@ class AuthController extends Controller
                 'phone'     => $user->phone,
                 'role'      => $user->role,
                 'school_id' => $user->school_id,
+                'bus_id'    => $this->getBusId($user),
             ],
         ]);
     }
@@ -138,5 +143,57 @@ class AuthController extends Controller
         ]);
 
         return response()->json(['success' => true, 'message' => 'تم تسجيل FCM Token بنجاح.']);
+    }
+
+    /**
+     * تغيير كلمة السر
+     * POST /api/auth/change-password
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password'     => 'required|string|min:6|confirmed',
+        ], [
+            'current_password.required' => 'كلمة السر الحالية مطلوبة.',
+            'new_password.required'     => 'كلمة السر الجديدة مطلوبة.',
+            'new_password.min'          => 'كلمة السر الجديدة يجب أن تكون 6 أحرف على الأقل.',
+            'new_password.confirmed'    => 'تأكيد كلمة السر غير مطابق.',
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($request->current_password, $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['كلمة السر الحالية غير صحيحة.'],
+            ]);
+        }
+
+        $user->update([
+            'password' => $request->new_password,  // 'hashed' cast handles hashing automatically
+        ]);
+
+        Log::info('[Auth] Password changed', ['user_id' => $user->id]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تغيير كلمة السر بنجاح.',
+        ]);
+    }
+
+    /**
+     * Helper to get bus_id for driver or supervisor
+     */
+    private function getBusId(User $user): ?int
+    {
+        if ($user->role === 'driver') {
+            $bus = Bus::where('driver_id', $user->id)->first();
+            return $bus ? $bus->id : null;
+        } elseif ($user->role === 'supervisor') {
+            $bus = Bus::where('supervisor_id', $user->id)->first();
+            return $bus ? $bus->id : null;
+        }
+
+        return null;
     }
 }

@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/user', [AuthController::class, 'user']);
     Route::post('/auth/fcm-token', [AuthController::class, 'registerFcmToken']); // Firebase FCM Token
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword']); // تغيير كلمة السر
 
     // --- ركوب/نزول الطلاب (للمشرف والسائق) ---
     Route::post('/bus/{bus}/board', [BusBoardingController::class, 'board']);

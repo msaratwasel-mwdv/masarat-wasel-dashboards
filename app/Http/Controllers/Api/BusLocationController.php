@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 
 class BusLocationController extends Controller
 {
+    use \App\Traits\HasLocation;
+
     protected NotificationService $notificationService;
 
     public function __construct(NotificationService $notificationService)
@@ -100,9 +102,7 @@ class BusLocationController extends Controller
                     continue;
                 }
 
-                $distanceText = $distance < 1000
-                    ? round($distance) . ' متر'
-                    : round($distance / 1000, 1) . ' كم';
+                $distanceText = $this->formatDistance($distance);
 
                 $this->notificationService->notifyStudentGuardian(
                     studentId: $student->id,
