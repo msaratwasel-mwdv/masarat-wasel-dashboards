@@ -123,7 +123,8 @@ class StudentController extends Controller
             'national_id' => 'required|string|max:50',
         ]);
 
-        $guardian = User::where('role', 'parent')
+        // Support both 'parent' and 'guardian' roles in case legacy records exist
+        $guardian = User::whereIn('role', ['parent', 'guardian'])
             ->where('national_id', $validated['national_id'])
             ->first();
 
