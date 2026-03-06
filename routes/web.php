@@ -230,7 +230,13 @@ Route::middleware(['auth', 'verified', 'role:admin'])
 
         // أزرار لوحة التحكم
         Route::post('system/execute', [\App\Http\Controllers\Admin\SystemCommandController::class, 'execute'])->name('system.execute');
+
+        // الرحلات الميدانية (Admin)
+        Route::resource('field-trips', \App\Http\Controllers\Admin\FieldTripController::class)->except(['create', 'store', 'edit', 'destroy']);
+        Route::post('field-trips/{field_trip}/approve', [\App\Http\Controllers\Admin\FieldTripController::class, 'approve'])->name('field-trips.approve');
+        Route::post('field-trips/{field_trip}/reject', [\App\Http\Controllers\Admin\FieldTripController::class, 'reject'])->name('field-trips.reject');
     });
+
 
 // 🔵 ثانياً: روابط مدير المدرسة (School Admin)
 Route::middleware(['auth', 'verified', 'role:school_admin'])
@@ -295,7 +301,12 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::resource('trip-schedules', \App\Http\Controllers\School\TripScheduleController::class);
         Route::post('trip-schedules/copy', [\App\Http\Controllers\School\TripScheduleController::class, 'copy'])->name('trip-schedules.copy');
 
+        Route::resource('routes', \App\Http\Controllers\School\RouteController::class);
         Route::resource('field-trips', \App\Http\Controllers\School\FieldTripController::class);
+
+        // Trips Dashboard
+        Route::get('trips-dashboard', [\App\Http\Controllers\School\TripDashboardController::class, 'index'])->name('trips.dashboard');
+        Route::get('trips/{trip}', [\App\Http\Controllers\School\TripDashboardController::class, 'show'])->name('trips.show');
     });
 
 // ⚪ ثالثاً: روابط الملف الشخصي والإشعارات

@@ -90,6 +90,11 @@ export default function SchoolAuthenticatedLayout({
       icon: "calendar",
     },
     {
+      label: isRtl ? "لوحة الرحلات" : "Trips Dashboard",
+      route: "school.trips.dashboard",
+      icon: "rocket",
+    },
+    {
       label: isRtl ? "الرحلات الميدانية" : "Field Trips",
       route: "school.field-trips.index",
       icon: "map",
@@ -171,13 +176,12 @@ export default function SchoolAuthenticatedLayout({
       <aside
         className={`
                     fixed inset-y-0 z-50 w-72 bg-slate-900 dark:bg-slate-950 text-white flex flex-col transition-all duration-300 ease-in-out border-r border-white/5 shadow-2xl
-                    ${
-                      isSidebarOpen
-                        ? "translate-x-0"
-                        : isRtl
-                        ? "translate-x-full"
-                        : "-translate-x-full"
-                    }
+                    ${isSidebarOpen
+            ? "translate-x-0"
+            : isRtl
+              ? "translate-x-full"
+              : "-translate-x-full"
+          }
                     md:translate-x-0
                     ${isRtl ? "right-0 border-l" : "left-0 border-r"}
                 `}
@@ -218,17 +222,15 @@ export default function SchoolAuthenticatedLayout({
                 onClick={() => setIsSidebarOpen(false)}
                 className={`
                                     group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-200 relative overflow-hidden
-                                    ${
-                                      isActive
-                                        ? "bg-brand-yellow text-slate-900 font-bold shadow-lg shadow-brand-yellow/20"
-                                        : "text-slate-400 hover:bg-white/5 hover:text-white"
-                                    }
+                                    ${isActive
+                    ? "bg-brand-yellow text-slate-900 font-bold shadow-lg shadow-brand-yellow/20"
+                    : "text-slate-400 hover:bg-white/5 hover:text-white"
+                  }
                                 `}
               >
                 <span
-                  className={`w-5 h-5 ${
-                    isRtl ? "ml-4" : "mr-4"
-                  } transition-transform group-hover:scale-110 duration-200`}
+                  className={`w-5 h-5 ${isRtl ? "ml-4" : "mr-4"
+                    } transition-transform group-hover:scale-110 duration-200`}
                 >
                   {/* SVG Icons (Simplified) */}
                   {item.icon === "grid" && (
@@ -331,6 +333,16 @@ export default function SchoolAuthenticatedLayout({
                       />
                     </svg>
                   )}
+                  {item.icon === "rocket" && (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15.585 15.585a6.267 6.267 0 001.188-8.844m-5.454 1.151a6.26 6.26 0 108.159 8.159m-8.158-8.158L3 3m3 3l.857.857m0 0L12 14.286m0 0l.857.857m0 0L21 21m-9-6.714V21m0-13.714V3m-3.429 8.571H3m13.714 0H21"
+                      />
+                    </svg>
+                  )}
                   {item.icon === "cog" && (
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
@@ -351,9 +363,8 @@ export default function SchoolAuthenticatedLayout({
                 <span className="relative z-10">{item.label}</span>
                 {isActive && (
                   <div
-                    className={`absolute ${
-                      isRtl ? "left-0" : "right-0"
-                    } w-1 h-6 bg-slate-900 rounded-full`}
+                    className={`absolute ${isRtl ? "left-0" : "right-0"
+                      } w-1 h-6 bg-slate-900 rounded-full`}
                   />
                 )}
               </Link>
@@ -519,6 +530,21 @@ export default function SchoolAuthenticatedLayout({
         {/* PAGE CONTENT */}
         <div className="flex-1 p-4 md:p-8 pt-20 md:pt-8 bg-[#F8FAFC] dark:bg-slate-950 overflow-x-hidden">
           <div className="max-w-[1600px] mx-auto animate-in fade-in duration-500">
+            {/* Flash Messages Display */}
+            {(usePage().props.flash as any)?.success && (
+              <div className="mb-6 p-5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/50 rounded-3xl flex items-center gap-4 text-emerald-700 dark:text-emerald-400 animate-slideDown shadow-sm">
+                <div className="w-10 h-10 bg-emerald-500 text-white rounded-2xl flex items-center justify-center text-lg shadow-lg">✓</div>
+                <div className="flex-1 font-bold text-sm">{(usePage().props.flash as any).success}</div>
+              </div>
+            )}
+
+            {(usePage().props.flash as any)?.error && (
+              <div className="mb-6 p-5 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 rounded-3xl flex items-center gap-4 text-red-700 dark:text-red-400 animate-slideDown shadow-sm">
+                <div className="w-10 h-10 bg-red-500 text-white rounded-2xl flex items-center justify-center text-lg shadow-lg">✕</div>
+                <div className="flex-1 font-bold text-sm">{(usePage().props.flash as any).error}</div>
+              </div>
+            )}
+
             {children}
           </div>
         </div>

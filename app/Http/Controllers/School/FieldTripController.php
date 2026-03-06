@@ -20,21 +20,13 @@ class FieldTripController extends Controller
         $schoolId = Auth::user()->school_id;
 
         $fieldTrips = FieldTrip::where('school_id', $schoolId)
-            ->with('participants')
+            ->with(['bus.driver', 'bus.supervisor'])
             ->latest('trip_date')
             ->get()
             ->map(function ($trip) {
-                // Format data for frontend
-                $participants = $trip->participants;
-                
-                // Get buses
-                $busParticipants = $participants->where('participant_type', 'App\\Models\\Bus');
-                $trip->buses = $busParticipants->map(function($p) {
-                    return $p->participant;
-                })->filter()->values();
-                
-                // Get teachers (simplified - can be expanded later)
-                $trip->teachers = ['معلم 1', 'معلم 2']; // TODO: Implement teachers properly
+                // Compatibility mapping for frontend
+                $trip->buses = $trip->bus ? [$trip->bus] : [];
+                $trip->teachers = $trip->teacher_names ?? [];
                 
                 return $trip;
             });
@@ -56,11 +48,18 @@ class FieldTripController extends Controller
             ->select('id', 'name')
             ->get();
 
+        // Fetch Teachers for the Field Trip Members Selection
+        $teachers = User::where('school_id', $schoolId)
+            ->where('role', 'teacher')
+            ->select('id', 'name', 'phone')
+            ->get();
+
         return Inertia::render('School/FieldTrips/Index', [
             'fieldTrips' => $fieldTrips,
             'buses' => $buses,
             'supervisors' => $supervisors,
             'drivers' => $drivers,
+            'teachers' => $teachers,
         ]);
     }
 
@@ -69,132 +68,92 @@ class FieldTripController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'trip_name' => 'required|string|max:255',
-            'description' => 'required|string|max:1000',
-            'trip_date' => 'required|date|after_or_equal:today',
-            'trip_time' => 'required|date_format:H:i',
-            'destination' => 'required|string|max:255',
-            'destination_lat' => 'nullable|numeric|between:-90,90',
-            'destination_lng' => 'nullable|numeric|between:-180,180',
-            'number_of_students' => 'required|integer|min:1',
-            'bus_ids' => 'required|array|min:1',
-            'bus_ids.*' => 'exists:buses,id',
-            'driver_ids' => 'nullable|array',
-            'driver_ids.*' => 'exists:users,id',
-            'supervisor_ids' => 'nullable|array',
-            'supervisor_ids.*' => 'exists:users,id',
-            'teacher_names' => 'nullable|array',
-            'teacher_names.*' => 'string|max:255',
+        \Illuminate\Support\Facades\Log::info('FieldTripController@store BEGIN', [
+            'request_all' => $request->all(),
+            'user_id' => Auth::id(),
+            'school_id' => Auth::user()->school_id ?? 'NULL'
         ]);
+
+        try {
+            $validated = $request->validate([
+                'trip_name' => 'required|string|max:255',
+                'description' => 'required|string|max:1000',
+                'trip_date' => 'required|date',
+                'trip_time' => 'required',
+                'destination' => 'required|string|max:255',
+                'destination_lat' => 'required|numeric',
+                'destination_lng' => 'required|numeric',
+                'number_of_students' => 'required|integer|min:1',
+                'teacher_names' => 'nullable|array',
+                'teacher_names.*.type' => 'required|in:teacher,external',
+                'teacher_names.*.id' => 'required_if:teacher_names.*.type,teacher',
+                'teacher_names.*.name' => 'required|string|max:255',
+                'teacher_names.*.phone' => 'required_if:teacher_names.*.type,external|nullable|string|max:20',
+                'teacher_names.*.national_id' => 'required_if:teacher_names.*.type,external|nullable|string|max:50',
+            ]);
+            \Illuminate\Support\Facades\Log::info('FieldTrip Validation PASSED', $validated);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Illuminate\Support\Facades\Log::error('FieldTrip Validation FAILED', [
+                'errors' => $e->errors(),
+                'data' => $request->all()
+            ]);
+            throw $e;
+        }
 
         DB::beginTransaction();
         try {
-            $fieldTrip = FieldTrip::create([
+            $data = [
                 'school_id' => Auth::user()->school_id,
                 'trip_name' => $validated['trip_name'],
                 'description' => $validated['description'],
                 'trip_date' => $validated['trip_date'],
                 'trip_time' => $validated['trip_time'],
                 'destination' => $validated['destination'],
-                'destination_lat' => $validated['destination_lat'] ?? null,
-                'destination_lng' => $validated['destination_lng'] ?? null,
+                'destination_lat' => $validated['destination_lat'],
+                'destination_lng' => $validated['destination_lng'],
                 'number_of_students' => $validated['number_of_students'],
                 'status' => 'planned',
-                'approved_by_school' => false,
+                'approved_by_school' => true,
                 'approved_by_company' => false,
                 'teacher_names' => $validated['teacher_names'] ?? [],
-            ]);
+            ];
+            
+            \Illuminate\Support\Facades\Log::info('Attempting FieldTrip::create', $data);
+            
+            $fieldTrip = FieldTrip::create($data);
 
-            // Add bus participants
-            foreach ($validated['bus_ids'] as $busId) {
-                FieldTripParticipant::create([
-                    'field_trip_id' => $fieldTrip->id,
-                    'participant_type' => 'bus',
-                    'participant_id' => $busId,
-                ]);
-            }
+            \Illuminate\Support\Facades\Log::info('FieldTrip created SUCCESS', ['id' => $fieldTrip->id]);
 
-            // Add driver participants
-            if (!empty($validated['driver_ids'])) {
-                foreach ($validated['driver_ids'] as $driverId) {
-                    FieldTripParticipant::create([
-                        'field_trip_id' => $fieldTrip->id,
-                        'participant_type' => 'driver',
-                        'participant_id' => $driverId,
-                    ]);
-                }
-            }
+            // Note: Teacher names are stored as JSON in the field_trips table
+            // In the new logic, buses/drivers are assigned by the company admin later.
 
-            // Add supervisor participants
-            if (!empty($validated['supervisor_ids'])) {
-                foreach ($validated['supervisor_ids'] as $supervisorId) {
-                    FieldTripParticipant::create([
-                        'field_trip_id' => $fieldTrip->id,
-                        'participant_type' => 'supervisor',
-                        'participant_id' => $supervisorId,
-                    ]);
-                }
-            }
-
-            // Note: Teacher names are stored differently as they might not be users in the system
-            // They could be stored as JSON in the field_trips table or in a separate table
-            // For now, we'll handle them in the frontend
-
-            // Send notifications
-            $notificationService = app(NotificationService::class);
-            $schoolName = Auth::user()->school->name ?? 'المدرسة';
-
-            // Notify drivers
-            if (!empty($validated['driver_ids'])) {
-                $notificationService->sendToUsers(
-                    $validated['driver_ids'],
-                    'field_trip_assigned',
-                    'رحلة ميدانية جديدة',
-                    "تم تعيينك سائقًا لرحلة ميدانية جديدة: {$fieldTrip->trip_name}",
-                    ['trip_id' => $fieldTrip->id],
-                    $schoolName
+            // إرسال إشعار للمشرفين الإداريين (اختياري)
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->notifyCompanyAdmins(
+                    'field_trip_request',
+                    '🆕 طلب رحلة ميدانية جديد',
+                    'قامت مدرسة ' . Auth::user()->school->name . ' بتقديم طلب لرحلة: ' . $fieldTrip->trip_name,
+                    ['trip_id' => $fieldTrip->id]
                 );
+                \Illuminate\Support\Facades\Log::info('Notification sent to admins');
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Notification failed but trip created', ['error' => $e->getMessage()]);
             }
-
-            // Notify supervisors
-            if (!empty($validated['supervisor_ids'])) {
-                $notificationService->sendToUsers(
-                    $validated['supervisor_ids'],
-                    'field_trip_assigned',
-                    'رحلة ميدانية جديدة',
-                    "تم تعيينك مشرفًا لرحلة ميدانية جديدة: {$fieldTrip->trip_name}",
-                    ['trip_id' => $fieldTrip->id],
-                    $schoolName
-                );
-            }
-
-            // Notify company admins (same as bus request pattern)
-            $notificationService->notifyCompanyAdmins(
-                'field_trip_request',
-                'طلب رحلة ميدانية جديدة',
-                "تم تقديم طلب رحلة ميدانية من مدرسة {$schoolName}: {$fieldTrip->trip_name} - بتاريخ {$fieldTrip->trip_date}",
-                [
-                    'trip_id' => $fieldTrip->id,
-                    'school_id' => $fieldTrip->school_id,
-                    'trip_name' => $fieldTrip->trip_name,
-                    'trip_date' => $fieldTrip->trip_date,
-                ],
-                $schoolName
-            );
-
-            // Notify company manager (simulated by finding users with company roles or specific logic)
-            // For now, assuming company admins are notified via another channel or system notification
-            // but we can send to school manager confirming creation
 
             DB::commit();
+            \Illuminate\Support\Facades\Log::info('Transaction COMMITTED');
 
-            return redirect()->back()
-                ->with('success', 'تم إنشاء الرحلة الميدانية بنجاح. في انتظار الموافقة من إدارة الشركة.');
+            return redirect()->route('school.field-trips.index')
+                ->with('success', 'تم تقديم طلب الرحلة الميدانية بنجاح. في انتظار مراجعة وتحديد التكلفة من إدارة الشركة.');
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('FieldTrip storage EXCEPTION', [
+                'msg' => $e->getMessage(),
+                'trace' => substr($e->getTraceAsString(), 0, 500)
+            ]);
             DB::rollBack();
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء إنشاء الرحلة. يرجى المحاولة مرة أخرى.');
+                ->with('error', 'حدث خطأ أثناء إنشاء الرحلة: ' . $e->getMessage());
         }
     }
 

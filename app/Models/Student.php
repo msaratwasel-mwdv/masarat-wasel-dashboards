@@ -27,6 +27,8 @@ class Student extends Model
         'is_active',
         'morning_group_id',
         'afternoon_group_id',
+        'forth_route_id',
+        'back_route_id',
     ];
 
     public function enrollments(): HasMany
@@ -73,5 +75,20 @@ class Student extends Model
     public function afternoonGroup(): BelongsTo
     {
         return $this->belongsTo(BusGroup::class, 'afternoon_group_id');
+    }
+
+    public function forthRoute(): BelongsTo
+    {
+        return $this->belongsTo(Route::class, 'forth_route_id');
+    }
+
+    public function backRoute(): BelongsTo
+    {
+        return $this->belongsTo(Route::class, 'back_route_id');
+    }
+
+    public function tripAttendances(): HasMany
+    {
+        return $this->hasMany(TripAttendance::class);
     }
 }

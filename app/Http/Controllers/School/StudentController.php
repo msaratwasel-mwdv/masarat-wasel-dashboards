@@ -80,6 +80,7 @@ class StudentController extends Controller
             'students' => $students,
             'filters' => $request->only(['search']),
             'classrooms' => Classroom::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
+            'routes' => \App\Models\Route::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
             'supervisors' => User::where('school_id', $schoolId)
                 ->whereIn('role', ['supervisor', 'teacher', 'school_admin'])
                 ->orderBy('name')
@@ -108,6 +109,7 @@ class StudentController extends Controller
 
         return Inertia::render('School/Students/CreateStudent', [
             'classrooms' => $classrooms,
+            'routes' => \App\Models\Route::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
             'supervisors' => $supervisors,
             'busGroups' => $busGroups,
             'guardianResult' => session('guardianResult'),
@@ -211,6 +213,8 @@ class StudentController extends Controller
             'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
             'guardian_id' => 'required|integer|exists:users,id',
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('school_id', $schoolId)],
+            'forth_route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', $schoolId)],
+            'back_route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', $schoolId)],
             'morning_group_id' => ['nullable', 'integer', Rule::exists('bus_groups', 'id')->where('school_id', $schoolId)],
             'afternoon_group_id' => ['nullable', 'integer', Rule::exists('bus_groups', 'id')->where('school_id', $schoolId)],
             'image' => 'nullable|image|max:5120',
@@ -227,6 +231,8 @@ class StudentController extends Controller
                 'gender' => $validated['gender'],
                 'guardian_id' => $validated['guardian_id'],
                 'supervisor_id' => $validated['supervisor_id'] ?? null,
+                'forth_route_id' => $validated['forth_route_id'] ?? null,
+                'back_route_id' => $validated['back_route_id'] ?? null,
                 'morning_group_id' => $validated['morning_group_id'] ?? null,
                 'afternoon_group_id' => $validated['afternoon_group_id'] ?? null,
                 'school_id' => $schoolId,
@@ -276,8 +282,9 @@ class StudentController extends Controller
         $this->authorize('update', $student);
 
         return Inertia::render('School/Students/EditStudent', [
-            'student' => $student->load(['currentEnrollment', 'guardian', 'supervisor:id,name', 'morningGroup', 'afternoonGroup']),
+            'student' => $student->load(['currentEnrollment', 'guardian', 'supervisor:id,name', 'morningGroup', 'afternoonGroup', 'forthRoute', 'backRoute']),
             'classrooms' => Classroom::where('school_id', Auth::user()->school_id)->orderBy('name')->get(['id', 'name']),
+            'routes' => \App\Models\Route::where('school_id', Auth::user()->school_id)->orderBy('name')->get(['id', 'name']),
             'supervisors' => User::where('school_id', Auth::user()->school_id)
                 ->whereIn('role', ['supervisor', 'teacher', 'school_admin'])
                 ->orderBy('name')
@@ -305,6 +312,8 @@ class StudentController extends Controller
                 'national_id' => ['nullable', 'string', 'max:50', Rule::unique('students')->ignore($student->id)],
                 'gender' => 'required|in:male,female',
                 'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
+                'forth_route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', $schoolId)],
+                'back_route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', $schoolId)],
                 'morning_group_id' => ['nullable', 'integer', Rule::exists('bus_groups', 'id')->where('school_id', $schoolId)],
                 'afternoon_group_id' => ['nullable', 'integer', Rule::exists('bus_groups', 'id')->where('school_id', $schoolId)],
                 'is_active' => 'required|boolean',
@@ -331,6 +340,8 @@ class StudentController extends Controller
                 'full_name_en' => $validated['full_name_en'],
                 'national_id' => $validated['national_id'],
                 'gender' => $validated['gender'],
+                'forth_route_id' => $validated['forth_route_id'] ?? null,
+                'back_route_id' => $validated['back_route_id'] ?? null,
                 'morning_group_id' => $validated['morning_group_id'] ?? null,
                 'afternoon_group_id' => $validated['afternoon_group_id'] ?? null,
                 'is_active' => $validated['is_active'],

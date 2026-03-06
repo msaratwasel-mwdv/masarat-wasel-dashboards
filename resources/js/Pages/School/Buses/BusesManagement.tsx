@@ -23,6 +23,7 @@ interface Bus {
   current_longitude?: number;
   last_location_update?: string;
   trip_status?: "at_school" | "on_route" | "stopped" | "idle";
+  route_id?: number | null;
 }
 
 interface BusRequest {
@@ -43,6 +44,7 @@ interface Props {
   auth: any;
   buses: Bus[];
   requests: BusRequest[];
+  routes: { id: number; name: string }[];
   schoolLocation: { lat: number; lng: number };
 }
 
@@ -52,6 +54,7 @@ export default function BusesManagement({
   auth,
   buses,
   requests,
+  routes = [],
   schoolLocation,
 }: Props) {
   const { t } = useTranslation();
@@ -245,31 +248,28 @@ export default function BusesManagement({
         <div className="bg-white dark:bg-gray-800 rounded-[35px] shadow-sm p-3 inline-flex gap-2">
           <button
             onClick={() => setActiveTab("inventory")}
-            className={`px-8 py-3 rounded-[30px] font-bold transition-all ${
-              activeTab === "inventory"
+            className={`px-8 py-3 rounded-[30px] font-bold transition-all ${activeTab === "inventory"
                 ? "bg-[#0e7490] text-white shadow-lg"
                 : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-            }`}
+              }`}
           >
             📋 {t("Bus Inventory")}
           </button>
           <button
             onClick={() => setActiveTab("tracking")}
-            className={`px-8 py-3 rounded-[30px] font-bold transition-all ${
-              activeTab === "tracking"
+            className={`px-8 py-3 rounded-[30px] font-bold transition-all ${activeTab === "tracking"
                 ? "bg-[#0e7490] text-white shadow-lg"
                 : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-            }`}
+              }`}
           >
             🗺️ {t("Live Tracking")}
           </button>
           <button
             onClick={() => setActiveTab("requests")}
-            className={`px-8 py-3 rounded-[30px] font-bold transition-all ${
-              activeTab === "requests"
+            className={`px-8 py-3 rounded-[30px] font-bold transition-all ${activeTab === "requests"
                 ? "bg-[#0e7490] text-white shadow-lg"
                 : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-            }`}
+              }`}
           >
             📝 {t("Requests")}{" "}
             {requests.length > 0 && (
@@ -388,7 +388,7 @@ export default function BusesManagement({
                                   width: `${Math.min(
                                     100,
                                     ((bus.students_count || 0) / bus.capacity) *
-                                      100
+                                    100
                                   )}%`,
                                 }}
                               ></div>
@@ -573,13 +573,12 @@ export default function BusesManagement({
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span
-                            className={`px-3 py-1.5 rounded-[10px] text-xs font-bold capitalize inline-flex items-center gap-1 ${
-                              request.status === "pending"
+                            className={`px-3 py-1.5 rounded-[10px] text-xs font-bold capitalize inline-flex items-center gap-1 ${request.status === "pending"
                                 ? "bg-amber-100 text-amber-700"
                                 : request.status === "approved"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
                           >
                             {request.status === "pending" && "⏳"}
                             {request.status === "approved" && "✅"}
@@ -632,6 +631,7 @@ export default function BusesManagement({
           setSelectedBus(null);
         }}
         bus={selectedBus}
+        routes={routes}
       />
 
       {/* Bus Request Modal */}

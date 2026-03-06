@@ -15,45 +15,56 @@ class FieldTripController extends Controller
      */
     public function index()
     {
-        $fieldTrips = FieldTrip::with(['school', 'buses', 'driver', 'supervisor']) // Adjust relations as needed
+        $fieldTrips = FieldTrip::with(['school', 'bus.driver']) 
             ->latest()
             ->get();
 
+        // Admin needs to see all buses to assign them to trips
+        $buses = \App\Models\Bus::with('driver')->get();
+
         return Inertia::render('Admin/FieldTrips/Index', [
             'fieldTrips' => $fieldTrips,
+            'buses' => $buses,
         ]);
     }
 
     /**
      * Approve a field trip.
      */
-    public function approve(FieldTrip $fieldTrip)
+    public function approve(Request $request, FieldTrip $fieldTrip)
     {
-        // Update field trip status
+        $validated = $request->validate([
+            'cost' => 'required|numeric|min:0',
+            'bus_id' => 'required|exists:buses,id',
+        ]);
+
         $fieldTrip->update([
             'status' => 'approved',
             'approved_by_company' => true,
+            'cost' => $validated['cost'],
+            'bus_id' => $validated['bus_id'],
         ]);
 
-        // Send notification to school admin
-        $notificationService = app(NotificationService::class);
-        $notificationService->sendToUser(
-            $fieldTrip->school->users()->where('role', 'school_admin')->first()->id ?? 0, // Simplified user finding
-            'field_trip_approved',
-            'تمت الموافقة على الرحلة الميدانية',
-            "وافقت الشركة على الرحلة الميدانية: {$fieldTrip->trip_name}",
-            ['trip_id' => $fieldTrip->id],
-            auth()->user()->name
-        );
+        $schoolAdmin = $fieldTrip->school->users()->where('role', 'school_admin')->first();
         
-        // Also notify drivers/supervisors again if needed, or rely on the school's approved status triggers.
-        // In the School/FieldTripController, we saw notifications triggered on 'approve' action there.
-        // But here we are just setting company approval. 
-        // If the trip needs BOTH approvals, maybe school approves first then company?
-        // User request: "Same scenario as adding a bus" -> Request, then Company Approves.
+        if ($schoolAdmin) {
+            try {
+                $notificationService = app(NotificationService::class);
+                $notificationService->sendToUser(
+                    $schoolAdmin->id,
+                    'field_trip_approved',
+                    'تمت الموافقة على الرحلة الميدانية ✅',
+                    "وافقت الشركة على رحلة: {$fieldTrip->trip_name}. التكلفة المقدرة: {$fieldTrip->cost}",
+                    ['trip_id' => $fieldTrip->id],
+                    auth()->user()->name
+                );
+            } catch (\Exception $e) {
+                // Ignore notification failure
+                \Log::error('Failed to send approval notification: ' . $e->getMessage());
+            }
+        }
         
-        return redirect()->back()
-            ->with('success', 'تم الموافقة على الرحلة بنجاح');
+        return redirect()->back()->with('success', 'تم الموافقة على الرحلة وتحديد بكر بنجاح.');
     }
 
     /**
@@ -61,21 +72,30 @@ class FieldTripController extends Controller
      */
     public function reject(Request $request, FieldTrip $fieldTrip)
     {
-        $validated = $request->validate([
-            'rejection_reason' => 'nullable|string|max:500',
-        ]);
-
         $fieldTrip->update([
-            'status' => 'rejected',
+            'status' => 'cancelled',
             'approved_by_company' => false,
-            // 'rejection_reason' => $validated['rejection_reason'] ?? null, // Check if column exists
         ]);
 
-        // Send notification to school
-        $notificationService = app(NotificationService::class);
-        // Logic to find school admin... ignoring strict check for now for brevity in thought process
+        $schoolAdmin = $fieldTrip->school->users()->where('role', 'school_admin')->first();
+        
+        if ($schoolAdmin) {
+            try {
+                $notificationService = app(NotificationService::class);
+                $notificationService->sendToUser(
+                    $schoolAdmin->id,
+                    'field_trip_rejected',
+                    'تم رفض طلب الرحلة الميدانية ❌',
+                    "تم رفض طلب رحلة: {$fieldTrip->trip_name} من قبل الإدارة.",
+                    ['trip_id' => $fieldTrip->id],
+                    auth()->user()->name
+                );
+            } catch (\Exception $e) {
+                // Ignore notification failure
+                \Log::error('Failed to send rejection notification: ' . $e->getMessage());
+            }
+        }
 
-        return redirect()->back()
-            ->with('success', 'تم رفض الرحلة');
+        return redirect()->back()->with('success', 'تم إلغاء الرحلة بنجاح.');
     }
 }

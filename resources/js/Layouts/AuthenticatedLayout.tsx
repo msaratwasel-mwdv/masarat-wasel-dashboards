@@ -38,6 +38,11 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "teacher",
   },
   {
+    label: isRTL ? "الرحلات الميدانية" : "Field Trips",
+    route: "admin.field-trips.index",
+    icon: "map",
+  },
+  {
     label: isRTL ? "المراقبه" : "assignmentHistory",
     route: "admin.assignmentHistory",
     icon: "bell",
@@ -77,11 +82,10 @@ export default function Authenticated({
 
   // دالة لعرض الأيقونات
   const renderIcon = (name: string, isActive: boolean) => {
-    const baseClass = `w-5 h-5 transition-colors duration-200 ${
-      isActive
+    const baseClass = `w-5 h-5 transition-colors duration-200 ${isActive
         ? "text-brand-yellow"
         : "text-gray-400 group-hover:text-white dark:group-hover:text-gray-200"
-    }`;
+      }`;
 
     switch (name) {
       case "grid":
@@ -246,13 +250,12 @@ export default function Authenticated({
     >
       {/* --- SIDEBAR --- */}
       <aside
-        className={`w-72 bg-gradient-to-b from-brand-dark to-brand-navy dark:from-gray-900 dark:to-gray-800 text-white flex flex-col fixed h-full z-20 shadow-sidebar transition-all duration-300 ${sidebarPosition} ${
-          isSidebarOpen
+        className={`w-72 bg-gradient-to-b from-brand-dark to-brand-navy dark:from-gray-900 dark:to-gray-800 text-white flex flex-col fixed h-full z-20 shadow-sidebar transition-all duration-300 ${sidebarPosition} ${isSidebarOpen
             ? "translate-x-0"
             : isRTL
-            ? "translate-x-full"
-            : "-translate-x-full"
-        }`}
+              ? "translate-x-full"
+              : "-translate-x-full"
+          }`}
       >
         {/* Logo Section */}
         <div className="h-24 flex items-center px-8 border-b border-white/10 dark:border-gray-700">
@@ -279,9 +282,8 @@ export default function Authenticated({
         {/* Navigation Section */}
         <nav className="flex-1 px-4 space-y-2 mt-8 overflow-y-auto custom-scrollbar hide-scrollbar">
           <p
-            className={`px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 ${
-              isRTL ? "text-right" : "text-left"
-            }`}
+            className={`px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 ${isRTL ? "text-right" : "text-left"
+              }`}
           >
             {isRTL ? "القائمة الرئيسية" : "Main Menu"}
           </p>
@@ -296,10 +298,9 @@ export default function Authenticated({
                 className={`
                   relative group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-300
                   ${flexDirection}
-                  ${
-                    isActive
-                      ? "bg-brand-yellow/20 text-brand-yellow shadow-lg"
-                      : "text-gray-400 hover:bg-white/5 hover:text-white"
+                  ${isActive
+                    ? "bg-brand-yellow/20 text-brand-yellow shadow-lg"
+                    : "text-gray-400 hover:bg-white/5 hover:text-white"
                   }
                 `}
                 style={{
@@ -309,17 +310,15 @@ export default function Authenticated({
                 }}
               >
                 <span
-                  className={`${isRTL ? "ml-4" : "mr-4"} ${
-                    isActive ? "scale-110" : "group-hover:scale-110"
-                  } transition-transform duration-300`}
+                  className={`${isRTL ? "ml-4" : "mr-4"} ${isActive ? "scale-110" : "group-hover:scale-110"
+                    } transition-transform duration-300`}
                 >
                   {renderIcon(item.icon, isActive)}
                 </span>
 
                 <span
-                  className={`flex-1 text-sm font-medium ${
-                    isRTL ? "text-right" : "text-left"
-                  }`}
+                  className={`flex-1 text-sm font-medium ${isRTL ? "text-right" : "text-left"
+                    }`}
                 >
                   {item.label}
                 </span>
@@ -327,9 +326,8 @@ export default function Authenticated({
                 {/* Arrow Icon */}
                 {!isActive && (
                   <svg
-                    className={`w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
-                      isRTL ? "rotate-180" : ""
-                    }`}
+                    className={`w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${isRTL ? "rotate-180" : ""
+                      }`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -357,9 +355,8 @@ export default function Authenticated({
                 {user.name.charAt(0).toUpperCase()}
               </div>
               <div
-                className={`flex flex-col ${
-                  isRTL ? "text-right" : "text-left"
-                }`}
+                className={`flex flex-col ${isRTL ? "text-right" : "text-left"
+                  }`}
               >
                 <span className="text-sm font-bold text-white">
                   {user.name}
@@ -397,18 +394,16 @@ export default function Authenticated({
 
       {/* --- MAIN CONTENT --- */}
       <main
-        className={`flex-1 transition-all duration-300 ${
-          isSidebarOpen ? mainMargin : ""
-        }`}
+        className={`flex-1 transition-all duration-300 ${isSidebarOpen ? mainMargin : ""
+          }`}
       >
         {/* Top Header */}
         <header className="h-20 bg-white dark:bg-gray-800 flex items-center justify-between px-8 sticky top-0 z-10 border-b border-gray-100 dark:border-gray-700 shadow-sm">
           {/* Search Bar */}
           <div className={`w-96 relative ${flexDirection}`}>
             <span
-              className={`absolute ${
-                isRTL ? "right-4" : "left-4"
-              } top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-yellow transition-colors`}
+              className={`absolute ${isRTL ? "right-4" : "left-4"
+                } top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-yellow transition-colors`}
             >
               <svg
                 className="w-5 h-5"
@@ -475,8 +470,8 @@ export default function Authenticated({
                     ? "الوضع الفاتح"
                     : "Light Mode"
                   : isRTL
-                  ? "الوضع المظلم"
-                  : "Dark Mode"
+                    ? "الوضع المظلم"
+                    : "Dark Mode"
               }
             >
               {theme === "dark" ? (
@@ -515,14 +510,12 @@ export default function Authenticated({
 
             {/* User Profile */}
             <div
-              className={`flex items-center gap-3 ${flexDirection} ${
-                isRTL ? "pr-6 border-r" : "pl-6 border-l"
-              } border-gray-100 dark:border-gray-700`}
+              className={`flex items-center gap-3 ${flexDirection} ${isRTL ? "pr-6 border-r" : "pl-6 border-l"
+                } border-gray-100 dark:border-gray-700`}
             >
               <div
-                className={`hidden md:block ${
-                  isRTL ? "text-right" : "text-left"
-                }`}
+                className={`hidden md:block ${isRTL ? "text-right" : "text-left"
+                  }`}
               >
                 <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
                   {isRTL ? "مدير الشركة" : "Company Admin"}

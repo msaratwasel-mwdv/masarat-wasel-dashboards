@@ -48,6 +48,8 @@ interface Student {
   supervisor?: Supervisor;
   guardian_id?: number;
   supervisor_id?: number;
+  forth_route_id?: number | null;
+  back_route_id?: number | null;
   morning_group_id?: number | null;
   afternoon_group_id?: number | null;
   morning_group?: BusGroup | null;
@@ -63,6 +65,7 @@ interface Props {
   students: Student[];
   filters: { search?: string };
   classrooms: Classroom[];
+  routes: { id: number; name: string }[];
   supervisors: Supervisor[];
   busGroups?: BusGroup[];
   storage_url: string;
@@ -73,6 +76,7 @@ export default function IndexStudents({
   students,
   filters,
   classrooms,
+  routes = [],
   supervisors,
   busGroups = [],
   storage_url,
@@ -174,6 +178,8 @@ export default function IndexStudents({
     gender: "male",
     classroom_id: "",
     guardian_id: "",
+    forth_route_id: "",
+    back_route_id: "",
     morning_group_id: "",
     afternoon_group_id: "",
     image: null as File | null,
@@ -225,6 +231,8 @@ export default function IndexStudents({
       gender: student.gender || "male",
       classroom_id: student.current_enrollment?.classroom?.id?.toString() || "",
       guardian_id: student.guardian_id?.toString() || "",
+      forth_route_id: student.forth_route_id?.toString() || "",
+      back_route_id: student.back_route_id?.toString() || "",
       morning_group_id: student.morning_group_id?.toString() || "",
       afternoon_group_id: student.afternoon_group_id?.toString() || "",
       image: null,
@@ -706,10 +714,10 @@ export default function IndexStudents({
                     {isEditing
                       ? t("Edit Student")
                       : step === 1
-                      ? t("Guardian Verification")
-                      : step === 2
-                      ? t("Create New Guardian")
-                      : t("Student Details")}
+                        ? t("Guardian Verification")
+                        : step === 2
+                          ? t("Create New Guardian")
+                          : t("Student Details")}
                   </h3>
                   {!isEditing && (
                     <p className="mt-1 text-sm text-blue-100">
@@ -789,11 +797,10 @@ export default function IndexStudents({
                   {/* Search Results */}
                   {guardianResult && (
                     <div
-                      className={`p-6 rounded-[25px] border ${
-                        guardianResult.found
-                          ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700"
-                          : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700"
-                      }`}
+                      className={`p-6 rounded-[25px] border ${guardianResult.found
+                        ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700"
+                        : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700"
+                        }`}
                     >
                       {guardianResult.found && guardianResult.guardian ? (
                         <div className="flex items-center justify-between">
@@ -986,7 +993,7 @@ export default function IndexStudents({
                         <InputLabel value={t("Guardian Photo")} />
                         <div className="relative flex flex-col items-center justify-center gap-4 p-6 transition-colors border-2 border-gray-300 border-dashed cursor-pointer dark:border-gray-600 rounded-[25px] hover:border-[#0e7490] dark:hover:border-cyan-400">
                           {guardianCreateForm.data.image ||
-                          guardianImagePreview ? (
+                            guardianImagePreview ? (
                             <div className="flex items-center w-full gap-4">
                               <div className="w-20 h-20 overflow-hidden border border-gray-200 rounded-lg dark:border-gray-700">
                                 <img
@@ -994,8 +1001,8 @@ export default function IndexStudents({
                                     guardianImagePreview ||
                                     (guardianCreateForm.data.image
                                       ? URL.createObjectURL(
-                                          guardianCreateForm.data.image
-                                        )
+                                        guardianCreateForm.data.image
+                                      )
                                       : "")
                                   }
                                   className="object-cover w-full h-full"
@@ -1229,7 +1236,52 @@ export default function IndexStudents({
                       <InputError message={studentForm.errors.classroom_id} />
                     </div>
 
-                    {/* Morning Group Selection */}
+                    {/* Forth Route Selection */}
+                    <div>
+                      <InputLabel
+                        value={t("Forth Route") + " (" + t("Optional") + ")"}
+                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
+                      />
+                      <select
+                        value={studentForm.data.forth_route_id}
+                        onChange={(e) =>
+                          studentForm.setData("forth_route_id", e.target.value)
+                        }
+                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
+                      >
+                        <option value="">{t("Select a route...")}</option>
+                        {routes.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name}
+                          </option>
+                        ))}
+                      </select>
+                      <InputError message={studentForm.errors.forth_route_id} />
+                    </div>
+
+                    {/* Back Route Selection */}
+                    <div>
+                      <InputLabel
+                        value={t("Back Route") + " (" + t("Optional") + ")"}
+                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
+                      />
+                      <select
+                        value={studentForm.data.back_route_id}
+                        onChange={(e) =>
+                          studentForm.setData("back_route_id", e.target.value)
+                        }
+                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
+                      >
+                        <option value="">{t("Select a route...")}</option>
+                        {routes.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name}
+                          </option>
+                        ))}
+                      </select>
+                      <InputError message={studentForm.errors.back_route_id} />
+                    </div>
+
                     {busGroups.length > 0 && (
                       <div>
                         <InputLabel
@@ -1312,8 +1364,8 @@ export default function IndexStudents({
                                   studentImagePreview ||
                                   (studentForm.data.image
                                     ? URL.createObjectURL(
-                                        studentForm.data.image
-                                      )
+                                      studentForm.data.image
+                                    )
                                     : "")
                                 }
                                 className="object-cover w-full h-full"

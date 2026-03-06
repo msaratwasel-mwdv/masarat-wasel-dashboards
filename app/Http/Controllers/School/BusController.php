@@ -43,6 +43,7 @@ class BusController extends Controller
                     'current_longitude' => (float) $bus->current_longitude,
                     'last_location_update' => $bus->last_location_update,
                     'trip_status' => $bus->trip_status,
+                    'route_id' => $bus->route_id,
                 ];
             });
 
@@ -63,6 +64,7 @@ class BusController extends Controller
         return Inertia::render('School/Buses/BusesManagement', [
             'buses' => $buses,
             'requests' => $requests,
+            'routes' => \App\Models\Route::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
             'schoolLocation' => $schoolLocation,
         ]);
     }
@@ -83,6 +85,7 @@ class BusController extends Controller
             'model' => 'nullable|string',
             'year' => 'nullable|integer|min:1990|max:' . (date('Y') + 1),
             'color' => 'nullable|string',
+            'route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', Auth::user()->school_id)],
         ]);
 
         $validated['school_id'] = Auth::user()->school_id;
@@ -113,6 +116,7 @@ class BusController extends Controller
             'model' => 'nullable|string',
             'year' => 'nullable|integer',
             'color' => 'nullable|string',
+            'route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', Auth::user()->school_id)],
         ]);
 
         $bus->update($validated);

@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import useTranslation from '@/hooks/useTranslation';
 
 interface Bus {
@@ -9,7 +12,7 @@ interface Bus {
     status: 'active' | 'maintenance' | 'inactive';
     current_latitude?: number;
     current_longitude?: number;
-    trip_status?: 'at_school' | 'on_route' | 'stopped' | 'idle';
+    trip_status?: string;
     driver?: { id: number; name: string };
     students_count?: number;
 }
@@ -20,34 +23,40 @@ interface Props {
     centerLng?: number;
 }
 
+// Helper component to handle map interactions like centering
+function MapController({ center }: { center: [number, number] }) {
+    const map = useMap();
+    if (center) {
+        map.setView(center, map.getZoom());
+    }
+    return null;
+}
+
 export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng = 46.6753 }: Props) {
     const { t } = useTranslation();
-    const mapRef = useRef<HTMLDivElement>(null);
-    const mapInstanceRef = useRef<google.maps.Map | null>(null);
-    const markersRef = useRef<google.maps.Marker[]>([]);
     const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
-    const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'hybrid'>('roadmap');
+    const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'maintenance' | 'inactive'>('all');
     const [searchQuery, setSearchQuery] = useState('');
 
     // Filter buses
-    const busesWithLocation = buses.filter(bus => {
+    const busesWithLocation = useMemo(() => buses.filter(bus => {
         if (!bus.current_latitude || !bus.current_longitude) return false;
         const matchesStatus = statusFilter === 'all' || bus.status === statusFilter;
         const matchesSearch = bus.bus_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            bus.plate_number.toLowerCase().includes(searchQuery.toLowerCase());
+            bus.plate_number.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesStatus && matchesSearch;
-    });
+    }), [buses, statusFilter, searchQuery]);
 
     // Stats
-    const stats = {
+    const stats = useMemo(() => ({
         total: busesWithLocation.length,
         active: busesWithLocation.filter(b => b.status === 'active').length,
         onRoute: busesWithLocation.filter(b => b.trip_status === 'on_route').length,
         atSchool: busesWithLocation.filter(b => b.trip_status === 'at_school').length,
         maintenance: busesWithLocation.filter(b => b.status === 'maintenance').length,
-    };
+    }), [busesWithLocation]);
 
     // Create custom marker icon
     const createMarkerIcon = (status: string, selected: boolean = false) => {
@@ -56,216 +65,44 @@ export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng 
             maintenance: '#f59e0b',
             inactive: '#6b7280',
         };
-        
-        const svg = `
-            <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="20" cy="20" r="18" fill="${colors[status as keyof typeof colors]}" stroke="white" stroke-width="3" opacity="${selected ? '1' : '0.9'}"/>
-                ${selected ? '<circle cx="20" cy="20" r="22" fill="none" stroke="white" stroke-width="2" opacity="0.5"/>' : ''}
-                <text x="20" y="26" text-anchor="middle" font-size="18" fill="white" font-weight="bold">🚌</text>
-            </svg>
-        `;
-        
-        return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
-    };
 
-    useEffect(() => {
-        if (!mapRef.current || !window.google) return;
+        const color = colors[status as keyof typeof colors] || colors.inactive;
 
-        // Initialize map with enhanced options
-        const map = new google.maps.Map(mapRef.current, {
-            center: { lat: centerLat, lng: centerLng },
-            zoom: 13,
-            mapTypeId: mapType,
-            mapTypeControl: false, // We'll use custom control
-            fullscreenControl: false,
-            streetViewControl: true,
-            zoomControl: true,
-            zoomControlOptions: {
-                position: google.maps.ControlPosition.RIGHT_CENTER,
-            },
-            styles: mapType === 'roadmap' ? [
-                {
-                    featureType: 'poi',
-                    elementType: 'labels',
-                    stylers: [{ visibility: 'simplified' }]
-                },
-                {
-                    featureType: 'road',
-                    elementType: 'geometry',
-                    stylers: [{ color: '#f5f5f5' }]
-                },
-                {
-                    featureType: 'water',
-                    elementType: 'geometry',
-                    stylers: [{ color: '#c9e6ff' }]
-                }
-            ] : [],
+        return L.divIcon({
+            className: 'custom-bus-marker',
+            html: `
+                <div style="
+                    width: 40px; 
+                    height: 40px; 
+                    background: ${color}; 
+                    border: 3px solid white; 
+                    border-radius: 50%; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    font-size: 20px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+                    ${selected ? 'transform: scale(1.2); ring: 4px white;' : ''}
+                    transition: all 0.2s;
+                ">
+                    🚌
+                </div>
+            `,
+            iconSize: [40, 40],
+            iconAnchor: [20, 20],
         });
-
-        mapInstanceRef.current = map;
-
-        // Clear existing markers
-        markersRef.current.forEach(marker => marker.setMap(null));
-        markersRef.current = [];
-
-        // Add markers with animation
-        busesWithLocation.forEach((bus, index) => {
-            setTimeout(() => {
-                const position = {
-                    lat: bus.current_latitude!,
-                    lng: bus.current_longitude!
-                };
-
-                const marker = new google.maps.Marker({
-                    position,
-                    map,
-                    title: bus.bus_number,
-                    icon: {
-                        url: createMarkerIcon(bus.status, selectedBus?.id === bus.id),
-                        scaledSize: new google.maps.Size(40, 40),
-                        anchor: new google.maps.Point(20, 20),
-                    },
-                    animation: google.maps.Animation.DROP,
-                });
-
-                // Enhanced info window
-                const infoWindow = new google.maps.InfoWindow({
-                    content: `
-                        <div style="padding: 16px; min-width: 280px; font-family: system-ui, -apple-system, sans-serif;">
-                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                                <div style="font-size: 32px;">🚌</div>
-                                <div>
-                                    <h3 style="margin: 0; font-size: 18px; font-weight: bold; color: #1f2937;">
-                                        ${bus.bus_number}
-                                    </h3>
-                                    <p style="margin: 2px 0 0 0; font-size: 13px; color: #6b7280;">
-                                        ${bus.plate_number}
-                                    </p>
-                                </div>
-                            </div>
-                            
-                            <div style="background: #f9fafb; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                    <div>
-                                        <p style="margin: 0; font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 600;">
-                                            ${t('Status')}
-                                        </p>
-                                        <p style="margin: 4px 0 0 0; font-size: 14px; font-weight: bold; color: ${bus.status === 'active' ? '#10b981' : bus.status === 'maintenance' ? '#f59e0b' : '#6b7280'};">
-                                            ${t(bus.status)}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p style="margin: 0; font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 600;">
-                                            ${t('Students')}
-                                        </p>
-                                        <p style="margin: 4px 0 0 0; font-size: 14px; font-weight: bold; color: #1f2937;">
-                                            ${bus.students_count || 0}/${bus.capacity}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            ${bus.driver ? `
-                                <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #eff6ff; border-radius: 6px; margin-bottom: 8px;">
-                                    <span style="font-size: 18px;">👨‍✈️</span>
-                                    <div>
-                                        <p style="margin: 0; font-size: 11px; color: #3b82f6; font-weight: 600;">
-                                            ${t('Driver')}
-                                        </p>
-                                        <p style="margin: 2px 0 0 0; font-size: 13px; color: #1e40af; font-weight: 600;">
-                                            ${bus.driver.name}
-                                        </p>
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            ${bus.trip_status ? `
-                                <div style="padding: 6px 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 6px; text-align: center; font-size: 12px; font-weight: bold;">
-                                    ${t(bus.trip_status)}
-                                </div>
-                            ` : ''}
-                        </div>
-                    `,
-                });
-
-                marker.addListener('click', () => {
-                    // Close all other info windows and reset markers
-                    markersRef.current.forEach(m => {
-                        const icon = m.getIcon() as google.maps.Icon;
-                        if (icon?.url) {
-                            const busForMarker = busesWithLocation.find(b => 
-                                b.current_latitude === m.getPosition()?.lat() && 
-                                b.current_longitude === m.getPosition()?.lng()
-                            );
-                            if (busForMarker) {
-                                m.setIcon({
-                                    url: createMarkerIcon(busForMarker.status, false),
-                                    scaledSize: new google.maps.Size(40, 40),
-                                    anchor: new google.maps.Point(20, 20),
-                                });
-                            }
-                        }
-                    });
-                    
-                    // Highlight selected marker
-                    marker.setIcon({
-                        url: createMarkerIcon(bus.status, true),
-                        scaledSize: new google.maps.Size(40, 40),
-                        anchor: new google.maps.Point(20, 20),
-                    });
-                    
-                    infoWindow.open(map, marker);
-                    setSelectedBus(bus);
-                    
-                    // Center map on selected bus
-                    map.panTo(position);
-                });
-
-                markersRef.current.push(marker);
-            }, index * 50); // Stagger animation
-        });
-
-        // Fit bounds
-        if (busesWithLocation.length > 0) {
-            const bounds = new google.maps.LatLngBounds();
-            busesWithLocation.forEach(bus => {
-                bounds.extend({
-                    lat: bus.current_latitude!,
-                    lng: bus.current_longitude!
-                });
-            });
-            map.fitBounds(bounds);
-        }
-
-    }, [buses, centerLat, centerLng, mapType, busesWithLocation, selectedBus]);
-
-    const changeMapType = (type: 'roadmap' | 'satellite' | 'hybrid') => {
-        setMapType(type);
-        if (mapInstanceRef.current) {
-            mapInstanceRef.current.setMapTypeId(type);
-        }
     };
 
     const toggleFullscreen = () => {
         setIsFullscreen(!isFullscreen);
     };
 
-    if (!window.google) {
-        return (
-            <div className="text-center py-12 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-2xl border-2 border-red-200 dark:border-red-800">
-                <div className="text-6xl mb-4">⚠️</div>
-                <h3 className="text-2xl font-bold text-red-800 dark:text-red-400 mb-3">
-                    {t('Google Maps Not Loaded')}
-                </h3>
-                <p className="text-red-600 dark:text-red-500 max-w-md mx-auto">
-                    {t('Please check your Google Maps API key in .env file and restart the server')}
-                </p>
-            </div>
-        );
-    }
+    const mapCenter: [number, number] = selectedBus?.current_latitude && selectedBus?.current_longitude
+        ? [selectedBus.current_latitude, selectedBus.current_longitude]
+        : [centerLat, centerLng];
 
     return (
-        <div className={`space-y-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-white dark:bg-gray-900 p-4' : ''}`}>
+        <div className={`space-y-6 ${isFullscreen ? 'fixed inset-0 z-[100] bg-white dark:bg-gray-900 p-4' : ''}`}>
             {/* Control Panel */}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-[35px] shadow-sm border border-gray-100 dark:border-gray-700">
                 <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
@@ -295,34 +132,22 @@ export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng 
                     {/* Map Type Controls */}
                     <div className="flex gap-2 bg-gray-50 dark:bg-gray-700 p-1.5 rounded-[35px]">
                         <button
-                            onClick={() => changeMapType('roadmap')}
-                            className={`px-6 py-2.5 rounded-[30px] font-bold transition-all ${
-                                mapType === 'roadmap'
-                                    ? 'bg-white dark:bg-gray-600 text-[#0e7490] shadow-md'
-                                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-600/50'
-                            }`}
+                            onClick={() => setMapType('roadmap')}
+                            className={`px-6 py-2.5 rounded-[30px] font-bold transition-all ${mapType === 'roadmap'
+                                ? 'bg-white dark:bg-gray-600 text-[#0e7490] shadow-md'
+                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-600/50'
+                                }`}
                         >
                             🗺️ {t('Map')}
                         </button>
                         <button
-                            onClick={() => changeMapType('satellite')}
-                            className={`px-6 py-2.5 rounded-[30px] font-bold transition-all ${
-                                mapType === 'satellite'
-                                    ? 'bg-white dark:bg-gray-600 text-[#0e7490] shadow-md'
-                                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-600/50'
-                            }`}
+                            onClick={() => setMapType('satellite')}
+                            className={`px-6 py-2.5 rounded-[30px] font-bold transition-all ${mapType === 'satellite'
+                                ? 'bg-white dark:bg-gray-600 text-[#0e7490] shadow-md'
+                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-600/50'
+                                }`}
                         >
                             🛰️ {t('Satellite')}
-                        </button>
-                        <button
-                            onClick={() => changeMapType('hybrid')}
-                            className={`px-6 py-2.5 rounded-[30px] font-bold transition-all ${
-                                mapType === 'hybrid'
-                                    ? 'bg-white dark:bg-gray-600 text-[#0e7490] shadow-md'
-                                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-600/50'
-                            }`}
-                        >
-                            🌍 {t('Hybrid')}
                         </button>
                     </div>
                 </div>
@@ -393,18 +218,88 @@ export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng 
 
             {/* Map Container */}
             <div className="relative rounded-[35px] overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700 bg-gray-100">
-                <div ref={mapRef} style={{ height: isFullscreen ? 'calc(100vh - 300px)' : '650px', width: '100%' }} />
-                
+                <MapContainer
+                    center={[centerLat, centerLng]}
+                    zoom={13}
+                    style={{ height: isFullscreen ? 'calc(100vh - 300px)' : '650px', width: '100%' }}
+                    zoomControl={false}
+                >
+                    <TileLayer
+                        url={mapType === 'satellite'
+                            ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                            : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
+                        attribution={mapType === 'satellite' ? 'Tiles &copy; Esri' : '&copy; OpenStreetMap contributors'}
+                    />
+
+                    <MapController center={mapCenter} />
+
+                    {busesWithLocation.map(bus => (
+                        <Marker
+                            key={bus.id}
+                            position={[bus.current_latitude!, bus.current_longitude!]}
+                            icon={createMarkerIcon(bus.status, selectedBus?.id === bus.id)}
+                            eventHandlers={{
+                                click: () => setSelectedBus(bus),
+                            }}
+                        >
+                            <Popup minWidth={280}>
+                                <div className="p-2">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="text-2xl">🚌</div>
+                                        <div>
+                                            <h3 className="m-0 text-lg font-bold text-gray-800">{bus.bus_number}</h3>
+                                            <p className="m-0 text-sm text-gray-500">{bus.plate_number}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-2">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <p className="m-0 text-[10px] text-gray-500 uppercase font-bold">{t('Status')}</p>
+                                                <p className={`m-0 text-sm font-bold ${bus.status === 'active' ? 'text-green-600' :
+                                                    bus.status === 'maintenance' ? 'text-orange-500' : 'text-gray-500'
+                                                    }`}>
+                                                    {t(bus.status)}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="m-0 text-[10px] text-gray-500 uppercase font-bold">{t('Students')}</p>
+                                                <p className="m-0 text-sm font-bold">{bus.students_count || 0}/{bus.capacity}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {bus.driver && (
+                                        <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-2">
+                                            <span>👨‍✈️</span>
+                                            <div>
+                                                <p className="m-0 text-[10px] text-blue-600 font-bold">{t('Driver')}</p>
+                                                <p className="m-0 text-sm font-bold text-blue-800">{bus.driver.name}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {bus.trip_status && (
+                                        <div className="p-2 bg-indigo-600 text-white rounded-lg text-center text-xs font-bold">
+                                            {t(bus.trip_status)}
+                                        </div>
+                                    )}
+                                </div>
+                            </Popup>
+                        </Marker>
+                    ))}
+                </MapContainer>
+
                 {/* Fullscreen Button (Inside Map) */}
                 <button
                     onClick={toggleFullscreen}
-                    className="absolute top-4 right-16 bg-white text-gray-700 px-4 py-2 rounded-lg shadow-md font-bold hover:bg-gray-50 transition-all z-10"
+                    className="absolute top-4 right-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg shadow-md font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all z-[1000]"
                 >
                     {isFullscreen ? '↙️ ' + t('Exit') : '↗️ ' + t('Fullscreen')}
                 </button>
 
                 {/* Enhanced Legend */}
-                <div className="absolute bottom-6 left-6 bg-white/90 backdrop-blur-md dark:bg-gray-800/90 p-5 rounded-[25px] shadow-lg border border-gray-100 dark:border-gray-700">
+                <div className="absolute bottom-6 left-6 bg-white/90 backdrop-blur-md dark:bg-gray-800/90 p-5 rounded-[25px] shadow-lg border border-gray-100 dark:border-gray-700 z-[1000]">
                     <h4 className="font-extrabold text-sm mb-3 text-gray-800 dark:text-white flex items-center gap-2">
                         <span className="text-lg">📍</span> {t('Legend')}
                     </h4>
@@ -426,30 +321,29 @@ export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng 
 
                 {/* Selected Bus Info Panel */}
                 {selectedBus && (
-                    <div className="absolute top-6 right-6 bg-white/95 backdrop-blur-md dark:bg-gray-800/95 p-6 rounded-[25px] shadow-xl border border-gray-100 dark:border-gray-700 max-w-xs animate-in slide-in-from-right-4 duration-300">
+                    <div className="absolute top-16 right-6 bg-white/95 backdrop-blur-md dark:bg-gray-800/95 p-6 rounded-[25px] shadow-xl border border-gray-100 dark:border-gray-700 max-w-xs animate-in slide-in-from-right-4 duration-300 z-[1000]">
                         <div className="flex items-center justify-between mb-4">
                             <h4 className="font-extrabold text-xl text-gray-800 dark:text-white flex items-center gap-2">
                                 🚌 {selectedBus.bus_number}
                             </h4>
                             <button
                                 onClick={() => setSelectedBus(null)}
-                                className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full transition-colors"
+                                className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-full transition-colors"
                             >
                                 ✕
                             </button>
                         </div>
                         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 mb-4">
-                             <p className="text-sm text-gray-600 dark:text-gray-400 font-mono text-center">{selectedBus.plate_number}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 font-mono text-center">{selectedBus.plate_number}</p>
                         </div>
-                        
+
                         <div className="space-y-3 text-sm">
                             <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
                                 <span className="text-gray-500 dark:text-gray-400">{t('Status')}</span>
-                                <span className={`font-bold px-2 py-0.5 rounded-full text-xs ${
-                                    selectedBus.status === 'active' ? 'bg-green-100 text-green-700' :
+                                <span className={`font-bold px-2 py-0.5 rounded-full text-xs ${selectedBus.status === 'active' ? 'bg-green-100 text-green-700' :
                                     selectedBus.status === 'maintenance' ? 'bg-orange-100 text-orange-700' :
-                                    'bg-gray-100 text-gray-700'
-                                }`}>{t(selectedBus.status)}</span>
+                                        'bg-gray-100 text-gray-700'
+                                    }`}>{t(selectedBus.status)}</span>
                             </div>
                             <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
                                 <span className="text-gray-500 dark:text-gray-400">{t('Students')}</span>
@@ -474,7 +368,7 @@ export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng 
                         {t('No buses with location data')}
                     </h3>
                     <p className="text-gray-500">
-                        {searchQuery || statusFilter !== 'all' 
+                        {searchQuery || statusFilter !== 'all'
                             ? t('Try adjusting your filters')
                             : t('Waiting for GPS data from buses...')}
                     </p>

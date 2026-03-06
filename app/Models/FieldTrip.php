@@ -13,6 +13,7 @@ class FieldTrip extends Model
 
     protected $fillable = [
         'school_id',
+        'bus_id',
         'trip_name',
         'description',
         'trip_date',
@@ -22,10 +23,19 @@ class FieldTrip extends Model
         'destination_lng',
         'number_of_students',
         'teacher_names',
+        'cost',
         'status',
         'approved_by_school',
         'approved_by_company',
     ];
+
+    /**
+     * Get the bus for this trip.
+     */
+    public function bus(): BelongsTo
+    {
+        return $this->belongsTo(Bus::class);
+    }
 
     protected $casts = [
         'trip_date' => 'date',
@@ -33,6 +43,7 @@ class FieldTrip extends Model
         'teacher_names' => 'array',
         'approved_by_school' => 'boolean',
         'approved_by_company' => 'boolean',
+        'cost' => 'decimal:2',
         'destination_lat' => 'decimal:8',
         'destination_lng' => 'decimal:8',
     ];

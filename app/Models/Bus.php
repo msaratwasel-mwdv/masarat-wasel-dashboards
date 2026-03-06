@@ -31,6 +31,7 @@ class Bus extends Model
         'current_longitude',
         'last_location_update',
         'trip_status',
+        'route_id',
     ];
 
     protected $casts = [
@@ -87,6 +88,16 @@ class Bus extends Model
     public function schedules(): HasMany
     {
         return $this->hasMany(TripSchedule::class);
+    }
+
+    public function route(): BelongsTo
+    {
+        return $this->belongsTo(Route::class);
+    }
+
+    public function trips(): HasMany
+    {
+        return $this->hasMany(Trip::class);
     }
     public function documents()
     {

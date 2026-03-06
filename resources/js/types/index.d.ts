@@ -41,19 +41,30 @@ export interface Classroom {
     school_id?: number; // ⬅️ أضف هذا
 }
 
+export interface Route {
+    id: number;
+    name: string;
+    code?: string;
+    description?: string;
+}
+
 export interface Student {
     id: number;
     full_name: string;
     student_code: string;
     national_id?: string;
-    gender?: string; // ⬅️ أضف هذا
+    gender?: string;
     image?: string;
     is_active: boolean;
     guardian_id?: number;
     supervisor_id?: number;
-    school_id?: number; // ⬅️ أضف هذا
+    forth_route_id?: number; // ⬅️ أضف هذا
+    back_route_id?: number;  // ⬅️ أضف هذا
+    school_id?: number;
     guardian?: Guardian | null;
     supervisor?: Supervisor | null;
+    forth_route?: Route | null; // ⬅️ أضف هذا
+    back_route?: Route | null;  // ⬅️ أضف هذا
     current_enrollment: {
         classroom: Classroom;
     } | null;
@@ -65,4 +76,4 @@ export type PageProps<
     auth: {
         user: User;
     };
-    }
+}

@@ -14,6 +14,7 @@ interface Bus {
     color?: string;
     driver_id?: number;
     supervisor_id?: number;
+    route_id?: number | null;
 }
 
 interface BusModalProps {
@@ -22,9 +23,10 @@ interface BusModalProps {
     bus?: Bus | null;
     drivers?: Array<{ id: number; name: string }>;
     supervisors?: Array<{ id: number; name: string }>;
+    routes?: Array<{ id: number; name: string }>;
 }
 
-export default function BusModal({ show, onClose, bus, drivers = [], supervisors = [] }: BusModalProps) {
+export default function BusModal({ show, onClose, bus, drivers = [], supervisors = [], routes = [] }: BusModalProps) {
     const { t } = useTranslation();
     const isEditing = !!bus;
 
@@ -39,6 +41,7 @@ export default function BusModal({ show, onClose, bus, drivers = [], supervisors
         color: bus?.color || '',
         driver_id: bus?.driver_id || undefined,
         supervisor_id: bus?.supervisor_id || undefined,
+        route_id: bus?.route_id || null,
     });
 
     useEffect(() => {
@@ -54,6 +57,7 @@ export default function BusModal({ show, onClose, bus, drivers = [], supervisors
                 color: bus.color || '',
                 driver_id: bus.driver_id,
                 supervisor_id: bus.supervisor_id,
+                route_id: bus.route_id,
             });
         }
     }, [bus]);
@@ -277,6 +281,26 @@ export default function BusModal({ show, onClose, bus, drivers = [], supervisors
                                 </select>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Route Selection */}
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
+                            {t('Assigned Route')}
+                        </label>
+                        <div className="relative">
+                            <select
+                                value={data.route_id || ''}
+                                onChange={e => setData('route_id', e.target.value ? parseInt(e.target.value) : null)}
+                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] appearance-none transition-all"
+                            >
+                                <option value="">{t('No Route Assigned')}</option>
+                                {routes.map(route => (
+                                    <option key={route.id} value={route.id}>{route.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        {errors.route_id && <p className="mt-2 ml-2 text-sm text-red-600">{errors.route_id}</p>}
                     </div>
 
                     {/* Action Buttons */}

@@ -132,10 +132,10 @@ const dictionary = {
     en: "Search by Name, ID...",
   },
   "Are you sure you want to delete this supervisor? This action cannot be undone.":
-    {
-      ar: "هل أنت متأكد من حذف هذا المشرف؟ لا يمكن التراجع عن هذا الإجراء.",
-      en: "Are you sure you want to delete this supervisor? This action cannot be undone.",
-    },
+  {
+    ar: "هل أنت متأكد من حذف هذا المشرف؟ لا يمكن التراجع عن هذا الإجراء.",
+    en: "Are you sure you want to delete this supervisor? This action cannot be undone.",
+  },
   "No supervisors found": {
     ar: "لم يتم العثور على مشرفين",
     en: "No supervisors found",
@@ -197,10 +197,10 @@ const dictionary = {
   "G. Photo": { ar: "صورة الولي", en: "G. Photo" },
   "Edit Student": { ar: "تعديل بيانات الطالب", en: "Edit Student" },
   "Are you sure you want to delete this student? This action cannot be undone.":
-    {
-      ar: "هل أنت متأكد من حذف هذا الطالب؟ لا يمكن التراجع عن هذا الإجراء.",
-      en: "Are you sure you want to delete this student? This action cannot be undone.",
-    },
+  {
+    ar: "هل أنت متأكد من حذف هذا الطالب؟ لا يمكن التراجع عن هذا الإجراء.",
+    en: "Are you sure you want to delete this student? This action cannot be undone.",
+  },
 
   // Enroll Student Flow
   "Search Guardian": { ar: "البحث عن ولي أمر", en: "Search Guardian" },
@@ -432,10 +432,10 @@ const dictionary = {
     en: "Delete Attendance Record?",
   },
   "Are you sure you want to delete this record? This action cannot be undone.":
-    {
-      ar: "هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.",
-      en: "Are you sure you want to delete this record? This action cannot be undone.",
-    },
+  {
+    ar: "هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.",
+    en: "Are you sure you want to delete this record? This action cannot be undone.",
+  },
   "From Date": { ar: "من تاريخ", en: "From Date" },
   "To Date": { ar: "إلى تاريخ", en: "To Date" },
   "Select Student": { ar: "اختر الطالب", en: "Select Student" },
@@ -608,10 +608,10 @@ const dictionary = {
     en: "Try adjusting your search or filters",
   },
   "Using mock data for demonstration. Real data will be loaded when backend integration is complete.":
-    {
-      ar: "استخدام بيانات وهمية للعرض. سيتم تحميل البيانات الحقيقية عند اكتمال التكامل مع Backend.",
-      en: "Using mock data for demonstration. Real data will be loaded when backend integration is complete.",
-    },
+  {
+    ar: "استخدام بيانات وهمية للعرض. سيتم تحميل البيانات الحقيقية عند اكتمال التكامل مع Backend.",
+    en: "Using mock data for demonstration. Real data will be loaded when backend integration is complete.",
+  },
   "Back to Buses": { ar: "العودة للحافلات", en: "Back to Buses" },
   "Request submitted successfully! (Mock)": {
     ar: "تم إرسال الطلب بنجاح! (تجريبي)",
@@ -1253,6 +1253,36 @@ const dictionary = {
   rejected: { ar: "مرفوض", en: "Rejected" },
   on_route: { ar: "في الطريق", en: "On Route" },
   at_school: { ar: "في المدرسة", en: "At School" },
+  "Copy Schedules": { ar: "نسخ الجداول", en: "Copy Schedules" },
+  "Trips Dashboard": { ar: "لوحة الرحلات", en: "Trips Dashboard" },
+  "Forth Route": { ar: "خط الذهاب", en: "Forth Route" },
+  "Back Route": { ar: "خط العودة", en: "Back Route" },
+  scheduled: { ar: "مجدولة", en: "Scheduled" },
+  in_progress: { ar: "جاري التنفيذ", en: "In Progress" },
+  completed: { ar: "مكتملة", en: "Completed" },
+  cancelled: { ar: "ملغاة", en: "Cancelled" },
+  forth: { ar: "ذهاب", en: "Forth" },
+  back: { ar: "عودة", en: "Back" },
+  field_trip: { ar: "رحلة ميدانية", en: "Field Trip" },
+  "Daily Trips": { ar: "الرحلات اليومية", en: "Daily Trips" },
+  "Attendance Rate": { ar: "نسبة الحضور", en: "Attendance Rate" },
+  "Export Report": { ar: "تصدير تقرير", en: "Export Report" },
+  "Trip Type": { ar: "نوع الرحلة", en: "Trip Type" },
+  "No trips found for this date": {
+    ar: "لا توجد رحلات لهذا التاريخ",
+    en: "No trips found for this date",
+  },
+  "No Route Assigned": { ar: "غير مخصص لخط", en: "No Route Assigned" },
+  "Select a route...": { ar: "اختر خطاً...", en: "Select a route..." },
+  "Buses are assigned by the main admin. Use Requests tab to request changes.": {
+    ar: "يتم تعيين الحافلات من قبل المسؤول الرئيسي. استخدم تبويب الطلبات لطلب تغييرات.",
+    en: "Buses are assigned by the main admin. Use Requests tab to request changes.",
+  },
+  "Driver / Supervisor": {
+    ar: "السائق / المشرف",
+    en: "Driver / Supervisor",
+  },
+  "Assigned Route": { ar: "الخط المخصص", en: "Assigned Route" },
 } as Record<string, { ar: string; en: string }>;
 
 export default function useTranslation() {
