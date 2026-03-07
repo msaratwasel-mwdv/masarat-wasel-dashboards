@@ -25,6 +25,9 @@ return new class extends Migration
             // بيانات ولي الأمر (الأساسية)
             $table->string('name_en')->nullable();
             $table->text('address')->nullable();
+            $table->decimal('home_latitude', 10, 7)->nullable();
+            $table->decimal('home_longitude', 10, 7)->nullable();
+            $table->integer('proximity_alert_distance')->default(500); // بالمتر
             $table->string('home_number')->nullable();
             $table->enum('preferred_language', ['ar', 'en'])->default('ar');
             $table->string('image')->nullable();
@@ -35,6 +38,8 @@ return new class extends Migration
 
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('fcm_token')->nullable();
+            $table->string('onesignal_player_id')->nullable(); // معرّف جهاز المستخدم في OneSignal
             $table->rememberToken();
             $table->timestamps();
         });

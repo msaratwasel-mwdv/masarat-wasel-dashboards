@@ -25,6 +25,11 @@ return new class extends Migration
             $table->foreignId('supervisor_id')->nullable()->constrained('users')->onDelete('set null');
             $table->foreignId('school_id')->constrained()->onDelete('cascade');
 
+            $table->foreignId('morning_group_id')->nullable()->constrained('bus_groups')->nullOnDelete();
+            $table->foreignId('afternoon_group_id')->nullable()->constrained('bus_groups')->nullOnDelete();
+            $table->foreignId('forth_route_id')->nullable()->constrained('routes')->nullOnDelete();
+            $table->foreignId('back_route_id')->nullable()->constrained('routes')->nullOnDelete();
+
             $table->timestamps();
 
             // ⬅️ تصحيح الصلاحيات: إزالة national_id من الصلاحية المركبة

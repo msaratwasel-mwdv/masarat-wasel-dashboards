@@ -30,6 +30,10 @@ return new class extends Migration
             // من قام بالتغيير؟ (للمساءلة الإدارية)
             $table->foreignId('changed_by')->nullable()->constrained('users')->nullOnDelete();
 
+            $table->string('old_status')->nullable();
+            $table->string('new_status')->nullable();
+            $table->text('notes')->nullable();
+
             $table->timestamps(); // created_at هو وقت التغيير
         });
     }

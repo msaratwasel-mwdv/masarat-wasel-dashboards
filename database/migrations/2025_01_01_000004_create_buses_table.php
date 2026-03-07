@@ -20,19 +20,30 @@ return new class extends Migration
             $table->integer('capacity');
             $table->string('model'); // Mercedes 2023
             $table->year('year');
+            $table->string('color')->nullable();
             $table->enum('type', ['permanent', 'temporary'])->default('permanent'); // من نسختك
 
             // العلاقات
             $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('driver_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('supervisor_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('route_id')->nullable()->constrained('routes')->nullOnDelete();
 
             // الحالة والبيانات الإضافية
             $table->enum('status', ['active', 'maintenance', 'inactive', 'out_of_service'])->default('active');
             $table->string('qr_code_path')->nullable(); // مسار الصورة
 
+            // حقول التتبع
+            $table->decimal('current_latitude', 10, 7)->nullable();
+            $table->decimal('current_longitude', 10, 7)->nullable();
+            $table->timestamp('last_location_update')->nullable();
+            $table->enum('trip_status', ['at_school', 'on_route', 'stopped', 'idle'])->nullable();
+
             $table->timestamps();
             $table->softDeletes(); // للحفاظ على السجلات المحذوفة
+
+            // إضافة index للموقع
+            $table->index(['current_latitude', 'current_longitude'], 'buses_location_index');
         });
     }
 

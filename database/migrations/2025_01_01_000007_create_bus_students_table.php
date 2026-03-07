@@ -15,10 +15,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('bus_id')->constrained()->onDelete('cascade');
             $table->foreignId('student_id')->constrained()->onDelete('cascade');
+            $table->enum('trip_type', ['morning', 'afternoon', 'both'])->default('both');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             
-            $table->unique(['bus_id', 'student_id']);
+            $table->unique(['bus_id', 'student_id', 'trip_type'], 'bus_student_trip_unique');
         });
     }
 

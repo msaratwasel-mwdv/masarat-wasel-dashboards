@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('schools', function (Blueprint $table) {
             $table->id();
             $table->string('name'); // اسم المدرسة
+            $table->string('logo')->nullable();
             $table->string('location')->nullable(); // المدينة/الموقع
             $table->enum('status', ['Active', 'Inactive'])->default('Active'); // الحالة
 

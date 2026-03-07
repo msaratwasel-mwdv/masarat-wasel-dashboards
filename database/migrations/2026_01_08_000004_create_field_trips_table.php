@@ -18,12 +18,14 @@ return new class extends Migration
             $table->text('description');
             $table->date('trip_date');
             $table->time('trip_time');
+            $table->integer('duration_days')->default(1);
             $table->string('destination');
             $table->decimal('destination_lat', 10, 8)->nullable();
             $table->decimal('destination_lng', 11, 8)->nullable();
-            $table->foreignId('bus_id')->nullable()->constrained();
+            $table->foreignId('bus_id')->nullable()->constrained()->nullOnDelete();
             $table->integer('number_of_students');
             $table->enum('status', ['planned', 'approved', 'started', 'in_progress', 'completed', 'cancelled'])->default('planned');
+            $table->text('rejection_reason')->nullable();
             $table->decimal('estimated_cost', 10, 2)->nullable();
             $table->json('teacher_names')->nullable();
             $table->boolean('approved_by_school')->default(false);
