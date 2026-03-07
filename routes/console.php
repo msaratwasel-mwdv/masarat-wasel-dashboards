@@ -9,3 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('model:prune')->daily();
+
+// Auto-create daily (forth & back) trips for all buses with routes at 01:00 AM each day
+Schedule::command('trips:create-daily')->dailyAt('01:00');

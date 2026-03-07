@@ -59,6 +59,10 @@ export interface MockFieldTrip {
     destination: string;
     destination_lat?: number;
     destination_lng?: number;
+    duration_days?: number;
+    cost?: number;
+    bus?: any;
+    rejection_reason?: string;
     number_of_students: number;
     status: 'planned' | 'approved' | 'in_progress' | 'completed' | 'cancelled';
     approved_by_school: boolean;
@@ -172,19 +176,19 @@ export const mockTripSchedules: MockTripSchedule[] = [
     { id: 1, bus_id: 1, bus_number: 'BUS-001', day_of_week: 0, gathering_time: '06:30', departure_time: '07:00', return_time: '14:00', last_dropoff_time: '15:00', is_exception: false },
     { id: 2, bus_id: 2, bus_number: 'BUS-002', day_of_week: 0, gathering_time: '06:45', departure_time: '07:15', return_time: '14:15', last_dropoff_time: '15:15', is_exception: false },
     { id: 3, bus_id: 4, bus_number: 'BUS-004', day_of_week: 0, gathering_time: '06:30', departure_time: '07:00', return_time: '14:00', last_dropoff_time: '15:00', is_exception: false },
-    
+
     // Monday schedules
     { id: 4, bus_id: 1, bus_number: 'BUS-001', day_of_week: 1, gathering_time: '06:30', departure_time: '07:00', return_time: '14:00', last_dropoff_time: '15:00', is_exception: false },
     { id: 5, bus_id: 2, bus_number: 'BUS-002', day_of_week: 1, gathering_time: '06:45', departure_time: '07:15', return_time: '14:15', last_dropoff_time: '15:15', is_exception: false },
-    
+
     // Tuesday schedules
     { id: 6, bus_id: 1, bus_number: 'BUS-001', day_of_week: 2, gathering_time: '06:30', departure_time: '07:00', return_time: '14:00', last_dropoff_time: '15:00', is_exception: false },
     { id: 7, bus_id: 2, bus_number: 'BUS-002', day_of_week: 2, gathering_time: '06:45', departure_time: '07:15', return_time: '14:15', last_dropoff_time: '15:15', is_exception: false },
-    
+
     // Wednesday schedules
     { id: 8, bus_id: 1, bus_number: 'BUS-001', day_of_week: 3, gathering_time: '06:30', departure_time: '07:00', return_time: '14:00', last_dropoff_time: '15:00', is_exception: false },
     { id: 9, bus_id: 2, bus_number: 'BUS-002', day_of_week: 3, gathering_time: '06:45', departure_time: '07:15', return_time: '14:15', last_dropoff_time: '15:15', is_exception: false },
-    
+
     // Thursday schedules (exception - exam day)
     { id: 10, bus_id: 1, bus_number: 'BUS-001', day_of_week: 4, gathering_time: '07:00', departure_time: '07:30', return_time: '12:00', last_dropoff_time: '13:00', is_exception: true, exception_date: '2026-01-16', exception_reason: 'يوم امتحانات - جدول مخفف' },
 ];

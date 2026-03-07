@@ -72,9 +72,14 @@ class FieldTripController extends Controller
      */
     public function reject(Request $request, FieldTrip $fieldTrip)
     {
+        $validated = $request->validate([
+            'rejection_reason' => 'nullable|string|max:1000',
+        ]);
+
         $fieldTrip->update([
             'status' => 'cancelled',
             'approved_by_company' => false,
+            'rejection_reason' => $validated['rejection_reason'] ?? null,
         ]);
 
         $schoolAdmin = $fieldTrip->school->users()->where('role', 'school_admin')->first();
@@ -82,11 +87,13 @@ class FieldTripController extends Controller
         if ($schoolAdmin) {
             try {
                 $notificationService = app(NotificationService::class);
+                $messageAddon = ($fieldTrip->rejection_reason) ? " السبب: {$fieldTrip->rejection_reason}" : "";
+                
                 $notificationService->sendToUser(
                     $schoolAdmin->id,
                     'field_trip_rejected',
                     'تم رفض طلب الرحلة الميدانية ❌',
-                    "تم رفض طلب رحلة: {$fieldTrip->trip_name} من قبل الإدارة.",
+                    "تم رفض طلب رحلة: {$fieldTrip->trip_name} من قبل الإدارة." . $messageAddon,
                     ['trip_id' => $fieldTrip->id],
                     auth()->user()->name
                 );

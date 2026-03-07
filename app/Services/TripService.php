@@ -10,6 +10,7 @@ use App\Models\TripStudent;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TripService
 {
@@ -21,25 +22,43 @@ class TripService
     public function autoCreateDailyTrips(): void
     {
         $today = Carbon::today();
-        
-        // Get all buses assigned to a route
         $buses = Bus::whereNotNull('route_id')->get();
 
+        Log::info('[DailyTrips] Auto-create started', ['date' => $today->toDateString(), 'buses' => $buses->count()]);
+
+        $created = 0;
+        $skipped = 0;
+
         foreach ($buses as $bus) {
-            DB::transaction(function () use ($bus, $today) {
-                // 1. Create Forth Trip (Morning)
-                $this->createDailyTrip($bus, 'forth', $today);
-                
-                // 2. Create Back Trip (Afternoon)
-                $this->createDailyTrip($bus, 'back', $today);
+            DB::transaction(function () use ($bus, $today, &$created, &$skipped) {
+                [$forthResult, $forthReason] = $this->createDailyTrip($bus, 'forth', $today);
+                [$backResult, $backReason]   = $this->createDailyTrip($bus, 'back', $today);
+
+                $forthNew = $forthResult !== null && $forthResult->wasRecentlyCreated;
+                $backNew  = $backResult !== null && $backResult->wasRecentlyCreated;
+
+                if ($forthNew) { $created++; } else { $skipped++; }
+                if ($backNew)  { $created++; } else { $skipped++; }
+
+                Log::info("[DailyTrips] Bus {$bus->id} ({$bus->bus_number})", [
+                    'forth' => $forthNew ? 'created' : "skipped ($forthReason)",
+                    'back'  => $backNew  ? 'created' : "skipped ($backReason)",
+                ]);
             });
         }
+
+        Log::info('[DailyTrips] Auto-create finished', [
+            'date'    => $today->toDateString(),
+            'created' => $created,
+            'skipped' => $skipped,
+        ]);
     }
 
     /**
      * Create a specific daily trip and its attendance records.
+     * Returns [Trip|null, string reason]
      */
-    private function createDailyTrip(Bus $bus, string $type, Carbon $date): ?Trip
+    private function createDailyTrip(Bus $bus, string $type, Carbon $date): array
     {
         // Check if trip already exists for today
         $existingTrip = Trip::where('bus_id', $bus->id)
@@ -48,22 +67,24 @@ class TripService
             ->first();
 
         if ($existingTrip) {
-            return $existingTrip;
+            return [$existingTrip, 'already_exists'];
         }
 
-        // Driver and Assistant must be assigned to the bus
-        // Assuming Bus model has driver_id and supervisor_id (assistant)
+        // Driver and Assistant (Supervisor) must be assigned to the bus
         if (!$bus->driver_id || !$bus->supervisor_id) {
-            return null;
+            return [null, 'missing_staff_assignment'];
         }
 
         $trip = Trip::create([
+            'school_id' => $bus->school_id,
             'bus_id' => $bus->id,
+            'route_id' => $bus->route_id,
             'driver_id' => $bus->driver_id,
             'assistant_id' => $bus->supervisor_id,
+            'trip_date' => $date,
             'type' => $type,
             'status' => 'pending',
-            'departure_time' => $date->copy()->setTime(0, 0, 0), // Placeholder, actual time will be updated when started
+            'departure_time' => $date->copy()->setTime(0, 0, 0),
         ]);
 
         // Get students assigned to this route for this direction
@@ -74,12 +95,12 @@ class TripService
             TripAttendance::create([
                 'trip_id' => $trip->id,
                 'student_id' => $student->id,
-                'status' => 'absent', // Default status
+                'status' => 'absent',
                 'date' => $date,
             ]);
         }
 
-        return $trip;
+        return [$trip, 'created'];
     }
 
     /**

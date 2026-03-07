@@ -18,6 +18,7 @@ class FieldTrip extends Model
         'description',
         'trip_date',
         'trip_time',
+        'duration_days',
         'destination',
         'destination_lat',
         'destination_lng',
@@ -25,6 +26,7 @@ class FieldTrip extends Model
         'teacher_names',
         'cost',
         'status',
+        'rejection_reason',
         'approved_by_school',
         'approved_by_company',
     ];
@@ -39,6 +41,7 @@ class FieldTrip extends Model
 
     protected $casts = [
         'trip_date' => 'date',
+        'duration_days' => 'integer',
         'number_of_students' => 'integer',
         'teacher_names' => 'array',
         'approved_by_school' => 'boolean',

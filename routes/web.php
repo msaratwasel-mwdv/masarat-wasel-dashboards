@@ -200,6 +200,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::put('schools/{school}/admins/{user}', [SchoolUserController::class, 'update'])->name('schools.users.update');
         Route::delete('schools/{school}/admins/{user}', [SchoolUserController::class, 'destroy'])->name('schools.users.destroy');
 
+        // المسارات
+        Route::resource('routes', \App\Http\Controllers\Admin\RouteController::class);
+
         // Drivers Routes
         Route::get('drivers', [StaffController::class, 'index'])->name('drivers.index');
         Route::post('drivers', [StaffController::class, 'storeDriver'])->name('drivers.store');
@@ -212,6 +215,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         // الحافلات - شامل جميع الوظائف
         Route::resource('buses', BusController::class);
         Route::post('buses/{bus}/assign', [BusController::class, 'assignToSchool'])->name('buses.assign');
+        Route::post('buses/{bus}/assign-route', [BusController::class, 'assignRoute'])->name('buses.assign-route');
         Route::post('buses/{bus}/archive', [BusController::class, 'archive'])->name('buses.archive');
         Route::delete('buses/documents/{document}', [BusController::class, 'deleteDocument'])->name('buses.documents.destroy');
 
@@ -235,6 +239,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::resource('field-trips', \App\Http\Controllers\Admin\FieldTripController::class)->except(['create', 'store', 'edit', 'destroy']);
         Route::post('field-trips/{field_trip}/approve', [\App\Http\Controllers\Admin\FieldTripController::class, 'approve'])->name('field-trips.approve');
         Route::post('field-trips/{field_trip}/reject', [\App\Http\Controllers\Admin\FieldTripController::class, 'reject'])->name('field-trips.reject');
+
+        // الرحلات اليومية (Daily Trips) - Auto-generated
+        Route::get('daily-trips', [\App\Http\Controllers\Admin\DailyTripController::class, 'index'])->name('daily-trips.index');
     });
 
 

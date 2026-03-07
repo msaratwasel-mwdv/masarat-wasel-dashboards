@@ -24,6 +24,7 @@ interface FieldTrip {
     trip_date: string;
     trip_time: string;
     destination: string;
+    duration_days: number;
     number_of_students: number;
     status: string;
     cost: number | null;
@@ -42,10 +43,14 @@ export default function Index({ auth, fieldTrips, buses }: Props) {
     const [selectedTrip, setSelectedTrip] = useState<FieldTrip | null>(null);
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
 
-    // Form state
     const [cost, setCost] = useState('');
     const [selectedBus, setSelectedBus] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Reject Modal state
+    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [tripToReject, setTripToReject] = useState<FieldTrip | null>(null);
 
     const openApproveModal = (trip: FieldTrip) => {
         setSelectedTrip(trip);
@@ -71,10 +76,25 @@ export default function Index({ auth, fieldTrips, buses }: Props) {
         });
     };
 
-    const handleReject = (tripId: number) => {
-        if (confirm(isRTL ? 'هل أنت متأكد من إلغاء/رفض هذه الرحلة؟' : 'Are you sure you want to reject this trip?')) {
-            router.post(route('admin.field-trips.reject', tripId));
-        }
+    const openRejectModal = (trip: FieldTrip) => {
+        setTripToReject(trip);
+        setRejectionReason('');
+        setIsRejectModalOpen(true);
+    };
+
+    const handleRejectSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!tripToReject) return;
+        setIsSubmitting(true);
+        router.post(route('admin.field-trips.reject', tripToReject.id), {
+            rejection_reason: rejectionReason,
+        }, {
+            onSuccess: () => {
+                setIsRejectModalOpen(false);
+                setTripToReject(null);
+            },
+            onFinish: () => setIsSubmitting(false),
+        });
     };
 
     const getStatusBadge = (status: string) => {
@@ -173,6 +193,9 @@ export default function Index({ auth, fieldTrips, buses }: Props) {
                                                 <div className="text-xs text-gray-500 font-bold">
                                                     🕐 {trip.trip_time}
                                                 </div>
+                                                <div className="text-xs text-gray-500 font-bold">
+                                                    ⏳ {trip.duration_days || 1} {isRTL ? 'أيام' : 'Days'}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-center align-top">
@@ -203,7 +226,7 @@ export default function Index({ auth, fieldTrips, buses }: Props) {
                                                             {isRTL ? 'تحديد وتأكيد' : 'Approve & Assign'}
                                                         </button>
                                                         <button
-                                                            onClick={() => handleReject(trip.id)}
+                                                            onClick={() => openRejectModal(trip)}
                                                             className="w-full px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-xl transition-colors"
                                                         >
                                                             {isRTL ? 'رفض الطلب' : 'Reject'}
@@ -233,7 +256,7 @@ export default function Index({ auth, fieldTrips, buses }: Props) {
 
             {/* Approval Modal */}
             {isApproveModalOpen && selectedTrip && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative" dir={isRTL ? 'rtl' : 'ltr'}>
                         <div className="p-6 border-b border-gray-100 dark:border-gray-700">
                             <h3 className="text-xl font-black text-gray-800 dark:text-white">
@@ -302,6 +325,60 @@ export default function Index({ auth, fieldTrips, buses }: Props) {
                                         <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                     ) : (
                                         isRTL ? 'تأكيد الموافقة' : 'Confirm Approval'
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Reject Modal */}
+            {isRejectModalOpen && tripToReject && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative" dir={isRTL ? 'rtl' : 'ltr'}>
+                        <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+                            <h3 className="text-xl font-black text-gray-800 dark:text-white">
+                                {isRTL ? 'رفض الرحلة الميدانية' : 'Reject Field Trip'}
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1 font-bold">
+                                {tripToReject.trip_name} - {tripToReject.school?.name}
+                            </p>
+                        </div>
+
+                        <form onSubmit={handleRejectSubmit} className="p-6">
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                                        {isRTL ? 'سبب الرفض (اختياري)' : 'Rejection Reason (Optional)'}
+                                    </label>
+                                    <textarea
+                                        rows={3}
+                                        value={rejectionReason}
+                                        onChange={(e) => setRejectionReason(e.target.value)}
+                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-800 dark:text-white font-bold resize-none"
+                                        placeholder={isRTL ? 'اكتب سبب الرفض هنا...' : 'Type rejection reason here...'}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsRejectModalOpen(false)}
+                                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-bold rounded-xl transition-colors"
+                                >
+                                    {isRTL ? 'إلغاء' : 'Cancel'}
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl transition-colors flex justify-center items-center gap-2 shadow-lg shadow-red-600/30 disabled:opacity-50"
+                                >
+                                    {isSubmitting ? (
+                                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    ) : (
+                                        isRTL ? 'تأكيد الرفض' : 'Confirm Rejection'
                                     )}
                                 </button>
                             </div>

@@ -19,7 +19,7 @@ class BusController extends Controller
     public function index()
     {
         // 1. جلب الباصات مع علاقاتها
-        $buses = Bus::with(['driver', 'supervisor', 'school', 'documents'])
+        $buses = Bus::with(['driver', 'supervisor', 'school', 'documents', 'route'])
             ->latest()
             ->get();
 
@@ -40,11 +40,18 @@ class BusController extends Controller
         // 4. جلب المدارس النشطة
         $schools = School::where('status', 'active')->get();
 
+        // 5. جلب جميع المسارات
+        $routes = \App\Models\Route::select('id', 'name', 'code', 'school_id')
+            ->with('school:id,name')
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('Admin/Buses/Index', [
-            'buses' => $buses,
-            'availableDrivers' => $drivers,
+            'buses'                => $buses,
+            'availableDrivers'     => $drivers,
             'availableSupervisors' => $supervisors,
-            'schools' => $schools,
+            'schools'              => $schools,
+            'routes'               => $routes,
         ]);
     }
 
@@ -292,6 +299,21 @@ class BusController extends Controller
         });
 
         $message = $schoolId ? 'تم إسناد الباص للمدرسة بنجاح' : 'تم سحب الباص للمقر الرئيسي بنجاح';
+        return redirect()->back()->with('success', $message);
+    }
+
+    public function assignRoute(Request $request, Bus $bus)
+    {
+        $request->validate([
+            'route_id' => 'nullable|exists:routes,id',
+        ]);
+
+        $bus->update(['route_id' => $request->route_id ?: null]);
+
+        $message = $request->route_id
+            ? 'تم تعيين المسار للحافلة بنجاح'
+            : 'تم إلغاء تعيين المسار عن الحافلة';
+
         return redirect()->back()->with('success', $message);
     }
 }

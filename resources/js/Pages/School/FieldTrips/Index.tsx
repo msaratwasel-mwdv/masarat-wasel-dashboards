@@ -46,12 +46,15 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
             approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800",
             in_progress: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800",
             completed: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800",
+            cancelled: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800",
         };
         const currentStyle = styles[status as keyof typeof styles] || "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700";
 
+        const label = t(status === 'cancelled' ? 'Rejected/Cancelled' : status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' '));
+
         return (
             <span className={`px-4 py-1.5 text-xs font-black rounded-full border shadow-sm uppercase tracking-widest ${currentStyle}`}>
-                {t(status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' '))}
+                {label}
             </span>
         );
     };
@@ -159,7 +162,7 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-start">{t('Identity')}</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-start">{t('Dep. Schedule')}</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-start">{t('Target Hub')}</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Pax')}</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Pax & Cost')}</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Status')}</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Operations')}</th>
                                     </tr>
@@ -180,6 +183,9 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
                                                         <span className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
                                                             <span className="opacity-40">🕐</span> {trip.trip_time}
                                                         </span>
+                                                        <span className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
+                                                            <span className="opacity-40">⏳</span> {trip.duration_days || 1} {t('Days')}
+                                                        </span>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6">
@@ -192,11 +198,24 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
                                                         <span className="text-sm font-black text-gray-800 dark:text-white">{trip.number_of_students}</span>
                                                         <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('Students')}</span>
                                                     </div>
+                                                    <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 text-[10px] font-bold text-green-600 dark:text-green-500 mx-auto w-16">
+                                                        {trip.cost ? `${trip.cost} ${t('SAR')}` : <span className="text-gray-400">{t('TBD')}</span>}
+                                                    </div>
+                                                    {trip.bus && (
+                                                        <div className="mt-1 text-[9px] font-bold text-gray-500 break-words max-w-[80px]">
+                                                            🚌 {trip.bus.name || trip.bus.bus_number}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-8 py-6 text-center">
                                                     <div className="flex flex-col items-center gap-2">
                                                         {getStatusBadge(trip.status)}
-                                                        {trip.approved_by_school && (
+                                                        {trip.status === 'cancelled' && trip.rejection_reason && (
+                                                            <div className="text-[9px] text-red-500 mt-1 max-w-[120px] text-justify break-words">
+                                                                <span className="font-bold">{t('Reason')}:</span> {trip.rejection_reason}
+                                                            </div>
+                                                        )}
+                                                        {trip.approved_by_school && trip.status !== 'cancelled' && (
                                                             <div className="flex items-center justify-center gap-1.5 text-[8px] text-green-500 font-black uppercase tracking-widest bg-green-50 dark:bg-green-950/20 px-2 py-1 rounded-md">
                                                                 <span className="scale-75">✓</span> {t('Verified By School')}
                                                             </div>

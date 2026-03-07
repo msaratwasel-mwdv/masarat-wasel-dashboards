@@ -26,6 +26,13 @@ interface BusDocument {
   file_path: string;
 }
 
+interface Route {
+  id: number;
+  name: string;
+  code: string;
+  school?: School;
+}
+
 interface Bus {
   id: number;
   bus_code: string;
@@ -38,9 +45,11 @@ interface Bus {
   school_id: number | null;
   driver_id: number | null;
   supervisor_id: number | null;
+  route_id: number | null;
   driver?: User;
   supervisor?: User;
   school?: School;
+  route?: Route;
   documents?: BusDocument[];
   deactivation_reason?: string;
 }
@@ -50,6 +59,7 @@ interface Props {
   availableDrivers: User[];
   availableSupervisors: User[];
   schools: School[];
+  routes: Route[];
 }
 
 export default function Index({
@@ -57,6 +67,7 @@ export default function Index({
   availableDrivers,
   availableSupervisors,
   schools,
+  routes,
 }: Props) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
@@ -73,7 +84,7 @@ export default function Index({
 
   // --- 3. State Management ---
   const [modalState, setModalState] = useState<{
-    type: "add" | "edit" | "view" | "assign" | "archive" | null;
+    type: "add" | "edit" | "view" | "assign" | "assign-route" | "archive" | null;
     bus: Bus | null;
   }>({ type: null, bus: null });
 
@@ -90,6 +101,7 @@ export default function Index({
     registration_file: null as File | null,
   });
   const assignForm = useForm({ school_id: "" });
+  const routeForm = useForm({ route_id: "" });
   const archiveForm = useForm({ deactivation_reason: "" });
 
   // --- 5. Handlers ---
@@ -97,11 +109,12 @@ export default function Index({
     setModalState({ type: null, bus: null });
     busForm.reset();
     assignForm.reset();
+    routeForm.reset();
     archiveForm.reset();
   };
 
   const openModal = (
-    type: "add" | "edit" | "view" | "assign" | "archive",
+    type: "add" | "edit" | "view" | "assign" | "assign-route" | "archive",
     bus: Bus | null = null
   ) => {
     setModalState({ type, bus });
@@ -121,6 +134,9 @@ export default function Index({
     if (type === "assign" && bus) {
       assignForm.setData("school_id", bus.school_id?.toString() || "");
     }
+    if (type === "assign-route" && bus) {
+      routeForm.setData("route_id", bus.route_id?.toString() || "");
+    }
     if (type === "archive" && bus) {
       archiveForm.setData("deactivation_reason", bus.deactivation_reason || "");
     }
@@ -131,16 +147,16 @@ export default function Index({
     if (modalState.type === "add") {
       busForm.post(route("admin.buses.store"), { onSuccess: closeModal });
     } else if (modalState.type === "edit" && modalState.bus) {
-      // Use POST with _method=put to emulate PUT for multipart/form-data
-      busForm.transform((data) => ({
-        ...data,
-        _method: "put",
-      }));
+      busForm.transform((data) => ({ ...data, _method: "put" }));
       busForm.post(route("admin.buses.update", modalState.bus.id), {
         onSuccess: closeModal,
       });
     } else if (modalState.type === "assign" && modalState.bus) {
       assignForm.post(route("admin.buses.assign", modalState.bus.id), {
+        onSuccess: closeModal,
+      });
+    } else if (modalState.type === "assign-route" && modalState.bus) {
+      routeForm.post(route("admin.buses.assign-route", modalState.bus.id), {
         onSuccess: closeModal,
       });
     } else if (modalState.type === "archive" && modalState.bus) {
@@ -200,9 +216,8 @@ export default function Index({
     <AuthenticatedLayout
       header={
         <h2
-          className={`font-semibold text-xl ${
-            isDark ? "text-gray-200" : "text-gray-800"
-          } leading-tight`}
+          className={`font-semibold text-xl ${isDark ? "text-gray-200" : "text-gray-800"
+            } leading-tight`}
         >
           {isRTL ? "إدارة أسطول الحافلات" : "Bus Fleet Management"}
         </h2>
@@ -214,9 +229,8 @@ export default function Index({
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
           {/* --- 1. DASHBOARD STATS --- */}
           <div
-            className={`grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 ${
-              isRTL ? "rtl" : ""
-            }`}
+            className={`grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 ${isRTL ? "rtl" : ""
+              }`}
           >
             {[
               {
@@ -250,24 +264,21 @@ export default function Index({
             ].map((stat, idx) => (
               <div
                 key={idx}
-                className={`${
-                  isDark
-                    ? "bg-gray-800 border-gray-700"
-                    : "bg-white border-gray-200"
-                } p-4 rounded-2xl shadow-sm border flex items-center justify-between transition-all hover:shadow-md`}
+                className={`${isDark
+                  ? "bg-gray-800 border-gray-700"
+                  : "bg-white border-gray-200"
+                  } p-4 rounded-2xl shadow-sm border flex items-center justify-between transition-all hover:shadow-md`}
               >
                 <div>
                   <p
-                    className={`text-xs font-bold uppercase tracking-wider mb-1 ${
-                      isDark ? "text-gray-400" : "text-gray-500"
-                    }`}
+                    className={`text-xs font-bold uppercase tracking-wider mb-1 ${isDark ? "text-gray-400" : "text-gray-500"
+                      }`}
                   >
                     {stat.title}
                   </p>
                   <p
-                    className={`text-2xl font-extrabold ${
-                      isDark ? "text-white" : "text-gray-800"
-                    }`}
+                    className={`text-2xl font-extrabold ${isDark ? "text-white" : "text-gray-800"
+                      }`}
                   >
                     {stat.value}
                   </p>
@@ -295,9 +306,8 @@ export default function Index({
 
           {/* --- 2. HEADER ACTIONS --- */}
           <div
-            className={`flex flex-col md:flex-row justify-between items-center mb-6 gap-4 ${
-              isRTL ? "md:flex-row-reverse" : ""
-            }`}
+            className={`flex flex-col md:flex-row justify-between items-center mb-6 gap-4 ${isRTL ? "md:flex-row-reverse" : ""
+              }`}
           >
             <div className="relative w-full md:w-96">
               <input
@@ -305,16 +315,14 @@ export default function Index({
                 placeholder={
                   isRTL ? "البحث برقم اللوحة، الكود..." : "Search fleet..."
                 }
-                className={`w-full pl-10 pr-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${
-                  isDark
-                    ? "bg-gray-800 border-gray-700 text-white placeholder-gray-500"
-                    : "bg-white border-gray-300 text-gray-900"
-                }`}
+                className={`w-full pl-10 pr-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${isDark
+                  ? "bg-gray-800 border-gray-700 text-white placeholder-gray-500"
+                  : "bg-white border-gray-300 text-gray-900"
+                  }`}
               />
               <svg
-                className={`w-5 h-5 absolute top-2.5 ${
-                  isRTL ? "right-3" : "left-3"
-                } text-gray-400`}
+                className={`w-5 h-5 absolute top-2.5 ${isRTL ? "right-3" : "left-3"
+                  } text-gray-400`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -353,75 +361,69 @@ export default function Index({
 
           {/* --- 3. BUSES TABLE --- */}
           <div
-            className={`${
-              isDark
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-100"
-            } shadow-xl rounded-2xl overflow-hidden border`}
+            className={`${isDark
+              ? "bg-gray-800 border-gray-700"
+              : "bg-white border-gray-100"
+              } shadow-xl rounded-2xl overflow-hidden border`}
           >
             <div className="overflow-x-auto">
               <table
-                className={`min-w-full divide-y ${
-                  isDark ? "divide-gray-700" : "divide-gray-200"
-                }`}
+                className={`min-w-full divide-y ${isDark ? "divide-gray-700" : "divide-gray-200"
+                  }`}
               >
                 <thead
                   className={`${isDark ? "bg-gray-900/50" : "bg-gray-50"}`}
                 >
                   <tr>
                     <th
-                      className={`px-6 py-4 text-xs font-bold ${
-                        isDark ? "text-gray-400" : "text-gray-500"
-                      } uppercase tracking-wider ${
-                        isRTL ? "text-right" : "text-left"
-                      }`}
+                      className={`px-6 py-4 text-xs font-bold ${isDark ? "text-gray-400" : "text-gray-500"
+                        } uppercase tracking-wider ${isRTL ? "text-right" : "text-left"
+                        }`}
                     >
                       {isRTL ? "معلومات الحافلة" : "Vehicle Info"}
                     </th>
                     <th
-                      className={`px-6 py-4 text-xs font-bold ${
-                        isDark ? "text-gray-400" : "text-gray-500"
-                      } uppercase tracking-wider ${
-                        isRTL ? "text-right" : "text-left"
-                      }`}
+                      className={`px-6 py-4 text-xs font-bold ${isDark ? "text-gray-400" : "text-gray-500"
+                        } uppercase tracking-wider ${isRTL ? "text-right" : "text-left"
+                        }`}
                     >
                       {isRTL ? "الطاقم التشغيلي" : "Crew"}
                     </th>
                     <th
-                      className={`px-6 py-4 text-xs font-bold ${
-                        isDark ? "text-gray-400" : "text-gray-500"
-                      } uppercase tracking-wider ${
-                        isRTL ? "text-right" : "text-left"
-                      }`}
+                      className={`px-6 py-4 text-xs font-bold ${isDark ? "text-gray-400" : "text-gray-500"
+                        } uppercase tracking-wider ${isRTL ? "text-right" : "text-left"
+                        }`}
                     >
                       {isRTL ? "التعيين الحالي" : "Current Assignment"}
                     </th>
                     <th
-                      className={`px-6 py-4 text-xs font-bold ${
-                        isDark ? "text-gray-400" : "text-gray-500"
-                      } uppercase tracking-wider ${
-                        isRTL ? "text-right" : "text-center"
-                      }`}
+                      className={`px-6 py-4 text-xs font-bold ${isDark ? "text-gray-400" : "text-gray-500"
+                        } uppercase tracking-wider ${isRTL ? "text-right" : "text-left"
+                        }`}
+                    >
+                      {isRTL ? "المسار" : "Route"}
+                    </th>
+                    <th
+                      className={`px-6 py-4 text-xs font-bold ${isDark ? "text-gray-400" : "text-gray-500"
+                        } uppercase tracking-wider ${isRTL ? "text-right" : "text-center"
+                        }`}
                     >
                       {isRTL ? "الحالة" : "Status"}
                     </th>
                     <th
-                      className={`px-6 py-4 text-xs font-bold ${
-                        isDark ? "text-gray-400" : "text-gray-500"
-                      } uppercase tracking-wider ${
-                        isRTL ? "text-left" : "text-right"
-                      }`}
+                      className={`px-6 py-4 text-xs font-bold ${isDark ? "text-gray-400" : "text-gray-500"
+                        } uppercase tracking-wider ${isRTL ? "text-left" : "text-right"
+                        }`}
                     >
                       {isRTL ? "الإجراءات" : "Actions"}
                     </th>
                   </tr>
                 </thead>
                 <tbody
-                  className={`${
-                    isDark
-                      ? "bg-gray-800 divide-gray-700"
-                      : "bg-white divide-gray-200"
-                  } divide-y`}
+                  className={`${isDark
+                    ? "bg-gray-800 divide-gray-700"
+                    : "bg-white divide-gray-200"
+                    } divide-y`}
                 >
                   {buses.length === 0 ? (
                     <tr>
@@ -452,33 +454,29 @@ export default function Index({
                     buses.map((bus) => (
                       <tr
                         key={bus.id}
-                        className={`${
-                          isDark
-                            ? "hover:bg-gray-700/50"
-                            : "hover:bg-blue-50/30"
-                        } transition-colors duration-200`}
+                        className={`${isDark
+                          ? "hover:bg-gray-700/50"
+                          : "hover:bg-blue-50/30"
+                          } transition-colors duration-200`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div
-                            className={`flex items-center gap-4 ${
-                              isRTL ? "flex-row-reverse" : ""
-                            }`}
+                            className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""
+                              }`}
                           >
                             <div className="flex-shrink-0 h-10 min-w-[3rem] px-2 rounded-lg bg-brand-yellow flex items-center justify-center text-brand-dark font-bold text-xs shadow-sm whitespace-nowrap">
                               {bus.bus_code}
                             </div>
                             <div className={isRTL ? "text-right" : "text-left"}>
                               <div
-                                className={`text-sm font-bold ${
-                                  isDark ? "text-white" : "text-gray-900"
-                                } font-mono`}
+                                className={`text-sm font-bold ${isDark ? "text-white" : "text-gray-900"
+                                  } font-mono`}
                               >
                                 {bus.plate_number}
                               </div>
                               <div
-                                className={`text-xs ${
-                                  isDark ? "text-gray-400" : "text-gray-500"
-                                }`}
+                                className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"
+                                  }`}
                               >
                                 {bus.model} • {bus.capacity}{" "}
                                 {isRTL ? "مقعد" : "Seats"}
@@ -490,50 +488,44 @@ export default function Index({
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col gap-1">
                             <div
-                              className={`flex items-center text-xs ${
-                                isRTL ? "flex-row-reverse" : ""
-                              }`}
+                              className={`flex items-center text-xs ${isRTL ? "flex-row-reverse" : ""
+                                }`}
                             >
                               <span
-                                className={`font-bold w-16 ${
-                                  isDark ? "text-gray-400" : "text-gray-500"
-                                } ${isRTL ? "ml-2 text-left" : "mr-2"}`}
+                                className={`font-bold w-16 ${isDark ? "text-gray-400" : "text-gray-500"
+                                  } ${isRTL ? "ml-2 text-left" : "mr-2"}`}
                               >
                                 {isRTL ? ":السائق" : "Driver:"}
                               </span>
                               <span
-                                className={`${
-                                  bus.driver
-                                    ? isDark
-                                      ? "text-gray-200"
-                                      : "text-gray-800"
-                                    : "text-red-400 italic"
-                                }`}
+                                className={`${bus.driver
+                                  ? isDark
+                                    ? "text-gray-200"
+                                    : "text-gray-800"
+                                  : "text-red-400 italic"
+                                  }`}
                               >
                                 {bus.driver?.name ||
                                   (isRTL ? "غير مسند" : "Unassigned")}
                               </span>
                             </div>
                             <div
-                              className={`flex items-center text-xs ${
-                                isRTL ? "flex-row-reverse" : ""
-                              }`}
+                              className={`flex items-center text-xs ${isRTL ? "flex-row-reverse" : ""
+                                }`}
                             >
                               <span
-                                className={`font-bold w-16 ${
-                                  isDark ? "text-gray-400" : "text-gray-500"
-                                } ${isRTL ? "ml-2 text-left" : "mr-2"}`}
+                                className={`font-bold w-16 ${isDark ? "text-gray-400" : "text-gray-500"
+                                  } ${isRTL ? "ml-2 text-left" : "mr-2"}`}
                               >
                                 {isRTL ? ":المشرف" : "Super:"}
                               </span>
                               <span
-                                className={`${
-                                  bus.supervisor
-                                    ? isDark
-                                      ? "text-gray-200"
-                                      : "text-gray-800"
-                                    : "text-red-400 italic"
-                                }`}
+                                className={`${bus.supervisor
+                                  ? isDark
+                                    ? "text-gray-200"
+                                    : "text-gray-800"
+                                  : "text-red-400 italic"
+                                  }`}
                               >
                                 {bus.supervisor?.name ||
                                   (isRTL ? "غير مسند" : "Unassigned")}
@@ -545,25 +537,38 @@ export default function Index({
                         <td className="px-6 py-4 whitespace-nowrap">
                           {bus.school ? (
                             <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                isDark
-                                  ? "bg-blue-900/30 text-blue-300"
-                                  : "bg-blue-100 text-blue-800"
-                              }`}
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDark
+                                ? "bg-blue-900/30 text-blue-300"
+                                : "bg-blue-100 text-blue-800"
+                                }`}
                             >
                               {bus.school.name}
                             </span>
                           ) : (
                             <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                isDark
-                                  ? "bg-gray-700 text-gray-400"
-                                  : "bg-gray-100 text-gray-800"
-                              }`}
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDark
+                                ? "bg-gray-700 text-gray-400"
+                                : "bg-gray-100 text-gray-800"
+                                }`}
                             >
                               {isRTL
                                 ? "المقر الرئيسي (مجمع)"
                                 : "Central Pool (HQ)"}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Route column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {bus.route ? (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${isDark ? "bg-green-900/30 text-green-300" : "bg-green-100 text-green-800"
+                              }`}>
+                              🛣 {bus.route.name}
+                            </span>
+                          ) : (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isDark ? "bg-gray-700 text-gray-400" : "bg-gray-100 text-gray-500"
+                              }`}>
+                              {isRTL ? "غير محدد" : "None"}
                             </span>
                           )}
                         </td>
@@ -578,27 +583,25 @@ export default function Index({
                               ? bus.status === "active"
                                 ? "نشط"
                                 : bus.status === "maintenance"
-                                ? "صيانة"
-                                : bus.status === "inactive"
-                                ? "غير نشط"
-                                : "خارج الخدمة"
+                                  ? "صيانة"
+                                  : bus.status === "inactive"
+                                    ? "غير نشط"
+                                    : "خارج الخدمة"
                               : bus.status}
                           </span>
                         </td>
 
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div
-                            className={`flex items-center justify-end gap-2 ${
-                              isRTL ? "flex-row-reverse" : ""
-                            }`}
+                            className={`flex items-center justify-end gap-2 ${isRTL ? "flex-row-reverse" : ""
+                              }`}
                           >
                             <button
                               onClick={() => openModal("view", bus)}
-                              className={`p-1.5 rounded-lg transition ${
-                                isDark
-                                  ? "text-gray-400 hover:text-blue-400 hover:bg-gray-700"
-                                  : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                              }`}
+                              className={`p-1.5 rounded-lg transition ${isDark
+                                ? "text-gray-400 hover:text-blue-400 hover:bg-gray-700"
+                                : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                                }`}
                               title={isRTL ? "عرض التفاصيل" : "View Details"}
                             >
                               <svg
@@ -623,11 +626,10 @@ export default function Index({
                             </button>
                             <button
                               onClick={() => openModal("assign", bus)}
-                              className={`p-1.5 rounded-lg transition ${
-                                isDark
-                                  ? "text-gray-400 hover:text-purple-400 hover:bg-gray-700"
-                                  : "text-gray-400 hover:text-purple-600 hover:bg-purple-50"
-                              }`}
+                              className={`p-1.5 rounded-lg transition ${isDark
+                                ? "text-gray-400 hover:text-purple-400 hover:bg-gray-700"
+                                : "text-gray-400 hover:text-purple-600 hover:bg-purple-50"
+                                }`}
                               title={isRTL ? "تعيين المدرسة" : "Assign School"}
                             >
                               <svg
@@ -644,13 +646,35 @@ export default function Index({
                                 />
                               </svg>
                             </button>
+                            {/* Assign Route button */}
+                            <button
+                              onClick={() => openModal("assign-route", bus)}
+                              className={`p-1.5 rounded-lg transition ${isDark
+                                ? "text-gray-400 hover:text-green-400 hover:bg-gray-700"
+                                : "text-gray-400 hover:text-green-600 hover:bg-green-50"
+                                }`}
+                              title={isRTL ? "تعيين المسار" : "Assign Route"}
+                            >
+                              <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                                />
+                              </svg>
+                            </button>
                             <button
                               onClick={() => openModal("edit", bus)}
-                              className={`p-1.5 rounded-lg transition ${
-                                isDark
-                                  ? "text-gray-400 hover:text-yellow-500 hover:bg-gray-700"
-                                  : "text-gray-400 hover:text-yellow-600 hover:bg-yellow-50"
-                              }`}
+                              className={`p-1.5 rounded-lg transition ${isDark
+                                ? "text-gray-400 hover:text-yellow-500 hover:bg-gray-700"
+                                : "text-gray-400 hover:text-yellow-600 hover:bg-yellow-50"
+                                }`}
                               title={isRTL ? "تعديل" : "Edit"}
                             >
                               <svg
@@ -669,11 +693,10 @@ export default function Index({
                             </button>
                             <button
                               onClick={() => openModal("archive", bus)}
-                              className={`p-1.5 rounded-lg transition ${
-                                isDark
-                                  ? "text-gray-400 hover:text-red-500 hover:bg-gray-700"
-                                  : "text-gray-400 hover:text-red-600 hover:bg-red-50"
-                              }`}
+                              className={`p-1.5 rounded-lg transition ${isDark
+                                ? "text-gray-400 hover:text-red-500 hover:bg-gray-700"
+                                : "text-gray-400 hover:text-red-600 hover:bg-red-50"
+                                }`}
                               title={isRTL ? "أرشفة" : "Archive"}
                             >
                               <svg
@@ -704,32 +727,28 @@ export default function Index({
           {modalState.type === "view" && modalState.bus && (
             <Modal show={true} onClose={closeModal} maxWidth="2xl">
               <div
-                className={`overflow-hidden ${
-                  isDark ? "bg-gray-800" : "bg-white"
-                }`}
+                className={`overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"
+                  }`}
               >
                 {/* 1. Header Card Style */}
                 <div
-                  className={`relative p-6 border-b ${
-                    isDark
-                      ? "border-gray-700 bg-gray-900/50"
-                      : "bg-gray-50 border-gray-200"
-                  }`}
+                  className={`relative p-6 border-b ${isDark
+                    ? "border-gray-700 bg-gray-900/50"
+                    : "bg-gray-50 border-gray-200"
+                    }`}
                 >
                   <div
-                    className={`flex justify-between items-start ${
-                      isRTL ? "flex-row-reverse" : ""
-                    }`}
+                    className={`flex justify-between items-start ${isRTL ? "flex-row-reverse" : ""
+                      }`}
                   >
                     {/* Bus Identity */}
                     <div className={isRTL ? "text-right" : "text-left"}>
                       <div className="flex items-center gap-3 mb-2">
                         <div
-                          className={`px-3 py-1 text-sm font-black rounded border shadow-sm ${
-                            isDark
-                              ? "bg-gray-800 border-gray-600 text-gray-200"
-                              : "bg-white border-gray-300 text-gray-900"
-                          }`}
+                          className={`px-3 py-1 text-sm font-black rounded border shadow-sm ${isDark
+                            ? "bg-gray-800 border-gray-600 text-gray-200"
+                            : "bg-white border-gray-300 text-gray-900"
+                            }`}
                         >
                           {modalState.bus.plate_number}
                         </div>
@@ -742,24 +761,22 @@ export default function Index({
                             ? modalState.bus.status === "active"
                               ? "نشط"
                               : modalState.bus.status === "maintenance"
-                              ? "صيانة"
-                              : modalState.bus.status === "inactive"
-                              ? "غير نشط"
-                              : "خارج الخدمة"
+                                ? "صيانة"
+                                : modalState.bus.status === "inactive"
+                                  ? "غير نشط"
+                                  : "خارج الخدمة"
                             : modalState.bus.status}
                         </span>
                       </div>
                       <h2
-                        className={`text-3xl font-black tracking-tight ${
-                          isDark ? "text-white" : "text-gray-900"
-                        }`}
+                        className={`text-3xl font-black tracking-tight ${isDark ? "text-white" : "text-gray-900"
+                          }`}
                       >
                         #{modalState.bus.bus_code}
                       </h2>
                       <p
-                        className={`text-sm font-medium mt-1 ${
-                          isDark ? "text-gray-400" : "text-gray-500"
-                        }`}
+                        className={`text-sm font-medium mt-1 ${isDark ? "text-gray-400" : "text-gray-500"
+                          }`}
                       >
                         {modalState.bus.model} — {modalState.bus.year}
                       </p>
@@ -769,9 +786,8 @@ export default function Index({
                     {modalState.bus.qr_code_path && (
                       <div className="flex flex-col items-center">
                         <div
-                          className={`p-1 bg-white rounded border shadow-sm ${
-                            isDark ? "border-gray-600" : "border-gray-200"
-                          }`}
+                          className={`p-1 bg-white rounded border shadow-sm ${isDark ? "border-gray-600" : "border-gray-200"
+                            }`}
                         >
                           <img
                             src={`/storage/${modalState.bus.qr_code_path}`}
@@ -793,40 +809,35 @@ export default function Index({
 
                 {/* 2. Technical Specs Grid */}
                 <div
-                  className={`grid grid-cols-2 divide-x border-b ${
-                    isDark
-                      ? "divide-gray-700 border-gray-700"
-                      : "divide-gray-100 border-gray-100"
-                  } ${isRTL ? "rtl divide-x-reverse" : ""}`}
+                  className={`grid grid-cols-2 divide-x border-b ${isDark
+                    ? "divide-gray-700 border-gray-700"
+                    : "divide-gray-100 border-gray-100"
+                    } ${isRTL ? "rtl divide-x-reverse" : ""}`}
                 >
                   <div className="p-4 flex flex-col items-center justify-center text-center hover:bg-gray-50/5 dark:hover:bg-gray-700/20 transition">
                     <span
-                      className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${
-                        isDark ? "text-gray-500" : "text-gray-400"
-                      }`}
+                      className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? "text-gray-500" : "text-gray-400"
+                        }`}
                     >
                       {isRTL ? "سعة المقاعد" : "SEATING CAPACITY"}
                     </span>
                     <span
-                      className={`text-xl font-black ${
-                        isDark ? "text-gray-200" : "text-gray-800"
-                      }`}
+                      className={`text-xl font-black ${isDark ? "text-gray-200" : "text-gray-800"
+                        }`}
                     >
                       {modalState.bus.capacity}
                     </span>
                   </div>
                   <div className="p-4 flex flex-col items-center justify-center text-center hover:bg-gray-50/5 dark:hover:bg-gray-700/20 transition">
                     <span
-                      className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${
-                        isDark ? "text-gray-500" : "text-gray-400"
-                      }`}
+                      className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? "text-gray-500" : "text-gray-400"
+                        }`}
                     >
                       {isRTL ? "سنة الصنع" : "MANUFACTURE YEAR"}
                     </span>
                     <span
-                      className={`text-xl font-black ${
-                        isDark ? "text-gray-200" : "text-gray-800"
-                      }`}
+                      className={`text-xl font-black ${isDark ? "text-gray-200" : "text-gray-800"
+                        }`}
                     >
                       {modalState.bus.year}
                     </span>
@@ -838,11 +849,10 @@ export default function Index({
                   {/* Crew Assignment Section */}
                   <div>
                     <h3
-                      className={`text-xs font-bold uppercase tracking-widest mb-4 pb-2 border-b ${
-                        isDark
-                          ? "text-gray-400 border-gray-700"
-                          : "text-gray-400 border-gray-100"
-                      } ${isRTL ? "text-right" : ""}`}
+                      className={`text-xs font-bold uppercase tracking-widest mb-4 pb-2 border-b ${isDark
+                        ? "text-gray-400 border-gray-700"
+                        : "text-gray-400 border-gray-100"
+                        } ${isRTL ? "text-right" : ""}`}
                     >
                       {isRTL
                         ? "جدول التعيين والتشغيل"
@@ -854,23 +864,20 @@ export default function Index({
                     >
                       {/* Driver */}
                       <div
-                        className={`p-3 rounded border ${
-                          isDark
-                            ? "bg-gray-700/30 border-gray-700"
-                            : "bg-gray-50 border-gray-100"
-                        } ${isRTL ? "text-right" : ""}`}
+                        className={`p-3 rounded border ${isDark
+                          ? "bg-gray-700/30 border-gray-700"
+                          : "bg-gray-50 border-gray-100"
+                          } ${isRTL ? "text-right" : ""}`}
                       >
                         <span
-                          className={`block text-[10px] font-bold uppercase mb-1 ${
-                            isDark ? "text-gray-500" : "text-gray-400"
-                          }`}
+                          className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? "text-gray-500" : "text-gray-400"
+                            }`}
                         >
                           {isRTL ? "السائق المعتمد" : "ASSIGNED DRIVER"}
                         </span>
                         <span
-                          className={`${
-                            isDark ? "text-white" : "text-gray-900"
-                          } font-bold`}
+                          className={`${isDark ? "text-white" : "text-gray-900"
+                            } font-bold`}
                         >
                           {modalState.bus.driver?.name ||
                             (isRTL ? "— غير محدد —" : "— N/A —")}
@@ -879,23 +886,20 @@ export default function Index({
 
                       {/* Supervisor */}
                       <div
-                        className={`p-3 rounded border ${
-                          isDark
-                            ? "bg-gray-700/30 border-gray-700"
-                            : "bg-gray-50 border-gray-100"
-                        } ${isRTL ? "text-right" : ""}`}
+                        className={`p-3 rounded border ${isDark
+                          ? "bg-gray-700/30 border-gray-700"
+                          : "bg-gray-50 border-gray-100"
+                          } ${isRTL ? "text-right" : ""}`}
                       >
                         <span
-                          className={`block text-[10px] font-bold uppercase mb-1 ${
-                            isDark ? "text-gray-500" : "text-gray-400"
-                          }`}
+                          className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? "text-gray-500" : "text-gray-400"
+                            }`}
                         >
                           {isRTL ? "المشرف المسؤول" : "SUPERVISOR"}
                         </span>
                         <span
-                          className={`${
-                            isDark ? "text-white" : "text-gray-900"
-                          } font-bold`}
+                          className={`${isDark ? "text-white" : "text-gray-900"
+                            } font-bold`}
                         >
                           {modalState.bus.supervisor?.name ||
                             (isRTL ? "— غير محدد —" : "— N/A —")}
@@ -904,23 +908,20 @@ export default function Index({
 
                       {/* School */}
                       <div
-                        className={`p-3 rounded border ${
-                          isDark
-                            ? "bg-blue-900/10 border-blue-900/20"
-                            : "bg-blue-50 border-blue-100"
-                        } ${isRTL ? "text-right" : ""}`}
+                        className={`p-3 rounded border ${isDark
+                          ? "bg-blue-900/10 border-blue-900/20"
+                          : "bg-blue-50 border-blue-100"
+                          } ${isRTL ? "text-right" : ""}`}
                       >
                         <span
-                          className={`block text-[10px] font-bold uppercase mb-1 ${
-                            isDark ? "text-blue-400" : "text-blue-400"
-                          }`}
+                          className={`block text-[10px] font-bold uppercase mb-1 ${isDark ? "text-blue-400" : "text-blue-400"
+                            }`}
                         >
                           {isRTL ? "جهة العمل (المدرسة)" : "OPERATING ENTITY"}
                         </span>
                         <span
-                          className={`${
-                            isDark ? "text-blue-100" : "text-blue-900"
-                          } font-bold`}
+                          className={`${isDark ? "text-blue-100" : "text-blue-900"
+                            } font-bold`}
                         >
                           {modalState.bus.school?.name ||
                             (isRTL
@@ -934,11 +935,10 @@ export default function Index({
                   {/* Documentation */}
                   <div>
                     <h3
-                      className={`text-xs font-bold uppercase tracking-widest mb-4 pb-2 border-b ${
-                        isDark
-                          ? "text-gray-400 border-gray-700"
-                          : "text-gray-400 border-gray-100"
-                      } ${isRTL ? "text-right" : ""}`}
+                      className={`text-xs font-bold uppercase tracking-widest mb-4 pb-2 border-b ${isDark
+                        ? "text-gray-400 border-gray-700"
+                        : "text-gray-400 border-gray-100"
+                        } ${isRTL ? "text-right" : ""}`}
                     >
                       {isRTL
                         ? "الأرشيف الرقمي والوثائق"
@@ -950,13 +950,11 @@ export default function Index({
 
                 {/* Footer */}
                 <div
-                  className={`bg-gray-50 p-4 border-t flex ${
-                    isRTL ? "justify-start" : "justify-end"
-                  } ${
-                    isDark
+                  className={`bg-gray-50 p-4 border-t flex ${isRTL ? "justify-start" : "justify-end"
+                    } ${isDark
                       ? "bg-gray-900 border-gray-700"
                       : "bg-gray-50 border-gray-200"
-                  }`}
+                    }`}
                 >
                   <SecondaryButton onClick={closeModal} className="shadow-sm">
                     {isRTL ? "إغلاق السجل" : "CLOSE RECORD"}
@@ -975,27 +973,24 @@ export default function Index({
             <div className="flex flex-col max-h-[90vh]">
               {/* Header */}
               <div
-                className={`p-6 border-b sticky top-0 z-10 rounded-t-lg ${
-                  isDark ? "bg-gray-800 border-gray-700" : "bg-white"
-                }`}
+                className={`p-6 border-b sticky top-0 z-10 rounded-t-lg ${isDark ? "bg-gray-800 border-gray-700" : "bg-white"
+                  }`}
               >
                 <div
-                  className={`flex justify-between items-center ${
-                    isRTL ? "flex-row-reverse" : ""
-                  }`}
+                  className={`flex justify-between items-center ${isRTL ? "flex-row-reverse" : ""
+                    }`}
                 >
                   <h2
-                    className={`text-xl font-bold ${
-                      isDark ? "text-white" : "text-gray-900"
-                    }`}
+                    className={`text-xl font-bold ${isDark ? "text-white" : "text-gray-900"
+                      }`}
                   >
                     {modalState.type === "edit"
                       ? isRTL
                         ? "تحديث بيانات المركبة"
                         : "Update Vehicle"
                       : isRTL
-                      ? "تسجيل مركبة جديدة"
-                      : "Register New Vehicle"}
+                        ? "تسجيل مركبة جديدة"
+                        : "Register New Vehicle"}
                   </h2>
                   {modalState.type === "edit" && (
                     <span className="text-xs font-bold text-brand-navy bg-brand-yellow/20 px-2 py-1 rounded">
@@ -1007,15 +1002,13 @@ export default function Index({
 
               {/* Scrollable Content */}
               <div
-                className={`p-6 overflow-y-auto flex-1 ${
-                  isDark ? "bg-gray-800 text-gray-200" : "bg-white"
-                }`}
+                className={`p-6 overflow-y-auto flex-1 ${isDark ? "bg-gray-800 text-gray-200" : "bg-white"
+                  }`}
               >
                 <form id="bus-form" onSubmit={submitForm} className="space-y-6">
                   <div
-                    className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${
-                      isRTL ? "rtl" : ""
-                    }`}
+                    className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${isRTL ? "rtl" : ""
+                      }`}
                   >
                     <div className={isRTL ? "text-right" : ""}>
                       <InputLabel
@@ -1069,16 +1062,14 @@ export default function Index({
                   </div>
 
                   <div
-                    className={`p-4 rounded-xl border ${
-                      isDark
-                        ? "bg-blue-900/10 border-blue-900/30"
-                        : "bg-blue-50/50 border-blue-100"
-                    }`}
+                    className={`p-4 rounded-xl border ${isDark
+                      ? "bg-blue-900/10 border-blue-900/30"
+                      : "bg-blue-50/50 border-blue-100"
+                      }`}
                   >
                     <h3
-                      className={`text-xs font-bold uppercase mb-3 flex items-center gap-2 ${
-                        isDark ? "text-blue-400" : "text-blue-800"
-                      } ${isRTL ? "flex-row-reverse" : ""}`}
+                      className={`text-xs font-bold uppercase mb-3 flex items-center gap-2 ${isDark ? "text-blue-400" : "text-blue-800"
+                        } ${isRTL ? "flex-row-reverse" : ""}`}
                     >
                       <svg
                         className="w-4 h-4"
@@ -1098,18 +1089,16 @@ export default function Index({
                         : "Operational Crew Assignment"}
                     </h3>
                     <div
-                      className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${
-                        isRTL ? "rtl" : ""
-                      }`}
+                      className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isRTL ? "rtl" : ""
+                        }`}
                     >
                       <div className={isRTL ? "text-right" : ""}>
                         <InputLabel value={isRTL ? "السائق" : "Driver"} />
                         <select
-                          className={`w-full rounded-lg mt-1 text-sm focus:ring-brand-yellow ${
-                            isDark
-                              ? "bg-gray-700 border-gray-600 text-white"
-                              : "border-gray-300"
-                          }`}
+                          className={`w-full rounded-lg mt-1 text-sm focus:ring-brand-yellow ${isDark
+                            ? "bg-gray-700 border-gray-600 text-white"
+                            : "border-gray-300"
+                            }`}
                           value={busForm.data.driver_id}
                           onChange={(e) =>
                             busForm.setData("driver_id", e.target.value)
@@ -1136,11 +1125,10 @@ export default function Index({
                       <div className={isRTL ? "text-right" : ""}>
                         <InputLabel value={isRTL ? "المشرف" : "Supervisor"} />
                         <select
-                          className={`w-full rounded-lg mt-1 text-sm focus:ring-brand-yellow ${
-                            isDark
-                              ? "bg-gray-700 border-gray-600 text-white"
-                              : "border-gray-300"
-                          }`}
+                          className={`w-full rounded-lg mt-1 text-sm focus:ring-brand-yellow ${isDark
+                            ? "bg-gray-700 border-gray-600 text-white"
+                            : "border-gray-300"
+                            }`}
                           value={busForm.data.supervisor_id}
                           onChange={(e) =>
                             busForm.setData("supervisor_id", e.target.value)
@@ -1169,14 +1157,12 @@ export default function Index({
 
                   {/* Section: Photos/Documents */}
                   <div
-                    className={`border-t pt-4 ${
-                      isDark ? "border-gray-700" : ""
-                    }`}
+                    className={`border-t pt-4 ${isDark ? "border-gray-700" : ""
+                      }`}
                   >
                     <h3
-                      className={`text-xs font-bold uppercase mb-3 ${
-                        isDark ? "text-gray-400" : "text-gray-400"
-                      } ${isRTL ? "text-right" : ""}`}
+                      className={`text-xs font-bold uppercase mb-3 ${isDark ? "text-gray-400" : "text-gray-400"
+                        } ${isRTL ? "text-right" : ""}`}
                     >
                       {isRTL
                         ? "وثائق وصور المركبة"
@@ -1187,16 +1173,14 @@ export default function Index({
                       modalState.bus?.documents &&
                       modalState.bus.documents.length > 0 && (
                         <div
-                          className={`mb-4 p-4 rounded-xl border ${
-                            isDark
-                              ? "bg-gray-700 border-gray-600"
-                              : "bg-gray-50 border-gray-100"
-                          }`}
+                          className={`mb-4 p-4 rounded-xl border ${isDark
+                            ? "bg-gray-700 border-gray-600"
+                            : "bg-gray-50 border-gray-100"
+                            }`}
                         >
                           <p
-                            className={`text-xs font-medium mb-2 ${
-                              isDark ? "text-gray-400" : "text-gray-500"
-                            } ${isRTL ? "text-right" : ""}`}
+                            className={`text-xs font-medium mb-2 ${isDark ? "text-gray-400" : "text-gray-500"
+                              } ${isRTL ? "text-right" : ""}`}
                           >
                             {isRTL ? "الوسائط الحالية:" : "Current Media:"}
                           </p>
@@ -1239,9 +1223,8 @@ export default function Index({
                       )}
 
                     <div
-                      className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${
-                        isRTL ? "rtl" : ""
-                      }`}
+                      className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isRTL ? "rtl" : ""
+                        }`}
                     >
                       <div className={isRTL ? "text-right" : ""}>
                         <InputLabel
@@ -1285,11 +1268,10 @@ export default function Index({
 
                   {modalState.type === "edit" && (
                     <div
-                      className={`p-4 rounded-xl border ${
-                        isDark
-                          ? "bg-gray-700 border-gray-600"
-                          : "bg-gray-50 border-gray-100"
-                      }`}
+                      className={`p-4 rounded-xl border ${isDark
+                        ? "bg-gray-700 border-gray-600"
+                        : "bg-gray-50 border-gray-100"
+                        }`}
                     >
                       <InputLabel
                         value={
@@ -1298,11 +1280,10 @@ export default function Index({
                         className={isRTL ? "text-right" : ""}
                       />
                       <select
-                        className={`w-full rounded-lg mt-1 text-sm focus:ring-brand-yellow font-bold ${
-                          isDark
-                            ? "bg-gray-800 border-gray-600 text-white"
-                            : "border-gray-300"
-                        }`}
+                        className={`w-full rounded-lg mt-1 text-sm focus:ring-brand-yellow font-bold ${isDark
+                          ? "bg-gray-800 border-gray-600 text-white"
+                          : "border-gray-300"
+                          }`}
                         value={busForm.data.status}
                         onChange={(e) =>
                           busForm.setData("status", e.target.value as any)
@@ -1332,9 +1313,8 @@ export default function Index({
 
               {/* Footer */}
               <div
-                className={`p-6 border-t flex gap-3 sticky bottom-0 z-10 rounded-b-lg ${
-                  isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50"
-                } ${isRTL ? "flex-row-reverse" : "justify-end"}`}
+                className={`p-6 border-t flex gap-3 sticky bottom-0 z-10 rounded-b-lg ${isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50"
+                  } ${isRTL ? "flex-row-reverse" : "justify-end"}`}
               >
                 <SecondaryButton onClick={closeModal}>
                   {isRTL ? "إلغاء" : "Cancel"}
@@ -1350,8 +1330,8 @@ export default function Index({
                       ? "تحديث البيانات"
                       : "Update Details"
                     : isRTL
-                    ? "تسجيل المركبة"
-                    : "Register Vehicle"}
+                      ? "تسجيل المركبة"
+                      : "Register Vehicle"}
                 </PrimaryButton>
               </div>
             </div>
@@ -1377,16 +1357,14 @@ export default function Index({
                   </svg>
                 </div>
                 <h2
-                  className={`text-lg font-bold ${
-                    isDark ? "text-white" : "text-gray-900"
-                  }`}
+                  className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-900"
+                    }`}
                 >
                   {isRTL ? "إدارة التعيين" : "Manage Assignment"}
                 </h2>
                 <p
-                  className={`text-sm mt-1 ${
-                    isDark ? "text-gray-400" : "text-gray-500"
-                  }`}
+                  className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"
+                    }`}
                 >
                   {isRTL
                     ? "تعيين هذه المركبة لمدرسة محددة أو إعادتها للمقر الرئيسي."
@@ -1399,11 +1377,10 @@ export default function Index({
                     value={isRTL ? "المدرسة المستهدفة" : "Target School"}
                   />
                   <select
-                    className={`w-full rounded-lg mt-1 text-sm focus:border-green-500 focus:ring-green-500 ${
-                      isDark
-                        ? "bg-gray-800 border-gray-600 text-white"
-                        : "border-gray-300"
-                    }`}
+                    className={`w-full rounded-lg mt-1 text-sm focus:border-green-500 focus:ring-green-500 ${isDark
+                      ? "bg-gray-800 border-gray-600 text-white"
+                      : "border-gray-300"
+                      }`}
                     value={assignForm.data.school_id}
                     onChange={(e) =>
                       assignForm.setData("school_id", e.target.value)
@@ -1422,9 +1399,8 @@ export default function Index({
                   </select>
                 </div>
                 <div
-                  className={`flex gap-3 ${
-                    isRTL ? "flex-row-reverse" : "justify-end"
-                  }`}
+                  className={`flex gap-3 ${isRTL ? "flex-row-reverse" : "justify-end"
+                    }`}
                 >
                   <SecondaryButton onClick={closeModal}>
                     {isRTL ? "إلغاء" : "Cancel"}
@@ -1434,6 +1410,92 @@ export default function Index({
                     disabled={assignForm.processing}
                   >
                     {isRTL ? "تحديث التعيين" : "Update Assignment"}
+                  </PrimaryButton>
+                </div>
+              </form>
+            </div>
+          </Modal>
+
+          {/* E. Assign Route Modal */}
+          <Modal
+            show={modalState.type === "assign-route"}
+            onClose={closeModal}
+            maxWidth="md"
+          >
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-green-100 text-green-600 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h2
+                    className={`text-xl font-bold ${isDark ? "text-white" : "text-gray-900"
+                      }`}
+                  >
+                    {isRTL ? "تعيين المسار" : "Assign Route"}
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    {modalState.bus?.bus_code} — {modalState.bus?.plate_number}
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={submitForm} className="space-y-6">
+                <div className={isRTL ? "text-right" : "text-left"}>
+                  <InputLabel
+                    value={isRTL ? "المسار المخصص" : "Designated Route"}
+                  />
+                  <select
+                    className={`w-full rounded-lg mt-1 text-sm focus:ring-green-500 ${isDark
+                        ? "bg-gray-800 border-gray-600 text-white"
+                        : "border-gray-200"
+                      }`}
+                    value={routeForm.data.route_id}
+                    onChange={(e) =>
+                      routeForm.setData("route_id", e.target.value)
+                    }
+                  >
+                    <option value="">
+                      {isRTL ? "-- بدون مسار --" : "-- No Route (None) --"}
+                    </option>
+                    {routes.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name} ({r.code}) {r.school ? ` - ${r.school.name}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-[10px] text-gray-500 italic">
+                    {isRTL
+                      ? "* هذا المسار سيُستخدم لإنشاء الرحلات اليومية تلقائياً."
+                      : "* This route will be used to auto-generate daily trips."}
+                  </p>
+                  <InputError message={routeForm.errors.route_id} className="mt-2" />
+                </div>
+
+                <div
+                  className={`flex gap-3 ${isRTL ? "flex-row-reverse" : "justify-end"
+                    }`}
+                >
+                  <SecondaryButton onClick={closeModal}>
+                    {isRTL ? "إلغاء" : "Cancel"}
+                  </SecondaryButton>
+                  <PrimaryButton
+                    className="bg-green-600 hover:bg-green-700 border-none shadow-lg shadow-green-500/20"
+                    disabled={routeForm.processing}
+                  >
+                    {isRTL ? "حفظ التعيين" : "Save Assignment"}
                   </PrimaryButton>
                 </div>
               </form>
@@ -1460,16 +1522,14 @@ export default function Index({
                   </svg>
                 </div>
                 <h2
-                  className={`text-lg font-bold ${
-                    isDark ? "text-white" : "text-gray-900"
-                  }`}
+                  className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-900"
+                    }`}
                 >
                   {isRTL ? "أرشفة المركبة" : "Archive Vehicle"}
                 </h2>
                 <p
-                  className={`text-sm mt-1 ${
-                    isDark ? "text-gray-400" : "text-gray-500"
-                  }`}
+                  className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"
+                    }`}
                 >
                   {isRTL
                     ? "هذا الإجراء سيزيل الحافلة من الخدمة النشطة. مطلوب وثائق."
@@ -1482,11 +1542,10 @@ export default function Index({
                     value={isRTL ? "سبب الإلغاء" : "Reason for Deactivation"}
                   />
                   <select
-                    className={`w-full rounded-lg mt-1 ${
-                      isDark
-                        ? "bg-gray-800 border-gray-600 text-white"
-                        : "border-gray-300"
-                    }`}
+                    className={`w-full rounded-lg mt-1 ${isDark
+                      ? "bg-gray-800 border-gray-600 text-white"
+                      : "border-gray-300"
+                      }`}
                     value={archiveForm.data.deactivation_reason}
                     onChange={(e) =>
                       archiveForm.setData("deactivation_reason", e.target.value)
@@ -1507,9 +1566,8 @@ export default function Index({
                   </select>
                 </div>
                 <div
-                  className={`flex gap-3 mt-6 ${
-                    isRTL ? "flex-row-reverse" : "justify-end"
-                  }`}
+                  className={`flex gap-3 mt-6 ${isRTL ? "flex-row-reverse" : "justify-end"
+                    }`}
                 >
                   <SecondaryButton onClick={closeModal}>
                     {isRTL ? "إلغاء" : "Cancel"}

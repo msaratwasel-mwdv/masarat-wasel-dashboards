@@ -40,6 +40,7 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [] }: P
         destination: '',
         destination_lat: null as number | null,
         destination_lng: null as number | null,
+        duration_days: 1,
         number_of_students: 1,
         teacher_names: [] as TripMember[],
     });
@@ -188,6 +189,20 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [] }: P
                                         required
                                     />
                                     {errors.trip_time && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold">{errors.trip_time}</p>}
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 ml-1">
+                                        {t('Duration (Days)')} <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={data.duration_days}
+                                        onChange={e => setData('duration_days', parseInt(e.target.value))}
+                                        className="w-full px-5 py-3 border border-gray-100 dark:border-gray-700 rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] transition-all font-bold text-sm"
+                                        required
+                                    />
+                                    {errors.duration_days && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold">{errors.duration_days}</p>}
                                 </div>
                             </div>
                         </div>
