@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'name'      => 'General Manager',
             'email'     => 'admin@wasel.com',
-            'password'  => Hash::make('966500000001'),
+            'password'  => Hash::make('password'),
             'role'      => 'admin',
             'user_code' => 'AD-001',
             'phone'     => '966500000001',
@@ -35,7 +35,7 @@ class DatabaseSeeder extends Seeder
         $schoolAdmin = User::factory()->create([
             'name' => 'School Principal',
             'email' => 'school@wasel.com', // ✅ مختلف
-            'password' => Hash::make('966500000002'),
+            'password' => Hash::make('password'),
             'role' => 'school_admin',
             'school_id' => $school->id,
             'user_code' => 'SCH-001',
