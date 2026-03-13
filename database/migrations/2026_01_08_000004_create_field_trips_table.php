@@ -23,6 +23,7 @@ return new class extends Migration
             $table->decimal('destination_lat', 10, 8)->nullable();
             $table->decimal('destination_lng', 11, 8)->nullable();
             $table->foreignId('bus_id')->nullable()->constrained()->nullOnDelete();
+            $table->decimal('cost', 10, 2)->unsigned()->nullable();
             $table->integer('number_of_students');
             $table->enum('status', ['planned', 'approved', 'started', 'in_progress', 'completed', 'cancelled'])->default('planned');
             $table->text('rejection_reason')->nullable();

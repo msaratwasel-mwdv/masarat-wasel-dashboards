@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             'role'      => 'admin',
             'user_code' => 'AD-001',
             'phone'     => '966500000001',
+            'national_id' => '1000000000',
         ]);
 
         // 2️⃣ مدرسة
@@ -39,6 +40,7 @@ class DatabaseSeeder extends Seeder
             'school_id' => $school->id,
             'user_code' => 'SCH-001',
             'phone'     => '966500000002',
+            'national_id' => '1000000001',
         ]);
 
         // 4️⃣ Supervisors (مشرفات للحافلات)
@@ -47,12 +49,12 @@ class DatabaseSeeder extends Seeder
             $supervisors->push(User::factory()->create([
                 'name' => "Supervisor $i",
                 'email' => "supervisor$i@wasel.com",
-                'password' => Hash::make('password'),
+                'password' => Hash::make("96651000000$i"),
                 'role' => 'supervisor',
                 'school_id' => $school->id,
                 'user_code' => "SUP-00$i",
                 'phone' => "96651000000$i",
-                'national_id' => "100200400$i",
+                'national_id' => "100000001$i",
             ]));
         }
 
@@ -62,12 +64,12 @@ class DatabaseSeeder extends Seeder
             $drivers->push(User::factory()->create([
                 'name' => "Driver $i",
                 'email' => "driver$i@wasel.com",
-                'password' => Hash::make('password'),
+                'password' => Hash::make("96659000000$i"),
                 'role' => 'driver',
                 'school_id' => $school->id,
                 'user_code' => "DRV-00$i",
                 'phone' => "96659000000$i",
-                'national_id' => "100200500$i",
+                'national_id' => "100000002$i",
             ]));
         }
 
@@ -105,12 +107,12 @@ class DatabaseSeeder extends Seeder
             $teachers->push(User::factory()->create([
                 'name' => "Teacher $i",
                 'email' => "teacher$i@wasel.com",
-                'password' => Hash::make('password'),
+                'password' => Hash::make("96652000000$i"),
                 'role' => 'teacher',
                 'school_id' => $school->id,
                 'user_code' => "TCH-00$i",
                 'phone' => "96652000000$i",
-                'national_id' => "100200600$i",
+                'national_id' => "100000003$i",
             ]));
         }
 
@@ -133,7 +135,7 @@ class DatabaseSeeder extends Seeder
             $guardians->push(User::factory()->create([
                 'name' => "Guardian $i",
                 'email' => "guardian$i@wasel.com",
-                'password' => Hash::make('password'),
+                'password' => Hash::make("96653000000$i"),
                 'role' => 'parent', // Assuming 'parent' is the role
                 'school_id' => $school->id,
                 'user_code' => "GRD-00$i",
