@@ -31,29 +31,33 @@ class NotificationTestSeeder extends Seeder
             'school_id' => $school->id,
         ]);
 
-        // 3. Find or Create Supervisor (Using existing ID if possible, or predictable one)
-        $supervisor = User::where('national_id', '1002004001')->first() ?? User::create([
-            'name' => 'Supervisor 1',
-            'email' => 'supervisor1@wasel.com',
-            'password' => Hash::make('password'),
-            'role' => 'supervisor',
-            'national_id' => '1002004001',
-            'phone' => '966510000001',
-            'school_id' => $school->id,
-            'is_active' => true,
-        ]);
+        // 3. Find or Create Supervisor
+        $supervisor = User::where('email', 'supervisor1@wasel.com')->first() 
+            ?? User::where('national_id', '1002004001')->first() 
+            ?? User::create([
+                'name' => 'Supervisor 1',
+                'email' => 'supervisor1@wasel.com',
+                'password' => Hash::make('password'),
+                'role' => 'supervisor',
+                'national_id' => '1002004001',
+                'phone' => '966510000001',
+                'school_id' => $school->id,
+                'is_active' => true,
+            ]);
 
         // 4. Find or Create Driver
-        $driver = User::where('national_id', '1002005001')->first() ?? User::create([
-            'name' => 'Driver 1',
-            'email' => 'driver1@wasel.com',
-            'password' => Hash::make('password'),
-            'role' => 'driver',
-            'national_id' => '1002005001',
-            'phone' => '966590000001',
-            'school_id' => $school->id,
-            'is_active' => true,
-        ]);
+        $driver = User::where('email', 'driver1@wasel.com')->first() 
+            ?? User::where('national_id', '1002005001')->first() 
+            ?? User::create([
+                'name' => 'Driver 1',
+                'email' => 'driver1@wasel.com',
+                'password' => Hash::make('password'),
+                'role' => 'driver',
+                'national_id' => '1002005001',
+                'phone' => '966590000001',
+                'school_id' => $school->id,
+                'is_active' => true,
+            ]);
 
         // 5. Find existing bus for supervisor or create new one
         $bus = Bus::where('supervisor_id', $supervisor->id)->first() ?? Bus::create([
