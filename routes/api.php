@@ -45,18 +45,32 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bus/{bus}/board', [BusBoardingController::class, 'board']);
     Route::post('/bus/{bus}/alight', [BusBoardingController::class, 'alight']);
     Route::get('/bus/{bus}/passengers', [BusBoardingController::class, 'passengers']);
+    Route::post('/bus/{bus}/start-trip', [BusBoardingController::class, 'startTrip']);
+    Route::post('/bus/{bus}/end-trip', [BusBoardingController::class, 'endTrip']);
 
-    // --- تحديث موقع الباص (للسائق) ---
+    // --- تحديث وجلب موقع الباص ---
     Route::post('/bus/{bus}/location', [BusLocationController::class, 'update']);
+    Route::get('/bus/{bus}/location', [BusLocationController::class, 'show']);
 
     // --- إشعارات ولي الأمر ---
     Route::get('/guardian/notifications', [GuardianNotificationController::class, 'index']);
     Route::post('/guardian/notifications/{id}/read', [GuardianNotificationController::class, 'markAsRead']);
 
+    // --- بيانات ولي الأمر ---
+    Route::get('/parent/profile', [\App\Http\Controllers\Api\ParentController::class, 'profile']);
+    Route::post('/parent/profile/update', [\App\Http\Controllers\Api\ParentController::class, 'updateProfile']);
+    Route::post('/parent/profile/avatar', [\App\Http\Controllers\Api\ParentController::class, 'updateAvatar']);
+    Route::get('/parent/children', [\App\Http\Controllers\Api\ParentController::class, 'children']);
+    Route::get('/parent/children/{id}/attendance', [\App\Http\Controllers\Api\ParentController::class, 'childAttendance']);
+
+    // --- طلبات الغياب ---
+    Route::post('/parent/absence-requests', [\App\Http\Controllers\Api\ParentController::class, 'storeAbsenceRequest']);
+    Route::get('/parent/absence-requests', [\App\Http\Controllers\Api\ParentController::class, 'absenceRequestsHistory']);
+
     // ═══════════════════════════════════════════════════════════
     // Chat API Routes (Mobile App)
     // ═══════════════════════════════════════════════════════════
-    Route::prefix('chat')->group(function () {
+    Route::group(['prefix' => 'chat'], function () {
         // 1. جهات الاتصال
         Route::get('/contacts', [\App\Http\Controllers\Api\ChatController::class, 'getContacts']);
         // 2. عرض المحادثات السابقة

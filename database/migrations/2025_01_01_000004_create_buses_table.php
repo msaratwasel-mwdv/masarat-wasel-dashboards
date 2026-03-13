@@ -37,7 +37,9 @@ return new class extends Migration
             $table->decimal('current_latitude', 10, 7)->nullable();
             $table->decimal('current_longitude', 10, 7)->nullable();
             $table->timestamp('last_location_update')->nullable();
-            $table->enum('trip_status', ['at_school', 'on_route', 'stopped', 'idle'])->nullable();
+            $table->enum('trip_status', ['idle', 'to_school', 'to_home', 'at_school', 'stopped'])->nullable();
+            $table->timestamp('trip_start_time')->nullable(); // وقت بدء الرحلة الحالية
+            $table->timestamp('trip_end_time')->nullable();   // وقت انتهاء الرحلة الحالية
 
             $table->timestamps();
             $table->softDeletes(); // للحفاظ على السجلات المحذوفة

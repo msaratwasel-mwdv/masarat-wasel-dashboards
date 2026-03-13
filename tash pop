@@ -1,0 +1,126 @@
+[1mdiff --git a/app/Http/Controllers/Api/AuthController.php b/app/Http/Controllers/Api/AuthController.php[m
+[1mindex 9ede63a..653d4a5 100644[m
+[1m--- a/app/Http/Controllers/Api/AuthController.php[m
+[1m+++ b/app/Http/Controllers/Api/AuthController.php[m
+[36m@@ -23,12 +23,14 @@[m [mpublic function login(Request $request): JsonResponse[m
+             'national_id' => 'required|string',[m
+             'password'    => 'required|string',[m
+             'device_name' => 'required|string|max:255',[m
+[32m+[m[32m            'app_context' => 'nullable|string|in:services,parent', // تحديد التطبيق الذي يحاول الدخول[m
+         ]);[m
+ [m
+         $nationalId = trim($request->national_id);[m
+ [m
+         $user = User::where('national_id', $nationalId)->first();[m
+ [m
+[32m+[m[32m        // 1. التحقق من الرقم السري[m
+         if (! $user || ! Hash::check($request->password, $user->password)) {[m
+             Log::warning('[Auth] Failed login attempt', [[m
+                 'input_id' => $nationalId,[m
+[36m@@ -40,12 +42,48 @@[m [mpublic function login(Request $request): JsonResponse[m
+             ]);[m
+         }[m
+ [m
+[32m+[m[32m        // 2. التحقق من صلاحية الدخول للتطبيق المحدد (RBAC)[m
+[32m+[m[32m        $appContext = $request->input('app_context');[m
+[32m+[m
+[32m+[m[32m        if ($appContext === 'services') {[m
+[32m+[m[32m            // تطبيق الخدمات ممنوع على أولياء الأمور[m
+[32m+[m[32m            if ($user->role === 'parent') {[m
+[32m+[m[32m                Log::warning('[Auth] Rejecting Parent from Services app', ['user_id' => $user->id]);[m
+[32m+[m[32m                return response()->json([[m
+[32m+[m[32m                    'success' => false,[m
+[32m+[m[32m                    'message' => 'عذراً، حساب ولي الأمر لا يمكنه الدخول لتطبيق الخدمات. يرجى استخدام تطبيق "مسارات واصل" الخاص بك.',[m
+[32m+[m[32m                    'errors' => [[m
+[32m+[m[32m                        'national_id' => ['عذراً، حساب ولي الأمر لا يمكنه الدخول لتطبيق الخدمات. يرجى استخدام تطبيق "مسارات واصل" الخاص بك.'][m
+[32m+[m[32m                    ][m
+[32m+[m[32m                ], 422);[m
+[32m+[m[32m            }[m
+[32m+[m[32m        } elseif ($appContext === 'parent') {[m
+[32m+[m[32m            // تطبيق ولي الأمر مخصص فقط لأولياء الأمور[m
+[32m+[m[32m            if ($user->role !== 'parent') {[m
+[32m+[m[32m                Log::warning('[Auth] Rejecting staff from Parent app', ['user_id' => $user->id, 'role' => $user->role]);[m
+[32m+[m[32m                return response()->json([[m
+[32m+[m[32m                    'success' => false,[m
+[32m+[m[32m                    'message' => 'عذراً، هذا التطبيق مخصص لأولياء الأمور فقط.',[m
+[32m+[m[32m                    'errors' => [[m
+[32m+[m[32m                        'national_id' => ['عذراً، هذا التطبيق مخصص لأولياء الأمور فقط.'][m
+[32m+[m[32m                    ][m
+[32m+[m[32m                ], 422);[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m
+         if (! $user->is_active) {[m
+             throw ValidationException::withMessages([[m
+                 'national_id' => ['الحساب معطّل. تواصل مع الإدارة.'],[m
+             ]);[m
+         }[m
+ [m
+[32m+[m[32m        // حفظ التوكن الخاص بـ Firebase إن وجد[m
+[32m+[m[32m        if ($request->has('fcm_token') && !empty($request->fcm_token)) {[m
+[32m+[m[32m            $user->update([[m
+[32m+[m[32m                'fcm_token' => $request->fcm_token,[m
+[32m+[m[32m            ]);[m
+[32m+[m[32m        }[m
+[32m+[m
+         // حذف التوكنات القديمة لنفس الجهاز لتجنب التراكم[m
+         $user->tokens()->where('name', $request->device_name)->delete();[m
+ [m
+[1mdiff --git a/app/Http/Controllers/Api/BusBoardingController.php b/app/Http/Controllers/Api/BusBoardingController.php[m
+[1mindex dfcc619..79aae2f 100644[m
+[1m--- a/app/Http/Controllers/Api/BusBoardingController.php[m
+[1m+++ b/app/Http/Controllers/Api/BusBoardingController.php[m
+[36m@@ -33,6 +33,13 @@[m [mpublic function board(Request $request, Bus $bus)[m
+ [m
+         // التأكد أن الطالب مسجّل في هذا الباص[m
+         $student = Student::findOrFail($request->student_id);[m
+[32m+[m[41m        [m
+[32m+[m[32m        // حماية: التأكد أن المستخدم هو السائق أو المشرف لهذا الباص[m
+[32m+[m[32m        $user = $request->user();[m
+[32m+[m[32m        if ($bus->driver_id !== $user->id && $bus->supervisor_id !== $user->id) {[m
+[32m+[m[32m            return response()->json(['message' => 'غير مصرح لك بتسجيل الركوب لهذا الباص.'], 403);[m
+[32m+[m[32m        }[m
+[32m+[m
+         $isAssigned = $bus->students()->where('student_id', $student->id)->wherePivot('is_active', true)->exists();[m
+ [m
+         if (! $isAssigned) {[m
+[36m@@ -63,8 +70,8 @@[m [mpublic function board(Request $request, Bus $bus)[m
+             $this->notificationService->notifyStudentGuardian([m
+                 studentId: $student->id,[m
+                 type: 'bus_boarding_morning',[m
+[31m-                title: '🚌 ركب الحافلة بأمان',[m
+[31m-                message: "{$student->full_name} ركب حافلة رقم {$bus->bus_number} متوجهاً إلى المدرسة الساعة {$timeFormatted}.",[m
+[32m+[m[32m                title: "طالبك {$student->full_name} ركب باص المدرسة (صباحاً)",[m
+[32m+[m[32m                message: "لقد ركب الطالب {$student->full_name} الحافلة الآن متوجهاً إلى المدرسة بسلام.",[m
+                 data: [[m
+                     'notification_type' => 'bus_boarding_morning',[m
+                     'log_id'            => $log->id,[m
+[36m@@ -84,8 +91,8 @@[m [mpublic function board(Request $request, Bus $bus)[m
+             $this->notificationService->notifyStudentGuardian([m
+                 studentId: $student->id,[m
+                 type: 'bus_boarding_afternoon',[m
+[31m-                title: '🚌 في طريقه إلى المنزل',[m
+[31m-                message: "{$student->full_name} ركب حافلة {$bus->bus_number} عائداً من المدرسة.",[m
+[32m+[m[32m                title: "طالبك {$student->full_name} ركب باص العودة",[m
+[32m+[m[32m                message: "لقد ركب الطالب {$student->full_name} الحافلة للعودة إلى المنزل.",[m
+                 data: [[m
+                     'notification_type' => 'bus_boarding_afternoon',[m
+                     'log_id'            => $log->id,[m
+[36m@@ -120,6 +127,12 @@[m [mpublic function alight(Request $request, Bus $bus)[m
+ [m
+         $student = Student::findOrFail($request->student_id);[m
+ [m
+[32m+[m[32m        // حماية: التأكد أن المستخدم هو السائق أو المشرف لهذا الباص[m
+[32m+[m[32m        $user = $request->user();[m
+[32m+[m[32m        if ($bus->driver_id !== $user->id && $bus->supervisor_id !== $user->id) {[m
+[32m+[m[32m            return response()->json(['message' => 'غير مصرح لك بتسجيل النزول لهذا الباص.'], 403);[m
+[32m+[m[32m        }[m
+[32m+[m
+         // تسجيل النزول[m
+         $log = BusBoardingLog::create([[m
+             'student_id'  => $student->id,[m
+[36m@@ -137,13 +150,13 @@[m [mpublic function alight(Request $request, Bus $bus)[m
+             $this->notificationService->notifyStudentGuardian([m
+                 studentId: $student->id,[m
+                 type: 'student_alighted',[m
+[31m-                ti

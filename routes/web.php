@@ -283,10 +283,13 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
             Route::get('/', [AttendanceController::class, 'index'])->name('attendance.index');
             Route::post('/', [AttendanceController::class, 'store'])->name('attendance.store');
             Route::get('/{id}', [AttendanceController::class, 'show'])->name('attendance.show');
-            Route::put('/{id}', [AttendanceController::class, 'update'])->name('attendance.update');
             Route::delete('/{id}', [AttendanceController::class, 'destroy'])->name('attendance.destroy');
             Route::post('/bulk', [AttendanceController::class, 'bulkStore'])->name('attendance.bulk');
         });
+
+        // 5.5 طلبات الغياب
+        Route::get('absence-requests', [\App\Http\Controllers\School\AbsenceRequestController::class, 'index'])->name('absence-requests.index');
+        Route::post('absence-requests/{absenceRequest}/process', [\App\Http\Controllers\School\AbsenceRequestController::class, 'process'])->name('absence-requests.process');
 
         // 6. الحافلات والرحلات
         Route::resource('buses', \App\Http\Controllers\School\BusController::class);

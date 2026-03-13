@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 use App\Models\Bus;
 use Illuminate\Http\JsonResponse;
@@ -23,12 +24,14 @@ class AuthController extends Controller
             'national_id' => 'required|string',
             'password'    => 'required|string',
             'device_name' => 'required|string|max:255',
+            'app_context' => 'nullable|string|in:services,parent', // تحديد التطبيق الذي يحاول الدخول
         ]);
 
         $nationalId = trim($request->national_id);
 
         $user = User::where('national_id', $nationalId)->first();
 
+        // 1. التحقق من الرقم السري
         if (! $user || ! Hash::check($request->password, $user->password)) {
             Log::warning('[Auth] Failed login attempt', [
                 'input_id' => $nationalId,
@@ -40,9 +43,45 @@ class AuthController extends Controller
             ]);
         }
 
+        // 2. التحقق من صلاحية الدخول للتطبيق المحدد (RBAC)
+        $appContext = $request->input('app_context');
+
+        if ($appContext === 'services') {
+            // تطبيق الخدمات ممنوع على أولياء الأمور
+            if ($user->role === 'parent') {
+                Log::warning('[Auth] Rejecting Parent from Services app', ['user_id' => $user->id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'عذراً، حساب ولي الأمر لا يمكنه الدخول لتطبيق الخدمات. يرجى استخدام تطبيق "مسارات واصل" الخاص بك.',
+                    'errors' => [
+                        'national_id' => ['عذراً، حساب ولي الأمر لا يمكنه الدخول لتطبيق الخدمات. يرجى استخدام تطبيق "مسارات واصل" الخاص بك.']
+                    ]
+                ], 422);
+            }
+        } elseif ($appContext === 'parent') {
+            // تطبيق ولي الأمر مخصص فقط لأولياء الأمور
+            if ($user->role !== 'parent') {
+                Log::warning('[Auth] Rejecting staff from Parent app', ['user_id' => $user->id, 'role' => $user->role]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'عذراً، هذا التطبيق مخصص لأولياء الأمور فقط.',
+                    'errors' => [
+                        'national_id' => ['عذراً، هذا التطبيق مخصص لأولياء الأمور فقط.']
+                    ]
+                ], 422);
+            }
+        }
+
         if (! $user->is_active) {
             throw ValidationException::withMessages([
                 'national_id' => ['الحساب معطّل. تواصل مع الإدارة.'],
+            ]);
+        }
+
+        // حفظ التوكن الخاص بـ Firebase إن وجد
+        if ($request->has('fcm_token') && !empty($request->fcm_token)) {
+            $user->update([
+                'fcm_token' => $request->fcm_token,
             ]);
         }
 
@@ -52,30 +91,34 @@ class AuthController extends Controller
         // إنشاء Token جديد
         $token = $user->createToken($request->device_name)->plainTextToken;
 
+        // بناء رابط الصورة
+        $imageUrl = null;
+        if ($user->image) {
+            $imageUrl = str_starts_with($user->image, 'http')
+                ? $user->image
+                : url(Storage::url($user->image));
+        }
+
+        $userData = [
+            'id'          => $user->id,
+            'name'        => $user->name,
+            'name_en'     => $user->name_en,
+            'national_id' => $user->national_id,
+            'email'       => $user->email,
+            'phone'       => $user->phone,
+            'role'        => $user->role,
+            'image_url'   => $imageUrl,
+            'school_id'   => $user->school_id,
+            'bus_id'      => $this->getBusId($user),
+        ];
+
         return response()->json([
             'success' => true,
             'data'    => [
-                'user'  => [
-                    'id'        => $user->id,
-                    'name'      => $user->name,
-                    'email'     => $user->email,
-                    'phone'     => $user->phone,
-                    'role'      => $user->role,
-                    'school_id' => $user->school_id,
-                    'bus_id'    => $this->getBusId($user),
-                ],
+                'user'  => $userData,
                 'token' => $token,
             ],
-            // For backward compatibility with the current Flutter app
-            'user' => [
-                'id'        => $user->id,
-                'name'      => $user->name,
-                'email'     => $user->email,
-                'phone'     => $user->phone,
-                'role'      => $user->role,
-                'school_id' => $user->school_id,
-                'bus_id'    => $this->getBusId($user),
-            ],
+            'user'  => $userData,
             'token' => $token,
         ]);
     }
@@ -104,27 +147,31 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
+        // بناء رابط الصورة
+        $imageUrl = null;
+        if ($user->image) {
+            $imageUrl = str_starts_with($user->image, 'http')
+                ? $user->image
+                : url(Storage::url($user->image));
+        }
+
+        $userData = [
+            'id'          => $user->id,
+            'name'        => $user->name,
+            'name_en'     => $user->name_en,
+            'national_id' => $user->national_id,
+            'email'       => $user->email,
+            'phone'       => $user->phone,
+            'role'        => $user->role,
+            'image_url'   => $imageUrl,
+            'school_id'   => $user->school_id,
+            'bus_id'      => $this->getBusId($user),
+        ];
+
         return response()->json([
             'success' => true,
-            'data'    => [
-                'id'        => $user->id,
-                'name'      => $user->name,
-                'email'     => $user->email,
-                'phone'     => $user->phone,
-                'role'      => $user->role,
-                'school_id' => $user->school_id,
-                'bus_id'    => $this->getBusId($user),
-            ],
-            // Backward compability
-            'user' => [
-                'id'        => $user->id,
-                'name'      => $user->name,
-                'email'     => $user->email,
-                'phone'     => $user->phone,
-                'role'      => $user->role,
-                'school_id' => $user->school_id,
-                'bus_id'    => $this->getBusId($user),
-            ],
+            'data'    => $userData,
+            'user'    => $userData,
         ]);
     }
 

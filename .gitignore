@@ -26,16 +26,15 @@ Thumbs.db
 /storage/framework/cache/
 /storage/framework/sessions/
 /storage/logs/
-# Local test scripts
-test_*.php
-check_db.php
-get_creds.php
-send_as_driver.php
-setup_chat_test.php
 
-# Local test scripts
+# Local test and debug scripts
 test_*.php
+_*.php
 check_db.php
 get_creds.php
 send_as_driver.php
 setup_chat_test.php
+*.txt
+*.docx
+*.bak
+dump.sql

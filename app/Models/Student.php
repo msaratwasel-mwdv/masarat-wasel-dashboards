@@ -91,4 +91,27 @@ class Student extends Model
     {
         return $this->hasMany(TripAttendance::class);
     }
+
+    public function trips(): BelongsToMany
+    {
+        return $this->belongsToMany(Trip::class, 'trip_students', 'student_id', 'trip_id')->withTimestamps();
+    }
+
+    /**
+     * جميع سجلات الركوب/النزول
+     */
+    public function boardingLogs(): HasMany
+    {
+        return $this->hasMany(BusBoardingLog::class);
+    }
+
+    /**
+     * آخر سجل ركوب/نزول اليوم — يستخدم لتحديد حالة الطالب الحالية
+     */
+    public function lastBusLog(): HasOne
+    {
+        return $this->hasOne(BusBoardingLog::class)
+            ->where('created_at', '>=', now()->startOfDay())
+            ->latest();
+    }
 }

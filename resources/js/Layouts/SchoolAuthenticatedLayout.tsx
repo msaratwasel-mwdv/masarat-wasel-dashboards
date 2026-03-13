@@ -105,6 +105,11 @@ export default function SchoolAuthenticatedLayout({
       icon: "report",
     },
     {
+      label: isRtl ? "طلبات الغياب" : "Absence Requests",
+      route: "school.absence-requests.index",
+      icon: "calendar",
+    },
+    {
       label: isRtl ? "الإعدادات" : "Settings",
       route: "profile.edit",
       icon: "cog",

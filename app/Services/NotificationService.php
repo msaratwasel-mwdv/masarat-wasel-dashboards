@@ -137,12 +137,25 @@ class NotificationService
 
         try {
             $report = $this->messaging->sendMulticast($fcmMessage, $fcmTokens);
-            Log::info('[FCM] Multicast sent', [
-                'success' => $report->successes()->count(),
-                'failure' => $report->failures()->count(),
+            
+            $successCount = $report->successes()->count();
+            $failureCount = $report->failures()->count();
+            
+            Log::info('[FCM] Multicast result', [
+                'success' => $successCount,
+                'failure' => $failureCount,
             ]);
+
+            if ($failureCount > 0) {
+                foreach ($report->failures()->getItems() as $failure) {
+                    Log::error('[FCM] Individual failure', [
+                        'token' => substr($failure->target()->value(), 0, 15) . '...',
+                        'error' => $failure->error()->getMessage(),
+                    ]);
+                }
+            }
         } catch (\Exception $e) {
-            Log::error('[FCM] Multicast Error: ' . $e->getMessage());
+            Log::error('[FCM] Multicast Exception: ' . $e->getMessage());
         }
     }
 

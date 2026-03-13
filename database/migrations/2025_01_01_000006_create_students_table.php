@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('full_name_en'); // اسم الطالب الكامل باللغة الإنجليزية
             $table->string('national_id', 20)->nullable(); // ⬅️ تحديد طول 20 بدلاً من 191
             $table->enum('gender', ['male', 'female'])->nullable();
+            $table->string('grade')->nullable(); // الصف الدراسي
             $table->string('image')->nullable();
             $table->boolean('is_active')->default(true); // حالة الطالب
 

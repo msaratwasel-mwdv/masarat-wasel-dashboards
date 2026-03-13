@@ -11,11 +11,13 @@ use App\Models\Bus;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ChatController extends Controller
 {
+    public function __construct(protected NotificationService $notificationService) {}
     // ═══════════════════════════════════════════════════════════
     //  1. getContacts — جهات الاتصال المسموح بها حالياً
     // ═══════════════════════════════════════════════════════════
@@ -33,32 +35,42 @@ class ChatController extends Controller
         switch ($user->role) {
             case 'parent':
                 // طلاب ولي الأمر الناشطين
-                $myStudents = $user->students()->where('is_active', true)->get();
+                $myStudents = $user->students()->where('is_active', true)->with(['supervisor'])->get();
                 if ($myStudents->isEmpty()) return collect();
 
                 $busesMap = [];
+                $directStaffMap = [];
 
                 foreach ($myStudents as $student) {
+                    // 1. التعامل مع المشرف/المعلم المرتبط بالطالب مباشرة
+                    if ($student->supervisor) {
+                        $sId = $student->supervisor->id;
+                        if (!isset($directStaffMap[$sId])) {
+                            $directStaffMap[$sId] = [
+                                'user' => clone $student->supervisor,
+                                'student_names' => []
+                            ];
+                        }
+                        $directStaffMap[$sId]['student_names'][] = $student->full_name;
+                    }
+
+                    // 2. التعامل مع باصات الطالب
                     $studentBuses = collect();
 
-                    // 1. From legacy/override pivot
+                    // - من خلال الربط المباشر بالباص
                     foreach ($student->buses()->wherePivot('is_active', true)->get() as $bus) {
                         $studentBuses->push($bus);
                     }
 
-                    // 2. From morning group
+                    // - من خلال المجموعات
                     if ($student->morningGroup && $student->morningGroup->bus) {
                         $studentBuses->push($student->morningGroup->bus);
                     }
-
-                    // 3. From afternoon group
                     if ($student->afternoonGroup && $student->afternoonGroup->bus) {
                         $studentBuses->push($student->afternoonGroup->bus);
                     }
 
-                    $studentBuses = $studentBuses->unique('id');
-
-                    foreach ($studentBuses as $bus) {
+                    foreach ($studentBuses->unique('id') as $bus) {
                         if (!isset($busesMap[$bus->id])) {
                             $busesMap[$bus->id] = [
                                 'bus' => $bus,
@@ -69,6 +81,15 @@ class ChatController extends Controller
                     }
                 }
 
+                // إضافة الموظفين المرتبطين مباشرة
+                foreach ($directStaffMap as $staffData) {
+                    $staff = $staffData['user'];
+                    $names = implode('، ', array_unique($staffData['student_names']));
+                    $staff->chat_description = "معلم/مشرف مسار - الطالب: " . $names;
+                    $contacts->push($staff);
+                }
+
+                // إضافة موظفي الباصات
                 foreach ($busesMap as $busData) {
                     $bus = $busData['bus'];
                     $studentsNames = implode('، ', array_unique($busData['student_names']));
@@ -80,7 +101,6 @@ class ChatController extends Controller
                     }
                     if ($bus->supervisor) {
                         $supervisor = clone $bus->supervisor;
-                        // For display, you can still call them supervisors or teachers based on the UI logic.
                         $supervisor->chat_description = "مشرفة مسار - الطالب: " . $studentsNames;
                         $contacts->push($supervisor);
                     }
@@ -95,23 +115,51 @@ class ChatController extends Controller
                 break;
 
             case 'supervisor':
+            case 'teacher':
+            case 'field_supervisor':
+                // 1. من خلال الباص (كل الطلاب في الباص)
                 $bus = Bus::where('supervisor_id', $user->id)->first();
                 if ($bus) {
                     $contacts = $contacts->merge($this->getGuardianUsersForBus($bus));
+                }
+                
+                // 2. من خلال الطلاب المرتبطين به مباشرة (في جدول الطلاب)
+                $directStudents = \App\Models\Student::where('supervisor_id', $user->id)
+                    ->where('is_active', true)
+                    ->with('guardian')
+                    ->get();
+                if ($directStudents->isNotEmpty()) {
+                    $contacts = $contacts->merge($this->processStudentsToContacts($directStudents));
+                }
+                break;
+
+            case 'admin':
+                // الأدمن العام يرى جميع المستخدمين
+                $contacts = User::where('id', '!=', $user->id)->get();
+                foreach($contacts as $contact) {
+                    $contact->chat_description = "مستخدم النظام - دور: " . $contact->role;
+                }
+                break;
+
+            case 'school_admin':
+                // أدمن المدرسة يرى مستخدمي مدرسته فقط
+                $contacts = User::where('school_id', $user->school_id)
+                    ->where('id', '!=', $user->id)
+                    ->get();
+                foreach($contacts as $contact) {
+                    $contact->chat_description = "موظف/ولي أمر في المدرسة";
                 }
                 break;
         }
 
         // في حال كان ولي الأمر لديه أكثر من طالب في نفس الباص، سيتم دمجهم أعلاه
         // ولكن للتأكيد على عدم وجود تكرار لنفس المستخدم:
-        // نستخدم keyBy للتأكد من فرادة הID
+        // نستخدم keyBy للتأكد من فرادة الـ ID
         return $contacts->keyBy('id')->values();
     }
 
     private function getGuardianUsersForBus(Bus $bus): \Illuminate\Support\Collection
     {
-        $usersMap = [];
-
         // 1. Students via legacy/override pivot
         $studentsViaPivot = $bus->students()->wherePivot('is_active', true)->with('guardian')->get();
 
@@ -124,7 +172,14 @@ class ChatController extends Controller
 
         $allStudents = $studentsViaPivot->merge($studentsViaGroups)->unique('id');
 
-        foreach ($allStudents as $student) {
+        return $this->processStudentsToContacts($allStudents);
+    }
+
+    private function processStudentsToContacts(\Illuminate\Support\Collection $students): \Illuminate\Support\Collection
+    {
+        $usersMap = [];
+
+        foreach ($students as $student) {
             $guardianUser = $student->guardian; // هذا الآن User مباشرة
             if ($guardianUser) {
                 $userId = $guardianUser->id;
@@ -148,16 +203,25 @@ class ChatController extends Controller
     public function getConversations(Request $request): JsonResponse
     {
         $user = $request->user();
-        $validContactIds = $this->getValidContactsList($user)->pluck('id')->toArray();
+        
+        $query = Conversation::query();
 
-        // إرجاع المحادثات بشرط أن يكون الطرف الآخر ضمن قائمة جهات الاتصال الحالية المسموحة
-        $conversations = $user->conversations()
-            ->whereHas('participants', function ($q) use ($user, $validContactIds) {
-                // يجب أن تحتوي المحادثة على مشارك ليس أنا، ويكون الـ ID الخاص به مسموحاً
-                $q->where('users.id', '!=', $user->id)
-                    ->whereIn('users.id', $validContactIds);
-            })
-            ->with(['participants', 'lastMessage.sender', 'chatParticipants'])
+        if ($user->role === 'admin') {
+            // الأدمن يرى كل شيء
+        } elseif ($user->role === 'school_admin') {
+            // أدمن المدرسة يرى محادثات مدرسته
+            $query->where('school_id', $user->school_id);
+        } else {
+            // المستخدم العادي يرى محادثاته المسموحة فقط
+            $validContactIds = $this->getValidContactsList($user)->pluck('id')->toArray();
+            $query = $user->conversations()
+                ->whereHas('participants', function ($q) use ($user, $validContactIds) {
+                    $q->where('users.id', '!=', $user->id)
+                        ->whereIn('users.id', $validContactIds);
+                });
+        }
+
+        $conversations = $query->with(['participants', 'lastMessage.sender', 'chatParticipants'])
             ->withMax('messages', 'created_at')
             ->orderByDesc('messages_max_created_at')
             ->paginate(20);
@@ -267,8 +331,44 @@ class ChatController extends Controller
         // تحديث وقت المحادثة
         $message->conversation->touch();
 
+        // تحديث وقت القراءة للمرسل (لأن إرسال الرسالة يعني أنه قرأ المحادثة)
+        $conversation->chatParticipants()
+            ->where('user_id', $user->id)
+            ->update(['last_read_at' => now()]);
+
         // بث الرسالة عبر Reverb
-        broadcast(new MessageSent($message))->toOthers();
+        try {
+            $broadcast = broadcast(new MessageSent($message))->toOthers();
+            if (isset($broadcast)) {
+                unset($broadcast);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Chat broadcast error: " . $e->getMessage());
+        }
+
+        // إرسال إشعار Push للمستلم
+        try {
+            $otherParticipant = $conversation->participants()
+                ->where('users.id', '!=', $user->id)
+                ->first();
+
+            if ($otherParticipant) {
+                $this->notificationService->sendToUser(
+                    userId: $otherParticipant->id,
+                    type: 'new_message',
+                    title: 'رسالة جديدة من ' . $user->name,
+                    message: $message->body ?: 'أرسل لك مرفقاً',
+                    data: [
+                        'conversation_id' => (string) $conversation->id,
+                        'sender_id'       => (string) $user->id,
+                        'sender_name'     => $user->name,
+                    ],
+                    fromUserName: $user->name
+                );
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[FCM] Chat Notification Error: ' . $e->getMessage());
+        }
 
         return $this->success(new MessageResource($message->load('sender')), null, 201);
     }
@@ -281,27 +381,30 @@ class ChatController extends Controller
     {
         $user = $request->user();
 
-        // التأكد أن المستخدم مشارك
+        // التأكد أن المستخدم مشارك (الأدمن مستثنى)
+        $isAdmin = in_array($user->role, ['admin', 'school_admin']);
         $isParticipant = $conversation->participants()
             ->where('users.id', $user->id)
             ->exists();
 
-        if (! $isParticipant) {
+        if (! $isParticipant && ! $isAdmin) {
             return response()->json([
                 'success' => false,
                 'message' => 'ليس لديك صلاحية عرض هذه المحادثة.',
             ], 403);
         }
 
-        // هل نخفي تاريخ المحادثة لو تغير الباص؟ بناءً على طلب المستخدم "تختفي من كلا الطرفين" نعم.
-        $otherParticipant = $conversation->participants()->where('users.id', '!=', $user->id)->first();
-        if ($otherParticipant) {
-            $validContactIds = $this->getValidContactsList($user)->pluck('id')->toArray();
-            if (!in_array($otherParticipant->id, $validContactIds)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'هذه المحادثة غير متاحة لأن الارتباط بمسار الرحلة قد انتهى.',
-                ], 403);
+        // الحماية للطرفين (الأدمن مستثنى من حماية "انتهاء الرحلة" ليتمكن من المراجعة التاريخية)
+        if (! $isAdmin) {
+            $otherParticipant = $conversation->participants()->where('users.id', '!=', $user->id)->first();
+            if ($otherParticipant) {
+                $validContactIds = $this->getValidContactsList($user)->pluck('id')->toArray();
+                if (!in_array($otherParticipant->id, $validContactIds)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'هذه المحادثة غير متاحة لأن الارتباط بمسار الرحلة قد انتهى.',
+                    ], 403);
+                }
             }
         }
 

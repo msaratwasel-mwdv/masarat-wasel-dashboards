@@ -52,6 +52,7 @@ class DatabaseSeeder extends Seeder
                 'school_id' => $school->id,
                 'user_code' => "SUP-00$i",
                 'phone' => "96651000000$i",
+                'national_id' => "100200400$i",
             ]));
         }
 
@@ -66,6 +67,7 @@ class DatabaseSeeder extends Seeder
                 'school_id' => $school->id,
                 'user_code' => "DRV-00$i",
                 'phone' => "96659000000$i",
+                'national_id' => "100200500$i",
             ]));
         }
 
@@ -108,6 +110,7 @@ class DatabaseSeeder extends Seeder
                 'school_id' => $school->id,
                 'user_code' => "TCH-00$i",
                 'phone' => "96652000000$i",
+                'national_id' => "100200600$i",
             ]));
         }
 
@@ -168,6 +171,20 @@ class DatabaseSeeder extends Seeder
                     'status' => 'active',
                     'is_active' => true,
                 ]);
+
+                // 12️⃣ Add random dummy attendance records for this student (last 30 days)
+                for ($d = 1; $d <= 15; $d++) {
+                    $status = rand(0, 10) > 2 ? 'present' : 'absent'; // 80% present, 20% absent
+                    $randomDate = \Carbon\Carbon::now()->subDays(rand(0, 30));
+                    
+                    \App\Models\Attendance::firstOrCreate([
+                        'student_id' => $student->id,
+                        'date' => $randomDate->format('Y-m-d'),
+                    ], [
+                        'classroom_id' => $classroom->id,
+                        'status' => $status
+                    ]);
+                }
             }
         }
 

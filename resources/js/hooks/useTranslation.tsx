@@ -638,6 +638,30 @@ const dictionary = {
   },
   "Submitting...": { ar: "جار الإرسال...", en: "Submitting..." },
   "Bus Requests": { ar: "طلبات الحافلات", en: "Bus Requests" },
+  "Absence Requests": { ar: "طلبات الغياب", en: "Absence Requests" },
+  "Manage Absence Requests": {
+    ar: "إدارة طلبات الغياب",
+    en: "Manage Absence Requests",
+  },
+  "Review and process student absence requests submitted by guardians.": {
+    ar: "مراجعة ومعالجة طلبات غياب الطلاب المقدمة من أولياء الأمور.",
+    en: "Review and process student absence requests submitted by guardians.",
+  },
+  "Morning Only": { ar: "صباحي فقط", en: "Morning Only" },
+  "Afternoon Only": { ar: "مسائي فقط", en: "Afternoon Only" },
+  "Full Day": { ar: "يوم كامل", en: "Full Day" },
+  "No absence requests found": {
+    ar: "لم يتم العثور على طلبات غياب",
+    en: "No absence requests found",
+  },
+  " the absence request for ": {
+    ar: " طلب الغياب لـ ",
+    en: " the absence request for ",
+  },
+  "Enter reason for rejection...": {
+    ar: "أدخل سبب الرفض...",
+    en: "Enter reason for rejection...",
+  },
   "Schedule saved successfully! (Mock)": {
     ar: "تم حفظ الجدول بنجاح! (تجريبي)",
     en: "Schedule saved successfully! (Mock)",
