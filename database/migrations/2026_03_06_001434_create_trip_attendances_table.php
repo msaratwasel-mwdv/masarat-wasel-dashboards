@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('trip_attendances', function (Blueprint $table) {
             $table->id();
             $table->foreignId('trip_id')->constrained()->onDelete('cascade');
-            $table->foreignId('student_id')->constrained('users');
+            $table->foreignId('student_id')->constrained();
             $table->dateTime('check_in_time')->nullable();
             $table->dateTime('check_out_time')->nullable();
             $table->enum('status', ['boarded', 'absent', 'dropped', 'cancelled'])->default('absent');

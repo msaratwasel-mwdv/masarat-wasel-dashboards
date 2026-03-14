@@ -55,7 +55,7 @@ class Bus extends Model
      */
     public function driver(): BelongsTo
     {
-        return $this->belongsTo(Driver::class, 'driver_id');
+        return $this->belongsTo(User::class, 'driver_id');
     }
 
     /**
@@ -63,7 +63,7 @@ class Bus extends Model
      */
     public function supervisor(): BelongsTo
     {
-        return $this->belongsTo(Supervisor::class, 'supervisor_id');
+        return $this->belongsTo(User::class, 'supervisor_id');
     }
 
     /**

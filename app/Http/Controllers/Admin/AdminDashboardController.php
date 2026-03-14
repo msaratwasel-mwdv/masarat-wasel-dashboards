@@ -79,14 +79,15 @@ class AdminDashboardController extends Controller
 
         // ب. فحص انتهاء الرخص (Real Logic)
         // نبحث عن السائقين الذين ستنتهي رخصهم خلال 30 يوم
-        $expiringLicenses = \App\Models\Driver::whereDate('license_expiry_date', '<=', Carbon::now()->addDays(30))
+        $expiringLicenses = \App\Models\DriverProfile::with('user')
+            ->whereDate('license_expiry_date', '<=', Carbon::now()->addDays(30))
             ->whereDate('license_expiry_date', '>=', Carbon::now()) // لم تنتهِ بعد، بل ستنتهي قريباً
             ->get();
 
-        foreach ($expiringLicenses as $driver) {
-            $expiryDate = Carbon::parse($driver->license_expiry_date);
+        foreach ($expiringLicenses as $profile) {
+            $expiryDate = Carbon::parse($profile->license_expiry_date);
             $daysLeft = (int) ceil(Carbon::now()->floatDiffInDays($expiryDate, false)); // Ensure positive int
-            $driverName = $driver->name;
+            $driverName = $profile->user ? $profile->user->name : 'Unknown';
             $formattedDate = $expiryDate->format('Y-m-d');
 
             $alerts[] = [
@@ -97,12 +98,13 @@ class AdminDashboardController extends Controller
         }
 
         // ج. فحص الرخص المنتهية فعلياً (Expired)
-        $expiredLicenses = \App\Models\Driver::whereDate('license_expiry_date', '<', Carbon::now())
+        $expiredLicenses = \App\Models\DriverProfile::with('user')
+            ->whereDate('license_expiry_date', '<', Carbon::now())
             ->get();
 
-        foreach ($expiredLicenses as $driver) {
-            $expiryDate = Carbon::parse($driver->license_expiry_date);
-            $driverName = $driver->name;
+        foreach ($expiredLicenses as $profile) {
+            $expiryDate = Carbon::parse($profile->license_expiry_date);
+            $driverName = $profile->user ? $profile->user->name : 'Unknown';
             $formattedDate = $expiryDate->format('Y-m-d');
 
             $alerts[] = [

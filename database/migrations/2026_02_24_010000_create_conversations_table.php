@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('conversations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('school_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('school_id')->constrained()->cascadeOnDelete();
             $table->string('type')->default('private'); // private | group
             $table->string('title')->nullable();        // عنوان المحادثة (اختياري)
             $table->timestamps();

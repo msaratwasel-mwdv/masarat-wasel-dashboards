@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('absence_requests', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('student_id')->constrained()->onDelete('cascade');
             $table->foreignId('guardian_id')->constrained('users')->onDelete('cascade');
             $table->date('date');
             $table->enum('type', ['full_day', 'morning', 'afternoon'])->default('full_day');

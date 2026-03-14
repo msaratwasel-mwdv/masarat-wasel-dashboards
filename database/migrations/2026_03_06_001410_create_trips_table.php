@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('trips', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('school_id')->constrained('users');
+            $table->foreignId('school_id')->constrained();
             $table->foreignId('bus_id')->constrained();
             $table->foreignId('route_id')->nullable()->constrained();
             $table->foreignId('driver_id')->nullable()->constrained('users');

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('bus_students', function (Blueprint $table) {
             $table->id();
             $table->foreignId('bus_id')->constrained()->onDelete('cascade');
-            $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('student_id')->constrained()->onDelete('cascade');
             $table->enum('trip_type', ['morning', 'afternoon', 'both'])->default('both');
             $table->boolean('is_active')->default(true);
             $table->timestamps();

@@ -9,27 +9,27 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class Student extends User
+class Student extends Model
 {
-    protected $table = 'users';
+    use HasFactory;
 
-    /**
-     * The "booted" method of the model.
-     */
-    protected static function booted(): void
-    {
-        static::addGlobalScope('student', function ($builder) {
-            $builder->where('role', 'student');
-        });
-
-        static::creating(function ($student) {
-            $student->role = 'student';
-            if (empty($student->name) && !empty($student->full_name)) {
-                $student->name = $student->full_name;
-            }
-        });
-
-    }
+    // ⬅️ أضف الحقول الجديدة هنا
+    protected $fillable = [
+        'full_name',
+        'full_name_en',
+        'student_code',
+        'national_id', // ⬅️ أضف
+        'gender',      // ⬅️ أضف
+        'guardian_id',
+        'supervisor_id',
+        'school_id',   // ⬅️ أضف
+        'image',       // ⬅️ أضف
+        'is_active',
+        'morning_group_id',
+        'afternoon_group_id',
+        'forth_route_id',
+        'back_route_id',
+    ];
 
     public function enrollments(): HasMany
     {
@@ -113,10 +113,5 @@ class Student extends User
         return $this->hasOne(BusBoardingLog::class)
             ->where('created_at', '>=', now()->startOfDay())
             ->latest();
-    }
-
-    public function attendances(): HasMany
-    {
-        return $this->hasMany(Attendance::class);
     }
 }

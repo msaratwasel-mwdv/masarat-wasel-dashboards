@@ -24,8 +24,8 @@ return new class extends Migration
             $table->foreignId('old_supervisor_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('new_supervisor_id')->nullable()->constrained('users')->nullOnDelete();
 
-            $table->foreignId('old_school_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('new_school_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('old_school_id')->nullable()->constrained('schools')->nullOnDelete();
+            $table->foreignId('new_school_id')->nullable()->constrained('schools')->nullOnDelete();
 
             // من قام بالتغيير؟ (للمساءلة الإدارية)
             $table->foreignId('changed_by')->nullable()->constrained('users')->nullOnDelete();

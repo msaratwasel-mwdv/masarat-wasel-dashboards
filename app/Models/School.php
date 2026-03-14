@@ -6,23 +6,18 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class School extends User
+class School extends Model
 {
-    protected $table = 'users';
+    use HasFactory;
 
-    /**
-     * The "booted" method of the model.
-     */
-    protected static function booted(): void
-    {
-        static::addGlobalScope('school', function ($builder) {
-            $builder->where('role', 'school');
-        });
-
-        static::creating(function ($school) {
-            $school->role = 'school';
-        });
-    }
+    protected $fillable = [
+        'name',
+        'logo',
+        'location',
+        'status',
+        'has_transport',
+        'has_attendance',
+    ];
 
     public function users(): HasMany
     {

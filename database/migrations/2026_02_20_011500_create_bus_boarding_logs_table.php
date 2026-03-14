@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('bus_boarding_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('student_id')->constrained()->onDelete('cascade');
             $table->foreignId('bus_id')->constrained()->onDelete('cascade');
 
             // نوع الحدث: ركوب أو نزول
