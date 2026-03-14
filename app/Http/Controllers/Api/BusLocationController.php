@@ -41,6 +41,19 @@ class BusLocationController extends Controller
             'last_location_update' => now(),
         ]);
 
+        // 🔔 بث الموقع فورياً لجميع المتابعين (تطبيق السائق، المشرف، ولي الأمر)
+        try {
+            // حساب عدد الطلاب الراكبين حالياً (اختياري)
+            $today = now()->startOfDay();
+            $boardedCount = \App\Models\BusBoardingLog::where('bus_id', $bus->id)->where('type', 'boarding')->where('created_at', '>=', $today)->distinct('student_id')->count();
+            $alightedCount = \App\Models\BusBoardingLog::where('bus_id', $bus->id)->where('type', 'alighting')->where('created_at', '>=', $today)->distinct('student_id')->count();
+            $onBoard = max(0, $boardedCount - $alightedCount);
+
+            broadcast(new \App\Events\BusLocationUpdated($bus, $request->latitude, $request->longitude, $onBoard));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Location broadcast error: " . $e->getMessage());
+        }
+
         // التحقق من اقتراب الباص من بيوت الطلاب (فقط لو الباص في رحلة نشطة)
         if (in_array($bus->trip_status, ['on_route', 'to_school', 'to_home'])) {
             $this->checkProximityToHomes($bus, $request->latitude, $request->longitude);

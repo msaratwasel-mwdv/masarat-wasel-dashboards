@@ -12,7 +12,20 @@ use Kreait\Firebase\Messaging\Notification as FcmNotification;
 
 class NotificationService
 {
-    public function __construct(protected Messaging $messaging) {}
+    public function __construct() {}
+
+    /**
+     * الحصول علىMessaging instance مع معالجة الأخطاء
+     */
+    protected function getMessaging(): ?Messaging
+    {
+        try {
+            return app(Messaging::class);
+        } catch (\Exception $e) {
+            Log::error('[FCM] Firebase Messaging could not be initialized. Check service-account.json: ' . $e->getMessage());
+            return null;
+        }
+    }
 
     /**
      * إرسال إشعار لمستخدم واحد (DB + Firebase FCM Push).
@@ -89,7 +102,13 @@ class NotificationService
             'data'    => $stringData,
         ]);
 
-        $this->messaging->sendMulticast($fcmMessage, [$fcmToken]);
+        $messaging = $this->getMessaging();
+        if (!$messaging) {
+            Log::error('[FCM] Cannot send notification: Messaging service not available.');
+            return;
+        }
+
+        $messaging->sendMulticast($fcmMessage, [$fcmToken]);
 
         Log::info('[FCM] Notification request sent.');
     }
@@ -136,7 +155,13 @@ class NotificationService
             ->withData($stringData);
 
         try {
-            $report = $this->messaging->sendMulticast($fcmMessage, $fcmTokens);
+            $messaging = $this->getMessaging();
+            if (!$messaging) {
+                Log::error('[FCM] Cannot send multicast: Messaging service not available.');
+                return;
+            }
+
+            $report = $messaging->sendMulticast($fcmMessage, $fcmTokens);
             
             $successCount = $report->successes()->count();
             $failureCount = $report->failures()->count();
