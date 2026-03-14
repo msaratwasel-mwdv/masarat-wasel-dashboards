@@ -240,8 +240,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('field-trips/{field_trip}/approve', [\App\Http\Controllers\Admin\FieldTripController::class, 'approve'])->name('field-trips.approve');
         Route::post('field-trips/{field_trip}/reject', [\App\Http\Controllers\Admin\FieldTripController::class, 'reject'])->name('field-trips.reject');
 
-        // الرحلات اليومية (Daily Trips) - Auto-generated
-        Route::get('daily-trips', [\App\Http\Controllers\Admin\DailyTripController::class, 'index'])->name('daily-trips.index');
+        // الرحلات اليومية (Daily Trips)
+        Route::resource('daily-trips', \App\Http\Controllers\Admin\DailyTripController::class);
+        Route::post('daily-trips/auto-create', [\App\Http\Controllers\Admin\DailyTripController::class, 'autoCreate'])->name('daily-trips.auto-create');
     });
 
 
