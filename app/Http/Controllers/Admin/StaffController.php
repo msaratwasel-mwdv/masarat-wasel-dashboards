@@ -18,7 +18,6 @@ class StaffController extends Controller
     {
         // جلب جميع السائقين (سواء مرتبطين بمدرسة أو لا)
         $drivers = User::where('role', 'driver')
-            ->with('driverProfile')
             ->latest()
             ->get()
             ->map(function ($driver) {
@@ -46,7 +45,7 @@ class StaffController extends Controller
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|unique:users,phone',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'license_number' => 'required|unique:driver_profiles,license_number',
+            'license_number' => 'required|unique:users,license_number',
             'license_expiry_date' => 'required|date|after:today',
         ]);
 
@@ -63,12 +62,9 @@ class StaffController extends Controller
                 'user_code' => 'DRV-' . rand(10000, 99999),
                 'image' => $request->hasFile('image') ? $request->file('image')->store('avatars', 'public') : null,
                 'is_active' => true,
-            ]);
-
-            $user->driverProfile()->create([
                 'license_number' => $request->license_number,
                 'license_expiry_date' => $request->license_expiry_date,
-                'status' => 'Pending Training',
+                'staff_status' => 'Pending Training',
             ]);
         });
 
@@ -86,8 +82,8 @@ class StaffController extends Controller
             'email' => ['required', 'email', Rule::unique('users')->ignore($driver->id)],
             'phone' => ['required', Rule::unique('users')->ignore($driver->id)],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            // التحقق من جدول البروفايل
-            'license_number' => ['required', Rule::unique('driver_profiles')->ignore($driver->driverProfile->id ?? 0)],
+            // التحقق من جدول المستخدمين بعد الدمج
+            'license_number' => ['required', Rule::unique('users', 'license_number')->ignore($driver->id)],
             'license_expiry_date' => 'required|date',
         ]);
 
@@ -99,6 +95,8 @@ class StaffController extends Controller
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'national_id' => $request->national_id,
+                'license_number' => $request->license_number,
+                'license_expiry_date' => $request->license_expiry_date,
             ];
 
             if ($request->hasFile('image')) {
@@ -109,12 +107,6 @@ class StaffController extends Controller
             }
 
             $driver->update($data);
-
-            // تحديث البروفايل
-            $driver->driverProfile()->update([
-                'license_number' => $request->license_number,
-                'license_expiry_date' => $request->license_expiry_date,
-            ]);
         });
 
         return redirect()->back()->with('success', 'Driver information updated successfully');

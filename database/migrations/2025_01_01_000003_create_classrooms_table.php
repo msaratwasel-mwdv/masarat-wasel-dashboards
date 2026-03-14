@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('name'); // اسم الفصل (مثال: أول ثانوي أ)
             $table->string('grade_level')->nullable(); // المرحلة الدراسية
-            $table->foreignId('school_id')->constrained('schools')->onDelete('cascade'); // تابع لأي مدرسة
+            $table->foreignId('school_id')->constrained('users')->onDelete('cascade'); // تابع لأي مدرسة
             $table->timestamps();
         });
     }

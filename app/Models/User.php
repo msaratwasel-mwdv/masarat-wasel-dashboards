@@ -24,19 +24,52 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'name_en',
         'national_id',
         'email',
         'password',
         'phone',
         'user_code',
         'role',
-        'name_en',
+        'image',
         'address',
+        'is_active',
+
+        // Guardian/Parent specific
+        'home_latitude',
+        'home_longitude',
+        'proximity_alert_distance',
         'home_number',
         'preferred_language',
-        'image',
+
+        // Driver/Supervisor specific
+        'license_number',
+        'license_expiry_date',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'status',
+
+        // Student specific
+        'full_name',
+        'full_name_en',
+        'student_code',
+        'gender',
+        'grade',
+
+        'guardian_id',
+        'assigned_supervisor_id',
+        'morning_group_id',
+        'afternoon_group_id',
+        'forth_route_id',
+        'back_route_id',
+
+        // School specific
+        'location',
+        'has_transport',
+        'has_attendance',
+        'logo',
+
         'school_id',
-        'is_active',
         'fcm_token',
     ];
 
@@ -68,24 +101,6 @@ class User extends Authenticatable
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
-    }
-
-    public function driverProfile(): HasOne
-    {
-        return $this->hasOne(DriverProfile::class);
-    }
-
-    public function supervisorProfile(): HasOne
-    {
-        return $this->hasOne(SupervisorProfile::class);
-    }
-
-    /**
-     * الطلاب المرتبطون بولي الأمر هذا
-     */
-    public function students(): HasMany
-    {
-        return $this->hasMany(Student::class, 'guardian_id');
     }
 
     // ── علاقات الشات ──────────────────────────────────

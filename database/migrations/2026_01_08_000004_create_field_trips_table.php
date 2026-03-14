@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('field_trips', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('school_id')->constrained()->onDelete('cascade');
+            $table->foreignId('school_id')->constrained('users')->onDelete('cascade');
             $table->string('trip_name');
             $table->text('description');
             $table->date('trip_date');

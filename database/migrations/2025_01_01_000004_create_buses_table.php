@@ -24,7 +24,7 @@ return new class extends Migration
             $table->enum('type', ['permanent', 'temporary'])->default('permanent'); // من نسختك
 
             // العلاقات
-            $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('school_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('driver_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('supervisor_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('route_id')->nullable()->constrained('routes')->nullOnDelete();

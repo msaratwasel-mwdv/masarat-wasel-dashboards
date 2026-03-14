@@ -162,7 +162,7 @@ class DatabaseSeeder extends Seeder
                     'gender' => $s % 2 == 0 ? 'female' : 'male',
                     'morning_group_id' => $group->id,
                     'afternoon_group_id' => $group->id,
-                    'supervisor_id' => $classroom->teachers->first()->id, // Just assigning a teacher as supervisor
+                    'assigned_supervisor_id' => $classroom->teachers->first()->id, // Just assigning a teacher as supervisor
                     'is_active' => true,
                 ]);
 

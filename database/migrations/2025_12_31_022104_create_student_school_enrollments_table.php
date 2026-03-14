@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('student_school_enrollments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('school_id')->constrained('schools')->onDelete('cascade');
-            $table->foreignId('student_id')->constrained('students')->onDelete('cascade');
+            $table->foreignId('school_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
 
             // قمنا بإضافة هذا العمود لربط الطالب بفصل دراسي داخل هذه المدرسة
             $table->foreignId('classroom_id')->nullable()->constrained('classrooms')->onDelete('set null');

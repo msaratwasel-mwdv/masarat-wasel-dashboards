@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('bus_groups', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('school_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('school_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('bus_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->timestamps();

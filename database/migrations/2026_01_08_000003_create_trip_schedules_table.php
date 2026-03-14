@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('trip_schedules', function (Blueprint $table) {
             $table->id();
             $table->foreignId('bus_id')->constrained()->onDelete('cascade');
-            $table->foreignId('school_id')->constrained()->onDelete('cascade');
+            $table->foreignId('school_id')->constrained('users')->onDelete('cascade');
             $table->tinyInteger('day_of_week')->comment('0=Sunday, 6=Saturday');
             $table->time('gathering_time')->comment('Morning student gathering time');
             $table->time('departure_time')->comment('Bus departure from school');

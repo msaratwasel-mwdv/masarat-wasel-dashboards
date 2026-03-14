@@ -274,11 +274,6 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::get('/reports/attendance', function () {
             return Inertia::render('School/Attendance/AttendanceReports');
         })->name('reports.attendance');
-        // 5. الحضور
-        Route::get('students/{student}/attendance', [StudentController::class, 'attendanceHistory'])->name('students.attendance');
-        Route::get('/reports/attendance', function () {
-            return Inertia::render('School/Attendance/AttendanceReports');
-        })->name('reports.attendance');
 
         Route::prefix('attendance')->group(function () {
             Route::get('/', [AttendanceController::class, 'index'])->name('attendance.index');

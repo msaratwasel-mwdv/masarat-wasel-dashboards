@@ -16,7 +16,6 @@ class SupervisorController extends Controller
     public function index()
     {
         $supervisors = User::where('role', 'supervisor')
-            ->with('supervisorProfile')
             ->latest()
             ->get()
             ->map(function ($supervisor) {
@@ -61,12 +60,9 @@ class SupervisorController extends Controller
                 'user_code' => 'SUP-' . rand(1000, 9999),
                 'image' => $request->hasFile('image') ? $request->file('image')->store('avatars', 'public') : null,
                 'is_active' => true,
-            ]);
-
-            $user->supervisorProfile()->create([
                 'emergency_contact_name' => $request->emergency_contact_name,
                 'emergency_contact_phone' => $request->emergency_contact_phone,
-                'status' => 'Trainee', // الحالة الافتراضية
+                'staff_status' => 'Trainee', // الحالة الافتراضية
             ]);
         });
 
@@ -94,6 +90,9 @@ class SupervisorController extends Controller
                 'national_id' => $request->national_id,
                 'email' => $request->email,
                 'phone' => $request->phone,
+                'emergency_contact_name' => $request->emergency_contact_name,
+                'emergency_contact_phone' => $request->emergency_contact_phone,
+                'staff_status' => $request->status,
             ];
 
             if ($request->hasFile('image')) {
@@ -104,12 +103,6 @@ class SupervisorController extends Controller
             }
 
             $supervisor->update($data);
-
-            $supervisor->supervisorProfile()->update([
-                'emergency_contact_name' => $request->emergency_contact_name,
-                'emergency_contact_phone' => $request->emergency_contact_phone,
-                'status' => $request->status,
-            ]);
         });
 
         return redirect()->back()->with('success', 'Supervisor updated successfully');
