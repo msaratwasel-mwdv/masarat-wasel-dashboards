@@ -116,13 +116,12 @@ class ChatController extends Controller
 
             case 'supervisor':
             case 'teacher':
-            case 'field_supervisor':
                 // 1. من خلال الباص (كل الطلاب في الباص)
                 $bus = Bus::where('supervisor_id', $user->id)->first();
                 if ($bus) {
                     $contacts = $contacts->merge($this->getGuardianUsersForBus($bus));
                 }
-                
+
                 // 2. من خلال الطلاب المرتبطين به مباشرة (في جدول الطلاب)
                 $directStudents = \App\Models\Student::where('supervisor_id', $user->id)
                     ->where('is_active', true)
@@ -130,6 +129,17 @@ class ChatController extends Controller
                     ->get();
                 if ($directStudents->isNotEmpty()) {
                     $contacts = $contacts->merge($this->processStudentsToContacts($directStudents));
+                }
+                break;
+
+            case 'field_supervisor':
+                // مشرف ميداني يرى جميع سائقي ومشرفي الحافلات النشطين
+                $staff = User::whereIn('role', ['driver', 'supervisor'])
+                    ->where('is_active', true)
+                    ->get();
+                foreach($staff as $contact) {
+                    $contact->chat_description = "موظف حافلة - " . ($contact->role === 'driver' ? 'سائق' : 'مشرف');
+                    $contacts->push($contact);
                 }
                 break;
 
@@ -203,7 +213,7 @@ class ChatController extends Controller
     public function getConversations(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         $query = Conversation::query();
 
         if ($user->role === 'admin') {

@@ -43,19 +43,30 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "teacher",
   },
   {
-    label: isRTL ? "الرحلات الميدانية" : "Field Trips",
-    route: "admin.field-trips.index",
-    icon: "map",
-  },
-  {
-    label: isRTL ? "الرحلات اليومية" : "Daily Trips",
-    route: "admin.daily-trips.index",
-    icon: "calendar",
-  },
-  {
-    label: isRTL ? "المراقبه" : "assignmentHistory",
-    route: "admin.assignmentHistory",
-    icon: "bell",
+    label: isRTL ? "الرقابة الميدانية" : "Field Operations",
+    icon: "search",
+    subItems: [
+      {
+        label: isRTL ? "المشرفين الميدانيين" : "Field Supervisors",
+        route: "admin.field-supervisors.index",
+      },
+      {
+        label: isRTL ? "مراقبة الطوارئ" : "Emergency Monitor",
+        route: "admin.emergencies.index",
+      },
+      {
+        label: isRTL ? "سجل المخالفات" : "Violations Log",
+        route: "admin.field-reports.index",
+      },
+      {
+        label: isRTL ? "سجلات الفحص" : "Inspection Logs",
+        route: "admin.inspection-logs.index",
+      },
+      {
+        label: isRTL ? "إدارة بنود الفحص" : "Checklist Manager",
+        route: "admin.inspection-items.index",
+      },
+    ],
   },
   {
     label: isRTL ? "المحادثات" : "Conversations",
@@ -78,6 +89,13 @@ export default function Authenticated({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { theme, language, toggleTheme, toggleLanguage, isRTL } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+
+  const toggleMenu = (label: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]
+    );
+  };
 
   // إعادة ترتيب الفئات بناءً على اللغة
   const rtlClasses = isRTL ? "rtl" : "ltr";
@@ -248,6 +266,22 @@ export default function Authenticated({
             />
           </svg>
         );
+      case "search":
+        return (
+          <svg
+            className={baseClass}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+        );
       case "route":
         return (
           <svg className={baseClass} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -321,7 +355,70 @@ export default function Authenticated({
           </p>
 
           {menuItems.map((item) => {
-            const isActive = !!(item.route && route().current(item.route));
+            const hasActiveChild = item.subItems?.some(sub => sub.route && route().current(sub.route));
+            const isActive = !!(item.route && route().current(item.route)) || !!hasActiveChild;
+            const isExpanded = expandedMenus.includes(item.label) || !!hasActiveChild;
+
+            if (item.subItems) {
+              return (
+                <div key={item.label} className="space-y-1">
+                  <button
+                    onClick={() => toggleMenu(item.label)}
+                    className={`
+                      w-full relative group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-300
+                      ${flexDirection}
+                      ${isActive || isExpanded
+                        ? "bg-brand-yellow/10 text-brand-yellow"
+                        : "text-gray-400 hover:bg-white/5 hover:text-white"
+                      }
+                    `}
+                    style={{
+                      borderRight: isActive && !isRTL ? "4px solid #facc15" : "none",
+                      borderLeft: isActive && isRTL ? "4px solid #facc15" : "none",
+                    }}
+                  >
+                    <span
+                      className={`${isRTL ? "ml-4" : "mr-4"} ${isActive ? "scale-110" : "group-hover:scale-110"} transition-transform duration-300`}
+                    >
+                      {item.icon && renderIcon(item.icon, isActive)}
+                    </span>
+                    <span
+                      className={`flex-1 text-sm font-medium ${isRTL ? "text-right" : "text-left"}`}
+                    >
+                      {item.label}
+                    </span>
+                    <svg
+                      className={`w-4 h-4 transition-all duration-300 ${isExpanded ? "rotate-90 opacity-100 text-brand-yellow" : `opacity-50 group-hover:opacity-100 ${isRTL ? "rotate-180" : ""}`}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                  {isExpanded && (
+                    <div className={`mt-1 space-y-1 ${isRTL ? "pr-12" : "pl-12"}`}>
+                      {item.subItems.map((sub) => {
+                        const isSubActive = route().current(sub.route);
+                        return (
+                          <Link
+                            key={sub.label}
+                            href={route(sub.route)}
+                            className={`block px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
+                              isSubActive
+                                ? "bg-brand-yellow/20 text-brand-yellow shadow-sm"
+                                : "text-gray-400 hover:text-white hover:bg-white/5"
+                            } ${isRTL ? "text-right" : "text-left"}`}
+                          >
+                            {sub.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
 
             return (
               <Link
@@ -345,7 +442,7 @@ export default function Authenticated({
                   className={`${isRTL ? "ml-4" : "mr-4"} ${isActive ? "scale-110" : "group-hover:scale-110"
                     } transition-transform duration-300`}
                 >
-                  {renderIcon(item.icon, isActive)}
+                  {item.icon && renderIcon(item.icon, isActive)}
                 </span>
 
                 <span

@@ -2,23 +2,31 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class InspectionResult extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'inspection_id',
-        'item_id',
+        'inspection_item_id',
         'is_passed',
-        'notes'
+        'notes',
     ];
 
     protected $casts = [
         'is_passed' => 'boolean',
     ];
 
+    public function inspection()
+    {
+        return $this->belongsTo(Inspection::class);
+    }
+
     public function item()
     {
-        return $this->belongsTo(InspectionItem::class, 'item_id');
+        return $this->belongsTo(InspectionItem::class, 'inspection_item_id');
     }
 }

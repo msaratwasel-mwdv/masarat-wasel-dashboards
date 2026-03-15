@@ -108,6 +108,21 @@ class User extends Authenticatable
         return $this->hasMany(Message::class, 'sender_id');
     }
 
+    public function fieldViolations(): HasMany
+    {
+        return $this->hasMany(Violation::class, 'field_supervisor_id');
+    }
+
+    public function fieldInspections(): HasMany
+    {
+        return $this->hasMany(Inspection::class, 'field_supervisor_id');
+    }
+
+    public function reportedIncidents(): HasMany
+    {
+        return $this->hasMany(Incident::class, 'reporter_id');
+    }
+
     /**
      * Route notifications for the FCM channel.
      *

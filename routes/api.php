@@ -67,6 +67,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/parent/absence-requests', [\App\Http\Controllers\Api\ParentController::class, 'storeAbsenceRequest']);
     Route::get('/parent/absence-requests', [\App\Http\Controllers\Api\ParentController::class, 'absenceRequestsHistory']);
 
+    // --- المشرف الميداني ---
+    Route::get('/field/buses', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'buses']);
+    Route::get('/field/inspection-items', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'inspectionItems']);
+    Route::post('/field/inspections', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'storeInspection']);
+    Route::post('/field/violations', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'storeViolation']);
+    Route::post('/field/incidents', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'storeIncident']);
+
     // ═══════════════════════════════════════════════════════════
     // Chat API Routes (Mobile App)
     // ═══════════════════════════════════════════════════════════

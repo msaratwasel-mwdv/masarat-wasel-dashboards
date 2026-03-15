@@ -1,0 +1,33 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('violations', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('field_supervisor_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('bus_id')->constrained('buses')->cascadeOnDelete();
+            $table->string('type');
+            $table->text('description')->nullable();
+            $table->string('status')->default('pending');
+            $table->json('photos')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('violations');
+    }
+};

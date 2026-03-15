@@ -67,7 +67,8 @@ Route::get('/seed-test-data', function () {
     );
     $results[] = "✅ مستخدم ولي الأمر: {$parentUser->email} (ID: {$parentUser->id})";
 
-    // 3. Create Guardian record if not exists
+    // 3. Create Guardian record if not exists (Commented out because Guardian model does not exist)
+    /*
     $guardian = \App\Models\Guardian::firstOrCreate(
         ['national_id' => '1000200030'],
         [
@@ -85,6 +86,7 @@ Route::get('/seed-test-data', function () {
     if (!$parentUser->guardian) {
         $parentUser->update(['school_id' => $school->id]);
     }
+    */
 
     // 4. Create Student if not exists
     $student = \App\Models\Student::firstOrCreate(
@@ -93,7 +95,7 @@ Route::get('/seed-test-data', function () {
             'full_name'    => 'طالب تجريبي',
             'student_code' => 'ST-001',
             'gender'       => 'male',
-            'guardian_id'  => $guardian->id,
+            'guardian_id'  => $parentUser->id, // Fallback to parentUser.id
             'school_id'    => $school->id,
             'is_active'    => true,
         ]
@@ -212,6 +214,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         // المشرفين
         Route::resource('supervisors', SupervisorController::class)->except(['create', 'edit', 'show']);
 
+        // المشرفين الميدانيين
+        Route::resource('field-supervisors', \App\Http\Controllers\Admin\FieldSupervisorController::class)
+            ->parameters(['field-supervisors' => 'field_supervisor'])
+            ->except(['create', 'edit', 'show']);
+
         // الحافلات - شامل جميع الوظائف
         Route::resource('buses', BusController::class);
         Route::post('buses/{bus}/assign', [BusController::class, 'assignToSchool'])->name('buses.assign');
@@ -225,6 +232,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('bus-requests/{busRequest}/reject', [\App\Http\Controllers\Admin\BusRequestController::class, 'reject'])->name('bus-requests.reject');
 
         Route::get('assignmentHistory', [ReportController::class, 'assignmentHistory'])->name('assignmentHistory');
+        Route::get('field-reports', [\App\Http\Controllers\Admin\FieldReportController::class, 'index'])->name('field-reports.index');
+        Route::resource('inspection-items', \App\Http\Controllers\Admin\InspectionItemController::class)->except(['create', 'show', 'edit']);
+        Route::get('emergencies', [\App\Http\Controllers\Admin\EmergencyController::class, 'index'])->name('emergencies.index');
+        Route::put('emergencies/{incident}/status', [\App\Http\Controllers\Admin\EmergencyController::class, 'updateStatus'])->name('emergencies.update-status');
+        Route::get('inspection-logs', [\App\Http\Controllers\Admin\InspectionLogController::class, 'index'])->name('inspection-logs.index');
 
         // مراقبة المحادثات
         Route::get('chat', [\App\Http\Controllers\Admin\ChatMonitorController::class, 'index'])->name('chat.index');
