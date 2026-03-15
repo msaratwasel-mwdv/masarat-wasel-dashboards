@@ -425,7 +425,7 @@ class BusBoardingController extends Controller
                 'schoolId' => (string) $student->school_id,
                 'parentName' => $student->guardian?->name ?? 'غير محدد',
                 'parentPhone' => $student->guardian?->phone ?? 'غير محدد',
-                'parentUserId' => $student->guardian?->id ? (string) $student->guardian->id : null,
+                'parentUserId' => (string) $student->guardian_id,
                 'photoUrl' => $student->image ? (str_starts_with($student->image, 'http') ? $student->image : url(\Illuminate\Support\Facades\Storage::url($student->image))) : null,
                 'status' => $studentStatus, // atHome, onBus, atSchool, absent
                 'isOnBus' => ($studentStatus === 'onBus'),
