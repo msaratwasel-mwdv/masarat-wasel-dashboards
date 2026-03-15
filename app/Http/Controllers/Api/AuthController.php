@@ -229,6 +229,54 @@ class AuthController extends Controller
     }
 
     /**
+     * تحديث بيانات الملف الشخصي (الهاتف، البريد)
+     * POST /api/auth/profile/update
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $request->validate([
+            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:191|unique:users,email,' . $request->user()->id,
+        ]);
+
+        $request->user()->update($request->only(['phone', 'email']));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث البيانات بنجاح.',
+        ]);
+    }
+
+    /**
+     * رفع صورة شخصية جديدة
+     * POST /api/auth/profile/avatar
+     */
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        $user = $request->user();
+
+        // حذف الصورة القديمة إن وجدت
+        if ($user->image && !str_starts_with($user->image, 'http')) {
+            Storage::disk('public')->delete($user->image);
+        }
+
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->update(['image' => $path]);
+
+        $imageUrl = url(Storage::url($path));
+
+        return response()->json([
+            'success'   => true,
+            'message'   => 'تم تحديث الصورة بنجاح.',
+            'image_url' => $imageUrl,
+        ]);
+    }
+
+    /**
      * Helper to get bus_id for driver or supervisor
      */
     private function getBusId(User $user): ?int
