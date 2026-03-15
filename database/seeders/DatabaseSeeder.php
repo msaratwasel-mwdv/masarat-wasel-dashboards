@@ -192,5 +192,8 @@ class DatabaseSeeder extends Seeder
 
         // 11️⃣ Notification Test Seeder
         $this->call(NotificationTestSeeder::class);
+
+        // 12️⃣ Inspection Items Seeder
+        $this->call(InspectionItemsSeeder::class);
     }
 }

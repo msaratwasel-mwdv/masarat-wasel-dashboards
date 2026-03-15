@@ -84,4 +84,13 @@ Route::middleware('auth:sanctum')->group(function () {
         // 6. تحديد المحادثة كمقروءة
         Route::post('/conversations/{conversation}/read', [\App\Http\Controllers\Api\ChatController::class, 'markAsRead']);
     });
+
+    // --- المشرف الميداني (Field Supervisor) ---
+    Route::group(['prefix' => 'field'], function () {
+        Route::get('/buses', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getBuses']);
+        Route::get('/inspection-items', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getInspectionItems']);
+        Route::post('/inspections', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'submitInspection']);
+        Route::post('/incidents', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'reportIncident']);
+        Route::post('/violations', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'submitViolation']);
+    });
 });
