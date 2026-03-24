@@ -165,13 +165,9 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
                     value={search}
                     onChange={handleSearchChange}
                     placeholder={t("Search")}
-                    className="w-full bg-gray-50 dark:bg-[#1e293b] border-gray-200 dark:border-white/10 rounded-[35px] py-3 pl-10 pr-4 text-gray-800 dark:text-white placeholder-gray-500 focus:ring-[#0e7490] focus:border-[#0e7490] border transition-all"
+                    className={`w-full bg-gray-50 dark:bg-[#1e293b] border-gray-200 dark:border-white/10 rounded-[35px] py-3 text-gray-800 dark:text-white placeholder-gray-500 focus:ring-[#0e7490] focus:border-[#0e7490] border transition-all ${isRtl ? "pr-11 pl-4" : "pl-11 pr-4"}`}
                   />
-                  <div
-                    className={`absolute ${
-                      isRtl ? "right-3" : "left-3"
-                    } top-3.5`}
-                  >
+                  <div className={`absolute ${isRtl ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 pointer-events-none`}>
                     <svg
                       className="w-5 h-5 text-gray-400"
                       fill="none"

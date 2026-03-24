@@ -29,7 +29,7 @@ export default function Login({
             <Head>
                 <title>تسجيل الدخول - مسارات واصل</title>
                 <meta name="description" content="تسجيل الدخول إلى منصة وصل للنقل المدرسي" />
-                <link rel="icon" type="image/png" href="/assets/images/icon 3.png" />
+                <link rel="icon" type="image/png" href="/assets/images/masarat-wasel-logo.jpg" />
             </Head>
 
             {/* Decorative Background Elements */}
@@ -52,8 +52,8 @@ export default function Login({
                     {/* Header */}
                     <div className="text-center mb-10">
                         <Link href="/" className="inline-block group">
-                            <div className="w-20 h-20 mx-auto bg-gradient-to-tr from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center mb-4 shadow-sm border border-blue-100/50 group-hover:shadow-md transition-all duration-300 group-hover:scale-105">
-                                <img src="/assets/images/icon 3.png" alt="Wasal Logo" className="w-12 h-12 object-contain" />
+                            <div className="mx-auto mb-4">
+                                <img src="/assets/images/masarat-wasel-logo.jpg" alt="Masarat Wasel" className="h-14 object-contain rounded-xl mx-auto" />
                             </div>
                             <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 tracking-tight">مسارات واصل</h1>
                         </Link>

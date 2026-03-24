@@ -115,3 +115,15 @@
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
 }
+
+@media print {
+    .force-print-hide {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        position: absolute !important;
+        z-index: -9999 !important;
+        height: 0 !important;
+        width: 0 !important;
+    }
+}

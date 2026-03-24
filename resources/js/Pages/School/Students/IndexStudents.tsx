@@ -81,7 +81,7 @@ export default function IndexStudents({
   busGroups = [],
   storage_url,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, isRtl } = useTranslation();
   const [search, setSearch] = useState(filters.search || "");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
@@ -472,21 +472,23 @@ export default function IndexStudents({
                   value={search}
                   onChange={handleSearchChange}
                   placeholder={t("Search by Name, ID...")}
-                  className="w-full px-4 py-3.5 border border-gray-200 dark:border-gray-600 shadow-sm sm:w-72 bg-gray-50 dark:bg-gray-700 rounded-[35px] pl-11 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent dark:text-white transition-all"
+                  className={`w-full py-3.5 border border-gray-200 dark:border-gray-600 shadow-sm sm:w-72 bg-gray-50 dark:bg-gray-700 rounded-[35px] focus:ring-2 focus:ring-[#0e7490] focus:border-transparent dark:text-white transition-all ${isRtl ? "pr-11 pl-4" : "pl-11 pr-4"}`}
                 />
-                <svg
-                  className="absolute left-4 top-3.5 w-5 h-5 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  ></path>
-                </svg>
+                <div className={`absolute ${isRtl ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 pointer-events-none`}>
+                  <svg
+                    className="w-5 h-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    ></path>
+                  </svg>
+                </div>
               </div>
 
               <button

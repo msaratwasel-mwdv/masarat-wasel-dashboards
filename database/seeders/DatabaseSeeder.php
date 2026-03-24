@@ -195,5 +195,8 @@ class DatabaseSeeder extends Seeder
 
         // 12️⃣ Inspection Items Seeder
         $this->call(InspectionItemsSeeder::class);
+
+        // 13️⃣ Trip Report Test Data
+        $this->call(TripReportSeeder::class);
     }
 }

@@ -55,9 +55,14 @@ export default function SchoolAuthenticatedLayout({
       icon: "classes",
     },
     {
-      label: isRtl ? "إدارة الأساتذة" : "Teachers Management",
+      label: isRtl ? "إدارة المعلمين" : "Teachers Management",
       route: "school.teachers.index",
       icon: "teacher",
+    },
+    {
+      label: isRtl ? "إدارة المشرفين" : "Supervisors Management",
+      route: "school.supervisors.index",
+      icon: "users",
     },
     {
       label: isRtl ? "الطلاب" : "Students",
@@ -73,6 +78,11 @@ export default function SchoolAuthenticatedLayout({
       label: isRtl ? "مجموعات الباص" : "Bus Groups",
       route: "school.bus-groups.index",
       icon: "users",
+    },
+    {
+      label: isRtl ? "التتبع المباشر" : "Live Tracking",
+      route: "school.live-tracking.index",
+      icon: "map",
     },
     {
       label: isRtl ? "تعيين الطلاب للباص" : "Assign Bus Students",
@@ -110,6 +120,11 @@ export default function SchoolAuthenticatedLayout({
       icon: "calendar",
     },
     {
+      label: isRtl ? "تقارير الرحلات" : "Trip Reports",
+      route: "school.trip-reports.index",
+      icon: "report",
+    },
+    {
       label: isRtl ? "الإعدادات" : "Settings",
       route: "profile.edit",
       icon: "cog",
@@ -122,7 +137,7 @@ export default function SchoolAuthenticatedLayout({
       dir={isRtl ? "rtl" : "ltr"}
     >
       {/* MOBILE NAVIGATION BAR */}
-      <div className="fixed top-0 z-[60] flex items-center justify-between w-full h-16 px-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 md:hidden">
+      <div className="force-print-hide print:hidden fixed top-0 z-[60] flex items-center justify-between w-full h-16 px-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 md:hidden">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -179,7 +194,7 @@ export default function SchoolAuthenticatedLayout({
 
       {/* SIDEBAR */}
       <aside
-        className={`
+        className={`force-print-hide print:hidden
                     fixed inset-y-0 z-50 w-72 bg-slate-900 dark:bg-slate-950 text-white flex flex-col transition-all duration-300 ease-in-out border-r border-white/5 shadow-2xl
                     ${isSidebarOpen
             ? "translate-x-0"
@@ -193,18 +208,12 @@ export default function SchoolAuthenticatedLayout({
       >
         {/* BRANDING SECTION */}
         <div className="flex flex-col items-center justify-center pt-8 pb-6 px-6">
-          <div className="flex flex-col items-center gap-4">
-            <div className="p-3 bg-white/5 rounded-2xl ring-1 ring-white/10 backdrop-blur-sm">
-              <ApplicationLogo className="w-16 h-16" />
-            </div>
-            <div className="text-center">
-              <h3 className="text-xl font-bold tracking-tight text-white">
-                {t("Masarat Wasel")}
-              </h3>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-semibold mt-1">
-                Smart Transport System
-              </p>
-            </div>
+          <div className="p-2 bg-white/5 rounded-2xl">
+            <img
+              src="/assets/images/masarat-wasel-logo.jpg"
+              alt="Masarat Wasel"
+              className="h-16 object-contain rounded-xl"
+            />
           </div>
         </div>
 
@@ -423,7 +432,7 @@ export default function SchoolAuthenticatedLayout({
                 `}
       >
         {/* DESKTOP HEADER */}
-        <header className="sticky top-0 z-40 hidden md:flex items-center justify-between h-20 px-8 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+        <header className="force-print-hide print:hidden sticky top-0 z-40 hidden md:flex items-center justify-between h-20 px-8 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-3 p-1.5 pr-4 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200/50 dark:border-white/5">
               {auth.user?.school?.logo ? (

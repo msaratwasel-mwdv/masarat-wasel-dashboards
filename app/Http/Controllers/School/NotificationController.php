@@ -17,20 +17,6 @@ use App\Services\NotificationService;
 class NotificationController extends Controller
 {
     /**
-     * @var NotificationService
-     */
-    protected $notificationService;
-
-    /**
-     * NotificationController constructor.
-     * @param NotificationService $notificationService
-     */
-    public function __construct(NotificationService $notificationService)
-    {
-        $this->notificationService = $notificationService;
-    }
-
-    /**
      * Display a listing of notifications sent by this school.
      */
     public function index(Request $request)
@@ -188,22 +174,32 @@ class NotificationController extends Controller
 
             // إرسال الإشعار فعلياً عبر Firebase
             if (!empty($fcmTokens)) {
-                $this->notificationService->sendMulticast(
-                    $fcmTokens,
-                    $validated['title'],
-                    $validated['message'],
-                    [
-                        'notification_id' => (string) $notification->id,
-                        'type' => $validated['type'],
-                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
-                    ]
-                );
-                
-                $notification->update(['status' => 'sent', 'sent_count' => count($fcmTokens)]);
+                try {
+                    $notificationService = app(\App\Services\NotificationService::class);
+                    $notificationService->sendMulticast(
+                        $fcmTokens,
+                        $validated['title'],
+                        $validated['message'],
+                        [
+                            'notification_id' => (string) $notification->id,
+                            'type' => $validated['type'],
+                            'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
+                        ]
+                    );
+                    
+                    $notification->update(['status' => 'sent', 'sent_count' => count($fcmTokens)]);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Firebase Notification Error: ' . $e->getMessage());
+                    $notification->update(['status' => 'failed', 'failed_count' => count($fcmTokens), 'sent_count' => 0]);
+                    return redirect()->route('school.notifications.index')
+                        ->with('success', 'تم حفظ الإشعار في النظام، ولكن تعذر الإرسال للهواتف (لم يتم إعداد Firebase بعد).');
+                }
+            } else {
+                $notification->update(['status' => 'sent', 'sent_count' => 0]);
             }
 
             return redirect()->route('school.notifications.index')
-                ->with('success', 'تم إرسال الإشعار بنجاح لـ ' . count($fcmTokens) . ' مستخدم');
+                ->with('success', 'تم حفظ الإشعار بنجاح لـ ' . count($fcmTokens) . ' مستخدم');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'حدث خطأ أثناء إنشاء الإشعار: ' . $e->getMessage()]);

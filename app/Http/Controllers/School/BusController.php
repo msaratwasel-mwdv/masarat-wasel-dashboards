@@ -158,6 +158,42 @@ class BusController extends Controller
     }
 
     /**
+     * Show the standalone live tracking page.
+     */
+    public function liveTracking()
+    {
+        $schoolId = Auth::user()->school_id;
+
+        $buses = Bus::where('school_id', $schoolId)
+            ->with(['driver'])
+            ->get()
+            ->map(function ($bus) {
+                return [
+                    'id' => $bus->id,
+                    'bus_number' => $bus->bus_number,
+                    'plate_number' => $bus->plate_number,
+                    'capacity' => $bus->capacity,
+                    'status' => $bus->status,
+                    'current_latitude' => (float) $bus->current_latitude,
+                    'current_longitude' => (float) $bus->current_longitude,
+                    'trip_status' => $bus->trip_status,
+                    'driver' => $bus->driver,
+                    'students_count' => $bus->students_count ?? 0,
+                ];
+            });
+
+        $schoolLocation = [
+            'lat' => 24.7136,
+            'lng' => 46.6753,
+        ];
+
+        return Inertia::render('School/LiveTracking/Index', [
+            'buses' => $buses,
+            'schoolLocation' => $schoolLocation,
+        ]);
+    }
+
+    /**
      * API for Real-time Tracking Data
      */
     public function trackingApi()

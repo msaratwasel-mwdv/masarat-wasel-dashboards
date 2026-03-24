@@ -270,8 +270,9 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::get('classes-api', [ClassroomController::class, 'apiIndex'])->name('classrooms.api');
         Route::resource('classrooms', ClassroomController::class);
 
-        // 3. إدارة المعلمين
+        // 3. إدارة المعلمين والمشرفين
         Route::resource('teachers', TeacherController::class)->except(['show']);
+        Route::resource('supervisors', \App\Http\Controllers\School\SupervisorController::class)->except(['show']);
 
         // 4. إدارة الطلاب
         Route::get('students-api', [StudentController::class, 'apiIndex'])->name('students.api');
@@ -309,6 +310,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::post('buses/bulk-destroy', [\App\Http\Controllers\School\BusController::class, 'bulkDestroy'])->name('buses.bulk-destroy');
         Route::resource('bus-groups', \App\Http\Controllers\School\BusGroupController::class);
         Route::get('buses/tracking/api', [\App\Http\Controllers\School\BusController::class, 'trackingApi'])->name('buses.tracking.api');
+        Route::get('live-tracking', [\App\Http\Controllers\School\BusController::class, 'liveTracking'])->name('live-tracking.index');
         Route::get('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'assignStudentsPage'])->name('buses.students.assign');
         Route::post('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'saveAssignedStudents'])->name('buses.students.save');
 
@@ -330,6 +332,10 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         // Trips Dashboard
         Route::get('trips-dashboard', [\App\Http\Controllers\School\TripDashboardController::class, 'index'])->name('trips.dashboard');
         Route::get('trips/{trip}', [\App\Http\Controllers\School\TripDashboardController::class, 'show'])->name('trips.show');
+
+        // Trip Reports
+        Route::get('trip-reports', [\App\Http\Controllers\School\TripReportController::class, 'index'])->name('trip-reports.index');
+        Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');
     });
 
 // ⚪ ثالثاً: روابط الملف الشخصي والإشعارات

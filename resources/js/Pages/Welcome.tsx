@@ -46,7 +46,7 @@ export default function Welcome({
           content="مسارات واصل - منصة ذكية لإدارة النقل المدرسي. آمنة وفعالة وشفافة للمدارس الحديثة."
         />
         <script src="https://unpkg.com/@phosphor-icons/web"></script>
-        <link rel="icon" type="image/png" href="/assets/images/icon 3.png" />
+        <link rel="icon" type="image/png" href="/assets/images/masarat-wasel-logo.jpg" />
       </Head>
 
       <div dir="rtl">
@@ -55,9 +55,9 @@ export default function Welcome({
           <div className="container navbar-container">
             <Link href="/" className="navbar-brand">
               <img
-                src="/assets/images/icon 3.png"
+                src="/assets/images/masarat-wasel-logo.jpg"
                 alt="شعار مسارات واصل"
-                style={{ width: "40px", height: "40px", objectFit: "contain" }}
+                style={{ height: "36px", objectFit: "contain", borderRadius: "8px" }}
               />
               <span>مسارات واصل</span>
             </Link>

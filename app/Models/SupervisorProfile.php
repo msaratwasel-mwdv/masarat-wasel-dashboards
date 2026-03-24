@@ -11,6 +11,8 @@ class SupervisorProfile extends Model
         'emergency_contact_name',
         'emergency_contact_phone',
         'status',
+        'supervisor_type',
+        'tracking_type',
     ];
 
     public function user()

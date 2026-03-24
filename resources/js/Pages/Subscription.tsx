@@ -42,7 +42,7 @@ export default function Subscription() {
       <Head>
         <title>نموذج الاشتراك المدرسي - مسارات واصل</title>
         <meta name="description" content="اشترك في منصة وصل للنقل المدرسي" />
-        <link rel="icon" type="image/png" href="/assets/images/icon 3.png" />
+        <link rel="icon" type="image/png" href="/assets/images/masarat-wasel-logo.jpg" />
       </Head>
 
       {/* Navigation */}
@@ -52,9 +52,9 @@ export default function Subscription() {
             <Link href="/" className="flex items-center gap-3 group">
               <div className="w-12 h-12 bg-gradient-to-tr from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center shadow-sm border border-blue-100 group-hover:shadow-md transition-all duration-300">
                 <img
-                  src="/assets/images/icon 3.png"
-                  alt="شعار وصل"
-                  className="w-8 h-8 object-contain"
+                  src="/assets/images/masarat-wasel-logo.jpg"
+                  alt="شعار مسارات واصل"
+                  className="h-10 object-contain rounded-lg"
                 />
               </div>
               <span className="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
@@ -562,9 +562,9 @@ export default function Subscription() {
             <div className="md:col-span-1">
               <Link href="/" className="flex items-center gap-2 mb-4">
                 <img
-                  src="/assets/images/icon 3.png"
-                  alt="شعار وصل"
-                  className="w-8 h-8 object-contain"
+                  src="/assets/images/masarat-wasel-logo.jpg"
+                  alt="شعار مسارات واصل"
+                  className="h-8 object-contain rounded-md"
                 />
                 <span className="text-xl font-bold text-slate-800">
                   مسارات واصل
