@@ -224,6 +224,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('buses/{bus}/assign', [BusController::class, 'assignToSchool'])->name('buses.assign');
         Route::post('buses/{bus}/assign-route', [BusController::class, 'assignRoute'])->name('buses.assign-route');
         Route::post('buses/{bus}/archive', [BusController::class, 'archive'])->name('buses.archive');
+        Route::post('buses/{bus}/restore', [BusController::class, 'restore'])->name('buses.restore');
         Route::delete('buses/documents/{document}', [BusController::class, 'deleteDocument'])->name('buses.documents.destroy');
 
         // طلبات الحافلات

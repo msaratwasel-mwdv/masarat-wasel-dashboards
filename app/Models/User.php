@@ -80,6 +80,16 @@ class User extends Authenticatable
         return $this->hasOne(SupervisorProfile::class);
     }
 
+    public function assignedBus(): HasOne
+    {
+        return $this->hasOne(Bus::class, 'driver_id');
+    }
+
+    public function assignedBusAsSupervisor(): HasOne
+    {
+        return $this->hasOne(Bus::class, 'supervisor_id');
+    }
+
     /**
      * الطلاب المرتبطون بولي الأمر هذا
      */

@@ -13,26 +13,69 @@ use Illuminate\Validation\Rule;
 
 class StaffController extends Controller
 {
+    use \App\Traits\DataTableTrait;
+
     // --- 1. عرض القائمة (READ) ---
-    public function index()
+    public function index(Request $request)
     {
-        // جلب جميع السائقين (سواء مرتبطين بمدرسة أو لا)
-        $drivers = User::where('role', 'driver')
-            ->with('driverProfile')
-            ->latest()
-            ->get()
-            ->map(function ($driver) {
-                // هل هذا السائق مُعيَّن لباص؟
-                $bus = \App\Models\Bus::where('driver_id', $driver->id)
-                    ->select('id', 'bus_code', 'school_id')
-                    ->with('school:id,name')
-                    ->first();
-                $driver->assigned_bus = $bus;
-                return $driver;
-            });
+        $statusFilter = $request->input('status', 'all');
+
+        $query = User::where('role', 'driver')
+            ->with(['driverProfile', 'assignedBus.school']);
+
+        if ($statusFilter === 'assigned') {
+            $query->whereHas('assignedBus');
+        } elseif ($statusFilter === 'available') {
+            $query->whereDoesntHave('assignedBus');
+        }
+
+        $paginated = $this->applyDataTable($query, $request, [
+            'name',
+            'name_en',
+            'national_id',
+            'phone',
+            'email',
+            'user_code',
+            'driverProfile.license_number',
+        ], 15, function($driver) {
+            return [
+                'الاسم' => $driver->name,
+                'الاسم (EN)' => $driver->name_en,
+                'الكود' => $driver->user_code,
+                'الهوية' => $driver->national_id,
+                'رقم الجوال' => $driver->phone,
+                'البريد الإلكتروني' => $driver->email,
+                'رقم الرخصة' => $driver->driverProfile ? $driver->driverProfile->license_number : 'غير محدد',
+                'تاريخ انتهاء الرخصة' => $driver->driverProfile ? $driver->driverProfile->license_expiry_date : 'غير محدد',
+                'الباص المعين' => $driver->assignedBus ? $driver->assignedBus->bus_code : 'متاح',
+                'حالة السائق' => $driver->driverProfile 
+                    ? match($driver->driverProfile->status) {
+                        'active' => 'نشط',
+                        'inactive' => 'غير نشط',
+                        'pending' => 'قيد المراجعة',
+                        default => $driver->driverProfile->status
+                    } 
+                    : 'نشط',
+            ];
+        });
+
+        if ($paginated instanceof \Symfony\Component\HttpFoundation\Response) {
+            return $paginated;
+        }
+
+        $counts = [
+            'all' => User::where('role', 'driver')->count(),
+            'assigned' => User::where('role', 'driver')->whereHas('assignedBus')->count(),
+            'available' => User::where('role', 'driver')->whereDoesntHave('assignedBus')->count(),
+        ];
 
         return Inertia::render('Admin/Drivers/Index', [
-            'drivers' => $drivers
+            'drivers' => $paginated,
+            'counts'  => $counts,
+            'filters' => [
+                'search' => $request->input('search', ''),
+                'status' => $statusFilter,
+            ]
         ]);
     }
 

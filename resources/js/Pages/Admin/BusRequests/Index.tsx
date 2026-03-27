@@ -1,308 +1,396 @@
-import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import useTranslation from '@/hooks/useTranslation';
+import { useState, useMemo } from "react";
+import debounce from "lodash/debounce";
+import { Head, router } from "@inertiajs/react";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import { useTheme } from "@/Contexts/ThemeContext";
+import BaseDataTable, {
+  ActionButton,
+  StatusBadge,
+  type FilterTab,
+  type PaginationMeta,
+} from "@/Components/BaseDataTable";
+import Modal from "@/Components/Modal";
+import { createColumnHelper } from "@tanstack/react-table";
+
+// ─── Types ───────────────────────────────────────────────────────
 
 interface BusRequest {
-    id: number;
-    school_id: number;
-    school: { id: number; name: string };
-    request_type: 'permanent' | 'temporary' | 'field_trip';
-    number_of_buses: number;
-    start_date: string;
-    end_date?: string;
-    reason: string;
-    special_requirements?: string;
-    status: 'pending' | 'approved' | 'rejected';
-    rejection_reason?: string;
-    approved_at?: string;
-    created_at: string;
+  id: number;
+  school_id: number;
+  school: { id: number; name: string };
+  request_type: "permanent" | "temporary" | "field_trip";
+  number_of_buses: number;
+  start_date: string;
+  end_date?: string;
+  reason: string;
+  special_requirements?: string;
+  status: "pending" | "approved" | "rejected";
+  rejection_reason?: string;
+  approved_at?: string;
+  created_at: string;
 }
 
 interface Props {
-    auth: any;
-    requests: BusRequest[];
+  auth: any;
+  requests: {
+    data: BusRequest[];
+    links: PaginationMeta["links"];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+  };
+  counts: {
+    all: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+  };
+  filters: {
+    search: string;
+    status: string;
+  };
 }
 
-export default function Index({ auth, requests }: Props) {
-    const { t, isRtl } = useTranslation();
-    const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
-    const [showRejectModal, setShowRejectModal] = useState(false);
-    const [selectedRequest, setSelectedRequest] = useState<BusRequest | null>(null);
-    const [rejectionReason, setRejectionReason] = useState('');
+// ─── Page Component ──────────────────────────────────────────────
 
-    const filteredRequests = requests.filter(req => 
-        statusFilter === 'all' || req.status === statusFilter
+export default function Index({ auth, requests, counts, filters }: Props) {
+  const { isRTL, theme } = useTheme();
+  const isDark = theme === "dark";
+
+  const [search, setSearch] = useState(filters.search);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<BusRequest | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  // ── Server-side search (debounced via Inertia) ──
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((value: string) => {
+        router.get(
+          route("admin.bus-requests.index"),
+          { search: value, status: filters.status === "all" ? undefined : filters.status },
+          { preserveState: true, replace: true }
+        );
+      }, 300),
+    [filters.status]
+  );
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    debouncedSearch(value);
+  };
+
+  const handleFilterChange = (key: string) => {
+    router.get(
+      route("admin.bus-requests.index"),
+      { search: filters.search, status: key === "all" ? undefined : key },
+      { preserveState: true, replace: true }
     );
+  };
 
-    const pendingCount = requests.filter(r => r.status === 'pending').length;
-    const approvedCount = requests.filter(r => r.status === 'approved').length;
-    const rejectedCount = requests.filter(r => r.status === 'rejected').length;
+  // ── Actions ──
+  const handleApprove = (req: BusRequest) => {
+    if (
+      confirm(
+        isRTL
+          ? "هل أنت متأكد من الموافقة على هذا الطلب؟"
+          : "Are you sure you want to approve this request?"
+      )
+    ) {
+      router.post(route("admin.bus-requests.approve", req.id));
+    }
+  };
 
-    const handleApprove = (request: BusRequest) => {
-        if (confirm(t('Are you sure you want to approve this request?'))) {
-            router.post(route('admin.bus-requests.approve', request.id));
+  const handleReject = () => {
+    if (selectedRequest) {
+      router.post(
+        route("admin.bus-requests.reject", selectedRequest.id),
+        { rejection_reason: rejectionReason },
+        {
+          onSuccess: () => {
+            setShowRejectModal(false);
+            setSelectedRequest(null);
+            setRejectionReason("");
+          },
         }
-    };
+      );
+    }
+  };
 
-    const handleReject = () => {
-        if (selectedRequest) {
-            router.post(route('admin.bus-requests.reject', selectedRequest.id), {
-                rejection_reason: rejectionReason,
-            }, {
-                onSuccess: () => {
-                    setShowRejectModal(false);
-                    setSelectedRequest(null);
-                    setRejectionReason('');
-                }
-            });
-        }
-    };
+  // ── Helpers ──
+  const getTypeLabel = (type: string) => {
+    const labels: Record<string, string> = isRTL
+      ? { permanent: "دائم", temporary: "مؤقت", field_trip: "رحلة ميدانية" }
+      : { permanent: "Permanent", temporary: "Temporary", field_trip: "Field Trip" };
+    return labels[type] || type;
+  };
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'pending':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 inline-flex items-center gap-1">
-                    <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-                    {t('Pending')}
-                </span>;
-            case 'approved':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">✅ {t('Approved')}</span>;
-            case 'rejected':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">❌ {t('Rejected')}</span>;
-            default:
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{status}</span>;
-        }
-    };
+  const statusVariant = (s: string): "yellow" | "green" | "red" | "gray" => {
+    if (s === "pending") return "yellow";
+    if (s === "approved") return "green";
+    if (s === "rejected") return "red";
+    return "gray";
+  };
 
-    const getTypeText = (type: string) => {
-        switch (type) {
-            case 'permanent': return t('Permanent');
-            case 'temporary': return t('Temporary');
-            case 'field_trip': return t('Field Trip');
-            default: return type;
-        }
-    };
+  const statusLabel = (s: string) => {
+    const map: Record<string, string> = isRTL
+      ? { pending: "معلّق", approved: "مقبول", rejected: "مرفوض" }
+      : { pending: "Pending", approved: "Approved", rejected: "Rejected" };
+    return map[s] || s;
+  };
 
-    return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-3xl font-extrabold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                    {t('Bus Requests Management')}
-                </h2>
-            }
-        >
-            <Head title={t('Bus Requests')} />
+  // ── Filter tabs ──
+  const filterTabs: FilterTab[] = [
+    { key: "all", label: isRTL ? "الكل" : "All", count: counts.all },
+    { key: "pending", label: isRTL ? "معلّق" : "Pending", count: counts.pending, dotColor: "bg-yellow-400" },
+    { key: "approved", label: isRTL ? "مقبول" : "Approved", count: counts.approved, dotColor: "bg-green-400" },
+    { key: "rejected", label: isRTL ? "مرفوض" : "Rejected", count: counts.rejected, dotColor: "bg-red-400" },
+  ];
 
-            <div className="space-y-6">
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Pending */}
-                    <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-500 p-6 shadow-2xl hover:shadow-yellow-500/50 transition-all duration-300 transform hover:scale-105">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
-                        <div className="relative flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-bold text-yellow-100 uppercase tracking-wider">{t('Pending')}</p>
-                                <h3 className="text-5xl font-extrabold text-white mt-2">{pendingCount}</h3>
-                            </div>
-                            <div className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center">
-                                <span className="text-5xl">⏳</span>
-                            </div>
-                        </div>
-                    </div>
+  // ── Column definitions ──
+  const columnHelper = createColumnHelper<BusRequest>();
 
-                    {/* Approved */}
-                    <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 p-6 shadow-2xl hover:shadow-green-500/50 transition-all duration-300 transform hover:scale-105">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
-                        <div className="relative flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-bold text-green-100 uppercase tracking-wider">{t('Approved')}</p>
-                                <h3 className="text-5xl font-extrabold text-white mt-2">{approvedCount}</h3>
-                            </div>
-                            <div className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center">
-                                <span className="text-5xl">✅</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Rejected */}
-                    <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500 to-pink-600 p-6 shadow-2xl hover:shadow-red-500/50 transition-all duration-300 transform hover:scale-105">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
-                        <div className="relative flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-bold text-red-100 uppercase tracking-wider">{t('Rejected')}</p>
-                                <h3 className="text-5xl font-extrabold text-white mt-2">{rejectedCount}</h3>
-                            </div>
-                            <div className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center">
-                                <span className="text-5xl">❌</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Filters */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4">
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value as any)}
-                        className="px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow"
-                    >
-                        <option value="all">{t('All Status')}</option>
-                        <option value="pending">{t('Pending')}</option>
-                        <option value="approved">{t('Approved')}</option>
-                        <option value="rejected">{t('Rejected')}</option>
-                    </select>
-                </div>
-
-                {/* Requests List */}
-                {filteredRequests.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-6">
-                        {filteredRequests.map((request) => (
-                            <div
-                                key={request.id}
-                                className="group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300"
-                            >
-                                {/* Gradient Bar */}
-                                <div className={`h-2 ${request.status === 'pending' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' : request.status === 'approved' ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-gradient-to-r from-red-400 to-pink-500'}`} />
-                                
-                                <div className="p-6">
-                                    <div className="flex flex-col lg:flex-row justify-between gap-6">
-                                        {/* Content */}
-                                        <div className="flex-1 space-y-4">
-                                            {/* Header */}
-                                            <div className="flex items-center gap-3 flex-wrap">
-                                                <h3 className="text-2xl font-bold text-gray-800 dark:text-white">
-                                                    {request.school.name}
-                                                </h3>
-                                                {getStatusBadge(request.status)}
-                                                <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 text-xs font-semibold rounded-full">
-                                                    {getTypeText(request.request_type)}
-                                                </span>
-                                            </div>
-
-                                            {/* Details Grid */}
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400">🚌 {t('Buses')}</p>
-                                                    <p className="text-lg font-bold text-gray-800 dark:text-white">{request.number_of_buses}</p>
-                                                </div>
-                                                <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400">📅 {t('Start Date')}</p>
-                                                    <p className="text-lg font-bold text-gray-800 dark:text-white">{new Date(request.start_date).toLocaleDateString()}</p>
-                                                </div>
-                                                {request.end_date && (
-                                                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
-                                                        <p className="text-xs text-gray-500 dark:text-gray-400">📅 {t('End Date')}</p>
-                                                        <p className="text-lg font-bold text-gray-800 dark:text-white">{new Date(request.end_date).toLocaleDateString()}</p>
-                                                    </div>
-                                                )}
-                                                <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400">📝 {t('Submitted')}</p>
-                                                    <p className="text-sm font-bold text-gray-800 dark:text-white">{new Date(request.created_at).toLocaleDateString()}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Reason */}
-                                            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">
-                                                <p className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">{t('Reason')}:</p>
-                                                <p className="text-sm text-gray-700 dark:text-gray-300">{request.reason}</p>
-                                            </div>
-
-                                            {request.special_requirements && (
-                                                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl">
-                                                    <p className="text-sm font-semibold text-purple-800 dark:text-purple-300 mb-1">{t('Special Requirements')}:</p>
-                                                    <p className="text-sm text-gray-700 dark:text-gray-300">{request.special_requirements}</p>
-                                                </div>
-                                            )}
-
-                                            {request.rejection_reason && (
-                                                <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-l-4 border-red-500">
-                                                    <p className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">{t('Rejection Reason')}:</p>
-                                                    <p className="text-sm text-red-700 dark:text-red-400">{request.rejection_reason}</p>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Actions */}
-                                        {request.status === 'pending' && (
-                                            <div className="flex lg:flex-col gap-3">
-                                                <button
-                                                    onClick={() => handleApprove(request)}
-                                                    className="flex-1 lg:flex-none px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                                                >
-                                                    ✅ {t('Approve')}
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedRequest(request);
-                                                        setShowRejectModal(true);
-                                                    }}
-                                                    className="flex-1 lg:flex-none px-6 py-3 bg-gradient-to-r from-red-500 to-pink-600 text-white font-bold rounded-xl hover:from-red-600 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                                                >
-                                                    ❌ {t('Reject')}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 text-center">
-                        <div className="text-8xl mb-6">📋</div>
-                        <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">{t('No Requests Found')}</h3>
-                        <p className="text-gray-500 dark:text-gray-400">No bus requests match your filter</p>
-                    </div>
-                )}
-
-                {/* Reject Modal */}
-                {showRejectModal && selectedRequest && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full">
-                            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                                <h3 className="text-2xl font-bold text-gray-800 dark:text-white">
-                                    {t('Reject Request')}
-                                </h3>
-                            </div>
-
-                            <div className="p-6 space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        {t('Rejection Reason')} ({t('Optional')})
-                                    </label>
-                                    <textarea
-                                        value={rejectionReason}
-                                        onChange={(e) => setRejectionReason(e.target.value)}
-                                        rows={4}
-                                        className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-red-500"
-                                        placeholder={t('Explain why this request was rejected...')}
-                                    />
-                                </div>
-
-                                <div className="flex gap-4 justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-                                    <button
-                                        onClick={() => {
-                                            setShowRejectModal(false);
-                                            setSelectedRequest(null);
-                                            setRejectionReason('');
-                                        }}
-                                        className="px-6 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold"
-                                    >
-                                        {t('Cancel')}
-                                    </button>
-                                    <button
-                                        onClick={handleReject}
-                                        className="px-6 py-2 bg-gradient-to-r from-red-500 to-pink-600 text-white font-bold rounded-xl hover:from-red-600 hover:to-pink-700 transition-all shadow-lg"
-                                    >
-                                        {t('Reject Request')}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("school.name", {
+        header: isRTL ? "المدرسة" : "School",
+        cell: (info) => {
+          const req = info.row.original;
+          return (
+            <div
+              className={`${isRTL ? "text-right" : "text-left"} cursor-pointer`}
+              onClick={() => setExpandedId(expandedId === req.id ? null : req.id)}
+            >
+              <div className={`text-sm font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
+                {req.school.name}
+              </div>
+              <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                {new Date(req.created_at).toLocaleDateString("ar-SA")}
+              </div>
             </div>
-        </AuthenticatedLayout>
-    );
+          );
+        },
+      }),
+      columnHelper.accessor("request_type", {
+        header: isRTL ? "النوع" : "Type",
+        cell: (info) => (
+          <StatusBadge label={getTypeLabel(info.getValue())} variant="blue" />
+        ),
+      }),
+      columnHelper.accessor("number_of_buses", {
+        header: isRTL ? "العدد" : "Buses",
+        cell: (info) => (
+          <span className={`text-sm font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
+            {info.getValue()}
+          </span>
+        ),
+      }),
+      columnHelper.accessor("start_date", {
+        header: isRTL ? "التاريخ" : "Date",
+        cell: (info) => {
+          const req = info.row.original;
+          return (
+            <div className={`text-xs ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+              <div>{new Date(req.start_date).toLocaleDateString()}</div>
+              {req.end_date && (
+                <div className={isDark ? "text-gray-500" : "text-gray-400"}>
+                  → {new Date(req.end_date).toLocaleDateString()}
+                </div>
+              )}
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("status", {
+        header: isRTL ? "الحالة" : "Status",
+        cell: (info) => (
+          <StatusBadge
+            label={statusLabel(info.getValue())}
+            variant={statusVariant(info.getValue())}
+          />
+        ),
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: isRTL ? "الإجراءات" : "Actions",
+        cell: (info) => {
+          const req = info.row.original;
+          if (req.status !== "pending") return null;
+          return (
+            <div className={`flex gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+              <ActionButton
+                label={isRTL ? "قبول" : "Approve"}
+                onClick={() => handleApprove(req)}
+                color="green"
+              />
+              <ActionButton
+                label={isRTL ? "رفض" : "Reject"}
+                onClick={() => {
+                  setSelectedRequest(req);
+                  setShowRejectModal(true);
+                }}
+                color="red"
+              />
+            </div>
+          );
+        },
+      }),
+    ],
+    [isRTL, isDark, expandedId]
+  );
+
+  // ── Pagination meta ──
+  const pagination: PaginationMeta = {
+    links: requests.links,
+    current_page: requests.current_page,
+    last_page: requests.last_page,
+    per_page: requests.per_page,
+    total: requests.total,
+    from: requests.from,
+    to: requests.to,
+  };
+
+  return (
+    <AuthenticatedLayout
+      header={
+        <h2 className={`font-bold text-xl ${isDark ? "text-gray-200" : "text-gray-800"}`}>
+          {isRTL ? "إدارة طلبات الحافلات" : "Bus Requests Management"}
+        </h2>
+      }
+    >
+      <Head title={isRTL ? "طلبات الحافلات" : "Bus Requests"} />
+
+      <div className={`py-6 dir-${isRTL ? "rtl" : "ltr"}`}>
+        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+          <BaseDataTable<BusRequest>
+            columns={columns}
+            data={requests.data}
+            pagination={pagination}
+            title={isRTL ? "طلبات الحافلات" : "Bus Requests"}
+            subtitle={
+              isRTL
+                ? `${counts.all} طلب — ${counts.pending} معلّق — ${counts.approved} مقبول — ${counts.rejected} مرفوض`
+                : `${counts.all} total — ${counts.pending} pending — ${counts.approved} approved — ${counts.rejected} rejected`
+            }
+            exportEnabled={true}
+            searchValue={search}
+            onSearchChange={handleSearch}
+            searchPlaceholder={isRTL ? "بحث باسم المدرسة أو السبب..." : "Search by school or reason..."}
+            filterTabs={filterTabs}
+            activeFilter={filters.status}
+            onFilterChange={handleFilterChange}
+            emptyMessage={isRTL ? "لا توجد طلبات مطابقة." : "No requests found."}
+          />
+
+          {/* Expanded Details — rendered below table row*/}
+          {expandedId && requests.data.find((r) => r.id === expandedId) && (
+            <div
+              className={`mt-1 mb-4 mx-1 p-4 rounded-xl border ${
+                isDark ? "bg-gray-900/50 border-gray-700" : "bg-gray-50 border-gray-200"
+              }`}
+            >
+              {(() => {
+                const req = requests.data.find((r) => r.id === expandedId)!;
+                return (
+                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 text-sm ${isRTL ? "text-right" : ""}`}>
+                    <div className={`p-3 rounded-xl border ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                      <p className={`text-xs font-bold uppercase mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                        {isRTL ? "السبب" : "Reason"}
+                      </p>
+                      <p className={isDark ? "text-gray-200" : "text-gray-800"}>{req.reason}</p>
+                    </div>
+                    {req.special_requirements && (
+                      <div className={`p-3 rounded-xl border ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                        <p className={`text-xs font-bold uppercase mb-1 ${isDark ? "text-purple-400" : "text-purple-600"}`}>
+                          {isRTL ? "متطلبات خاصة" : "Special Requirements"}
+                        </p>
+                        <p className={isDark ? "text-gray-200" : "text-gray-800"}>{req.special_requirements}</p>
+                      </div>
+                    )}
+                    {req.rejection_reason && (
+                      <div className={`p-3 rounded-xl border md:col-span-2 ${isDark ? "bg-red-900/20 border-red-900/30" : "bg-red-50 border-red-200"}`}>
+                        <p className={`text-xs font-bold uppercase mb-1 ${isDark ? "text-red-400" : "text-red-600"}`}>
+                          {isRTL ? "سبب الرفض" : "Rejection Reason"}
+                        </p>
+                        <p className={isDark ? "text-red-300" : "text-red-700"}>{req.rejection_reason}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Reject Modal */}
+      <Modal show={showRejectModal} onClose={() => setShowRejectModal(false)}>
+        <div className={`${isDark ? "bg-gray-800" : "bg-white"}`}>
+          <div className={`p-6 border-b ${isDark ? "border-gray-700" : "border-gray-200"}`}>
+            <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
+              <div className="w-10 h-10 bg-red-100 text-red-600 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <div>
+                <h3 className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
+                  {isRTL ? "رفض الطلب" : "Reject Request"}
+                </h3>
+                <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                  {selectedRequest?.school.name}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div className={isRTL ? "text-right" : ""}>
+              <label className={`block text-sm font-medium mb-2 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+                {isRTL ? "سبب الرفض (اختياري)" : "Rejection Reason (Optional)"}
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+                className={`w-full px-4 py-2 rounded-xl border-2 focus:ring-2 focus:ring-red-500 transition ${
+                  isDark ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-200 text-gray-800"
+                }`}
+                placeholder={isRTL ? "اشرح سبب رفض الطلب..." : "Explain why this request was rejected..."}
+              />
+            </div>
+
+            <div
+              className={`flex gap-3 pt-4 border-t ${isDark ? "border-gray-700" : "border-gray-200"} ${
+                isRTL ? "flex-row-reverse" : "justify-end"
+              }`}
+            >
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setSelectedRequest(null);
+                  setRejectionReason("");
+                }}
+                className={`px-5 py-2 rounded-xl font-semibold border-2 transition ${
+                  isDark ? "border-gray-600 text-gray-300 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                {isRTL ? "إلغاء" : "Cancel"}
+              </button>
+              <button
+                onClick={handleReject}
+                className="px-5 py-2 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition shadow-lg shadow-red-500/20"
+              >
+                {isRTL ? "تأكيد الرفض" : "Reject Request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+    </AuthenticatedLayout>
+  );
 }

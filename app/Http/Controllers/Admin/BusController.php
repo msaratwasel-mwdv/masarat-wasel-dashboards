@@ -16,38 +16,99 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class BusController extends Controller
 {
-    public function index()
-    {
-        // 1. جلب الباصات مع علاقاتها
-        $buses = Bus::with(['driver', 'supervisor', 'school', 'documents', 'route'])
-            ->latest()
-            ->get();
+    use \App\Traits\DataTableTrait;
 
-        // 2. جلب السائقين المتاحين: فقط من ليس مُعيَّناً لأي باص حالياً
+    public function index(Request $request)
+    {
+        $statusFilter = $request->input('status', 'all');
+
+        // 1. Base query for buses
+        $query = Bus::with(['driver', 'supervisor', 'school', 'documents', 'route']);
+
+        // Filter by archive or status
+        if ($statusFilter === 'archived') {
+            $query->onlyTrashed();
+        } else {
+            if ($statusFilter === 'out_of_service') {
+                $query->whereIn('status', ['out_of_service', 'inactive']);
+            } elseif ($statusFilter !== 'all') {
+                $query->where('status', $statusFilter);
+            }
+        }
+
+        // Apply DataTable (search, sort, paginate)
+        $paginated = $this->applyDataTable($query, $request, [
+            'bus_code',
+            'plate_number',
+            'model',
+            'school.name',
+            'driver.name',
+            'supervisor.name',
+            'route.name',
+        ], 15, function($bus) {
+            return [
+                'كود الباص' => $bus->bus_code,
+                'رقم اللوحة' => $bus->plate_number,
+                'الموديل' => $bus->model,
+                'سنة الصنع' => $bus->manufacturing_year,
+                'السعة' => $bus->capacity,
+                'المدرسة' => $bus->school ? $bus->school->name : 'غير محدد',
+                'المسار' => $bus->route ? $bus->route->name : 'غير محدد',
+                'السائق' => $bus->driver ? $bus->driver->name : 'متاح',
+                'المشرفة' => $bus->supervisor ? $bus->supervisor->name : 'متاح',
+                'الحالة' => match($bus->status) {
+                    'active' => 'نشط',
+                    'maintenance' => 'صيانة',
+                    'out_of_service' => 'خارج الخدمة',
+                    'inactive' => 'غير نشط',
+                    default => 'مؤرشف'
+                },
+            ];
+        });
+
+        if ($paginated instanceof \Symfony\Component\HttpFoundation\Response) {
+            return $paginated;
+        }
+
+        // Get counts (unfiltered)
+        $counts = [
+            'all' => Bus::count(),
+            'active' => Bus::where('status', 'active')->count(),
+            'maintenance' => Bus::where('status', 'maintenance')->count(),
+            'out_of_service' => Bus::whereIn('status', ['out_of_service', 'inactive'])->count(),
+            'archived' => Bus::onlyTrashed()->count(),
+        ];
+
+        // 3. جلب السائقين المتاحين
         $assignedDriverIds = Bus::whereNotNull('driver_id')->pluck('driver_id')->toArray();
         $drivers = User::where('role', 'driver')
             ->whereNotIn('id', $assignedDriverIds)
             ->select('id', 'name')
             ->get();
 
-        // 3. جلب المشرفين المتاحين: فقط من ليس مُعيَّناً لأي باص حالياً
+        // 4. جلب المشرفين المتاحين
         $assignedSupervisorIds = Bus::whereNotNull('supervisor_id')->pluck('supervisor_id')->toArray();
         $supervisors = User::where('role', 'supervisor')
             ->whereNotIn('id', $assignedSupervisorIds)
             ->select('id', 'name')
             ->get();
 
-        // 4. جلب المدارس النشطة
+        // 5. جلب المدارس النشطة
         $schools = School::where('status', 'active')->get();
 
-        // 5. جلب جميع المسارات
+        // 6. جلب جميع المسارات
         $routes = \App\Models\Route::select('id', 'name', 'code', 'school_id')
             ->with('school:id,name')
             ->orderBy('name')
             ->get();
 
         return Inertia::render('Admin/Buses/Index', [
-            'buses'                => $buses,
+            'buses'                => $paginated,
+            'counts'               => $counts,
+            'filters'              => [
+                'search' => $request->input('search', ''),
+                'status' => $statusFilter,
+            ],
             'availableDrivers'     => $drivers,
             'availableSupervisors' => $supervisors,
             'schools'              => $schools,
@@ -315,5 +376,17 @@ class BusController extends Controller
             : 'تم إلغاء تعيين المسار عن الحافلة';
 
         return redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * استعادة حافلة مؤرشفة.
+     */
+    public function restore($busId)
+    {
+        $bus = Bus::onlyTrashed()->findOrFail($busId);
+        $bus->restore();
+        $bus->update(['status' => 'active']);
+
+        return redirect()->back()->with('success', 'تم استعادة الحافلة بنجاح');
     }
 }

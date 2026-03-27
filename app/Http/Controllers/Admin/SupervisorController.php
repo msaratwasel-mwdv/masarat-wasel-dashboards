@@ -13,23 +13,67 @@ use Illuminate\Validation\Rule;
 
 class SupervisorController extends Controller
 {
-    public function index()
+    use \App\Traits\DataTableTrait;
+
+    public function index(Request $request)
     {
-        $supervisors = User::where('role', 'supervisor')
-            ->with('supervisorProfile')
-            ->latest()
-            ->get()
-            ->map(function ($supervisor) {
-                $bus = \App\Models\Bus::where('supervisor_id', $supervisor->id)
-                    ->select('id', 'bus_code', 'school_id')
-                    ->with('school:id,name')
-                    ->first();
-                $supervisor->assigned_bus = $bus;
-                return $supervisor;
-            });
+        $statusFilter = $request->input('status', 'all');
+
+        $query = User::where('role', 'supervisor')
+            ->with(['supervisorProfile', 'assignedBusAsSupervisor.school']);
+
+        if ($statusFilter === 'assigned') {
+            $query->whereHas('assignedBusAsSupervisor');
+        } elseif ($statusFilter === 'available') {
+            $query->whereDoesntHave('assignedBusAsSupervisor');
+        }
+
+        $paginated = $this->applyDataTable($query, $request, [
+            'name',
+            'name_en',
+            'national_id',
+            'phone',
+            'email',
+            'user_code',
+        ], 15, function($supervisor) {
+            return [
+                'الاسم' => $supervisor->name,
+                'الاسم (EN)' => $supervisor->name_en,
+                'الكود' => $supervisor->user_code,
+                'الهوية' => $supervisor->national_id,
+                'رقم الجوال' => $supervisor->phone,
+                'البريد الإلكتروني' => $supervisor->email,
+                'اسم جهة الطوارئ' => $supervisor->supervisorProfile ? $supervisor->supervisorProfile->emergency_contact_name : 'غير محدد',
+                'رقم هاتف الطوارئ' => $supervisor->supervisorProfile ? $supervisor->supervisorProfile->emergency_contact_phone : 'غير محدد',
+                'الباص المعين' => $supervisor->assignedBusAsSupervisor ? $supervisor->assignedBusAsSupervisor->bus_code : 'متاح',
+                'الحالة' => $supervisor->supervisorProfile 
+                    ? match($supervisor->supervisorProfile->status) {
+                        'active' => 'نشط',
+                        'inactive' => 'غير نشط',
+                        'pending' => 'قيد المراجعة',
+                        default => $supervisor->supervisorProfile->status
+                    } 
+                    : 'نشط',
+            ];
+        });
+
+        if ($paginated instanceof \Symfony\Component\HttpFoundation\Response) {
+            return $paginated;
+        }
+
+        $counts = [
+            'all' => User::where('role', 'supervisor')->count(),
+            'assigned' => User::where('role', 'supervisor')->whereHas('assignedBusAsSupervisor')->count(),
+            'available' => User::where('role', 'supervisor')->whereDoesntHave('assignedBusAsSupervisor')->count(),
+        ];
 
         return Inertia::render('Admin/Supervisors/Index', [
-            'supervisors' => $supervisors
+            'supervisors' => $paginated,
+            'counts'      => $counts,
+            'filters'     => [
+                'search' => $request->input('search', ''),
+                'status' => $statusFilter,
+            ]
         ]);
     }
 
