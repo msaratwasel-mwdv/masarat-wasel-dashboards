@@ -26,6 +26,7 @@ Thumbs.db
 /storage/framework/cache/
 /storage/framework/sessions/
 /storage/logs/
+.agents/
 
 # Local test and debug scripts
 test_*.php
