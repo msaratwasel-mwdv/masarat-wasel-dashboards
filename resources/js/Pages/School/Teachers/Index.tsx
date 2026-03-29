@@ -12,6 +12,7 @@ interface Teacher {
   email: string | null;
   phone: string;
   is_active: boolean;
+  image?: string | null;
 }
 
 interface Props {
@@ -23,68 +24,74 @@ interface Props {
 export default function TeachersIndex({ auth, teachers, filters }: Props) {
   const { t, isRtl } = useTranslation();
   const [search, setSearch] = useState(filters.search || "");
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentId, setCurrentId] = useState<number | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [teacherToEdit, setTeacherToEdit] = useState<Teacher | null>(null);
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
 
-  // Form for adding new teacher
-  const addForm = useForm({
+  const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
+    _method: "post",
     name: "",
     national_id: "",
     email: "",
     phone: "",
     password: "",
     role: "teacher",
+    is_active: true,
+    image: null as File | null,
   });
 
-  // Form for editing teacher
-  const editForm = useForm({
-    name: "",
-    national_id: "",
-    email: "",
-    phone: "",
-    password: "",
-    is_active: true as boolean,
-  });
-
-  const handleAddSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    addForm.post(route("school.teachers.store"), {
-      preserveScroll: true,
-      onSuccess: () => {
-        setShowAddModal(false);
-        addForm.reset();
-      },
-    });
-  };
-
-  const handleEditSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!teacherToEdit) return;
-
-    editForm.put(route("school.teachers.update", teacherToEdit.id), {
-      preserveScroll: true,
-      onSuccess: () => {
-        setShowEditModal(false);
-        editForm.reset();
-        setTeacherToEdit(null);
-      },
-    });
+  const openAddModal = () => {
+    setIsEditing(false);
+    setCurrentId(null);
+    setPreviewImage(null);
+    reset();
+    setData("_method", "post");
+    clearErrors();
+    setIsModalOpen(true);
   };
 
   const openEditModal = (teacher: Teacher) => {
-    setTeacherToEdit(teacher);
-    editForm.setData({
+    setIsEditing(true);
+    setCurrentId(teacher.id);
+    setPreviewImage(teacher.image ? `/storage/${teacher.image}` : null);
+    setData({
+      _method: "put",
       name: teacher.name,
       national_id: teacher.national_id,
       email: teacher.email || "",
       phone: teacher.phone || "",
       password: "",
+      role: "teacher",
       is_active: teacher.is_active,
+      image: null,
     });
-    setShowEditModal(true);
+    clearErrors();
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setPreviewImage(null);
+    reset();
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isEditing && currentId) {
+      post(route("school.teachers.update", currentId), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => closeModal(),
+      });
+    } else {
+      post(route("school.teachers.store"), {
+        preserveScroll: true,
+        onSuccess: () => closeModal(),
+      });
+    }
   };
 
   // Debounced search
@@ -185,7 +192,7 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
                 </div>
 
                 <button
-                  onClick={() => setShowAddModal(true)}
+                  onClick={openAddModal}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#0e7490] hover:bg-[#155e75] text-white px-8 py-3 rounded-[35px] font-bold shadow-lg shadow-cyan-500/20 transition-all hover:scale-[1.02] active:scale-95"
                 >
                   <span className="text-xl">+</span>
@@ -229,7 +236,22 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
                         <td
                           className={`px-6 py-4 text-gray-800 dark:text-white font-medium text-start`}
                         >
-                          {teacher.name}
+                          <div className={`flex items-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
+                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-[#0e7490] dark:text-cyan-400 flex items-center justify-center font-bold text-sm overflow-hidden border border-cyan-200 dark:border-cyan-800">
+                              {teacher.image ? (
+                                <img
+                                  src={`/storage/${teacher.image}`}
+                                  alt={teacher.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                teacher.name.charAt(0)
+                              )}
+                            </div>
+                            <div className={isRtl ? "text-right" : ""}>
+                              {teacher.name}
+                            </div>
+                          </div>
                         </td>
                         <td
                           className={`px-6 py-4 text-gray-600 dark:text-gray-300 font-mono text-sm text-start`}
@@ -283,350 +305,214 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
         </div>
       </div>
 
-      {/* Add Supervisor Modal */}
-      {showAddModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowAddModal(false)}
-        >
-          <div
-            className="bg-white dark:bg-[#1e293b] rounded-[30px] overflow-hidden border border-gray-100 dark:border-white/10 w-full max-w-lg shadow-2xl"
-            dir={isRtl ? "rtl" : "ltr"}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="bg-[#0e7490] p-6 text-white">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-white">
-                  {t("Add New Teacher")}
-                </h2>
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className="text-white/80 hover:text-white transition-colors"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M6 18L18 6M6 6l12 12"
+      {/* Unified Add/Edit Teacher Modal */}
+      <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
+        <div className={`relative bg-white dark:bg-[#1e293b] rounded-[30px] overflow-hidden shadow-2xl border border-gray-100 dark:border-white/10`} dir={isRtl ? "rtl" : "ltr"}>
+          
+          {/* Header */}
+          <div className="bg-[#0e7490] px-8 pt-8 pb-6 flex items-start justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-white">
+                {isEditing ? t("Edit Teacher") : t("Add New Teacher")}
+              </h2>
+              <p className="mt-1 text-sm text-white/80">
+                {isRtl ? "أكمل التفاصيل الشخصية والمهنية أدناه" : "Complete the identification and professional details below"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={closeModal}
+              className={`p-2 rounded-full hover:bg-white/10 transition-colors text-white/80 hover:text-white`}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <form onSubmit={submit} className="flex flex-col">
+            <div className="p-8 space-y-8">
+              {/* Photo Upload Section */}
+              <div className={`flex items-start gap-6`}>
+                <div className="relative w-24 h-24 rounded-[20px] bg-gray-50 dark:bg-[#0f172a] flex items-center justify-center border border-gray-200 dark:border-white/10 flex-shrink-0">
+                  <div className="w-full h-full rounded-[20px] overflow-hidden flex items-center justify-center">
+                    {data.image ? (
+                      <img src={URL.createObjectURL(data.image)} alt="Preview" className="w-full h-full object-cover" />
+                    ) : previewImage ? (
+                      <img src={previewImage} alt="Current" className="w-full h-full object-cover" />
+                    ) : (
+                      <svg className="w-10 h-10 text-gray-300 dark:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className={`absolute -bottom-2 ${isRtl ? "-left-2" : "-right-2"} w-8 h-8 rounded-full bg-[#0e7490] text-white flex flex-col items-center justify-center shadow-lg border-2 border-white dark:border-[#1e293b]`}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                </div>
+                
+                <div className="flex-1">
+                  <h4 className="font-bold text-gray-900 dark:text-white">
+                    {t("Profile Picture")}
+                  </h4>
+                  <p className="text-xs mt-1 max-w-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                    {isRtl 
+                      ? "مطلوبة لبطاقات الهوية. JPG أو PNG بحد أقصى 5MB. ضرورة وضوح الوجه بالكامل إلزامي." 
+                      : "Required for identification cards. JPG or PNG, maximum 5MB. Clear face visibility is mandatory."}
+                  </p>
+                  <div className="flex gap-3 mt-3">
+                    <label className="cursor-pointer px-4 py-2 rounded-[15px] text-sm font-semibold transition-all bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-white/5 dark:hover:bg-white/10 dark:text-gray-200 border border-transparent dark:border-white/5">
+                      {isRtl ? "رفع صورة" : "Upload Photo"}
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => setData("image", e.target.files?.[0] || null)} />
+                    </label>
+                    <button 
+                      type="button" 
+                      onClick={() => { setData('image', null); setPreviewImage(null); }}
+                      className="px-4 py-2 rounded-[15px] text-sm font-semibold transition-all border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-white/10 dark:text-gray-400 dark:hover:bg-white/5"
+                    >
+                      {isRtl ? "إزالة" : "Remove"}
+                    </button>
+                  </div>
+                  {errors.image && <div className="mt-2 text-sm text-red-500">{errors.image}</div>}
+                </div>
+              </div>
+
+              {/* Form Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                
+                {/* Name */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                      {t("Name")}
+                    </label>
+                    <span className="text-[10px] italic text-gray-400">{t("Required")}</span>
+                  </div>
+                  <input 
+                    type="text" value={data.name} onChange={(e) => setData("name", e.target.value)}
+                    className={`w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[20px] py-3 text-sm text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border`} 
+                  />
+                  {errors.name && <div className="mt-1 text-sm text-red-500">{errors.name}</div>}
+                </div>
+
+                {/* National ID */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                      {t("National ID")}
+                    </label>
+                    <span className="text-[10px] italic text-gray-400">{t("Required")}</span>
+                  </div>
+                  <input 
+                    type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} dir="ltr"
+                    className={`w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[20px] py-3 text-sm text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border font-mono`} 
+                  />
+                  {errors.national_id && <div className="mt-1 text-sm text-red-500">{errors.national_id}</div>}
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                      {t("Phone Number")}
+                    </label>
+                    <span className="text-[10px] italic text-gray-400">{t("Required")}</span>
+                  </div>
+                  <div className="relative">
+                    <div className={`absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none font-mono text-sm text-gray-500 dark:text-gray-400`}>+966</div>
+                    <input 
+                      type="text" value={data.phone} onChange={(e) => setData("phone", e.target.value)} dir="ltr" placeholder="5X XXX XXXX"
+                      className={`w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[20px] pl-14 pr-4 py-3 text-sm text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border font-mono`} 
                     />
-                  </svg>
-                </button>
+                  </div>
+                  {errors.phone && <div className="mt-1 text-sm text-red-500">{errors.phone}</div>}
+                </div>
+
+                {/* Email */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                      {t("Email")}
+                    </label>
+                    <span className="text-[10px] italic text-gray-400">{t("Optional")}</span>
+                  </div>
+                  <input 
+                    type="email" value={data.email} onChange={(e) => setData("email", e.target.value)} dir="ltr" placeholder="user@example.com"
+                    className={`w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[20px] py-3 text-sm text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border`} 
+                  />
+                  {errors.email && <div className="mt-1 text-sm text-red-500">{errors.email}</div>}
+                </div>
+
+                {/* Password */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                      {isEditing ? t("New Password") : t("Password")}
+                    </label>
+                    <span className="text-[10px] italic text-gray-400">{t("Optional")}</span>
+                  </div>
+                  <input 
+                    type="password" value={data.password} onChange={(e) => setData("password", e.target.value)} dir="ltr"
+                    placeholder={isEditing ? t("Leave empty to keep current password") : (data.phone || t("Leave empty to use phone as password"))}
+                    className={`w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[20px] py-3 text-sm text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border`} 
+                  />
+                  {errors.password && <div className="mt-1 text-sm text-red-500">{errors.password}</div>}
+                  <p className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">
+                    💡 {isEditing ? t("Leave empty to keep current password") : t("Default password is the phone number")}
+                  </p>
+                </div>
+
+                {/* Status Toggle */}
+                <div className="flex flex-col justify-start">
+                  <div className="justify-between items-center mb-1.5 opacity-0 pointer-events-none hidden md:flex">
+                     <label className="text-[10px] font-bold">Spacer</label>
+                  </div>
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                     <div className="relative">
+                       <input 
+                         type="checkbox" 
+                         className="sr-only" 
+                         checked={data.is_active} 
+                         onChange={(e) => setData("is_active", e.target.checked)} 
+                       />
+                       <div className={`block w-10 h-6 rounded-full transition-colors ${data.is_active ? "bg-[#0e7490]" : "bg-gray-300 dark:bg-gray-600"}`}></div>
+                       <div className={`dot absolute start-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${data.is_active ? (isRtl ? "transform -translate-x-4" : "transform translate-x-4") : ""}`}></div>
+                     </div>
+                     <span className={`text-sm font-semibold text-gray-700 dark:text-gray-300`}>
+                       {t("Active Account")}
+                     </span>
+                  </label>
+                </div>
+
               </div>
             </div>
 
-            <form onSubmit={handleAddSubmit} className="p-8 space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    {t("Name")}
-                  </label>
-                  <input
-                    type="text"
-                    value={addForm.data.name}
-                    onChange={(e) => addForm.setData("name", e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border"
-                    placeholder={t("Name")}
-                    required
-                  />
-                  {addForm.errors.name && (
-                    <div className="mt-2 text-sm text-red-500">
-                      {addForm.errors.name}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    {t("National ID")}
-                  </label>
-                  <input
-                    type="text"
-                    value={addForm.data.national_id}
-                    onChange={(e) =>
-                      addForm.setData("national_id", e.target.value)
-                    }
-                    className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border font-mono"
-                    placeholder={t("National ID")}
-                    required
-                  />
-                  {addForm.errors.national_id && (
-                    <div className="mt-2 text-sm text-red-500">
-                      {addForm.errors.national_id}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    {t("Email")} ({t("Optional")})
-                  </label>
-                  <input
-                    type="email"
-                    value={addForm.data.email}
-                    onChange={(e) => addForm.setData("email", e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border"
-                    placeholder={t("example@school.com")}
-                  />
-                  {addForm.errors.email && (
-                    <div className="mt-2 text-sm text-red-500">
-                      {addForm.errors.email}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    {t("Phone Number")}
-                  </label>
-                  <input
-                    type="text"
-                    value={addForm.data.phone}
-                    onChange={(e) => addForm.setData("phone", e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border"
-                    placeholder={t("9665xxxxxxxx")}
-                    required
-                  />
-                  {addForm.errors.phone && (
-                    <div className="mt-2 text-sm text-red-500">
-                      {addForm.errors.phone}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    {t("Password")}
-                  </label>
-                  <input
-                    type="password"
-                    value={addForm.data.password}
-                    onChange={(e) =>
-                      addForm.setData("password", e.target.value)
-                    }
-                    className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border"
-                    placeholder={
-                      addForm.data.phone ||
-                      t("Leave empty to use phone as password")
-                    }
-                  />
-                  <p className="text-xs text-gray-400 mt-1.5 px-2">
-                    💡 {t("Default password is the phone number")}
-                  </p>
-                  {addForm.errors.password && (
-                    <div className="mt-2 text-sm text-red-500">
-                      {addForm.errors.password}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-white/10 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 bg-gray-100 dark:bg-[#0f172a] hover:bg-gray-200 dark:hover:bg-white/5 text-gray-600 dark:text-gray-300 py-3.5 rounded-[35px] font-bold transition-all border border-gray-200 dark:border-white/10"
+            {/* Footer Actions */}
+            <div className="px-8 py-5 border-t bg-gray-50 dark:bg-gray-800/30 border-gray-100 dark:border-gray-800 flex justify-between items-center rounded-b-[30px]">
+              <button 
+                type="button" 
+                onClick={closeModal} 
+                className="text-sm font-semibold text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors"
+              >
+                {t("Cancel")}
+              </button>
+              
+              <div className="flex items-center gap-4">
+                <button 
+                  type="submit" 
+                  disabled={processing}
+                  className="px-8 py-3 rounded-[35px] font-bold text-sm shadow-lg shadow-cyan-500/20 transition-all text-white bg-[#0e7490] hover:bg-[#155e75] hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
                 >
-                  {t("Cancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={addForm.processing}
-                  className="flex-1 bg-[#0e7490] hover:bg-[#155e75] text-white py-3.5 rounded-[35px] font-bold shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50"
-                >
-                  {addForm.processing ? t("Saving...") : t("Add")}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Supervisor Modal */}
-      {showEditModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowEditModal(false)}
-        >
-          <div
-            className="bg-white dark:bg-[#1e293b] rounded-[30px] overflow-hidden border border-gray-100 dark:border-white/10 w-full max-w-lg shadow-2xl"
-            dir={isRtl ? "rtl" : "ltr"}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="bg-[#0e7490] p-6 text-white">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-white">
-                  {t("Edit Teacher")}
-                </h2>
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  className="text-white/80 hover:text-white transition-colors"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                  {processing ? t("Saving...") : (isEditing ? t("Save Changes") : t("Add"))}
                 </button>
               </div>
             </div>
-
-            <form onSubmit={handleEditSubmit} className="p-8 space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    {t("Name")}
-                  </label>
-                  <input
-                    type="text"
-                    value={editForm.data.name}
-                    onChange={(e) => editForm.setData("name", e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border"
-                    placeholder={t("Name")}
-                    required
-                  />
-                  {editForm.errors.name && (
-                    <div className="mt-2 text-sm text-red-500">
-                      {editForm.errors.name}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    {t("National ID")}
-                  </label>
-                  <input
-                    type="text"
-                    value={editForm.data.national_id}
-                    onChange={(e) =>
-                      editForm.setData("national_id", e.target.value)
-                    }
-                    className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border font-mono"
-                    placeholder={t("National ID")}
-                    required
-                  />
-                  {editForm.errors.national_id && (
-                    <div className="mt-2 text-sm text-red-500">
-                      {editForm.errors.national_id}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    {t("Email")} ({t("Optional")})
-                  </label>
-                  <input
-                    type="email"
-                    value={editForm.data.email}
-                    onChange={(e) => editForm.setData("email", e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border"
-                    placeholder={t("example@school.com")}
-                  />
-                  {editForm.errors.email && (
-                    <div className="mt-2 text-sm text-red-500">
-                      {editForm.errors.email}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    {t("Phone Number")}
-                  </label>
-                  <input
-                    type="text"
-                    value={editForm.data.phone}
-                    onChange={(e) => editForm.setData("phone", e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border"
-                    placeholder={t("9665xxxxxxxx")}
-                    required
-                  />
-                  {editForm.errors.phone && (
-                    <div className="mt-2 text-sm text-red-500">
-                      {editForm.errors.phone}
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-2">
-                  <label className="flex items-center gap-3 cursor-pointer p-4 bg-gray-50 dark:bg-[#0f172a] rounded-[20px] border border-gray-100 dark:border-gray-700">
-                    <div className="relative flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={editForm.data.is_active}
-                        onChange={(e) =>
-                          editForm.setData("is_active", e.target.checked)
-                        }
-                        className="w-5 h-5 rounded-md border-gray-300 text-[#0e7490] shadow-sm focus:border-[#0e7490] focus:ring focus:ring-[#0e7490] focus:ring-opacity-50"
-                      />
-                    </div>
-                    <span className="text-gray-700 dark:text-gray-300 font-bold select-none">
-                      {t("Active Account")}
-                    </span>
-                  </label>
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    {t("New Password")} ({t("Optional")})
-                  </label>
-                  <input
-                    type="password"
-                    value={editForm.data.password}
-                    onChange={(e) =>
-                      editForm.setData("password", e.target.value)
-                    }
-                    className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border"
-                    placeholder={t("Leave empty to keep current password")}
-                  />
-                  <p className="text-xs text-gray-400 mt-1.5 px-2">
-                    💡 {t("Leave empty to keep current password")}
-                  </p>
-                  {editForm.errors.password && (
-                    <div className="mt-2 text-sm text-red-500">
-                      {editForm.errors.password}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-white/10 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="flex-1 bg-gray-100 dark:bg-[#0f172a] hover:bg-gray-200 dark:hover:bg-white/5 text-gray-600 dark:text-gray-300 py-3.5 rounded-[35px] font-bold transition-all border border-gray-200 dark:border-white/10"
-                >
-                  {t("Cancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={editForm.processing}
-                  className="flex-1 bg-[#0e7490] hover:bg-[#155e75] text-white py-3.5 rounded-[35px] font-bold shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50"
-                >
-                  {editForm.processing ? t("Saving...") : t("Save Changes")}
-                </button>
-              </div>
-            </form>
-          </div>
+          </form>
         </div>
-      )}
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
