@@ -26,16 +26,6 @@ Route::get('/', function () {
     ]);
 });
 
-// 📸 Server Storage Proxy (Fixes 403 Forbidden on Hostinger VPS)
-Route::get('storage/{path}', function ($path) {
-    if (! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
-        abort(404);
-    }
-    
-    $file = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
-    return response()->file($file);
-})->where('path', '.*');
-
 // Subscription UI Page
 Route::get('/subscription', function () {
     return Inertia::render('Subscription');
@@ -267,6 +257,15 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::resource('daily-trips', \App\Http\Controllers\Admin\DailyTripController::class);
         Route::post('daily-trips/auto-create', [\App\Http\Controllers\Admin\DailyTripController::class, 'autoCreate'])->name('daily-trips.auto-create');
 
+        // Alias for notifications to fix frontend desyncs
+        Route::prefix('notifications')->group(function () {
+            Route::get('/all', [\App\Http\Controllers\NotificationController::class, 'page']);
+            Route::get('/', [\App\Http\Controllers\NotificationController::class, 'index']);
+            Route::post('/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
+            Route::post('/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
+            Route::delete('/{id}', [\App\Http\Controllers\NotificationController::class, 'destroy']);
+            Route::delete('/', [\App\Http\Controllers\NotificationController::class, 'destroyAll']);
+        });
 
     });
 
