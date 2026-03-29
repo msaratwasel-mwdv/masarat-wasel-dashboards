@@ -32,9 +32,9 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
     const fetchNotifications = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('/admin/notifications');
-            setNotifications(response.data.notifications);
-            setUnreadCount(response.data.unread_count);
+            const response = await axios.get('/notifications');
+            setNotifications(response.data.notifications || []);
+            setUnreadCount(response.data.unread_count || 0);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
         } finally {
@@ -45,7 +45,7 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
     // Mark as read
     const markAsRead = async (id: number) => {
         try {
-            await axios.post(`/admin/notifications/${id}/read`);
+            await axios.post(`/notifications/${id}/read`);
             setNotifications(prev =>
                 prev.map(n => n.id === id ? { ...n, status: 'read', read_at: new Date().toISOString() } : n)
             );
@@ -58,7 +58,7 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
     // Mark all as read
     const markAllAsRead = async () => {
         try {
-            await axios.post('/admin/notifications/read-all');
+            await axios.post('/notifications/read-all');
             setNotifications(prev =>
                 prev.map(n => ({ ...n, status: 'read' as const, read_at: new Date().toISOString() }))
             );
@@ -71,7 +71,7 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
     // Delete notification
     const deleteNotification = async (id: number) => {
         try {
-            await axios.delete(`/admin/notifications/${id}`);
+            await axios.delete(`/notifications/${id}`);
             setNotifications(prev => prev.filter(n => n.id !== id));
             if (notifications.find(n => n.id === id)?.status === 'unread') {
                 setUnreadCount(prev => Math.max(0, prev - 1));

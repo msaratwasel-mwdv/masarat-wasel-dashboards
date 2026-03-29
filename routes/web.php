@@ -267,15 +267,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::resource('daily-trips', \App\Http\Controllers\Admin\DailyTripController::class);
         Route::post('daily-trips/auto-create', [\App\Http\Controllers\Admin\DailyTripController::class, 'autoCreate'])->name('daily-trips.auto-create');
 
-        // الإشعارات (Admin)
-        Route::prefix('notifications')->name('notifications.')->group(function () {
-            Route::get('/all', [\App\Http\Controllers\NotificationController::class, 'page'])->name('page');
-            Route::get('/', [\App\Http\Controllers\NotificationController::class, 'index'])->name('index');
-            Route::post('/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('read');
-            Route::post('/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('readAll');
-            Route::delete('/{id}', [\App\Http\Controllers\NotificationController::class, 'destroy'])->name('destroy');
-            Route::delete('/', [\App\Http\Controllers\NotificationController::class, 'destroyAll'])->name('destroyAll');
-        });
+
     });
 
 
@@ -364,6 +356,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // الإشعارات العامة (لجميع المستخدمين المسجلين)
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/all', [\App\Http\Controllers\NotificationController::class, 'page'])->name('page');
+        Route::get('/', [\App\Http\Controllers\NotificationController::class, 'index'])->name('index');
+        Route::post('/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('read');
+        Route::post('/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('readAll');
+        Route::delete('/{id}', [\App\Http\Controllers\NotificationController::class, 'destroy'])->name('destroy');
+        Route::delete('/', [\App\Http\Controllers\NotificationController::class, 'destroyAll'])->name('destroyAll');
+    });
 });
 
 require __DIR__ . '/auth.php';
