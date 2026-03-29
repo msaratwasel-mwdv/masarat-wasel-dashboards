@@ -181,4 +181,20 @@ class Bus extends Model
     {
         return $this->students()->wherePivot('is_active', true)->count();
     }
+
+    /**
+     * Get the requests this bus has been assigned to.
+     */
+    public function busRequests(): BelongsToMany
+    {
+        return $this->belongsToMany(BusRequest::class, 'bus_request_assignments')->withTimestamps();
+    }
+
+    /**
+     * Check if the bus has a complete crew (driver and supervisor).
+     */
+    public function hasCompleteCrew(): bool
+    {
+        return $this->driver_id !== null && $this->supervisor_id !== null;
+    }
 }

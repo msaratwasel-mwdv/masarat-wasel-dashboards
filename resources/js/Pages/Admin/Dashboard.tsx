@@ -1,77 +1,40 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
-import { MapContainer, TileLayer, Marker, Popup, Tooltip } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
-import { useEffect, useState } from "react";
+import GoogleMapContainer from "@/Components/GoogleMapContainer";
+import { useEffect, useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Bus, School as SchoolIcon, Users, GraduationCap, 
+  Activity, AlertTriangle, ShieldCheck, TrendingUp, 
+  Map as MapIcon, Plus, FileText, Settings, 
+  Navigation, CheckCircle2, Clock, ArrowUpRight,
+  Info, Bell, Zap
+} from "lucide-react";
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
+  Tooltip as RechartsTooltip, ResponsiveContainer,
+  PieChart, Pie, Cell
+} from "recharts";
 
-// --- Fix for Leaflet Default Icons in React ---
-import icon from "leaflet/dist/images/marker-icon.png";
-import iconShadow from "leaflet/dist/images/marker-shadow.png";
-
-let DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
-
-L.Marker.prototype.options.icon = DefaultIcon;
-
-// --- Helper: Create Custom Colored Icon ---
-const createCustomIcon = (color: string) => {
-  return new L.DivIcon({
-    className: "custom-marker",
-    html: `<div style="background-color: ${color}; width: 100%; height: 100%; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10], // Center it
-  });
-};
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
 // --- Interfaces ---
 interface DashboardProps {
   stats: {
     total_schools: number;
     total_students: number;
-    buses: {
-      total: number;
-      available: number;
-      booked: number;
-      maintenance: number;
-    };
-    drivers: {
-      total: number;
-      available: number;
-      booked: number;
-    };
-    supervisors: {
-      total: number;
-      available: number;
-      booked: number;
-    };
+    total_trips: number;
+    buses: { total: number; available: number; booked: number; maintenance: number };
+    drivers: { total: number; available: number; booked: number };
+    supervisors: { total: number; available: number; booked: number };
   };
-  alerts: Array<{
-    type: "warning" | "critical";
-    category?: "bus" | "driver" | "general";
-    message: string;
-  }>;
-  mapData: Array<{
-    id: number;
-    code: string;
-    lat: number;
-    lng: number;
-    status: string;
-    speed: string;
-    school_id?: number;
-  }>;
+  alerts: Array<{ type: "warning" | "critical"; category?: string; message: string }>;
+  mapData: Array<{ id: number; code: string; lat: number; lng: number; status: string; speed: string; school_id?: number }>;
   filterSchools: Array<{ id: number; name: string }>;
-  filterBuses: Array<{
-    id: number;
-    bus_code: string;
-    plate_number: string;
-    school_id: number;
-  }>;
+  tripsTrend: Array<{ date: string; count: number }>;
+  fleetDistribution: Array<{ name: string; value: number; color: string }>;
+  recentActivities: Array<{ id: number; type: string; title: string; description: string; time: string; status: string; link: string }>;
 }
 
 export default function Dashboard({
@@ -79,706 +42,422 @@ export default function Dashboard({
   alerts,
   mapData,
   filterSchools,
-  filterBuses,
+  tripsTrend,
+  fleetDistribution,
+  recentActivities,
 }: DashboardProps) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
 
-  // --- States ---
-  const [isTrackingEnabled, setIsTrackingEnabled] = useState(false); // Default OFF
-  const [selectedSchool, setSelectedSchool] = useState<string>(""); // "" = All
-  const [selectedBus, setSelectedBus] = useState<string>(""); // "" = All
+  const [isTrackingEnabled, setIsTrackingEnabled] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // --- Filter Logic ---
-  const filteredMapData = mapData.filter((bus) => {
-    // 1. School Filter
-    if (
-      selectedSchool &&
-      bus.school_id &&
-      bus.school_id.toString() !== selectedSchool
-    ) {
-      return false;
-    }
-    // 2. Search Query
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return bus.code.toLowerCase().includes(q);
-    }
-    return true;
-  });
+  const filteredMapData = useMemo(() => {
+    return mapData.filter((bus) => {
+      if (selectedSchool && bus.school_id?.toString() !== selectedSchool) return false;
+      if (searchQuery && !bus.code.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      return true;
+    });
+  }, [mapData, selectedSchool, searchQuery]);
 
-  // Center of Sana'a approximately
-  const mapCenter: [number, number] = [15.3694, 44.191];
+  const containerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, staggerChildren: 0.1 } }
+  };
 
   return (
     <AuthenticatedLayout>
-      <Head title={isRTL ? "لوحة التحكم" : "Dashboard"} />
+      <Head title={isRTL ? "لوحة التحكم الذكية" : "Smart Dashboard"} />
 
-      {/* --- 1. Welcome Header --- */}
-      <div
-        className={`flex ${
-          isRTL ? "flex-row-reverse" : "flex-row"
-        } justify-between items-start mb-8`}
+      <motion.div 
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+        className="space-y-8"
       >
-        <div className={isRTL ? "text-right" : "text-left"}>
-          <h1
-            className={`text-3xl font-black ${
-              isDark ? "text-white" : "text-gray-900"
-            } mb-2`}
-          >
-            {isRTL ? "مرحبًا، المدير العام" : "Welcome back, Admin"}
-          </h1>
-          <p className={`${isDark ? "text-gray-400" : "text-gray-500"}`}>
-            {isRTL
-              ? "إليك ملخص الأداء المباشر للشبكة والأسطول."
-              : "Here is your live network and fleet performance summary."}
-          </p>
-        </div>
-
-        <div className="hidden md:flex items-center gap-3">
-          <div
-            className={`flex items-center px-4 py-2 rounded-full border shadow-sm ${
-              isDark
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            }`}
-          >
-            <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse mr-2"></div>
-            <span
-              className={`text-xs font-bold uppercase tracking-wider ${
-                isDark ? "text-gray-300" : "text-gray-600"
-              }`}
-            >
-              {isRTL ? "حالة النظام: متصل" : "System Status: Online"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* --- 2. Comprehensive Stats Grid (5 Columns) --- */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-        {/* Total Schools */}
-        <StatCard
-          title={isRTL ? "المدارس" : "Schools"}
-          value={stats.total_schools}
-          icon="school"
-          color="blue"
-          isDark={isDark}
-          isRTL={isRTL}
-        />
-
-        {/* Total Buses */}
-        <StatCard
-          title={isRTL ? "الحافلات" : "Buses"}
-          value={stats.buses.total}
-          icon="bus"
-          color="yellow"
-          isDark={isDark}
-          isRTL={isRTL}
-          details={[
-            {
-              label: isRTL ? "متوفر" : "Available",
-              value: stats.buses.available,
-              color: "text-green-500",
-            },
-            {
-              label: isRTL ? "محجوز" : "Booked",
-              value: stats.buses.booked,
-              color: "text-blue-500",
-            },
-            {
-              label: isRTL ? "صيانة" : "Maint.",
-              value: stats.buses.maintenance,
-              color: "text-red-500",
-            },
-          ]}
-        />
-
-        {/* Total Students */}
-        <StatCard
-          title={isRTL ? "الطلاب" : "Students"}
-          value={stats.total_students}
-          icon="academic"
-          color="green"
-          isDark={isDark}
-          isRTL={isRTL}
-        />
-
-        {/* Total Drivers */}
-        <StatCard
-          title={isRTL ? "السائقين" : "Drivers"}
-          value={stats.drivers.total}
-          icon="driver"
-          color="purple"
-          isDark={isDark}
-          isRTL={isRTL}
-          details={[
-            {
-              label: isRTL ? "متوفر" : "Avail.",
-              value: stats.drivers.available,
-              color: "text-green-500",
-            },
-            {
-              label: isRTL ? "محجوز" : "Booked",
-              value: stats.drivers.booked,
-              color: "text-blue-500",
-            },
-          ]}
-        />
-
-        {/* Total Supervisors */}
-        <StatCard
-          title={isRTL ? "المشرفين" : "Supervisors"}
-          value={stats.supervisors.total}
-          icon="supervisor"
-          color="indigo"
-          isDark={isDark}
-          isRTL={isRTL}
-          details={[
-            {
-              label: isRTL ? "متوفر" : "Avail.",
-              value: stats.supervisors.available,
-              color: "text-green-500",
-            },
-            {
-              label: isRTL ? "محجوز" : "Booked",
-              value: stats.supervisors.booked,
-              color: "text-blue-500",
-            },
-          ]}
-        />
-      </div>
-
-      {/* --- 3. Main Content: Map & Alerts (Split View) --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* --- Column 1: Live Square Map (2/3 width) --- */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Header & Controls Bar */}
-          <div
-            className={`p-4 rounded-xl border shadow-sm ${
-              isDark
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-100"
-            } flex flex-col md:flex-row gap-4 justify-between items-center`}
-          >
-            <div className="flex items-center gap-4 w-full md:w-auto">
-              {/* Live Toggle */}
-              <button
-                onClick={() => setIsTrackingEnabled(!isTrackingEnabled)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-bold text-sm ${
-                  isTrackingEnabled
-                    ? "bg-red-500 text-white shadow-red-200"
-                    : "bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300"
-                }`}
-              >
-                <span
-                  className={`w-3 h-3 rounded-full ${
-                    isTrackingEnabled ? "bg-white animate-ping" : "bg-gray-400"
-                  }`}
-                ></span>
-                {isTrackingEnabled
-                  ? isRTL
-                    ? "إيقاف التتبع"
-                    : "Stop Tracking"
-                  : isRTL
-                  ? "تشغيل التتبع"
-                  : "Start Tracking"}
-              </button>
-            </div>
-
-            {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-              {/* Schools Filter */}
-              <select
-                className={`text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 appearance-none py-2 px-3 ${
-                  isRTL ? "text-right" : "text-left"
-                }`}
-                value={selectedSchool}
-                onChange={(e) => setSelectedSchool(e.target.value)}
-              >
-                <option value="">{isRTL ? "كل المدارس" : "All Schools"}</option>
-                {filterSchools.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-
-              {/* Buses Search/Select */}
-              <input
-                type="text"
-                placeholder={isRTL ? "بحث برقم الباص..." : "Search Bus Code..."}
-                className="text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 py-2 px-3"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div
-            className={`relative w-full h-[500px] rounded-2xl overflow-hidden shadow-lg border transition-all ${
-              isDark ? "border-gray-700" : "border-gray-200"
-            }`}
-          >
-            {!isTrackingEnabled && (
-              <div className="absolute inset-0 z-[2000] bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
-                <div className="w-20 h-20 bg-gray-200 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4 text-gray-400">
-                  <svg
-                    className="w-10 h-10"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-600 dark:text-gray-300 mb-2">
-                  {isRTL ? "التتبع المباشر متوقف" : "Live Tracking is OFF"}
-                </h3>
-                <p className="text-gray-500 dark:text-gray-400 max-w-sm">
-                  {isRTL
-                    ? "تم إيقاف الخريطة لتقليل استهلاك البيانات. اضغط 'تشغيل التتبع' أعلاه للمشاهدة الحية."
-                    : "Map is disabled to save data. Click 'Start Tracking' above to view live fleet."}
-                </p>
+        {/* --- Header Section --- */}
+        <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4`}>
+           <div className={isRTL ? 'text-right' : 'text-left'}>
+              <h1 className={`text-4xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {isRTL ? "مرحباً بك في مسارات" : "Welcome to Masarat"}
+              </h1>
+              <p className={`mt-2 text-lg ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {isRTL ? "نظرة شاملة على أداء الأسطول والعمليات الحالية." : "A comprehensive look at fleet performance and current operations."}
+              </p>
+           </div>
+           
+           <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border backdrop-blur-md shadow-sm transition-all ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white/80 border-slate-200'}`}>
+                 <div className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                 </div>
+                 <span className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                    {isRTL ? "النظام متصل" : "System Online"}
+                 </span>
               </div>
-            )}
+           </div>
+        </div>
 
-            <MapContainer
-              center={mapCenter}
-              zoom={13}
-              style={{ height: "100%", width: "100%" }}
-              className="z-0"
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url={
-                  isDark
-                    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                    : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                }
-              />
+        {/* --- KPI Grid --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard 
+            title={isRTL ? "إجمالي الحافلات" : "Total Buses"}
+            value={stats.buses.total}
+            icon={<Bus className="w-6 h-6" />}
+            trend="+12%"
+            color="yellow"
+            isDark={isDark}
+            isRTL={isRTL}
+          />
+          <StatCard 
+            title={isRTL ? "الطلاب النشطين" : "Active Students"}
+            value={stats.total_students}
+            icon={<GraduationCap className="w-6 h-6" />}
+            trend="+5%"
+            color="blue"
+            isDark={isDark}
+            isRTL={isRTL}
+          />
+          <StatCard 
+            title={isRTL ? "المدارس المشتركة" : "Partner Schools"}
+            value={stats.total_schools}
+            icon={<SchoolIcon className="w-6 h-6" />}
+            trend="0%"
+            color="indigo"
+            isDark={isDark}
+            isRTL={isRTL}
+          />
+          <StatCard 
+            title={isRTL ? "إجمالي الرحلات" : "Total Trips"}
+            value={stats.total_trips}
+            icon={<Activity className="w-6 h-6" />}
+            trend="+18%"
+            color="green"
+            isDark={isDark}
+            isRTL={isRTL}
+          />
+        </div>
 
-              {/* Logic for markers */}
-              {filteredMapData.map((bus) => (
-                <Marker
-                  key={bus.id}
-                  position={[bus.lat, bus.lng]}
-                  icon={createCustomIcon(
-                    bus.status === "moving" ? "#22c55e" : "#ef4444"
-                  )}
-                >
-                  <Tooltip
-                    direction="top"
-                    offset={[0, -20]}
-                    opacity={1}
-                    permanent
-                    className="custom-tooltip"
-                  >
-                    <span className="font-bold text-xs">{bus.code}</span>
-                  </Tooltip>
-                  <Popup>
-                    <div className={`text-center ${isRTL ? "rtl" : "ltr"}`}>
-                      <strong className="block text-brand-dark">
-                        {bus.code}
-                      </strong>
-                      <span className="text-xs text-gray-500">{bus.speed}</span>
+        {/* --- Main Dashboard Content --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* LEFT: Analytics & Live Tracking (8 cols) */}
+          <div className="lg:col-span-8 space-y-8">
+            
+            {/* Analytics Section */}
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-6`}>
+              {/* Trips Trend Chart */}
+              <div className={`p-6 rounded-3xl border backdrop-blur-md ${isDark ? 'bg-slate-800/40 border-slate-700 shadow-xl' : 'bg-white border-slate-100 shadow-sm shadow-slate-200/50'}`}>
+                 <h3 className={`text-lg font-bold mb-6 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <TrendingUp className="w-5 h-5 text-emerald-500" />
+                    {isRTL ? "اتجاه الرحلات (آخر 7 أيام)" : "Trips Trend (Last 7 Days)"}
+                 </h3>
+                 <div className="h-[230px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={tripsTrend}>
+                        <defs>
+                          <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#e2e8f0'} />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10}} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10}} />
+                        <RechartsTooltip 
+                          contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Area type="monotone" dataKey="count" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                 </div>
+              </div>
+
+              {/* Fleet Distribution */}
+              <div className={`p-6 rounded-3xl border backdrop-blur-md ${isDark ? 'bg-slate-800/40 border-slate-700 shadow-xl' : 'bg-white border-slate-100 shadow-sm shadow-slate-200/50'}`}>
+                 <h3 className={`text-lg font-bold mb-6 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <Activity className="w-5 h-5 text-amber-500" />
+                    {isRTL ? "توزيع الأسطول" : "Fleet Distribution"}
+                 </h3>
+                 <div className="h-[230px] w-full flex items-center justify-center relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={fleetDistribution}
+                          innerRadius={60}
+                          outerRadius={85}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {fleetDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute flex flex-col items-center justify-center inset-0 pointer-events-none">
+                       <span className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{stats.buses.total}</span>
+                       <span className={`text-[10px] uppercase font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isRTL ? "حافلة" : "Buses"}</span>
                     </div>
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
-
-            {/* Simple Legend Overlay */}
-            <div
-              className={`absolute bottom-4 ${
-                isRTL ? "right-4" : "left-4"
-              } z-[1000] bg-white/90 dark:bg-gray-800/90 backdrop-blur px-3 py-2 rounded-lg shadow border border-gray-200 dark:border-gray-700 flex gap-4 text-xs`}
-            >
-              <div className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                <span className="text-gray-700 dark:text-gray-300">
-                  {isRTL ? "متحرك" : "Moving"}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                <span className="text-gray-700 dark:text-gray-300">
-                  {isRTL ? "متوقف" : "Stopped"}
-                </span>
+                 </div>
+                 <div className="flex flex-wrap justify-center gap-4 mt-2">
+                    {fleetDistribution.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5">
+                         <div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: item.color}} />
+                         <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.name} ({item.value})</span>
+                      </div>
+                    ))}
+                 </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* --- Column 2: Proactive Alerts (1/3 width) --- */}
-        <div className="space-y-4">
-          <h3
-            className={`font-bold text-xl ${
-              isDark ? "text-white" : "text-gray-900"
-            }`}
-          >
-            {isRTL ? "التنبيهات الاستباقية" : "Proactive Alerts"}
-          </h3>
+            {/* Live Map Tracking */}
+            <div className={`p-6 rounded-3xl border backdrop-blur-md overflow-hidden ${isDark ? 'bg-slate-800/40 border-slate-700 shadow-xl' : 'bg-white border-slate-100 shadow-sm shadow-slate-200/50'}`}>
+               <div className={`flex flex-col md:flex-row justify-between items-center mb-6 gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                 <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="p-2 bg-blue-500/10 rounded-xl">
+                       <Navigation className="w-6 h-6 text-blue-500" />
+                    </div>
+                    <div className={isRTL ? 'text-right' : 'text-left'}>
+                      <h3 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>{isRTL ? "التتبع المباشر" : "Live Tracking"}</h3>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isRTL ? "رصد حركة الحافلات في صنعاء" : "Active fleet monitoring in Sana'a"}</p>
+                    </div>
+                 </div>
+                 
+                 <div className={`flex items-center gap-3 w-full md:w-auto`}>
+                    <select 
+                      value={selectedSchool}
+                      onChange={(e) => setSelectedSchool(e.target.value)}
+                      className={`text-sm rounded-xl py-2 px-4 appearance-none focus:ring-2 ring-blue-500/50 border-0 ${isDark ? 'bg-slate-700 text-white' : 'bg-slate-50 text-slate-600'}`}
+                    >
+                      <option value="">{isRTL ? "كل المدارس" : "All Schools"}</option>
+                      {filterSchools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
 
-          <div
-            className={`rounded-2xl border shadow-sm h-[500px] overflow-y-auto custom-scrollbar ${
-              isDark
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            }`}
-          >
-            {alerts.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 opacity-60">
-                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4 text-gray-400">
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-500 dark:text-gray-400 font-medium">
-                  {isRTL ? "جميع الأنظمة تعمل بكفاءة" : "All systems normal"}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {isRTL ? "لا توجد تنبيهات حالياً" : "No active alerts"}
-                </p>
-              </div>
-            ) : (
-              <div className="p-4 space-y-3">
-                {alerts.map((alert, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-4 rounded-xl border-l-[6px] shadow-sm transform transition-all hover:scale-[1.02] ${
-                      alert.type === "critical"
-                        ? "bg-red-50 border-red-500 dark:bg-red-900/20"
-                        : "bg-yellow-50 border-yellow-500 dark:bg-yellow-900/20"
-                    }`}
-                  >
-                    <div className="flex gap-3">
-                      <div
-                        className={`mt-1 ${
-                          alert.type === "critical"
-                            ? "text-red-500"
-                            : "text-yellow-500"
-                        }`}
+                    <button 
+                      onClick={() => setIsTrackingEnabled(!isTrackingEnabled)}
+                      className={`text-sm font-black px-5 py-2 rounded-xl transition-all shadow-lg ${
+                        isTrackingEnabled 
+                          ? 'bg-red-500 text-white shadow-red-500/30' 
+                          : 'bg-emerald-500 text-white shadow-emerald-500/30'
+                      }`}
+                    >
+                      {isTrackingEnabled ? (isRTL ? "إغلاق الخريطة" : "Pause") : (isRTL ? "فتح الخريطة" : "Track Live")}
+                    </button>
+                 </div>
+               </div>
+
+               <div className="relative h-[450px] w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                  <AnimatePresence mode="wait">
+                    {isTrackingEnabled ? (
+                      <motion.div 
+                        key="map-active"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0"
                       >
-                        {alert.category === "bus" ? (
-                          <svg
-                            className="w-6 h-6"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                            />
-                          </svg>
-                        ) : alert.category === "driver" ? (
-                          <svg
-                            className="w-6 h-6"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"
-                            />
-                          </svg>
-                        ) : (
-                          // Default Fallback Icons
-                          <svg
-                            className="w-6 h-6"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            {alert.type === "critical" ? (
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                              />
-                            ) : (
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            )}
-                          </svg>
-                        )}
+                         <GoogleMapContainer 
+                           apiKey={GOOGLE_MAPS_API_KEY}
+                           data={filteredMapData} // Use the filtered data
+                           isDark={isDark}
+                           isRTL={isRTL}
+                         />
+                      </motion.div>
+                    ) : (
+                      <motion.div 
+                        key="map-paused"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className={`absolute inset-0 flex flex-col items-center justify-center gap-6 p-12 text-center z-10 ${isDark ? 'bg-slate-900/40' : 'bg-slate-50'}`}
+                      >
+                         <div className={`p-6 rounded-full ${isDark ? 'bg-slate-800' : 'bg-white shadow-xl shadow-slate-200'}`}>
+                            <div className="relative">
+                               <MapIcon className={`w-16 h-16 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                               <div className="absolute top-0 right-0 w-4 h-4 bg-amber-500 rounded-full border-4 border-slate-900 animate-ping" />
+                            </div>
+                         </div>
+                         <div>
+                           <h4 className={`text-xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{isRTL ? "نظام التتبع في وضع الاستعداد" : "Tracking System on Standby"}</h4>
+                           <p className={`text-sm max-w-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isRTL ? "تم إيقاف تفعيل الخريطة لتسريع تحميل الصفحة وتوفير موارد النظام. قم بتفعيلها لمراقبة حركة الأسطول في صنعاء." : "Map tracking is disabled to optimize performance. Enable it to monitor real-time fleet movement in Sana'a."}</p>
+                         </div>
+                         <button 
+                           onClick={() => setIsTrackingEnabled(true)}
+                           className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-sm tracking-widest uppercase transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center gap-3"
+                         >
+                            <Zap className="w-5 h-5 fill-current" />
+                            {isRTL ? "تفعيل الرصد المباشر الآن" : "Enable Live Tracking Now"}
+                         </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+               </div>
+            </div>
+          </div>
+
+          {/* RIGHT: Quick Actions & Alerts (4 cols) */}
+          <div className="lg:col-span-4 space-y-8">
+            
+            {/* Quick Actions Panel */}
+            <div className={`p-6 rounded-3xl border backdrop-blur-md ${isDark ? 'bg-slate-800/40 border-slate-700 shadow-xl' : 'bg-white border-slate-100 shadow-sm shadow-slate-200/50'}`}>
+               <h3 className={`text-lg font-bold mb-6 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <Settings className="w-5 h-5 text-indigo-500" />
+                  {isRTL ? "وصول سريع" : "Quick Access"}
+               </h3>
+               <div className="grid grid-cols-2 gap-4">
+                  <QuickActionItem 
+                    icon={<Plus className="w-5 h-5" />}
+                    label={isRTL ? "إضافة حافلة" : "Add Bus"}
+                    link={route('admin.buses.create')}
+                    color="blue"
+                  />
+                  <QuickActionItem 
+                    icon={<Plus className="w-5 h-5" />}
+                    label={isRTL ? "إضافة مدرسة" : "Add School"}
+                    link={route('admin.schools.create')}
+                    color="emerald"
+                  />
+                  <QuickActionItem 
+                    icon={<FileText className="w-5 h-5" />}
+                    label={isRTL ? "سجل التعيينات" : "Assignment Log"}
+                    link={route('admin.assignmentHistory')}
+                    color="amber"
+                  />
+                  <QuickActionItem 
+                    icon={<AlertTriangle className="w-5 h-5" />}
+                    label={isRTL ? "البلاغات/الحوادث" : "Emergencies"}
+                    link={route('admin.emergencies.index')}
+                    color="red"
+                  />
+               </div>
+            </div>
+
+            {/* Unified Activity Feed */}
+            <div className={`p-6 rounded-3xl border backdrop-blur-md ${isDark ? 'bg-slate-800/40 border-slate-700 shadow-xl' : 'bg-white border-slate-100 shadow-sm shadow-slate-200/50'}`}>
+               <div className={`flex justify-between items-center mb-6`}>
+                  <h3 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>{isRTL ? "أحدث النشاطات" : "Latest Activities"}</h3>
+                  <Link href="#" className="text-xs text-blue-500 font-bold hover:underline">{isRTL ? "الكل" : "All"}</Link>
+               </div>
+               
+               <div className="space-y-5">
+                  {recentActivities.length > 0 ? (
+                    recentActivities.map((act, idx) => (
+                      <div key={idx} className={`group relative flex gap-4 ${isRTL ? 'flex-row-reverse text-right' : 'text-left'}`}>
+                         {/* Connector Line */}
+                         {idx !== recentActivities.length - 1 && (
+                           <div className={`absolute top-9 ${isRTL ? 'right-[19px]' : 'left-[19px]'} bottom-0 w-[2px] bg-slate-100 dark:bg-slate-700/50 pointer-events-none`} />
+                         )}
+                         
+                         <div className={`relative z-10 w-10 h-10 flex-shrink-0 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110 shadow-sm ${
+                           act.type === 'request' ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-500'
+                         }`}>
+                            {act.type === 'request' ? <Bus className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
+                         </div>
+                         
+                         <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-2">
+                               <h5 className={`text-sm font-black truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>{act.title}</h5>
+                               <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'} whitespace-nowrap pt-1`}>{act.time}</span>
+                            </div>
+                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'} line-clamp-1 mt-0.5`}>{act.description}</p>
+                            <Link href={act.link} className={`inline-flex items-center gap-1 text-[10px] font-black mt-2 text-blue-500 hover:text-blue-600 group-hover:gap-1.5 transition-all`}>
+                               {isRTL ? "عرض الإجراء" : "View Action"}
+                               <ArrowUpRight className="w-3 h-3" />
+                            </Link>
+                         </div>
                       </div>
-                      <div className="flex-1">
-                        <h5
-                          className={`font-bold text-sm ${
-                            alert.type === "critical"
-                              ? "text-red-800 dark:text-red-300"
-                              : "text-yellow-800 dark:text-yellow-300"
-                          }`}
-                        >
-                          {alert.type === "critical"
-                            ? isRTL
-                              ? "تنبيه هام جداً"
-                              : "Critical Alert"
-                            : isRTL
-                            ? "تنبيه إداري"
-                            : "Warning"}
-                        </h5>
-                        <p
-                          className={`text-xs mt-1 leading-relaxed ${
-                            alert.type === "critical"
-                              ? "text-red-700 dark:text-red-400"
-                              : "text-yellow-700 dark:text-yellow-400"
-                          }`}
-                        >
-                          {alert.message}
-                        </p>
-                        <div className="mt-2 text-[10px] opacity-70 font-mono">
-                          {isRTL
-                            ? "المرجع: SYS-" + (idx + 101)
-                            : "Ref: SYS-" + (idx + 101)}
-                        </div>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 opacity-40">
+                       <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-2" />
+                       <p className="text-xs font-bold">{isRTL ? "النظام يعمل بكفاءة" : "Systems Operational"}</p>
                     </div>
-                  </div>
-                ))}
+                  )}
+               </div>
+            </div>
+
+            {/* Critical Alerts Card */}
+            {alerts.filter(a => a.type === 'critical').length > 0 && (
+              <div className="space-y-4">
+                 {alerts.filter(a => a.type === 'critical').map((a, idx) => (
+                   <motion.div 
+                     key={idx}
+                     initial={{ x: 30, opacity: 0 }}
+                     animate={{ x: 0, opacity: 1 }}
+                     className={`p-4 rounded-2xl border-2 border-red-500/10 bg-red-500/5 backdrop-blur-sm flex gap-4 ${isRTL ? 'flex-row-reverse text-right' : ''}`}
+                   >
+                      <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/30">
+                         <AlertTriangle className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                         <h6 className="text-[10px] font-black text-red-500 uppercase tracking-widest">{isRTL ? "تنبيه طارئ" : "CRITICAL ALERT"}</h6>
+                         <p className={`text-xs font-bold mt-1 leading-snug ${isDark ? 'text-white' : 'text-slate-800'}`}>{a.message}</p>
+                      </div>
+                   </motion.div>
+                 ))}
               </div>
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     </AuthenticatedLayout>
   );
 }
 
-// --- Helper Component for Stats ---
-function StatCard({
-  title,
-  value,
-  subValue,
-  details,
-  icon,
-  color,
-  isDark,
-  isRTL,
-}: {
-  title: string;
-  value: number | string;
-  subValue?: string;
-  details?: { label: string; value: number; color?: string }[];
-  icon: string;
-  color: string;
-  isDark: boolean;
-  isRTL: boolean;
-}) {
+// --- Internal UI Components ---
+
+function StatCard({ title, value, icon, trend, color, isDark, isRTL }: any) {
+  const colorSchemes = {
+    blue: "text-blue-500 bg-blue-500/10",
+    green: "text-emerald-500 bg-emerald-500/10",
+    yellow: "text-amber-500 bg-amber-500/10",
+    indigo: "text-indigo-500 bg-indigo-500/10",
+  } as any;
+
   return (
-    <div
-      className={`p-4 rounded-xl shadow-sm border transition-all hover:shadow-md ${
-        isDark
-          ? "bg-gray-800 border-gray-700"
-          : "bg-white border-gray-100 hover:border-blue-100"
+    <motion.div 
+      whileHover={{ y: -5 }}
+      className={`p-6 rounded-3xl border backdrop-blur-md relative overflow-hidden transition-all ${
+        isDark ? 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/60 shadow-xl' : 'bg-white border-slate-100 hover:bg-slate-50/50 shadow-sm shadow-slate-200/50 hover:shadow-lg'
       }`}
     >
-      <div
-        className={`flex items-center justify-between mb-2 ${
-          isRTL ? "flex-row-reverse" : ""
-        }`}
-      >
-        <div className="flex flex-col justify-center">
-          <p
-            className={`text-xs font-bold uppercase tracking-wider mb-1 ${
-              isDark ? "text-gray-400" : "text-gray-500"
-            }`}
-          >
-            {title}
-          </p>
-          <p
-            className={`text-2xl font-extrabold ${
-              isDark ? "text-white" : "text-gray-900"
-            }`}
-          >
-            {value}
-          </p>
-          {subValue && (
-            <p
-              className={`text-[10px] font-medium mt-1 ${
-                isDark ? "text-gray-400" : "text-gray-500"
-              }`}
-            >
-              {subValue}
-            </p>
-          )}
-        </div>
-        <div
-          className={`w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-md bg-gradient-to-br`}
-          style={{
-            backgroundImage:
-              color === "blue"
-                ? "linear-gradient(to bottom right, #3b82f6, #2563eb)"
-                : color === "green"
-                ? "linear-gradient(to bottom right, #22c55e, #16a34a)"
-                : color === "yellow"
-                ? "linear-gradient(to bottom right, #eab308, #ca8a04)"
-                : color === "purple"
-                ? "linear-gradient(to bottom right, #a855f7, #9333ea)"
-                : "linear-gradient(to bottom right, #6366f1, #4f46e5)", // Indigo default
-          }}
-        >
-          {/* Icons */}
-          {icon === "bus" && (
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-              />
-            </svg>
-          )}
-          {icon === "school" && (
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-              />
-            </svg>
-          )}
-          {icon === "academic" && (
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 14l9-5-9-5-9 5 9 5z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"
-              />
-            </svg>
-          )}
-          {icon === "driver" && (
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              {/* Steering Wheel / Driver Icon */}
-              <circle
-                cx="12"
-                cy="12"
-                r="3"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"
-              />
-            </svg>
-          )}
-          {icon === "users" && (
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-              />
-            </svg>
-          )}
-          {icon === "supervisor" && (
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-          )}
-        </div>
+      <div className={`relative z-10 flex flex-col gap-2 ${isRTL ? 'items-end' : 'items-start'}`}>
+         <div className={`p-3 rounded-2xl mb-2 ${colorSchemes[color]}`}>
+            {icon}
+         </div>
+         <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>{title}</p>
+         <div className={`flex items-baseline gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <h4 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{value}</h4>
+            <span className={`text-[9px] font-black py-0.5 px-1.5 rounded-lg ${trend.startsWith('+') ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}`}>
+               {trend}
+            </span>
+         </div>
       </div>
+      {/* Visual Decor */}
+      <div className={`absolute top-0 right-0 w-24 h-24 blur-[60px] opacity-[0.05] pointer-events-none ${colorSchemes[color].split(' ')[1]}`} />
+    </motion.div>
+  );
+}
 
-      {/* Detailed Breakdown Section */}
-      {details && details.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 space-y-1.5">
-          {details.map((item, idx) => (
-            <div
-              key={idx}
-              className={`flex justify-between items-center text-xs font-medium ${
-                isRTL ? "flex-row-reverse" : ""
-              }`}
-            >
-              <span className={isDark ? "text-gray-400" : "text-gray-500"}>
-                {item.label}
-              </span>
-              <span
-                className={`${
-                  item.color || (isDark ? "text-white" : "text-gray-800")
-                }`}
-              >
-                {item.value}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+function QuickActionItem({ icon, label, link, color }: any) {
+  const bgColors = {
+    blue: "bg-blue-500 shadow-blue-500/20 hover:bg-blue-600",
+    emerald: "bg-emerald-500 shadow-emerald-500/20 hover:bg-emerald-600",
+    amber: "bg-amber-500 shadow-amber-500/20 hover:bg-amber-600",
+    red: "bg-red-500 shadow-red-500/20 hover:bg-red-600",
+  } as any;
+
+  return (
+    <Link 
+      href={link}
+      className={`flex flex-col items-center justify-center p-5 rounded-2xl text-white font-black text-[10px] gap-2 transition-all hover:-translate-y-1 active:scale-95 shadow-lg ${bgColors[color]}`}
+    >
+      {icon}
+      <span className="text-center leading-tight">{label}</span>
+    </Link>
   );
 }

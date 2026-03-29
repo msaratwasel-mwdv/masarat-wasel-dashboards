@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\BusRequest;
+use App\Models\Bus;
+use App\Models\User;
 use App\Traits\DataTableTrait;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class BusRequestController extends Controller
@@ -17,7 +21,7 @@ class BusRequestController extends Controller
      */
     public function index(Request $request)
     {
-        $query = BusRequest::with(['school', 'approvedBy']);
+        $query = BusRequest::with(['school', 'approvedBy', 'buses.driver', 'buses.supervisor']);
 
         // Status filter
         $status = $request->input('status');
@@ -39,7 +43,8 @@ class BusRequestController extends Controller
                     'maintenance' => 'صيانة',
                     default => $busReq->request_type
                 },
-                'عدد الباصات المطلوبة' => $busReq->requested_buses_count,
+                'المقاعد المطلوبة' => $busReq->requested_seats,
+                'التكلفة الإجمالية' => $busReq->total_cost ? number_format($busReq->total_cost, 2) . ' ريال' : 'غير محدد',
                 'السبب' => $busReq->reason,
                 'تاريخ الإنشاء' => $busReq->created_at->format('Y-m-d H:i'),
                 'الحالة' => match($busReq->status) {
@@ -64,6 +69,12 @@ class BusRequestController extends Controller
             'rejected' => BusRequest::where('status', 'rejected')->count(),
         ];
 
+        // Get available buses (not assigned to a school)
+        $availableBuses = Bus::whereNull('school_id')
+            ->where('status', 'active')
+            ->with(['driver', 'supervisor'])
+            ->get();
+
         return Inertia::render('Admin/BusRequests/Index', [
             'requests' => $paginated,
             'counts'   => $counts,
@@ -71,22 +82,51 @@ class BusRequestController extends Controller
                 'search' => $request->input('search', ''),
                 'status' => $status ?? 'all',
             ],
+            'availableBuses' => $availableBuses,
         ]);
     }
 
     /**
      * Approve a bus request.
      */
-    public function approve(BusRequest $busRequest)
+    public function approve(Request $request, BusRequest $busRequest)
     {
-        $busRequest->update([
-            'status' => 'approved',
-            'approved_by' => auth()->id(),
-            'approved_at' => now(),
+        $validated = $request->validate([
+            'bus_ids' => 'required|array|min:1',
+            'bus_ids.*' => 'exists:buses,id',
+            'total_cost' => 'required|numeric|min:0',
         ]);
 
+        DB::transaction(function () use ($busRequest, $validated) {
+            $busRequest->update([
+                'status' => 'approved',
+                'total_cost' => $validated['total_cost'],
+                'approved_by' => Auth::id(),
+                'approved_at' => now(),
+            ]);
+
+            // Assign buses to the school
+            $buses = Bus::whereIn('id', $validated['bus_ids'])->get();
+            $schoolId = $busRequest->school_id;
+
+            foreach ($buses as $bus) {
+                $bus->update(['school_id' => $schoolId]);
+                
+                // Update driver and supervisor school_id
+                if ($bus->driver_id) {
+                    User::where('id', $bus->driver_id)->update(['school_id' => $schoolId]);
+                }
+                if ($bus->supervisor_id) {
+                    User::where('id', $bus->supervisor_id)->update(['school_id' => $schoolId]);
+                }
+            }
+
+            // Sync with pivot table
+            $busRequest->buses()->sync($validated['bus_ids']);
+        });
+
         return redirect()->back()
-            ->with('success', 'تم الموافقة على الطلب بنجاح');
+            ->with('success', 'تم الموافقة على الطلب وتعيين الحافلات بنجاح');
     }
 
     /**
@@ -100,7 +140,7 @@ class BusRequestController extends Controller
 
         $busRequest->update([
             'status' => 'rejected',
-            'approved_by' => auth()->id(),
+            'approved_by' => Auth::id(),
             'approved_at' => now(),
             'rejection_reason' => $validated['rejection_reason'] ?? null,
         ]);

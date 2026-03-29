@@ -7,7 +7,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { useTheme } from "@/Contexts/ThemeContext";
 import Pagination from "@/Components/Pagination";
 
@@ -54,6 +54,10 @@ export interface BaseDataTableProps<T> {
   subtitle?: string;
   headerAction?: React.ReactNode; // e.g. "+ Add" button
   exportEnabled?: boolean; // Enable CSV/PDF export buttons
+
+  // Inline Expansion
+  renderExpandedRow?: (data: T) => React.ReactNode;
+  expandedRowId?: string | number | null;
 }
 
 // ─── Component ───────────────────────────────────────────────────
@@ -74,6 +78,8 @@ export default function BaseDataTable<T extends { id?: number | string }>({
   subtitle,
   headerAction,
   exportEnabled = false,
+  renderExpandedRow,
+  expandedRowId,
 }: BaseDataTableProps<T>) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
@@ -329,28 +335,40 @@ export default function BaseDataTable<T extends { id?: number | string }>({
                 </tr>
               ) : (
                 table.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className={`${
-                      isDark
-                        ? "hover:bg-gray-700/50"
-                        : "hover:bg-blue-50/30"
-                    } transition-colors duration-200`}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className={`px-4 py-3 whitespace-nowrap ${
-                          isRTL ? "text-right" : "text-left"
-                        }`}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </td>
-                    ))}
-                  </tr>
+                  <Fragment key={row.id}>
+                    <tr
+                      className={`${
+                        isDark
+                          ? "hover:bg-gray-700/50"
+                          : "hover:bg-blue-50/30"
+                      } transition-colors duration-200 ${
+                        expandedRowId === row.original.id ? (isDark ? "bg-gray-700/30" : "bg-blue-50/50") : ""
+                      }`}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td
+                          key={cell.id}
+                          className={`px-4 py-3 whitespace-nowrap ${
+                            isRTL ? "text-right" : "text-left"
+                          }`}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    {expandedRowId === row.original.id && renderExpandedRow && (
+                      <tr className={isDark ? "bg-gray-800/80" : "bg-gray-50/50"}>
+                        <td colSpan={columns.length} className="px-4 py-0 border-none">
+                          <div className="overflow-hidden animate-in slide-in-from-top-2 duration-300">
+                            {renderExpandedRow(row.original)}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))
               )}
             </tbody>
@@ -436,6 +454,7 @@ export function ActionButton({ label, onClick, color = "indigo" }: ActionButtonP
 interface StatusBadgeProps {
   label: string;
   variant?: "green" | "yellow" | "red" | "gray" | "blue";
+  className?: string;
 }
 
 const badgeMap = {
@@ -461,7 +480,7 @@ const badgeMap = {
   },
 };
 
-export function StatusBadge({ label, variant = "gray" }: StatusBadgeProps) {
+export function StatusBadge({ label, variant = "gray", className = "" }: StatusBadgeProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const scheme = badgeMap[variant] || badgeMap.gray;
@@ -470,7 +489,7 @@ export function StatusBadge({ label, variant = "gray" }: StatusBadgeProps) {
     <span
       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
         isDark ? scheme.dark : scheme.light
-      }`}
+      } ${className}`}
     >
       {label}
     </span>

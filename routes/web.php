@@ -26,6 +26,16 @@ Route::get('/', function () {
     ]);
 });
 
+// 📸 Server Storage Proxy (Fixes 403 Forbidden on Hostinger VPS)
+Route::get('storage/{path}', function ($path) {
+    if (! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+    
+    $file = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+    return response()->file($file);
+})->where('path', '.*');
+
 // Subscription UI Page
 Route::get('/subscription', function () {
     return Inertia::render('Subscription');
@@ -256,6 +266,16 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         // الرحلات اليومية (Daily Trips)
         Route::resource('daily-trips', \App\Http\Controllers\Admin\DailyTripController::class);
         Route::post('daily-trips/auto-create', [\App\Http\Controllers\Admin\DailyTripController::class, 'autoCreate'])->name('daily-trips.auto-create');
+
+        // الإشعارات (Admin)
+        Route::prefix('notifications')->name('notifications.')->group(function () {
+            Route::get('/all', [\App\Http\Controllers\NotificationController::class, 'page'])->name('page');
+            Route::get('/', [\App\Http\Controllers\NotificationController::class, 'index'])->name('index');
+            Route::post('/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('read');
+            Route::post('/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('readAll');
+            Route::delete('/{id}', [\App\Http\Controllers\NotificationController::class, 'destroy'])->name('destroy');
+            Route::delete('/', [\App\Http\Controllers\NotificationController::class, 'destroyAll'])->name('destroyAll');
+        });
     });
 
 
@@ -339,17 +359,8 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');
     });
 
-// ⚪ ثالثاً: روابط الملف الشخصي والإشعارات
+// ⚪ ثالثاً: روابط الملف الشخصي
 Route::middleware('auth')->group(function () {
-    // Notifications
-    Route::get('/notifications/all', [\App\Http\Controllers\NotificationController::class, 'page'])->name('notifications.page');
-    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
-    Route::post('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
-    Route::post('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
-    Route::delete('/notifications/{id}', [\App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');
-    Route::delete('/notifications', [\App\Http\Controllers\NotificationController::class, 'destroyAll'])->name('notifications.destroyAll');
-
-    // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

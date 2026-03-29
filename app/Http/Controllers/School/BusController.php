@@ -49,6 +49,7 @@ class BusController extends Controller
 
         // 2. Bus Requests Data
         $requests = \App\Models\BusRequest::where('school_id', $schoolId)
+            ->with(['buses', 'approvedBy'])
             ->latest()
             ->get();
 

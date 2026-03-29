@@ -28,6 +28,14 @@ Thumbs.db
 /storage/logs/
 .agents/
 
+# Clockwork data
+.clockwork/
+storage/clockwork/
+
+# Web Tinker storage
+storage/web-tinker/
+/public/vendor
+
 # Local test and debug scripts
 test_*.php
 _*.php

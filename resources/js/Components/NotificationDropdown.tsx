@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import axios from 'axios';
+import { Bell, CheckCircle, AlertTriangle, Info, Trash2, Bus as BusIcon, User } from "lucide-react";
 
 interface Notification {
     id: number;
@@ -31,7 +32,7 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
     const fetchNotifications = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('/notifications');
+            const response = await axios.get('/admin/notifications');
             setNotifications(response.data.notifications);
             setUnreadCount(response.data.unread_count);
         } catch (error) {
@@ -44,7 +45,7 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
     // Mark as read
     const markAsRead = async (id: number) => {
         try {
-            await axios.post(`/notifications/${id}/read`);
+            await axios.post(`/admin/notifications/${id}/read`);
             setNotifications(prev =>
                 prev.map(n => n.id === id ? { ...n, status: 'read', read_at: new Date().toISOString() } : n)
             );
@@ -57,7 +58,7 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
     // Mark all as read
     const markAllAsRead = async () => {
         try {
-            await axios.post('/notifications/read-all');
+            await axios.post('/admin/notifications/read-all');
             setNotifications(prev =>
                 prev.map(n => ({ ...n, status: 'read' as const, read_at: new Date().toISOString() }))
             );
@@ -70,7 +71,7 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
     // Delete notification
     const deleteNotification = async (id: number) => {
         try {
-            await axios.delete(`/notifications/${id}`);
+            await axios.delete(`/admin/notifications/${id}`);
             setNotifications(prev => prev.filter(n => n.id !== id));
             if (notifications.find(n => n.id === id)?.status === 'unread') {
                 setUnreadCount(prev => Math.max(0, prev - 1));
@@ -115,27 +116,22 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
         fetchNotifications();
     }, []);
 
-    const getIconColor = (color: string) => {
-        const colors: Record<string, string> = {
-            blue: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30',
-            green: 'text-green-500 bg-green-100 dark:bg-green-900/30',
-            red: 'text-red-500 bg-red-100 dark:bg-red-900/30',
-            yellow: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/30',
-            purple: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30',
-        };
-        return colors[color] || colors.blue;
-    };
-
-    const getIconEmoji = (icon: string) => {
-        const icons: Record<string, string> = {
-            bell: '🔔',
-            bus: '🚌',
-            'check-circle': '✅',
-            'x-circle': '❌',
-            info: 'ℹ️',
-            warning: '⚠️',
-        };
-        return icons[icon] || icons.bell;
+    const getIcon = (type: string, color: string) => {
+        const baseClass = "w-6 h-6";
+        switch (type) {
+            case 'bus_request':
+            case 'bus':
+                return <BusIcon className={baseClass} />;
+            case 'check-circle':
+            case 'success':
+                return <CheckCircle className={baseClass} />;
+            case 'warning':
+                return <AlertTriangle className={baseClass} />;
+            case 'info':
+                return <Info className={baseClass} />;
+            default:
+                return <Bell className={baseClass} />;
+        }
     };
 
     const formatTime = (dateString: string) => {
@@ -176,88 +172,106 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
 
             {/* Dropdown */}
             {isOpen && (
-                <div className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-2 w-96 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 max-h-[600px] flex flex-col`}>
+                <div className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-3 w-96 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 z-50 max-h-[600px] flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200`}>
                     {/* Header */}
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-500 to-purple-600 rounded-t-2xl">
+                    <div className="p-5 bg-gradient-to-br from-brand-dark to-brand-navy dark:from-gray-900 dark:to-gray-800 border-b border-white/10">
                         <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-white">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <span className="w-8 h-8 rounded-lg bg-brand-yellow/20 flex items-center justify-center text-brand-yellow">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
+                                </span>
                                 {isRTL ? 'الإشعارات' : 'Notifications'}
                             </h3>
                             {notifications.length > 0 && (
                                 <button
                                     onClick={markAllAsRead}
-                                    className="text-xs text-white/90 hover:text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition-colors"
+                                    className="text-[11px] font-bold text-brand-yellow bg-brand-yellow/10 hover:bg-brand-yellow/20 px-3 py-1.5 rounded-lg transition-all border border-brand-yellow/20"
                                 >
                                     {isRTL ? 'تحديد الكل كمقروء' : 'Mark all read'}
                                 </button>
                             )}
                         </div>
                         {unreadCount > 0 && (
-                            <p className="text-sm text-white/80 mt-1">
-                                {isRTL ? `${unreadCount} غير مقروء` : `${unreadCount} unread`}
+                            <p className="text-xs text-brand-yellow/80 mt-2 font-medium bg-brand-yellow/10 inline-block px-2 py-0.5 rounded-full border border-brand-yellow/10">
+                                {isRTL ? `${unreadCount} تنبيهات جديدة` : `${unreadCount} new alerts`}
                             </p>
                         )}
                     </div>
 
                     {/* Notifications List */}
-                    <div className="overflow-y-auto flex-1">
+                    <div className="overflow-y-auto flex-1 custom-scrollbar">
                         {loading ? (
-                            <div className="p-8 text-center">
-                                <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto" />
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+                            <div className="p-12 text-center">
+                                <div className="animate-spin w-10 h-10 border-4 border-brand-yellow border-t-transparent rounded-full mx-auto" />
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 animate-pulse uppercase tracking-widest font-bold">
                                     {isRTL ? 'جاري التحميل...' : 'Loading...'}
                                 </p>
                             </div>
                         ) : notifications.length === 0 ? (
-                            <div className="p-12 text-center">
-                                <div className="text-6xl mb-4">🔔</div>
-                                <p className="text-gray-500 dark:text-gray-400 font-semibold">
-                                    {isRTL ? 'لا توجد إشعارات' : 'No notifications'}
+                            <div className="p-16 text-center">
+                                <div className="w-24 h-24 bg-gray-50 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <Bell className="w-12 h-12 text-gray-400" />
+                                </div>
+                                <p className="text-gray-800 dark:text-white font-bold text-lg">
+                                    {isRTL ? 'القائمة فارغة' : 'Inbox is empty'}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    {isRTL ? 'لا توجد إشعارات جديدة في سحابتك' : 'No new notifications in your cloud'}
                                 </p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                            <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
                                 {notifications.map((notification) => (
                                     <div
                                         key={notification.id}
-                                        className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer relative group ${
-                                            notification.status === 'unread' ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
+                                        className={`p-4 hover:bg-gray-50 dark:hover:bg-brand-navy/10 transition-colors cursor-pointer relative group ${
+                                            notification.status === 'unread' ? 'bg-brand-yellow/5' : ''
                                         }`}
                                         onClick={() => {
-                                            if (notification.status === 'unread') {
-                                                markAsRead(notification.id);
-                                            }
+                                            if (notification.status === 'unread') markAsRead(notification.id);
                                             if (notification.data?.bus_request_id) {
-                                                router.visit('/admin/buses');
+                                                router.visit('/admin/bus-requests');
                                                 setIsOpen(false);
                                             }
                                         }}
                                     >
-                                        <div className="flex gap-3">
+                                        <div className="flex gap-4">
                                             {/* Icon */}
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${getIconColor(notification.color)}`}>
-                                                <span className="text-xl">{getIconEmoji(notification.icon)}</span>
+                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm border ${
+                                                notification.status === 'unread' 
+                                                    ? 'bg-white dark:bg-gray-700 border-brand-yellow/30' 
+                                                    : 'bg-gray-50 dark:bg-gray-800 border-transparent opacity-60'
+                                            }`}>
+                                                <div className={notification.status === 'unread' ? 'text-brand-dark dark:text-brand-yellow' : 'text-gray-400'}>
+                                                    {getIcon(notification.icon, notification.color)}
+                                                </div>
                                             </div>
 
                                             {/* Content */}
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between items-start gap-2 mb-1">
-                                                    <h4 className="font-bold text-gray-800 dark:text-white text-sm">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <h4 className={`font-bold text-sm truncate ${
+                                                        notification.status === 'unread' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+                                                    }`}>
                                                         {notification.title}
                                                     </h4>
                                                     {notification.status === 'unread' && (
-                                                        <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 animate-pulse" />
+                                                        <span className="w-2.5 h-2.5 bg-brand-yellow rounded-full flex-shrink-0 animate-pulse-slow shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
                                                     )}
                                                 </div>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                                <p className={`text-[13px] line-clamp-2 ${
+                                                    notification.status === 'unread' ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400'
+                                                }`}>
                                                     {notification.message}
                                                 </p>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-xs text-gray-500 dark:text-gray-500">
+                                                <div className="flex justify-between items-center mt-3">
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
                                                         {formatTime(notification.created_at)}
                                                     </span>
                                                     {notification.from_user_name && (
-                                                        <span className="text-xs text-gray-500 dark:text-gray-500">
+                                                        <span className="text-[10px] font-medium text-brand-navy/60 dark:text-white/40 italic">
                                                             {isRTL ? 'من' : 'from'} {notification.from_user_name}
                                                         </span>
                                                     )}
@@ -270,11 +284,9 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
                                                     e.stopPropagation();
                                                     deleteNotification(notification.id);
                                                 }}
-                                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all"
+                                                className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
                                             >
-                                                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
+                                                <Trash2 className="w-4 h-4 text-red-400" />
                                             </button>
                                         </div>
                                     </div>
@@ -285,15 +297,15 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
 
                     {/* Footer */}
                     {notifications.length > 0 && (
-                        <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
+                        <div className="p-4 bg-gray-50 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700">
                             <button
                                 onClick={() => {
-                                    router.visit('/notifications/all');
+                                    router.visit('/admin/notifications/all');
                                     setIsOpen(false);
                                 }}
-                                className="w-full py-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors"
+                                className="w-full py-3 bg-white dark:bg-gray-800 text-sm text-brand-navy dark:text-white hover:text-brand-yellow dark:hover:text-brand-yellow font-bold rounded-xl transition-all shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700"
                             >
-                                {isRTL ? 'عرض جميع الإشعارات' : 'View all notifications'}
+                                {isRTL ? 'عرض جميع الإشعارات' : 'View full history'}
                             </button>
                         </div>
                     )}
