@@ -5,6 +5,7 @@ import useTranslation from "@/hooks/useTranslation";
 import BusModal from "@/Components/BusModal";
 import BusRequestModal from "@/Components/BusRequestModal";
 import LiveTrackingMap from "@/Components/LiveTrackingMap";
+import RequestInvoiceModal from "@/Components/RequestInvoiceModal";
 
 interface Bus {
   id: number;
@@ -29,15 +30,18 @@ interface Bus {
 interface BusRequest {
   id: number;
   request_type: string;
-  number_of_buses: number;
+  requested_seats: number;
   start_date: string;
   end_date?: string;
   reason: string;
   special_requirements?: string;
   status: "pending" | "approved" | "rejected";
+  total_cost?: string | number | null;
+  approvedBy?: { name: string };
   rejection_reason?: string;
   approved_at?: string;
   created_at: string;
+  buses?: Array<{ id: number; bus_code: string; plate_number: string; capacity: number }>;
 }
 
 interface Props {
@@ -72,6 +76,9 @@ export default function BusesManagement({
   >("all");
   const [selectedBuses, setSelectedBuses] = useState<number[]>([]);
   const [requestSearchQuery, setRequestSearchQuery] = useState("");
+
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [selectedInvoiceRequest, setSelectedInvoiceRequest] = useState<BusRequest | null>(null);
 
   // Filter buses
   const filteredBuses = buses.filter((bus) => {
@@ -513,7 +520,7 @@ export default function BusesManagement({
                         {t("Request Type")}
                       </th>
                       <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">
-                        {t("Buses")}
+                        {t("Seats")}
                       </th>
                       <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase">
                         {t("Dates")}
@@ -545,7 +552,7 @@ export default function BusesManagement({
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className="inline-flex items-center px-3 py-1 rounded-[10px] bg-blue-50 text-blue-700 font-bold">
-                            🚌 {request.number_of_buses}
+                            💺 {request.requested_seats}
                           </span>
                         </td>
                         <td className="px-6 py-4">
@@ -587,14 +594,28 @@ export default function BusesManagement({
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          {request.status === "pending" && (
-                            <button
-                              onClick={() => handleEditRequest(request)}
-                              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-[12px] hover:bg-[#0e7490] hover:text-white font-bold text-xs transition-all"
-                            >
-                              ✏️ {t("Edit")}
-                            </button>
-                          )}
+                          <div className="flex items-center justify-center gap-2">
+                            {request.status === "pending" && (
+                              <button
+                                onClick={() => handleEditRequest(request)}
+                                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-[12px] hover:bg-[#0e7490] hover:text-white font-bold text-xs transition-all"
+                              >
+                                ✏️ {t("Edit")}
+                              </button>
+                            )}
+                            {request.status === "approved" && (
+                              <button
+                                onClick={() => {
+                                  setSelectedInvoiceRequest(request);
+                                  setShowInvoiceModal(true);
+                                }}
+                                className="px-4 py-2 bg-cyan-100 dark:bg-[#0e7490]/20 text-[#0e7490] dark:text-cyan-400 rounded-[12px] hover:bg-[#0e7490] hover:text-white font-bold text-xs transition-all"
+                                title={t("View Invoice / Receipt")}
+                              >
+                                🖨️ {t("Print")}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -642,6 +663,17 @@ export default function BusesManagement({
           setSelectedRequest(null);
         }}
         request={selectedRequest}
+      />
+
+      {/* Invoice Modal */}
+      <RequestInvoiceModal 
+        show={showInvoiceModal}
+        onClose={() => {
+          setShowInvoiceModal(false);
+          setSelectedInvoiceRequest(null);
+        }}
+        request={selectedInvoiceRequest}
+        schoolName={auth.user?.name || "المدرسة الطالبه"}
       />
     </SchoolAuthenticatedLayout>
   );

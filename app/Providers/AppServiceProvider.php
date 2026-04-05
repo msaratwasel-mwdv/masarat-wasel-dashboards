@@ -21,7 +21,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        if ($this->app->isLocal()) {
+            if (class_exists(\Clockwork\Support\Laravel\ClockworkServiceProvider::class)) {
+                $this->app->register(\Clockwork\Support\Laravel\ClockworkServiceProvider::class);
+            }
+            if (class_exists(\Spatie\WebTinker\WebTinkerServiceProvider::class)) {
+                $this->app->register(\Spatie\WebTinker\WebTinkerServiceProvider::class);
+            }
+        }
     }
 
     /**

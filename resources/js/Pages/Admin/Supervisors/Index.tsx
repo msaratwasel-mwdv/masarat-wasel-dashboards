@@ -76,6 +76,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<number | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // --- Form ---
   const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
@@ -120,6 +121,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
   const openAddModal = () => {
     setIsEditing(false);
     setCurrentId(null);
+    setPreviewImage(null);
     reset();
     setData("_method", "post");
     clearErrors();
@@ -129,6 +131,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
   const openEditModal = (sup: Supervisor) => {
     setIsEditing(true);
     setCurrentId(sup.id);
+    setPreviewImage(sup.image ? `/storage/${sup.image}` : null);
     setData({
       _method: "put",
       name: sup.name,
@@ -147,6 +150,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setPreviewImage(null);
     reset();
   };
 
@@ -377,83 +381,245 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
             emptyMessage={isRTL ? "لا يوجد مشرفين مطابقين." : "No supervisors found."}
           />
 
-          {/* Modal */}
-          <Modal show={isModalOpen} onClose={closeModal}>
-            <div className={`p-6 ${isDark ? "bg-gray-800 text-gray-200" : "bg-white"}`}>
-              <h2 className={`text-lg font-medium mb-4 ${isDark ? "text-white" : "text-gray-900"} ${isRTL ? "text-right" : ""}`}>
-                {isEditing ? (isRTL ? "تعديل وبيانات المشرفة" : "Edit Supervisor Details") : (isRTL ? "تسجيل مشرفة جديدة" : "Register New Supervisor")}
-              </h2>
-              <form onSubmit={submit} className="space-y-4">
-                <div className={`grid grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}>
-                  <div className={isRTL ? "text-right" : ""}>
-                    <InputLabel htmlFor="name" value={isRTL ? "الاسم الكامل (عربي)" : "Full Name (Arabic)"} />
-                    <TextInput id="name" value={data.name} onChange={(e) => setData("name", e.target.value)} className="mt-1 block w-full" />
-                    <InputError message={errors.name} className="mt-2" />
+          {/* Modern Add/Edit Modal */}
+          <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
+            <div className={`relative ${isDark ? "bg-gray-900 border border-gray-700" : "bg-white"} rounded-2xl overflow-hidden shadow-2xl`}>
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={closeModal}
+                className={`absolute top-6 ${isRTL ? "left-6" : "right-6"} p-2 rounded-full hover:bg-gray-100 transition-colors ${isDark ? "hover:bg-gray-800 text-gray-400" : "text-gray-500"}`}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              {/* Header */}
+              <div className={`px-8 pt-8 pb-6 border-b ${isDark ? "border-gray-800" : "border-gray-100"}`}>
+                <h2 className={`text-2xl font-bold ${isDark ? "text-white" : "text-brand-navy"}`}>
+                  {isEditing ? (isRTL ? "تعديل بيانات المشرفة" : "Edit Supervisor Details") : (isRTL ? "تسجيل ببيانات مشرفة جديدة" : "Register New Supervisor")}
+                </h2>
+                <p className={`mt-1 text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                  {isRTL ? "أكمل التفاصيل التعريفية والوظيفية أدناه" : "Complete the identification and professional details below"}
+                </p>
+              </div>
+
+              <form onSubmit={submit} className="flex flex-col">
+                <div className="p-8 space-y-8">
+                  {/* Photo Upload Section */}
+                  <div className={`flex items-start gap-6 ${isRTL ? "flex-row-reverse" : ""}`}>
+                    <div className="relative w-24 h-24 rounded-2xl bg-gray-100 flex items-center justify-center border border-gray-200 flex-shrink-0 overflow-visible">
+                      <div className="w-full h-full rounded-2xl overflow-hidden flex items-center justify-center bg-gray-50">
+                        {data.image ? (
+                          <img src={URL.createObjectURL(data.image)} alt="Preview" className="w-full h-full object-cover" />
+                        ) : previewImage ? (
+                          <img src={previewImage} alt="Current" className="w-full h-full object-cover" />
+                        ) : (
+                          <svg className="w-10 h-10 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className={`absolute -bottom-2 ${isRTL ? "-left-2" : "-right-2"} w-8 h-8 rounded-full bg-brand-yellow text-brand-dark flex flex-col items-center justify-center border-2 border-white shadow-sm`}>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    <div className={`flex-1 ${isRTL ? "text-right" : "text-left"}`}>
+                      <h4 className={`font-bold ${isDark ? "text-gray-200" : "text-gray-800"}`}>
+                        {isRTL ? "صورة الملف الشخصي للمشرفة" : "Supervisor Profile Image"}
+                      </h4>
+                      <p className={`text-xs mt-1 max-w-sm leading-relaxed ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                        {isRTL 
+                          ? "مطلوبة لبطاقات الهوية. JPG أو PNG بحد أقصى 5MB. ضرورة وضوح الوجه بالكامل إلزامي." 
+                          : "Required for identification cards. JPG or PNG, maximum 5MB. Clear face visibility is mandatory."}
+                      </p>
+                      <div className={`flex gap-3 mt-3 ${isRTL ? "flex-row-reverse justify-end" : ""}`}>
+                        <label className={`cursor-pointer px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${isDark ? "bg-brand-navy border border-gray-600 text-white hover:bg-gray-800" : "bg-brand-navy text-white hover:bg-opacity-90"}`}>
+                          {isRTL ? "رفع صورة" : "Upload Photo"}
+                          <input type="file" className="hidden" accept="image/*" onChange={(e) => setData("image", e.target.files?.[0] || null)} />
+                        </label>
+                        <button 
+                          type="button" 
+                          onClick={() => { setData('image', null); setPreviewImage(null); }}
+                          className={`px-4 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${isDark ? "border-gray-600 text-gray-300 hover:bg-gray-800" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                        >
+                          {isRTL ? "إزالة" : "Remove"}
+                        </button>
+                      </div>
+                      <InputError message={errors.image} className="mt-2" />
+                    </div>
                   </div>
-                  <div className={isRTL ? "text-right" : ""}>
-                    <InputLabel htmlFor="name_en" value={isRTL ? "الاسم بالإنجليزية" : "English Name"} />
-                    <TextInput id="name_en" value={data.name_en} onChange={(e) => setData("name_en", e.target.value)} className="mt-1 block w-full text-left" dir="ltr" />
-                    <InputError message={errors.name_en} className="mt-2" />
+
+                  {/* Form Grid */}
+                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 ${isRTL ? "rtl" : "ltr"}`}>
+                    
+                    {/* Name EN */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label htmlFor="name_en" className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                          {isRTL ? "الاسم بالإنجليزية" : "Full Name (English)"}
+                        </label>
+                      </div>
+                      <input 
+                        id="name_en" type="text" value={data.name_en} onChange={(e) => setData("name_en", e.target.value)} dir="ltr"
+                        className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy focus:border-transparent"}`} 
+                      />
+                      <InputError message={errors.name_en} className="mt-1" />
+                    </div>
+
+                    {/* Name AR */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label htmlFor="name" className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                          {isRTL ? "الاسم الكامل (عربي)" : "Full Name (Arabic)"}
+                        </label>
+                        <span className="text-[10px] italic text-gray-400">{isRTL ? "مطلوب" : "Required"}</span>
+                      </div>
+                      <input 
+                        id="name" type="text" value={data.name} onChange={(e) => setData("name", e.target.value)} dir="rtl"
+                        className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy focus:border-transparent"}`} 
+                      />
+                      <InputError message={errors.name} className="mt-1" />
+                    </div>
+
+                    {/* National ID */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label htmlFor="national_id" className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                          {isRTL ? "رقم الهوية / الإقامة" : "National ID / Resident ID"}
+                        </label>
+                        <span className="text-[10px] italic text-gray-400">{isRTL ? "مطلوب" : "Required"}</span>
+                      </div>
+                      <input 
+                        id="national_id" type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} dir="ltr"
+                        className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all font-mono ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy focus:border-transparent"}`} 
+                      />
+                      <InputError message={errors.national_id} className="mt-1" />
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label htmlFor="phone" className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                          {isRTL ? "رقم الجوال" : "Phone Number"}
+                        </label>
+                        <span className="text-[10px] italic text-gray-400">{isRTL ? "مطلوب" : "Required"}</span>
+                      </div>
+                      <div className="relative">
+                        <div className={`absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none font-mono text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>+966</div>
+                        <input 
+                          id="phone" type="text" value={data.phone} onChange={(e) => setData("phone", e.target.value)} dir="ltr" placeholder="5X XXX XXXX"
+                          className={`w-full rounded-lg pl-12 pr-4 py-2.5 text-sm outline-none transition-all font-mono ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy focus:border-transparent"}`} 
+                        />
+                      </div>
+                      <InputError message={errors.phone} className="mt-1" />
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label htmlFor="email" className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                          {isRTL ? "البريد الإلكتروني" : "Email Address"}
+                        </label>
+                        <span className="text-[10px] italic text-gray-400">{isRTL ? "مطلوب" : "Required"}</span>
+                      </div>
+                      <input 
+                        id="email" type="email" value={data.email} onChange={(e) => setData("email", e.target.value)} dir="ltr" placeholder="supervisor@fleet.com"
+                        className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy focus:border-transparent"}`} 
+                      />
+                      <InputError message={errors.email} className="mt-1" />
+                    </div>
+                    
+                    {/* Status */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label htmlFor="status" className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                          {isRTL ? "الحالة" : "Status"}
+                        </label>
+                      </div>
+                      <select 
+                        id="status" value={data.status} onChange={(e) => setData("status", e.target.value)}
+                        className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy focus:border-transparent"}`} 
+                      >
+                        <option value="Active">{isRTL ? "نشط" : "Active"}</option>
+                        <option value="Trainee">{isRTL ? "متدرب" : "Trainee"}</option>
+                        <option value="On Leave">{isRTL ? "إجازة" : "On Leave"}</option>
+                        <option value="Inactive">{isRTL ? "غير نشط" : "Inactive"}</option>
+                      </select>
+                      <InputError message={errors.status} className="mt-1" />
+                    </div>
+
                   </div>
-                </div>
-                <div className={`grid grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}>
-                  <div className={isRTL ? "text-right" : ""}>
-                    <InputLabel htmlFor="national_id" value={isRTL ? "رقم الهوية" : "National ID"} />
-                    <TextInput id="national_id" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} className="mt-1 block w-full" />
-                    <InputError message={errors.national_id} className="mt-2" />
-                  </div>
-                  <div className={isRTL ? "text-right" : ""}>
-                    <InputLabel htmlFor="phone" value={isRTL ? "رقم الجوال" : "Phone"} />
-                    <TextInput id="phone" value={data.phone} onChange={(e) => setData("phone", e.target.value)} className="mt-1 block w-full text-left" dir="ltr" />
-                    <InputError message={errors.phone} className="mt-2" />
-                  </div>
-                </div>
-                <div className={isRTL ? "text-right" : ""}>
-                  <InputLabel htmlFor="email" value={isRTL ? "البريد الإلكتروني" : "Email"} />
-                  <TextInput id="email" type="email" value={data.email} onChange={(e) => setData("email", e.target.value)} className="mt-1 block w-full text-left" dir="ltr" />
-                  <InputError message={errors.email} className="mt-2" />
-                </div>
-                <div className={`grid grid-cols-2 gap-4 p-4 rounded-xl border mt-2 ${isDark ? "bg-red-900/10 border-red-900/30" : "bg-red-50/50 border-red-100"} ${isRTL ? "rtl" : ""}`}>
-                  <div className="col-span-2">
-                    <h3 className={`text-xs font-bold uppercase ${isDark ? "text-red-400" : "text-red-800"}`}>
+
+                  {/* Emergency Contacts - Highlighted Section */}
+                  <div className={`p-5 rounded-xl border ${isDark ? "bg-red-900/10 border-red-900/30" : "bg-red-50/50 border-red-100"}`}>
+                    <h3 className={`text-xs font-bold uppercase mb-4 ${isDark ? "text-red-400" : "text-red-800"} ${isRTL ? "text-right" : ""}`}>
                       {isRTL ? "جهات اتصال الطوارئ" : "Emergency Contact"}
                     </h3>
+                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 ${isRTL ? "rtl" : "ltr"}`}>
+                      {/* Emergency Name */}
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label htmlFor="emergency_contact_name" className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                            {isRTL ? "اسم جهة الطوارئ" : "Contact Name"}
+                          </label>
+                        </div>
+                        <input 
+                          id="emergency_contact_name" type="text" value={data.emergency_contact_name} onChange={(e) => setData("emergency_contact_name", e.target.value)}
+                          className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy focus:border-transparent"}`} 
+                        />
+                        <InputError message={errors.emergency_contact_name} className="mt-1" />
+                      </div>
+
+                      {/* Emergency Phone */}
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label htmlFor="emergency_contact_phone" className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                            {isRTL ? "رقم الهاتف للجهة" : "Contact Phone"}
+                          </label>
+                        </div>
+                        <input 
+                          id="emergency_contact_phone" type="text" value={data.emergency_contact_phone} onChange={(e) => setData("emergency_contact_phone", e.target.value)} dir="ltr" placeholder="05X XXX XXXX"
+                          className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all font-mono ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy focus:border-transparent"}`} 
+                        />
+                        <InputError message={errors.emergency_contact_phone} className="mt-1" />
+                      </div>
+                    </div>
                   </div>
-                  <div className={isRTL ? "text-right" : ""}>
-                    <InputLabel htmlFor="emergency_contact_name" value={isRTL ? "اسم جهة الطوارئ" : "Contact Name"} />
-                    <TextInput id="emergency_contact_name" value={data.emergency_contact_name} onChange={(e) => setData("emergency_contact_name", e.target.value)} className="mt-1 block w-full" />
-                    <InputError message={errors.emergency_contact_name} className="mt-2" />
-                  </div>
-                  <div className={isRTL ? "text-right" : ""}>
-                    <InputLabel htmlFor="emergency_contact_phone" value={isRTL ? "رقم الهاتف (للطوارئ)" : "Contact Phone"} />
-                    <TextInput id="emergency_contact_phone" value={data.emergency_contact_phone} onChange={(e) => setData("emergency_contact_phone", e.target.value)} className="mt-1 block w-full text-left" dir="ltr" />
-                    <InputError message={errors.emergency_contact_phone} className="mt-2" />
-                  </div>
+
                 </div>
-                <div className={isRTL ? "text-right" : ""}>
-                  <InputLabel value={isRTL ? "الحالة" : "Status"} />
-                  <select
-                    className={`mt-1 block w-full rounded-md shadow-sm text-sm focus:ring-brand-yellow ${isDark ? "border-gray-600 bg-gray-700 text-white" : "border-gray-300 bg-white"}`}
-                    value={data.status}
-                    onChange={(e) => setData("status", e.target.value)}
+
+                {/* Footer Actions */}
+                <div className={`px-8 py-5 border-t flex justify-between items-center ${isDark ? "bg-gray-800/50 border-gray-800" : "bg-gray-50 border-gray-100"} ${isRTL ? "flex-row-reverse" : ""}`}>
+                  <button 
+                    type="button" 
+                    onClick={closeModal} 
+                    className={`text-sm font-semibold transition-colors ${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-800"}`}
                   >
-                    <option value="Active">{isRTL ? "نشط" : "Active"}</option>
-                    <option value="Trainee">{isRTL ? "متدرب" : "Trainee"}</option>
-                    <option value="On Leave">{isRTL ? "إجازة" : "On Leave"}</option>
-                    <option value="Inactive">{isRTL ? "غير نشط" : "Inactive"}</option>
-                  </select>
-                  <InputError message={errors.status} className="mt-2" />
-                </div>
-                <div className={isRTL ? "text-right" : ""}>
-                  <InputLabel htmlFor="image" value={isRTL ? "الصورة الشخصية" : "Profile Picture"} />
-                  <input id="image" type="file" accept="image/*" onChange={(e) => setData("image", e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200" />
-                  <InputError message={errors.image} className="mt-2" />
-                </div>
-                <div className={`flex gap-3 justify-end mt-6 ${isRTL ? "flex-row-reverse" : ""}`}>
-                  <SecondaryButton onClick={closeModal}>{isRTL ? "إلغاء" : "Cancel"}</SecondaryButton>
-                  <PrimaryButton className="bg-brand-dark" disabled={processing}>
-                    {isEditing ? (isRTL ? "تحديث المشرفة" : "Update Supervisor") : (isRTL ? "إضافة مشرفة" : "Add Supervisor")}
-                  </PrimaryButton>
+                    {isRTL ? "إلغاء المسودة" : "Discard Draft"}
+                  </button>
+                  
+                  <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
+                    <button 
+                      type="button" 
+                      onClick={closeModal} 
+                      className={`text-sm font-bold transition-colors ${isDark ? "text-gray-300 hover:text-white" : "text-gray-700 hover:text-black"}`}
+                    >
+                      {isRTL ? "إلغاء" : "Cancel"}
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={processing}
+                      className={`px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-opacity disabled:opacity-50 ${isDark ? "bg-brand-yellow text-brand-dark hover:opacity-90" : "bg-brand-yellow text-brand-dark hover:opacity-90"}`}
+                    >
+                      {isEditing ? (isRTL ? "حفظ التعديلات" : "Save Changes") : (isRTL ? "إضافة المشرفة" : "Add Supervisor")}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>

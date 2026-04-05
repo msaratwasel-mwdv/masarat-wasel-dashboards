@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('school_id')->constrained()->onDelete('cascade');
             $table->enum('request_type', ['permanent', 'temporary', 'field_trip'])->default('permanent');
-            $table->integer('number_of_buses')->default(1);
+            $table->integer('requested_seats')->default(20);
+            $table->decimal('total_cost', 10, 2)->nullable();
             $table->date('start_date');
             $table->date('end_date')->nullable();
             $table->text('reason');

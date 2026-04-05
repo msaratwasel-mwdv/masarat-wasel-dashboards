@@ -1,294 +1,302 @@
-import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import useTranslation from '@/hooks/useTranslation';
+import { useState } from "react";
+import { Head, router } from "@inertiajs/react";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import { useTheme } from "@/Contexts/ThemeContext";
+import { 
+  Bell, 
+  CheckCircle, 
+  AlertTriangle, 
+  Info, 
+  Trash2, 
+  Inbox, 
+  User, 
+  Filter,
+  CheckCheck,
+  Calendar,
+  Bus as BusIcon
+} from "lucide-react";
+import PrimaryButton from "@/Components/PrimaryButton";
+import SecondaryButton from "@/Components/SecondaryButton";
 
 interface Notification {
-    id: number;
-    type: string;
-    title: string;
-    message: string;
-    data: any;
-    from_user_name: string;
-    status: 'unread' | 'read';
-    icon: string;
-    color: string;
-    created_at: string;
-    read_at?: string;
+  id: number;
+  type: string;
+  title: string;
+  message: string;
+  data: any;
+  from_user_name: string;
+  status: "unread" | "read";
+  icon: string;
+  color: string;
+  created_at: string;
+  read_at?: string;
 }
 
 interface Props {
-    auth: any;
-    notifications: Notification[];
+  auth: any;
+  notifications: Notification[];
 }
 
 export default function Index({ auth, notifications: allNotifications }: Props) {
-    const { t, isRtl } = useTranslation();
-    const [statusFilter, setStatusFilter] = useState<'all' | 'unread' | 'read'>('all');
-    const [typeFilter, setTypeFilter] = useState<'all' | 'bus_request' | 'bus_request_status'>('all');
+  const { isRTL, theme } = useTheme();
+  const isDark = theme === "dark";
+  const [statusFilter, setStatusFilter] = useState<"all" | "unread" | "read">("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
-    const filteredNotifications = allNotifications.filter(n => {
-        const matchesStatus = statusFilter === 'all' || n.status === statusFilter;
-        const matchesType = typeFilter === 'all' || n.type === typeFilter;
-        return matchesStatus && matchesType;
-    });
+  const filteredNotifications = allNotifications.filter((n) => {
+    const matchesStatus = statusFilter === "all" || n.status === statusFilter;
+    const matchesType = typeFilter === "all" || n.type === typeFilter;
+    return matchesStatus && matchesType;
+  });
 
-    const unreadCount = allNotifications.filter(n => n.status === 'unread').length;
-    const readCount = allNotifications.filter(n => n.status === 'read').length;
+  const unreadCount = allNotifications.filter((n) => n.status === "unread").length;
+  const readCount = allNotifications.filter((n) => n.status === "read").length;
 
-    const markAsRead = (id: number) => {
-        router.post(`/notifications/${id}/read`, {}, {
-            preserveScroll: true,
-        });
-    };
+  const markAsRead = (id: number) => {
+    router.post(`/admin/notifications/${id}/read`, {}, { preserveScroll: true });
+  };
 
-    const markAllAsRead = () => {
-        router.post('/notifications/read-all', {}, {
-            preserveScroll: true,
-        });
-    };
+  const markAllAsRead = () => {
+    router.post("/admin/notifications/read-all", {}, { preserveScroll: true });
+  };
 
-    const deleteNotification = (id: number) => {
-        if (confirm(t('Are you sure you want to delete this notification?'))) {
-            router.delete(`/notifications/${id}`, {
-                preserveScroll: true,
-            });
-        }
-    };
+  const deleteNotification = (id: number) => {
+    if (confirm(isRTL ? "هل أنت متأكد من حذف هذا الإشعار؟" : "Are you sure you want to delete this notification?")) {
+      router.delete(`/admin/notifications/${id}`, { preserveScroll: true });
+    }
+  };
 
-    const deleteAll = () => {
-        if (confirm(t('Are you sure you want to delete all notifications?'))) {
-            router.delete('/notifications', {
-                preserveScroll: true,
-            });
-        }
-    };
+  const deleteAll = () => {
+    if (confirm(isRTL ? "هل أنت متأكد من مسح جميع الإشعارات؟" : "Are you sure you want to clear all notifications?")) {
+      router.delete("/admin/notifications", { preserveScroll: true });
+    }
+  };
 
-    const handleNotificationClick = (notification: Notification) => {
-        if (notification.status === 'unread') {
-            markAsRead(notification.id);
-        }
-        
-        // Navigate based on type
-        if (notification.data?.bus_request_id) {
-            router.visit(route('admin.bus-requests.index'));
-        }
-    };
+  const handleNotificationClick = (notification: Notification) => {
+    if (notification.status === "unread") {
+      markAsRead(notification.id);
+    }
+    if (notification.data?.bus_request_id) {
+      router.visit(route("admin.bus-requests.index"));
+    }
+  };
 
-    const getIconColor = (color: string) => {
-        const colors: Record<string, string> = {
-            blue: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30',
-            green: 'text-green-500 bg-green-100 dark:bg-green-900/30',
-            red: 'text-red-500 bg-red-100 dark:bg-red-900/30',
-            yellow: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/30',
-            purple: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30',
-        };
-        return colors[color] || colors.blue;
-    };
+  const getIcon = (type: string) => {
+    const baseClass = "w-6 h-6";
+    switch (type) {
+      case "bus_request":
+      case "bus":
+        return <BusIcon className={baseClass} />;
+      case "check-circle":
+      case "success":
+        return <CheckCircle className={baseClass} />;
+      case "warning":
+        return <AlertTriangle className={baseClass} />;
+      case "info":
+        return <Info className={baseClass} />;
+      default:
+        return <Bell className={baseClass} />;
+    }
+  };
 
-    const getIconEmoji = (icon: string) => {
-        const icons: Record<string, string> = {
-            bell: '🔔',
-            bus: '🚌',
-            'check-circle': '✅',
-            'x-circle': '❌',
-            info: 'ℹ️',
-            warning: '⚠️',
-        };
-        return icons[icon] || icons.bell;
-    };
+  const getIconStyles = (color: string) => {
+    switch (color) {
+      case "blue":
+        return isDark ? "bg-blue-500/20 text-blue-400 border-blue-500/30" : "bg-blue-50 text-blue-600 border-blue-100";
+      case "green":
+        return isDark ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-green-50 text-green-600 border-green-100";
+      case "red":
+        return isDark ? "bg-red-500/20 text-red-400 border-red-500/30" : "bg-red-50 text-red-600 border-red-100";
+      case "yellow":
+        return isDark ? "bg-brand-yellow/20 text-brand-yellow border-brand-yellow/30" : "bg-brand-yellow/10 text-brand-dark border-brand-yellow/20";
+      default:
+        return isDark ? "bg-gray-500/20 text-gray-400 border-gray-500/30" : "bg-gray-50 text-gray-600 border-gray-100";
+    }
+  };
 
-    const formatTime = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diff = now.getTime() - date.getTime();
-        const minutes = Math.floor(diff / 60000);
-        const hours = Math.floor(minutes / 60);
-        const days = Math.floor(hours / 24);
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
-        if (minutes < 1) return isRtl ? 'الآن' : 'Now';
-        if (minutes < 60) return isRtl ? `منذ ${minutes} دقيقة` : `${minutes}m ago`;
-        if (hours < 24) return isRtl ? `منذ ${hours} ساعة` : `${hours}h ago`;
-        if (days < 7) return isRtl ? `منذ ${days} يوم` : `${days}d ago`;
-        return date.toLocaleDateString(isRtl ? 'ar' : 'en');
-    };
+    if (minutes < 1) return isRTL ? "الآن" : "Just now";
+    if (minutes < 60) return isRTL ? `منذ ${minutes} دقيقة` : `${minutes}m ago`;
+    if (hours < 24) return isRTL ? `منذ ${hours} ساعة` : `${hours}h ago`;
+    if (days < 7) return isRTL ? `منذ ${days} يوم` : `${days}d ago`;
+    return date.toLocaleDateString(isRTL ? "ar" : "en");
+  };
 
-    return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-3xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                    {t('Notifications')}
-                </h2>
-            }
-        >
-            <Head title={t('Notifications')} />
+  return (
+    <AuthenticatedLayout
+      header={
+        <h2 className={`font-semibold text-xl ${isDark ? "text-gray-200" : "text-gray-800"} leading-tight`}>
+          {isRTL ? "مركز الإشعارات" : "Notification Center"}
+        </h2>
+      }
+    >
+      <Head title={isRTL ? "الإشعارات" : "Notifications"} />
 
-            <div className="space-y-6">
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-blue-100 text-sm font-semibold uppercase">{t('Unread')}</p>
-                                <h3 className="text-5xl font-extrabold text-white mt-2">{unreadCount}</h3>
-                            </div>
-                            <div className="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center">
-                                <span className="text-4xl">📬</span>
-                            </div>
-                        </div>
-                    </div>
+      {/* --- Page Header --- */}
+      <div className={`flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
+        <div className={isRTL ? "text-right" : "text-left"}>
+          <h1 className={`text-3xl font-bold ${isDark ? "text-white" : "text-brand-dark"} mb-1`}>
+            {isRTL ? "الإشعارات" : "Notifications"}
+          </h1>
+          <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+            {isRTL ? "إدارة وتتبع تنبيهات النظام والنشاطات" : "Manage and track system alerts and activities"}
+          </p>
+        </div>
 
-                    <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-green-100 text-sm font-semibold uppercase">{t('Read')}</p>
-                                <h3 className="text-5xl font-extrabold text-white mt-2">{readCount}</h3>
-                            </div>
-                            <div className="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center">
-                                <span className="text-4xl">✅</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div className="flex gap-3">
+          {unreadCount > 0 && (
+            <PrimaryButton
+              onClick={markAllAsRead}
+              className="flex items-center px-6 py-3 bg-brand-yellow text-brand-dark font-bold rounded-full shadow-md hover:shadow-lg transition-all"
+            >
+              <CheckCheck className={`w-5 h-5 ${isRTL ? "ml-2" : "mr-2"}`} />
+              {isRTL ? "تحديد الكل كمقروء" : "Mark All Read"}
+            </PrimaryButton>
+          )}
+          {allNotifications.length > 0 && (
+            <SecondaryButton
+              onClick={deleteAll}
+              className="flex items-center px-6 py-3 font-bold rounded-full transition-all border-red-500 text-red-500 hover:bg-red-50"
+            >
+              <Trash2 className={`w-5 h-5 ${isRTL ? "ml-2" : "mr-2"}`} />
+              {isRTL ? "مسح السجل" : "Clear History"}
+            </SecondaryButton>
+          )}
+        </div>
+      </div>
 
-                {/* Filters & Actions */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4">
-                    <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-                        <div className="flex gap-4 flex-wrap">
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value as any)}
-                                className="px-4 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500"
-                            >
-                                <option value="all">{t('All Status')}</option>
-                                <option value="unread">{t('Unread')}</option>
-                                <option value="read">{t('Read')}</option>
-                            </select>
-
-                            <select
-                                value={typeFilter}
-                                onChange={(e) => setTypeFilter(e.target.value as any)}
-                                className="px-4 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500"
-                            >
-                                <option value="all">{t('All Types')}</option>
-                                <option value="bus_request">{t('New Requests')}</option>
-                                <option value="bus_request_status">{t('Request Updates')}</option>
-                            </select>
-                        </div>
-
-                        <div className="flex gap-2">
-                            {unreadCount > 0 && (
-                                <button
-                                    onClick={markAllAsRead}
-                                    className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg"
-                                >
-                                    ✓ {t('Mark all read')}
-                                </button>
-                            )}
-                            {allNotifications.length > 0 && (
-                                <button
-                                    onClick={deleteAll}
-                                    className="px-4 py-2 bg-gradient-to-r from-red-500 to-pink-600 text-white font-semibold rounded-xl hover:from-red-600 hover:to-pink-700 transition-all shadow-lg"
-                                >
-                                    🗑️ {t('Delete All')}
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Notifications List */}
-                {filteredNotifications.length > 0 ? (
-                    <div className="space-y-4">
-                        {filteredNotifications.map((notification) => (
-                            <div
-                                key={notification.id}
-                                onClick={() => handleNotificationClick(notification)}
-                                className={`group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer ${
-                                    notification.status === 'unread' ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900' : ''
-                                }`}
-                            >
-                                {/* Gradient Top Bar */}
-                                <div className={`h-1 ${notification.status === 'unread' ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gray-300 dark:bg-gray-700'}`} />
-                                
-                                <div className="p-6">
-                                    <div className="flex gap-4">
-                                        {/* Icon */}
-                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${getIconColor(notification.color)}`}>
-                                            <span className="text-3xl">{getIconEmoji(notification.icon)}</span>
-                                        </div>
-
-                                        {/* Content */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-start gap-2 mb-2">
-                                                <h4 className="font-bold text-gray-800 dark:text-white text-lg">
-                                                    {notification.title}
-                                                </h4>
-                                                {notification.status === 'unread' && (
-                                                    <span className="w-3 h-3 bg-blue-500 rounded-full flex-shrink-0 animate-pulse" />
-                                                )}
-                                            </div>
-                                            <p className="text-gray-600 dark:text-gray-400 mb-3">
-                                                {notification.message}
-                                            </p>
-                                            <div className="flex justify-between items-center text-sm">
-                                                <span className="text-gray-500 dark:text-gray-500">
-                                                    {formatTime(notification.created_at)}
-                                                </span>
-                                                {notification.from_user_name && (
-                                                    <span className="text-gray-500 dark:text-gray-500">
-                                                        {isRtl ? 'من' : 'from'} <span className="font-semibold">{notification.from_user_name}</span>
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Actions */}
-                                        <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {notification.status === 'unread' && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        markAsRead(notification.id);
-                                                    }}
-                                                    className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                                                    title={t('Mark as read')}
-                                                >
-                                                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    deleteNotification(notification.id);
-                                                }}
-                                                className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                                                title={t('Delete')}
-                                            >
-                                                <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-16 text-center">
-                        <div className="text-8xl mb-6">🔔</div>
-                        <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-                            {t('No Notifications')}
-                        </h3>
-                        <p className="text-gray-500 dark:text-gray-400">
-                            {t('You have no notifications matching these filters')}
-                        </p>
-                    </div>
-                )}
+      {/* --- Stats Summary --- */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+        {[
+          { label: isRTL ? "الإجمالي" : "Total", value: allNotifications.length, icon: Inbox, color: "gray" },
+          { label: isRTL ? "غير مقروء" : "Unread", value: unreadCount, icon: Bell, color: "yellow" },
+          { label: isRTL ? "تم العرض" : "Viewed", value: readCount, icon: CheckCircle, color: "green" },
+        ].map((stat, i) => (
+          <div key={i} className={`p-6 rounded-2xl border ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"} shadow-sm transition-all hover:shadow-md`}>
+            <div className={`flex justify-between items-center ${isRTL ? "flex-row-reverse" : ""}`}>
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{stat.label}</p>
+                <p className={`text-3xl font-black mt-1 ${isDark ? "text-white" : "text-gray-900"}`}>{stat.value}</p>
+              </div>
+              <div className={`p-4 rounded-xl ${getIconStyles(stat.color)}`}>
+                <stat.icon className="w-6 h-6" />
+              </div>
             </div>
-        </AuthenticatedLayout>
-    );
+          </div>
+        ))}
+      </div>
+
+      {/* --- Filter Bar --- */}
+      <div className={`mb-6 p-4 rounded-2xl border ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100 shadow-sm"} flex flex-col md:flex-row gap-4 items-center`}>
+        <div className={`flex-1 flex gap-4 w-full ${isRTL ? "flex-row-reverse" : ""}`}>
+          <div className="relative flex-1 max-w-xs">
+            <Filter className={`absolute ${isRTL ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400`} />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className={`w-full py-2.5 ${isRTL ? "pr-10" : "pl-10"} bg-transparent border-none rounded-xl text-sm font-bold focus:ring-0 ${isDark ? "text-white" : "text-gray-700"}`}
+            >
+              <option value="all">{isRTL ? "جميع الحالات" : "All Status"}</option>
+              <option value="unread">{isRTL ? "غير مقروء" : "Unread"}</option>
+              <option value="read">{isRTL ? "مقروء" : "Read"}</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* --- Notifications Content --- */}
+      <div className="grid grid-cols-1 gap-4">
+        {filteredNotifications.length === 0 ? (
+          <div className={`text-center py-20 rounded-3xl border ${isDark ? "bg-gray-800 border-gray-700 text-gray-500" : "bg-white border-gray-100 text-gray-400"} shadow-sm`}>
+            <Inbox className="w-16 h-16 mx-auto mb-4 opacity-20" />
+            <p className="text-xl font-bold">{isRTL ? "لا توجد إشعارات حالياً" : "No notifications found"}</p>
+          </div>
+        ) : (
+          filteredNotifications.map((notification) => (
+            <div
+              key={notification.id}
+              onClick={() => handleNotificationClick(notification)}
+              className={`group relative p-5 rounded-2xl border transition-all duration-300 cursor-pointer ${
+                notification.status === "unread"
+                  ? isDark 
+                    ? "bg-brand-yellow/5 border-brand-yellow/30" 
+                    : "bg-white border-brand-yellow/40 shadow-sm"
+                  : isDark
+                    ? "bg-gray-800/50 border-gray-700 opacity-80"
+                    : "bg-white border-gray-100 shadow-sm"
+              } hover:shadow-md hover:-translate-y-0.5`}
+            >
+              <div className={`flex items-start gap-4 sm:gap-6 ${isRTL ? "flex-row-reverse" : ""}`}>
+                {/* Icon Wrapper */}
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 border shadow-sm transition-transform group-hover:scale-105 ${getIconStyles(notification.color)}`}>
+                  {getIcon(notification.icon)}
+                </div>
+
+                {/* Content */}
+                <div className={`flex-1 min-w-0 ${isRTL ? "text-right" : "text-left"}`}>
+                  <div className={`flex justify-between items-center mb-1 ${isRTL ? "flex-row-reverse" : ""}`}>
+                    <h3 className={`text-lg font-bold truncate ${isDark ? "text-white" : "text-gray-900"}`}>
+                      {notification.title}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-500">
+                        {formatTime(notification.created_at)}
+                      </span>
+                      {notification.status === "unread" && (
+                        <span className="w-2 h-2 bg-brand-yellow rounded-full animate-pulse shadow-[0_0_8px_rgba(234,179,8,0.8)]" />
+                      )}
+                    </div>
+                  </div>
+                  
+                  <p className={`text-sm leading-relaxed mb-4 ${isDark ? "text-gray-400" : "text-gray-600"} line-clamp-2`}>
+                    {notification.message}
+                  </p>
+
+                  <div className={`flex items-center gap-4 text-[11px] font-bold uppercase tracking-tight text-gray-400 ${isRTL ? "flex-row-reverse" : ""}`}>
+                    {notification.from_user_name && (
+                      <span className="flex items-center gap-2">
+                        <User className="w-3.5 h-3.5" />
+                        {isRTL ? `كُتب بواسطة: ${notification.from_user_name}` : `By: ${notification.from_user_name}`}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5" />
+                      {new Date(notification.created_at).toLocaleDateString(isRTL ? "ar" : "en")}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Floating Actions */}
+                <div className={`flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity absolute top-6 ${isRTL ? "left-6" : "right-6"}`}>
+                  {notification.status === "unread" && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }}
+                      className="p-2.5 bg-brand-yellow text-brand-dark rounded-xl shadow-lg transition-transform hover:scale-110"
+                      title={isRTL ? "تحديد كمقروء" : "Mark as read"}
+                    >
+                      <CheckCheck className="w-5 h-5" />
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
+                    className="p-2.5 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-xl transition-transform hover:scale-110"
+                    title={isRTL ? "حذف" : "Delete"}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </AuthenticatedLayout>
+  );
 }

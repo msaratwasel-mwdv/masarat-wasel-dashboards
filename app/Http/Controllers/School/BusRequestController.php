@@ -34,7 +34,7 @@ class BusRequestController extends Controller
     {
         $validated = $request->validate([
             'request_type' => 'required|in:permanent,temporary',
-            'number_of_buses' => 'required|integer|min:1',
+            'requested_seats' => 'required|integer|min:1',
             'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'nullable|date|after:start_date',
             'reason' => 'required|string|max:1000',
@@ -68,7 +68,7 @@ class BusRequestController extends Controller
 
         $validated = $request->validate([
             'request_type' => 'required|in:permanent,temporary',
-            'number_of_buses' => 'required|integer|min:1',
+            'requested_seats' => 'required|integer|min:1',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after:start_date',
             'reason' => 'required|string|max:1000',

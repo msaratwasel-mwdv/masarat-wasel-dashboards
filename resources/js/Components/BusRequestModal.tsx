@@ -5,7 +5,7 @@ import useTranslation from '@/hooks/useTranslation';
 interface BusRequest {
     id: number;
     request_type: string;
-    number_of_buses: number;
+    requested_seats: number;
     start_date: string;
     end_date?: string;
     reason: string;
@@ -23,7 +23,7 @@ export default function BusRequestModal({ show, onClose, request }: Props) {
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
         request_type: request?.request_type || 'permanent',
-        number_of_buses: request?.number_of_buses || 1,
+        requested_seats: request?.requested_seats || 20,
         start_date: request?.start_date || '',
         end_date: request?.end_date || '',
         reason: request?.reason || '',
@@ -94,21 +94,21 @@ export default function BusRequestModal({ show, onClose, request }: Props) {
                         {errors.request_type && <p className="text-red-500 text-sm mt-2 ml-2">{errors.request_type}</p>}
                     </div>
 
-                    {/* Number of Buses */}
+                    {/* Requested Seats */}
                     <div>
                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                            {t('Number of Buses')} <span className="text-red-500">*</span>
+                            {t('Requested Seats')} <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="number"
                             min="1"
-                            max="20"
-                            value={data.number_of_buses}
-                            onChange={e => setData('number_of_buses', parseInt(e.target.value))}
+                            max="200"
+                            value={data.requested_seats}
+                            onChange={e => setData('requested_seats', parseInt(e.target.value))}
                             className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
                             required
                         />
-                        {errors.number_of_buses && <p className="text-red-500 text-sm mt-2 ml-2">{errors.number_of_buses}</p>}
+                        {errors.requested_seats && <p className="text-red-500 text-sm mt-2 ml-2">{errors.requested_seats}</p>}
                     </div>
 
                     {/* Date Range */}

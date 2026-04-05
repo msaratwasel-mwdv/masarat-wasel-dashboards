@@ -5,15 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class BusRequest extends Model
 {
     use HasFactory;
 
+    /**
+     * Get the buses assigned to this request.
+     */
+    public function buses(): BelongsToMany
+    {
+        return $this->belongsToMany(Bus::class, 'bus_request_assignments')->withTimestamps();
+    }
+
     protected $fillable = [
         'school_id',
         'request_type',
-        'number_of_buses',
+        'requested_seats',
+        'total_cost',
         'start_date',
         'end_date',
         'reason',
@@ -28,7 +38,8 @@ class BusRequest extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'approved_at' => 'datetime',
-        'number_of_buses' => 'integer',
+        'requested_seats' => 'integer',
+        'total_cost' => 'decimal:2',
     ];
 
     /**
