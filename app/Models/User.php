@@ -143,4 +143,18 @@ class User extends Authenticatable
     {
         return $this->fcm_token;
     }
+
+    /**
+     * الفصول التي يُشرف عليها هذا المعلم
+     */
+    public function classrooms(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Classroom::class,
+            'classroom_teacher',
+            'teacher_id',
+            'classroom_id'
+        )->withPivot('school_id')
+         ->withTimestamps();
+    }
 }

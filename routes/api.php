@@ -26,6 +26,11 @@ Route::get('/user', function (Request $request) {
 // ═══ Broadcasting Auth for Sanctum (API Tokens) ═══
 Route::post('/broadcasting/auth', function (Request $request) {
     $user = $request->user();
+    \Log::info("Broadcasting auth attempt", [
+        'user_id' => $user ? $user->id : 'guest',
+        'channel' => $request->channel_name,
+        'socket_id' => $request->socket_id
+    ]);
     if (!$user) {
         return response()->json(['message' => 'Unauthenticated'], 401);
     }
@@ -101,5 +106,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/inspections', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'submitInspection']);
         Route::post('/incidents', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'reportIncident']);
         Route::post('/violations', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'submitViolation']);
+    });
+
+    // --- المعلم (Teacher) ---
+    Route::group(['prefix' => 'teacher'], function () {
+        Route::get('/classes', [\App\Http\Controllers\Api\TeacherController::class, 'getClasses']);
+        Route::get('/classes/{classId}/students', [\App\Http\Controllers\Api\TeacherController::class, 'getStudents']);
+        Route::put('/students/{studentId}/attendance', [\App\Http\Controllers\Api\TeacherController::class, 'markAttendance']);
+        Route::get('/classes/{classId}/attendance-history', [\App\Http\Controllers\Api\TeacherController::class, 'getClassAttendanceHistory']);
+        Route::get('/attendance-history', [\App\Http\Controllers\Api\TeacherController::class, 'getTeacherAttendanceHistory']);
     });
 });

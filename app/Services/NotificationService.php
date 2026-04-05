@@ -245,7 +245,7 @@ class NotificationService
 
     /**
      * إرسال إشعار لولي أمر طالب معين.
-     * المسار: Student → Guardian → User
+     * المسار: Student → User (guardian_id يشير مباشرة لجدول users)
      */
     public function notifyStudentGuardian(
         int $studentId,
@@ -256,17 +256,18 @@ class NotificationService
     ): ?Notification {
         $student = \App\Models\Student::with('guardian')->find($studentId);
 
-        if (! $student || ! $student->guardian || ! $student->guardian->user_id) {
+        if (! $student || ! $student->guardian) {
+            \Illuminate\Support\Facades\Log::warning("[Notification] Student {$studentId} has no guardian, skipping notification.");
             return null;
         }
 
         return $this->sendToUser(
-            userId: $student->guardian->user_id,
+            userId: $student->guardian->id,
             type: $type,
             title: $title,
             message: $message,
             data: $data,
-            fromUserName: 'نظام النقل'
+            fromUserName: 'نظام المدرسة'
         );
     }
 
