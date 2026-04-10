@@ -71,3 +71,5 @@ class StudentStatusUpdated implements ShouldBroadcastNow
         ];
     }
 }
+
+

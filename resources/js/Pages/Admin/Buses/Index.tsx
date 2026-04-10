@@ -45,7 +45,7 @@ interface Route {
 
 interface Bus {
   id: number;
-  bus_code: string;
+  bus_number: string;
   plate_number: string;
   model: string;
   year: number;
@@ -290,14 +290,14 @@ export default function Index({
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("bus_code", {
+      columnHelper.accessor("bus_number", {
         header: isRTL ? "الحافلة" : "Vehicle",
         cell: (info) => {
           const bus = info.row.original;
           return (
             <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
               <div className="flex-shrink-0 h-9 min-w-[2.5rem] px-2 rounded-lg bg-brand-yellow flex items-center justify-center text-brand-dark font-bold text-xs shadow-sm whitespace-nowrap">
-                {bus.bus_code}
+                {bus.bus_number}
               </div>
               <div className={isRTL ? "text-right" : "text-left"}>
                 <div className={`text-sm font-bold ${isDark ? "text-white" : "text-gray-900"} font-mono`}>
@@ -475,7 +475,7 @@ export default function Index({
                     <div className={isRTL ? "text-right" : "text-left"}>
                       <div className={`flex items-center gap-3 mb-1 ${isRTL ? "flex-row-reverse" : ""}`}>
                         <h2 className={`text-2xl font-black tracking-tight ${isDark ? "text-white" : "text-gray-900"}`}>
-                          {modalState.bus.bus_code}
+                          {modalState.bus.bus_number}
                         </h2>
                         <StatusBadge
                           label={getStatusLabel(modalState.bus.status)}
@@ -609,7 +609,7 @@ export default function Index({
                   </h2>
                   {modalState.type === "edit" && (
                     <span className="text-xs font-bold text-brand-navy bg-brand-yellow/20 px-2 py-1 rounded">
-                      {modalState.bus?.bus_code}
+                      {modalState.bus?.bus_number}
                     </span>
                   )}
                 </div>

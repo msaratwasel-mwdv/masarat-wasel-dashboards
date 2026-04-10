@@ -82,3 +82,5 @@ class BusRequest extends Model
         return $this->status === 'rejected';
     }
 }
+
+

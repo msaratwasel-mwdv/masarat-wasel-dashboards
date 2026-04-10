@@ -35,10 +35,8 @@ class SchoolController extends Controller
 
     public function show(School $school)
     {
-        // تحميل المشرفين التابعين للمدرسة
-        $school->load(['users' => function ($query) {
-            $query->where('role', 'school_admin');
-        }]);
+        // Admins are linked via the school_admins extension table, not users.school_id
+        $school->load('schoolAdmins.user');
 
         // حساب الإحصائيات الحقيقية
         $stats = [
@@ -66,8 +64,8 @@ class SchoolController extends Controller
                 ->distinct('supervisor_id')
                 ->count(),
 
-            // عدد مدراء المدرسة
-            'admins_count' => $school->users->count(),
+            // عدد مدراء المدرسة — via school_admins extension table
+            'admins_count' => $school->schoolAdmins->count(),
         ];
 
         return Inertia::render('Admin/Schools/Show', [
@@ -108,3 +106,5 @@ class SchoolController extends Controller
         return back()->with('message', 'تم تحديث حالة المدرسة بنجاح');
     }
 }
+
+

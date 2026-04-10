@@ -41,7 +41,7 @@ interface BusRequest {
   rejection_reason?: string;
   approved_at?: string;
   created_at: string;
-  buses?: Array<{ id: number; bus_code: string; plate_number: string; capacity: number }>;
+  buses?: Array<{ id: number; bus_number: string; plate_number: string; capacity: number }>;
 }
 
 interface Props {

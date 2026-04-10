@@ -25,19 +25,33 @@ class SchoolUserController extends Controller
     // حفظ المدير الجديد
     public function store(StoreSchoolUserRequest $request, School $school)
     {
-        // لم نعد نحتاج لكتابة $request->validate(...) هنا!
-        // لارافل قام بالتحقق قبل دخول هذه الدالة أصلاً.
+        DB::transaction(function () use ($request, $school) {
+            $user = User::create([
+                'first_name_ar' => $request->first_name_ar ?? $request->name,
+                'second_name_ar' => $request->second_name_ar ?? '',
+                'third_name_ar' => $request->third_name_ar ?? '',
+                'last_name_ar' => $request->last_name_ar ?? '',
+                'first_name_en' => $request->first_name_en ?? '',
+                'second_name_en' => $request->second_name_en ?? '',
+                'third_name_en' => $request->third_name_en ?? '',
+                'last_name_en' => $request->last_name_en ?? '',
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'national_id' => $request->national_id ?? '0000000000',
+                'password' => Hash::make($request->password),
+                'is_active' => true,
+            ]);
 
-        User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'password' => Hash::make($request->password),
-            'role' => 'school_admin',
-            'school_id' => $school->id,
-            'user_code' => 'SCH-' . rand(1000, 9999),
-            'status' => 'active',
-        ]);
+            // Attach role via user_roles pivot
+            $role = \App\Models\Role::firstOrCreate(['name' => 'school_admin']);
+            $user->roles()->attach($role->id);
+
+            // Create SchoolAdmin extension record (links user to school)
+            \App\Models\SchoolAdmin::create([
+                'user_id' => $user->id,
+                'school_id' => $school->id,
+            ]);
+        });
 
         return redirect()->route('admin.schools.show', $school->id)
             ->with('message', 'تم تعيين مدير للمدرسة بنجاح');
@@ -47,7 +61,7 @@ class SchoolUserController extends Controller
     public function edit(School $school, User $user)
     {
         // التأكد من أن المستخدم تابع لهذه المدرسة
-        if ($user->school_id !== $school->id) {
+        if ($user->getSchoolId() !== $school->id) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -61,7 +75,7 @@ class SchoolUserController extends Controller
     public function update(Request $request, School $school, User $user)
     {
         // التأكد من أن المستخدم تابع لهذه المدرسة
-        if ($user->school_id !== $school->id) {
+        if ($user->getSchoolId() !== $school->id) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -93,7 +107,7 @@ class SchoolUserController extends Controller
     public function destroy(School $school, User $user)
     {
         // التأكد من أن المستخدم تابع لهذه المدرسة
-        if ($user->school_id !== $school->id) {
+        if ($user->getSchoolId() !== $school->id) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -103,3 +117,5 @@ class SchoolUserController extends Controller
             ->with('message', 'تم حذف المدير بنجاح');
     }
 }
+
+

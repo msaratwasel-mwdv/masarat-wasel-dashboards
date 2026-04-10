@@ -33,3 +33,5 @@ trait HasLocation
             : round($distanceMeters / 1000, 1) . ' كم';
     }
 }
+
+

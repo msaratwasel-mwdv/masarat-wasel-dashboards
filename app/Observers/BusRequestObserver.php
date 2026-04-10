@@ -14,7 +14,7 @@ class BusRequestObserver
     public function created(BusRequest $busRequest): void
     {
         // Get all admin users
-        $admins = User::where('role', 'admin')->get();
+        $admins = User::whereHas('roles', fn($q) => $q->where('name', 'admin'))->get();
 
         foreach ($admins as $admin) {
             Notification::create([
@@ -47,8 +47,9 @@ class BusRequestObserver
     {
         // If status changed to approved/rejected, notify the school
         if ($busRequest->isDirty('status') && in_array($busRequest->status, ['approved', 'rejected'])) {
-            $schoolAdmins = User::where('school_id', $busRequest->school_id)
-                ->where('role', 'school_admin')
+            // school_id doesn't exist on users table — filter via school_admins extension table
+            $schoolAdmins = User::whereHas('roles', fn($q) => $q->where('name', 'school_admin'))
+                ->whereHas('schoolAdmin', fn($q) => $q->where('school_id', $busRequest->school_id))
                 ->get();
 
             $statusText = $busRequest->status === 'approved' ? 'تم الموافقة' : 'تم الرفض';
@@ -77,3 +78,5 @@ class BusRequestObserver
         }
     }
 }
+
+

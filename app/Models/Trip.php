@@ -88,3 +88,5 @@ class Trip extends Model
         return $this->hasMany(TripStudent::class);
     }
 }
+
+

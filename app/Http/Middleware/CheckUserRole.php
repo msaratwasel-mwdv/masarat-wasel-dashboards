@@ -21,11 +21,12 @@ class CheckUserRole
         }
 
         // 2. التأكد أن رتبة المستخدم تطابق الرتبة المطلوبة
-        // إذا كان مطلوب 'admin' والمستخدم 'school_admin'، نمنعه
-        if ($request->user()->role !== $role) {
+        if (! $request->user()->hasRole($role)) {
             abort(403, 'ليس لديك صلاحية لدخول هذه الصفحة.');
         }
 
         return $next($request);
     }
 }
+
+

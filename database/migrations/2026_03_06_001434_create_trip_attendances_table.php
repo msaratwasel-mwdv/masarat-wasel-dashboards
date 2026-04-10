@@ -15,10 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('trip_id')->constrained()->onDelete('cascade');
             $table->foreignId('student_id')->constrained();
-            $table->dateTime('check_in_time')->nullable();
-            $table->dateTime('check_out_time')->nullable();
-            $table->enum('status', ['boarded', 'absent', 'dropped', 'cancelled'])->default('absent');
-            $table->date('date');
+            $table->time('check_in_time')->nullable();
+            $table->time('check_out_time')->nullable();
+            $table->enum('status', ['absent', 'boarded', 'dropped', 'excused'])->default('absent');
             $table->timestamps();
         });
     }

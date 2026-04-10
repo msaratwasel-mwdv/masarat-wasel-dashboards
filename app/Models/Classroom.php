@@ -23,24 +23,17 @@ class Classroom extends Model
         return $this->belongsTo(School::class);
     }
 
-    // ✅ العلاقة الصحيحة
-    public function supervisors(): BelongsToMany
+    // ✅ العلاقة الصحيحة (1:1)
+    public function teacher(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
     {
-        return $this->belongsToMany(
+        return $this->hasOneThrough(
             User::class,
-            'classroom_teacher',
-            'classroom_id',
-            'teacher_id'
-        )->withPivot('school_id')
-         ->withTimestamps();
-    }
-
-    /**
-     * Alias for supervisors relationship to support controller usage of 'teachers'
-     */
-    public function teachers(): BelongsToMany
-    {
-        return $this->supervisors();
+            Teacher::class,
+            'classroom_id', // Foreign key on teachers table
+            'id',           // Foreign key on users table
+            'id',           // Local key on classrooms table
+            'user_id'       // Local key on teachers table
+        );
     }
 
     public function students(): HasManyThrough
@@ -60,3 +53,5 @@ class Classroom extends Model
         return $this->hasMany(Attendance::class);
     }
 }
+
+

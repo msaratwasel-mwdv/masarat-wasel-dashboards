@@ -15,21 +15,81 @@ class Student extends Model
 
     // ⬅️ أضف الحقول الجديدة هنا
     protected $fillable = [
-        'full_name',
-        'full_name_en',
+        'first_name_ar',
+        'second_name_ar',
+        'third_name_ar',
+        'last_name_ar',
+        'first_name_en',
+        'second_name_en',
+        'third_name_en',
+        'last_name_en',
         'student_code',
-        'national_id', // ⬅️ أضف
-        'gender',      // ⬅️ أضف
-        'guardian_id',
-        'supervisor_id',
-        'school_id',   // ⬅️ أضف
-        'image',       // ⬅️ أضف
+        'national_id',
+        'gender',
+        'grade',
+        'image',
         'is_active',
-        'morning_group_id',
-        'afternoon_group_id',
-        'forth_route_id',
-        'back_route_id',
+        'forth_bus_id',
+        'back_bus_id',
     ];
+
+    /**
+     * The attributes that should be appended to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = ['full_name', 'full_name_en'];
+
+    /**
+     * Get the student's full name (Arabic preferred).
+     */
+    public function getFullNameAttribute(): string
+    {
+        return $this->full_name_ar;
+    }
+
+    /**
+     * Get the student's full name in Arabic.
+     */
+    public function getFullNameArAttribute(): string
+    {
+        $names = [
+            $this->first_name_ar,
+            $this->second_name_ar,
+            $this->third_name_ar,
+            $this->last_name_ar
+        ];
+
+        // Ensure each part is UTF-8 or empty
+        $names = array_map(function($n) {
+            return is_string($n) ? mb_convert_encoding($n, 'UTF-8', 'UTF-8') : null;
+        }, $names);
+
+        $fullName = trim(implode(' ', array_filter($names)));
+
+        return $fullName ?: ($this->student_code ?? '');
+    }
+
+    /**
+     * Get the student's full name in English.
+     */
+    public function getFullNameEnAttribute(): string
+    {
+        $namesEn = [
+            $this->first_name_en,
+            $this->second_name_en,
+            $this->third_name_en,
+            $this->last_name_en
+        ];
+        
+        $namesEn = array_map(function($n) {
+            return is_string($n) ? mb_convert_encoding($n, 'UTF-8', 'UTF-8') : null;
+        }, $namesEn);
+
+        $fullNameEn = trim(implode(' ', array_filter($namesEn)));
+
+        return $fullNameEn ?: ($this->student_code ?? '');
+    }
 
     public function enrollments(): HasMany
     {
@@ -115,3 +175,5 @@ class Student extends Model
             ->latest();
     }
 }
+
+

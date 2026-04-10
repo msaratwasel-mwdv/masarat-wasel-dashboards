@@ -54,3 +54,5 @@ class TripSchedule extends Model
         return $days[$this->day_of_week] ?? 'Unknown';
     }
 }
+
+

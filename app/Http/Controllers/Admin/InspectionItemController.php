@@ -66,3 +66,5 @@ class InspectionItemController extends Controller
         return redirect()->back()->with('success', 'تم الحذف بنجاح');
     }
 }
+
+

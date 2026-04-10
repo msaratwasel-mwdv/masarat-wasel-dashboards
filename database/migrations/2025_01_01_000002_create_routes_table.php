@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('code')->unique()->nullable();
             $table->text('description')->nullable();
-            $table->foreignId('school_id')->constrained();
+            $table->geometry('location', 'point')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

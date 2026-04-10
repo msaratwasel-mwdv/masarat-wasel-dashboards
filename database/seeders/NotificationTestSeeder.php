@@ -8,8 +8,12 @@ use App\Models\Guardian;
 use App\Models\Student;
 use App\Models\Bus;
 use App\Models\Classroom;
+use App\Models\Role;
+use App\Models\FieldSupervisor;
+use App\Models\Driver;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class NotificationTestSeeder extends Seeder
 {
@@ -18,7 +22,7 @@ class NotificationTestSeeder extends Seeder
         // 1. Get or Create School
         $school = School::first() ?? School::create([
             'name' => 'مدرسة الأفق العالمية',
-            'location' => 'الرياض',
+            'location' => DB::raw("ST_GeomFromText('POINT(24.7136 46.6753)')"),
             'status' => 'active',
             'has_transport' => true,
             'has_attendance' => true,
@@ -32,43 +36,71 @@ class NotificationTestSeeder extends Seeder
         ]);
 
         // 3. Find or Create Supervisor
-        $supervisor = User::where('email', 'supervisor1@wasel.com')->first() 
-            ?? User::where('national_id', '1002004001')->first() 
+        $supervisor = User::where('national_id', '1002004001')->first() 
             ?? User::create([
-                'name' => 'Supervisor 1',
-                'email' => 'supervisor1@wasel.com',
+                'first_name_ar' => 'مشرف',
+                'second_name_ar' => 'رقم',
+                'third_name_ar' => '1',
+                'last_name_ar' => 'الإخطار',
+                'first_name_en' => 'Supervisor',
+                'second_name_en' => 'Number',
+                'third_name_en' => '1',
+                'last_name_en' => 'Notify',
+                'email' => 'supervisor_notify@wasel.com',
                 'password' => Hash::make('password'),
-                'role' => 'supervisor',
                 'national_id' => '1002004001',
-                'phone' => '966510000001',
+                'phone' => '966519999001',
+                'is_active' => true,
+            ]);
+        
+        if (!$supervisor->roles()->where('name', 'supervisor')->exists()) {
+            $role = Role::firstOrCreate(['name' => 'supervisor']);
+            $supervisor->roles()->attach($role->id);
+            
+            FieldSupervisor::firstOrCreate([
+                'user_id' => $supervisor->id,
                 'school_id' => $school->id,
+            ]);
+        }
+
+        // 4. Find or Create Driver
+        $driver = User::where('national_id', '1002005001')->first() 
+            ?? User::create([
+                'first_name_ar' => 'سائق',
+                'second_name_ar' => 'رقم',
+                'third_name_ar' => '1',
+                'last_name_ar' => 'الإخطار',
+                'first_name_en' => 'Driver',
+                'second_name_en' => 'Number',
+                'third_name_en' => '1',
+                'last_name_en' => 'Notify',
+                'email' => 'driver_notify@wasel.com',
+                'password' => Hash::make('password'),
+                'national_id' => '1002005001',
+                'phone' => '966599999001',
                 'is_active' => true,
             ]);
 
-        // 4. Find or Create Driver
-        $driver = User::where('email', 'driver1@wasel.com')->first() 
-            ?? User::where('national_id', '1002005001')->first() 
-            ?? User::create([
-                'name' => 'Driver 1',
-                'email' => 'driver1@wasel.com',
-                'password' => Hash::make('password'),
-                'role' => 'driver',
-                'national_id' => '1002005001',
-                'phone' => '966590000001',
+        if (!$driver->roles()->where('name', 'driver')->exists()) {
+            $role = Role::firstOrCreate(['name' => 'driver']);
+            $driver->roles()->attach($role->id);
+
+            Driver::firstOrCreate([
+                'user_id' => $driver->id,
                 'school_id' => $school->id,
-                'is_active' => true,
+                'license_number' => 'DRV-LIC-777',
+                'license_expiry_date' => now()->addYears(3),
             ]);
+        }
 
         // 5. Find existing bus for supervisor or create new one
         $bus = Bus::where('supervisor_id', $supervisor->id)->first() ?? Bus::create([
             'bus_number' => 'WAS-TEST-777',
-            'bus_code' => 'TEST777',
-            'plate_number' => 'أ ب ج 777',
+                        'plate_number' => 'أ ب ج 777',
             'capacity' => 14,
             'model' => 'Toyota Coaster',
             'year' => 2024,
-            'type' => 'permanent',
-            'status' => 'active',
+                        'status' => 'active',
             'school_id' => $school->id,
             'supervisor_id' => $supervisor->id,
             'driver_id' => $driver->id,
@@ -76,28 +108,34 @@ class NotificationTestSeeder extends Seeder
 
         $bus->update([
             'bus_number' => 'WAS-TEST-777',
-            'trip_status' => 'to_school', // اجعلها رحلة صباحية افتراضياً للاختبار
             'driver_id' => $driver->id,
-        ]);
-
-        // 6. Create Bus Group for this bus
-        $busGroup = \App\Models\BusGroup::where('bus_id', $bus->id)->first() ?? \App\Models\BusGroup::create([
-            'name' => 'مجموعة الاختبار',
-            'school_id' => $school->id,
-            'bus_id' => $bus->id,
         ]);
 
         // 7. Create Guardian
         $parentUser = User::where('national_id', '1000200030')->first() ?? User::create([
-            'name' => 'ولي أمر تجريبي',
+            'first_name_ar' => 'ولي',
+            'second_name_ar' => 'أمر',
+            'third_name_ar' => 'تجريبي',
+            'last_name_ar' => 'الأول',
+            'first_name_en' => 'Guardian',
+            'second_name_en' => 'Test',
+            'third_name_en' => 'Parent',
+            'last_name_en' => 'One',
             'email' => 'parent@wasel.com',
             'password' => Hash::make('password'),
-            'role' => 'parent',
             'phone' => '966500000003',
             'national_id' => '1000200030',
-            'school_id' => $school->id,
             'is_active' => true,
         ]);
+
+        if (!$parentUser->roles()->where('name', 'parent')->exists()) {
+            $role = Role::firstOrCreate(['name' => 'parent']);
+            $parentUser->roles()->attach($role->id);
+            
+            \App\Models\Guardian::firstOrCreate([
+                'user_id' => $parentUser->id,
+            ]);
+        }
 
         // 8. Create Multiple Students linked to everything
         $studentsData = [
@@ -115,17 +153,23 @@ class NotificationTestSeeder extends Seeder
 
         foreach ($studentsData as $index => $data) {
             $student = Student::create([
-                'full_name' => $data['name'],
-                'full_name_en' => $data['name_en'],
+                'first_name_ar' => $data['name'],
+                'second_name_ar' => 'اسم',
+                'third_name_ar' => 'ثاني',
+                'last_name_ar' => 'أخير',
+                'first_name_en' => $data['name_en'],
+                'second_name_en' => 'Second',
+                'third_name_en' => 'Third',
+                'last_name_en' => 'Last',
                 'student_code' => "TEST-ST-" . (100 + $index),
                 'national_id' => $data['id'],
                 'gender' => ($index % 2 == 0) ? 'male' : 'female',
-                'guardian_id' => $parentUser->id,
-                'school_id' => $school->id,
-                'morning_group_id' => $busGroup->id,
-                'afternoon_group_id' => $busGroup->id,
+                'forth_bus_id' => $bus->id,
+                'back_bus_id' => $bus->id,
                 'grade' => 'الثاني الابتدائي',
                 'is_active' => true,
+                'school_id' => $school->id,
+                'guardian_id' => $parentUser->id,
             ]);
 
             // Enroll Student in classroom
@@ -164,3 +208,5 @@ class NotificationTestSeeder extends Seeder
         echo "   Bus: {$bus->bus_number} | Driver: {$driver->name}\n";
     }
 }
+
+

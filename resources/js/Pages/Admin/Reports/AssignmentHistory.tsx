@@ -11,7 +11,7 @@ interface HistoryItem {
   event_type: string;
   created_at: string;
   admin?: { name: string };
-  bus?: { bus_code: string; plate_number: string };
+  bus?: { bus_number: string; plate_number: string };
   old_driver?: { name: string };
   new_driver?: { name: string };
   old_school?: { name: string };
@@ -42,7 +42,7 @@ export default function AssignmentHistory({
     () =>
       buses.map((b: any) => ({
         id: b.id,
-        label: b.bus_code,
+        label: b.bus_number,
         subLabel: b.plate_number,
       })),
     [buses]
@@ -483,7 +483,7 @@ export default function AssignmentHistory({
                     setFilterData({ ...filterData, bus_id: val })
                   }
                   placeholder={
-                    isRTL ? "بحث بكود الحافلة..." : "Search bus code..."
+                    isRTL ? "بحث برقم الحافلة..." : "Search bus number..."
                   }
                 />
               </div>
@@ -721,7 +721,7 @@ export default function AssignmentHistory({
                             } ${isRTL ? "flex-row-reverse" : ""}`}
                           >
                             <span className="text-brand-navy">
-                              #{item.bus?.bus_code || "N/A"}
+                              #{item.bus?.bus_number || "N/A"}
                             </span>
                             {item.bus && (
                               <span

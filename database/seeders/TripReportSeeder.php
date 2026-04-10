@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Bus;
 use App\Models\BusBoardingLog;
-use App\Models\BusGroup;
+use App\Models\Route;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
@@ -26,7 +26,7 @@ class TripReportSeeder extends Seeder
         }
 
         // Get existing buses, groups, and students
-        $buses = Bus::where('school_id', $school->id)->with(['supervisor', 'groups'])->get();
+        $buses = Bus::where('school_id', $school->id)->with(['supervisor'])->get();
         if ($buses->isEmpty()) {
             $this->command->error('❌ لا توجد حافلات. شغّل migrate:fresh --seed أولاً.');
             return;
@@ -48,13 +48,12 @@ class TripReportSeeder extends Seeder
         ];
 
         foreach ($buses as $bus) {
-            $groups = $bus->groups;
-            if ($groups->isEmpty()) continue;
+            
+            
 
-            foreach ($groups as $group) {
+            {
                 // Get students in this group
-                $students = Student::where('morning_group_id', $group->id)
-                    ->orWhere('afternoon_group_id', $group->id)
+                $students = Student::where('forth_bus_id', $bus->id)->orWhere('back_bus_id', $bus->id)
                     ->where('is_active', true)
                     ->get();
 
@@ -63,7 +62,7 @@ class TripReportSeeder extends Seeder
                 // Update student names to Arabic for better test display
                 foreach ($students as $idx => $student) {
                     if (isset($arabicNames[$idx])) {
-                        $student->update(['full_name' => $arabicNames[$idx]]);
+                        $student->update(['first_name_ar' => $arabicNames[$idx]]);
                     }
                 }
 
@@ -155,3 +154,4 @@ class TripReportSeeder extends Seeder
         $this->command->info("   Use these dates in the 'From/To' filters to test.");
     }
 }
+

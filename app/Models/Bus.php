@@ -13,8 +13,43 @@ class Bus extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function booted()
+    {
+        static::saved(function ($bus) {
+            if ($bus->isDirty('driver_id')) {
+                $oldDriverId = $bus->getOriginal('driver_id');
+                $newDriverId = $bus->driver_id;
+
+                // Close previous assignment
+                if ($oldDriverId) {
+                    BusDriverAssignment::where('bus_id', $bus->id)
+                        ->where('driver_id', $oldDriverId)
+                        ->whereNull('unassigned_at')
+                        ->update(['unassigned_at' => now()]);
+                }
+
+                // Start new assignment
+                if ($newDriverId) {
+                    BusDriverAssignment::create([
+                        'bus_id' => $bus->id,
+                        'driver_id' => $newDriverId,
+                        'assigned_at' => now(),
+                    ]);
+                }
+            }
+        });
+
+        static::deleting(function ($bus) {
+            if ($bus->driver_id) {
+                BusDriverAssignment::where('bus_id', $bus->id)
+                    ->where('driver_id', $bus->driver_id)
+                    ->whereNull('unassigned_at')
+                    ->update(['unassigned_at' => now()]);
+            }
+        });
+    }
+
     protected $fillable = [
-        'bus_code',
         'bus_number',
         'plate_number',
         'capacity',
@@ -197,4 +232,14 @@ class Bus extends Model
     {
         return $this->driver_id !== null && $this->supervisor_id !== null;
     }
+
+    /**
+     * Get the history of drivers assigned to this bus.
+     */
+    public function driverHistory(): HasMany
+    {
+        return $this->hasMany(BusDriverAssignment::class);
+    }
 }
+
+

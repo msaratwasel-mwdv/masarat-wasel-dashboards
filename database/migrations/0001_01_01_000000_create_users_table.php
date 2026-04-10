@@ -6,40 +6,42 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
+
             $table->id();
-            $table->string('name');
-            $table->string('national_id')->unique()->nullable();
 
-            $table->string('email')->unique();
+            $table->string('national_id')->unique();
 
-            $table->string('phone')->nullable()->unique(); // رقم الجوال
-            $table->string('user_code')->nullable()->unique(); // الكود التعريفي (OD-001)
-            $table->string('role')->default('parent'); // نوع المستخدم (admin, school_admin, driver...)
+            $table->string('first_name_ar');
+            $table->string('second_name_ar');
+            $table->string('third_name_ar');
+            $table->string('last_name_ar');
 
-            // بيانات ولي الأمر (الأساسية)
-            $table->string('name_en')->nullable();
-            $table->text('address')->nullable();
-            $table->decimal('home_latitude', 10, 7)->nullable();
-            $table->decimal('home_longitude', 10, 7)->nullable();
-            $table->integer('proximity_alert_distance')->default(500); // بالمتر
-            $table->string('home_number')->nullable();
-            $table->enum('preferred_language', ['ar', 'en'])->default('ar');
-            $table->string('image')->nullable();
+            $table->string('first_name_en');
+            $table->string('second_name_en');
+            $table->string('third_name_en');
+            $table->string('last_name_en');
 
-            $table->foreignId('school_id')->nullable(); // ربط المستخدم بالمدرسة (فارغ لمدير الشركة)
-            $table->boolean('is_active')->default(true); // حالة الحساب
-            // ------------------------------------------
+            $table->string('email')->nullable()->unique();
+            $table->string('phone')->nullable()->unique();
+
+            // Profile / guardian data
+            // $table->string('name_en')->nullable();
+            // $table->text('address')->nullable();
+            // $table->decimal('home_latitude', 10, 7)->nullable();
+            // $table->decimal('home_longitude', 10, 7)->nullable();
+            // $table->integer('proximity_alert_distance')->default(500);
+            // $table->string('home_number')->nullable();
+            // $table->enum('preferred_language', ['ar', 'en'])->default('ar');
+            // $table->string('image')->nullable();
+
+            $table->boolean('is_active')->default(true);
 
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->string('fcm_token')->nullable();
-            $table->string('onesignal_player_id')->nullable(); // معرّف جهاز المستخدم في OneSignal
+
             $table->rememberToken();
             $table->timestamps();
         });
@@ -71,14 +73,11 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('personal_access_tokens');
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
     }
 };

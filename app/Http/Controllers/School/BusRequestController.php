@@ -15,7 +15,7 @@ class BusRequestController extends Controller
      */
     public function index()
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         $requests = BusRequest::where('school_id', $schoolId)
             ->with('approvedBy')
@@ -41,7 +41,7 @@ class BusRequestController extends Controller
             'special_requirements' => 'nullable|string|max:1000',
         ]);
 
-        $validated['school_id'] = Auth::user()->school_id;
+        $validated['school_id'] = Auth::user()->getSchoolId();
         $validated['status'] = 'pending';
 
         $busRequest = BusRequest::create($validated);
@@ -56,7 +56,7 @@ class BusRequestController extends Controller
     public function update(Request $request, BusRequest $busRequest)
     {
         // Ensure the request belongs to the authenticated user's school
-        if ($busRequest->school_id !== Auth::user()->school_id) {
+        if ($busRequest->school_id !== Auth::user()->getSchoolId()) {
             abort(403);
         }
 
@@ -87,7 +87,7 @@ class BusRequestController extends Controller
     public function destroy(BusRequest $busRequest)
     {
         // Ensure the request belongs to the authenticated user's school
-        if ($busRequest->school_id !== Auth::user()->school_id) {
+        if ($busRequest->school_id !== Auth::user()->getSchoolId()) {
             abort(403);
         }
 
@@ -103,3 +103,5 @@ class BusRequestController extends Controller
             ->with('success', 'تم إلغاء الطلب بنجاح');
     }
 }
+
+

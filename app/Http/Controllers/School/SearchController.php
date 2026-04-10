@@ -15,7 +15,7 @@ class SearchController extends Controller
      */
     public function search(Request $request)
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
         $query = $request->q;
 
         if (!$query || strlen($query) < 2) {
@@ -27,13 +27,14 @@ class SearchController extends Controller
         // 1. البحث في الطلاب
         $students = Student::where('school_id', $schoolId)
             ->where(function ($q) use ($query) {
-                $q->where('full_name', 'like', "%{$query}%")
+                $q->where('first_name_ar', 'like', "%{$query}%")
+                  ->orWhere('last_name_ar', 'like', "%{$query}%")
                     ->orWhere('national_id', 'like', "%{$query}%")
                     ->orWhere('student_code', 'like', "%{$query}%");
             })
             ->with(['guardian:id,name,national_id,phone', 'currentEnrollment.classroom:id,name'])
             ->limit(5)
-            ->get(['id', 'full_name', 'national_id', 'student_code', 'guardian_id']);
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'national_id', 'student_code', 'guardian_id']);
 
         foreach ($students as $student) {
             $results[] = [
@@ -51,7 +52,7 @@ class SearchController extends Controller
 
         // 2. البحث في الأولياء (الآن من جدول users بشرط role = parent)
         $guardians = User::where('school_id', $schoolId)
-            ->where('role', 'parent')
+            ->whereHas('roles', fn($q) => $q->where('name', 'parent'))
             ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
                     ->orWhere('national_id', 'like', "%{$query}%")
@@ -70,7 +71,7 @@ class SearchController extends Controller
 
         // 3. البحث في المشرفين
         $supervisors = User::where('school_id', $schoolId)
-            ->whereIn('role', ['supervisor', 'teacher', 'school_admin'])
+            ->whereHas('roles', fn($q) => $q->whereIn('name', ['supervisor', 'teacher', 'school_admin']))
             ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
                     ->orWhere('email', 'like', "%{$query}%")
@@ -89,3 +90,7 @@ class SearchController extends Controller
         return response()->json($results);
     }
 }
+
+
+
+

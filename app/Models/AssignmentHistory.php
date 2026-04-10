@@ -69,3 +69,5 @@ class AssignmentHistory extends Model
         return $this->belongsTo(School::class, 'new_school_id');
     }
 }
+
+

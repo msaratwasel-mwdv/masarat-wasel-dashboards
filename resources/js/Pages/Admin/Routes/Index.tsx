@@ -16,7 +16,7 @@ interface School {
 
 interface Bus {
     id: number;
-    bus_code: string;
+    bus_number: string;
     plate_number: string;
 }
 
@@ -158,7 +158,7 @@ export default function Index({ routes, schools, auth }: Props) {
                                                         {route.buses?.length || 0}
                                                     </div>
                                                     <div className="text-[10px] text-gray-500 font-mono overflow-hidden truncate max-w-[100px]">
-                                                        {route.buses?.map(b => b.bus_code).join(", ") || "—"}
+                                                        {route.buses?.map(b => b.bus_number).join(", ") || "—"}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-center">

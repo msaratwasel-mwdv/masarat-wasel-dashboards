@@ -15,7 +15,7 @@ class TripDashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
         $today = Carbon::today()->toDateString();
         $date = $request->input('date', $today);
 
@@ -65,7 +65,7 @@ class TripDashboardController extends Controller
 
     public function show(Trip $trip)
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
         if ($trip->school_id !== $schoolId) {
             abort(403);
         }
@@ -77,3 +77,5 @@ class TripDashboardController extends Controller
         ]);
     }
 }
+
+

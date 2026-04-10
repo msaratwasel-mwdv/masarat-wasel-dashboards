@@ -42,3 +42,5 @@ class FieldTripParticipant extends Model
         }
     }
 }
+
+

@@ -39,7 +39,7 @@ class ReportController extends Controller
         $history = $query->paginate(20)->withQueryString();
 
         // نحتاج قائمة الباصات للفلتر
-        $buses = \App\Models\Bus::withTrashed()->select('id', 'bus_code', 'plate_number')->get();
+        $buses = \App\Models\Bus::withTrashed()->select('id', 'bus_number', 'plate_number')->get();
 
         // أنواع الأحداث المتوفرة
         $eventTypes = [
@@ -59,3 +59,5 @@ class ReportController extends Controller
         ]);
     }
 }
+
+

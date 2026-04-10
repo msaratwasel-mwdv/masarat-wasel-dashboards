@@ -47,3 +47,5 @@ class BusLocationUpdated implements ShouldBroadcastNow
         ];
     }
 }
+
+

@@ -174,3 +174,5 @@ class TripService
         $attendance->update($updateData);
     }
 }
+
+

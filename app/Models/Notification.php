@@ -105,3 +105,5 @@ class Notification extends Model
         return $query->latest()->limit($limit);
     }
 }
+
+

@@ -326,7 +326,7 @@ class ParentController extends Controller
 
         $requests = \App\Models\AbsenceRequest::where('guardian_id', $user->id)
             ->with(['student' => function($q) {
-                $q->select('id', 'full_name as name');
+                $q->select('id', 'first_name_ar', 'last_name_ar');
             }])
             ->orderByDesc('date')
             ->get();
@@ -337,3 +337,5 @@ class ParentController extends Controller
         ]);
     }
 }
+
+

@@ -10,6 +10,9 @@ use App\Models\Bus;
 use App\Models\BusGroup;
 use App\Models\Student;
 use App\Models\BusBoardingLog;
+use App\Models\Role;
+use App\Models\FieldSupervisor;
+use App\Models\Guardian as GuardianProfile;
 use Carbon\Carbon;
 
 class TripReportTestSeeder extends Seeder
@@ -35,13 +38,29 @@ class TripReportTestSeeder extends Seeder
         $supervisor = User::firstOrCreate(
             ['email' => 'supervisor_test@example.com'],
             [
-                'name' => 'مختار المشرف',
+                'first_name_ar' => 'مختار',
+                'second_name_ar' => 'المشرف',
+                'third_name_ar' => 'الاختباري',
+                'last_name_ar' => 'النظام',
+                'first_name_en' => 'Mukhtar',
+                'second_name_en' => 'Supervisor',
+                'third_name_en' => 'Test',
+                'last_name_en' => 'System',
                 'password' => Hash::make('password'),
-                'role' => 'supervisor',
-                'school_id' => $school->id,
-                'phone' => '0501234567'
+                'phone' => '0501234567',
+                'national_id' => '1000000088',
             ]
         );
+
+        if (!$supervisor->roles()->where('name', 'supervisor')->exists()) {
+            $role = Role::firstOrCreate(['name' => 'supervisor']);
+            $supervisor->roles()->attach($role->id);
+            
+            FieldSupervisor::firstOrCreate([
+                'user_id' => $supervisor->id,
+                'school_id' => $school->id,
+            ]);
+        }
 
         // 3. Create a Bus
         $bus = Bus::firstOrCreate(
@@ -50,8 +69,7 @@ class TripReportTestSeeder extends Seeder
                 'school_id' => $school->id,
                 'supervisor_id' => $supervisor->id,
                 'plate_number' => 'XYZ-1234',
-                'bus_code' => 'BC-999',
-                'model' => 'Toyota Coaster',
+                                'model' => 'Toyota Coaster',
                 'year' => 2024,
                 'capacity' => 30,
                 'status' => 'active'
@@ -71,13 +89,28 @@ class TripReportTestSeeder extends Seeder
         $guardian = User::firstOrCreate(
             ['email' => 'guardian_test@example.com'],
             [
-                'name' => 'ولي الأمر (Test Guardian)',
+                'first_name_ar' => 'ولي',
+                'second_name_ar' => 'الأمر',
+                'third_name_ar' => 'الاختباري',
+                'last_name_ar' => 'النظام',
+                'first_name_en' => 'Guardian',
+                'second_name_en' => 'Test',
+                'third_name_en' => 'Parent',
+                'last_name_en' => 'System',
                 'password' => Hash::make('password'),
-                'role' => 'parent',
-                'school_id' => $school->id,
-                'phone' => '0509999999'
+                'phone' => '0509999999',
+                'national_id' => '1000000099',
             ]
         );
+
+        if (!$guardian->roles()->where('name', 'parent')->exists()) {
+            $role = Role::firstOrCreate(['name' => 'parent']);
+            $guardian->roles()->attach($role->id);
+            
+            GuardianProfile::firstOrCreate([
+                'user_id' => $guardian->id,
+            ]);
+        }
 
         // 5. Create some students for this group
         $studentNames = [
@@ -90,16 +123,20 @@ class TripReportTestSeeder extends Seeder
         $students = [];
         foreach ($studentNames as $idx => $names) {
             $students[] = Student::firstOrCreate(
-                ['full_name' => $names['ar']],
+                ['national_id' => '10000000' . $idx],
                 [
-                    'full_name_en' => $names['en'],
+                    'first_name_ar' => $names['ar'],
+                    'second_name_ar' => 'اسم',
+                    'third_name_ar' => 'ثاني',
+                    'last_name_ar' => 'أخير',
+                    'first_name_en' => $names['en'],
+                    'second_name_en' => 'Second',
+                    'third_name_en' => 'Third',
+                    'last_name_en' => 'Last',
                     'student_code' => 'STU-TEST-' . $idx,
-                    'national_id' => '10000000' . $idx,
-                    'school_id' => $school->id,
                     'is_active' => true,
-                    'guardian_id' => $guardian->id,
-                    'morning_group_id' => $group->id,
-                    'afternoon_group_id' => $group->id
+                    'forth_bus_id' => $bus->id,
+                    'back_bus_id' => $bus->id,
                 ]
             );
         }
@@ -124,8 +161,7 @@ class TripReportTestSeeder extends Seeder
                 'student_id' => $student->id,
                 'bus_id' => $bus->id,
                 'direction' => 'to_school',
-                'type' => 'boarding',
-                'recorded_at' => $actionTime,
+                                'recorded_at' => $actionTime,
                 'latitude' => 24.7136,
                 'longitude' => 46.6753,
             ]);
@@ -135,8 +171,7 @@ class TripReportTestSeeder extends Seeder
                 'student_id' => $student->id,
                 'bus_id' => $bus->id,
                 'direction' => 'to_school',
-                'type' => 'alighting',
-                'recorded_at' => $actionTime->copy()->addMinutes(20),
+                                'recorded_at' => $actionTime->copy()->addMinutes(20),
                 'latitude' => 24.7136,
                 'longitude' => 46.6753,
             ]);
@@ -145,3 +180,5 @@ class TripReportTestSeeder extends Seeder
         $this->command->info('Trip Report dummy data generated successfully for today: ' . $today->toDateString());
     }
 }
+
+

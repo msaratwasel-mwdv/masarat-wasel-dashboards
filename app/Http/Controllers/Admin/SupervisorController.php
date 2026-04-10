@@ -19,8 +19,8 @@ class SupervisorController extends Controller
     {
         $statusFilter = $request->input('status', 'all');
 
-        $query = User::where('role', 'supervisor')
-            ->with(['supervisorProfile', 'assignedBusAsSupervisor.school']);
+        $query = User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
+            ->with(['fieldSupervisor', 'assignedBusAsSupervisor.school']);
 
         if ($statusFilter === 'assigned') {
             $query->whereHas('assignedBusAsSupervisor');
@@ -43,17 +43,12 @@ class SupervisorController extends Controller
                 'الهوية' => $supervisor->national_id,
                 'رقم الجوال' => $supervisor->phone,
                 'البريد الإلكتروني' => $supervisor->email,
-                'اسم جهة الطوارئ' => $supervisor->supervisorProfile ? $supervisor->supervisorProfile->emergency_contact_name : 'غير محدد',
-                'رقم هاتف الطوارئ' => $supervisor->supervisorProfile ? $supervisor->supervisorProfile->emergency_contact_phone : 'غير محدد',
-                'الباص المعين' => $supervisor->assignedBusAsSupervisor ? $supervisor->assignedBusAsSupervisor->bus_code : 'متاح',
-                'الحالة' => $supervisor->supervisorProfile 
-                    ? match($supervisor->supervisorProfile->status) {
-                        'active' => 'نشط',
-                        'inactive' => 'غير نشط',
-                        'pending' => 'قيد المراجعة',
-                        default => $supervisor->supervisorProfile->status
-                    } 
-                    : 'نشط',
+                'الباص المعين' => $supervisor->assignedBusAsSupervisor?->bus_number ?? 'متاح',
+                'الحالة' => match($supervisor->fieldSupervisor?->status ?? '') {
+                    'active' => 'نشط',
+                    'inactive' => 'غير نشط',
+                    default => $supervisor->fieldSupervisor?->status ?? 'نشط',
+                },
             ];
         });
 
@@ -62,9 +57,9 @@ class SupervisorController extends Controller
         }
 
         $counts = [
-            'all' => User::where('role', 'supervisor')->count(),
-            'assigned' => User::where('role', 'supervisor')->whereHas('assignedBusAsSupervisor')->count(),
-            'available' => User::where('role', 'supervisor')->whereDoesntHave('assignedBusAsSupervisor')->count(),
+            'all' => User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))->count(),
+            'assigned' => User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))->whereHas('assignedBusAsSupervisor')->count(),
+            'available' => User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))->whereDoesntHave('assignedBusAsSupervisor')->count(),
         ];
 
         return Inertia::render('Admin/Supervisors/Index', [
@@ -93,24 +88,28 @@ class SupervisorController extends Controller
 
         DB::transaction(function () use ($request) {
             $user = User::create([
-                'name' => $request->name,
-                'name_en' => $request->name_en,
+                'first_name_ar' => $request->first_name_ar ?? $request->name,
+                'second_name_ar' => $request->second_name_ar ?? '',
+                'third_name_ar' => $request->third_name_ar ?? '',
+                'last_name_ar' => $request->last_name_ar ?? '',
+                'first_name_en' => $request->first_name_en ?? $request->name_en ?? '',
+                'second_name_en' => $request->second_name_en ?? '',
+                'third_name_en' => $request->third_name_en ?? '',
+                'last_name_en' => $request->last_name_en ?? '',
                 'national_id' => $request->national_id,
                 'email' => $request->email,
                 'phone' => $request->phone,
-                // كلمة المرور الافتراضية هي رقم الجوال
                 'password' => Hash::make($request->phone),
-                'role' => 'supervisor',
-                'school_id' => null,
-                'user_code' => 'SUP-' . rand(1000, 9999),
-                'image' => $request->hasFile('image') ? $request->file('image')->store('avatars', 'public') : null,
                 'is_active' => true,
             ]);
 
-            $user->supervisorProfile()->create([
-                'emergency_contact_name' => $request->emergency_contact_name,
-                'emergency_contact_phone' => $request->emergency_contact_phone,
-                'status' => 'Trainee', // الحالة الافتراضية
+            // Attach role via user_roles pivot
+            $supervisorRole = \App\Models\Role::firstOrCreate(['name' => 'supervisor']);
+            $user->roles()->attach($supervisorRole->id);
+
+            // Create extension record in field_supervisors table
+            $user->fieldSupervisor()->create([
+                'status' => 'active',
             ]);
         });
 
@@ -149,11 +148,11 @@ class SupervisorController extends Controller
 
             $supervisor->update($data);
 
-            $supervisor->supervisorProfile()->update([
-                'emergency_contact_name' => $request->emergency_contact_name,
-                'emergency_contact_phone' => $request->emergency_contact_phone,
-                'status' => $request->status,
-            ]);
+            // Update field supervisor extension record
+            $supervisor->fieldSupervisor()->updateOrCreate(
+                ['user_id' => $supervisor->id],
+                ['status' => $request->status ?? 'active']
+            );
         });
 
         return redirect()->back()->with('success', 'Supervisor updated successfully');
@@ -165,3 +164,5 @@ class SupervisorController extends Controller
         return redirect()->back()->with('success', 'Supervisor deleted successfully');
     }
 }
+
+

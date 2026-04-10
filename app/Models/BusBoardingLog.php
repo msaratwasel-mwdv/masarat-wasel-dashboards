@@ -71,3 +71,5 @@ class BusBoardingLog extends Model
         return $query->whereDate('recorded_at', today());
     }
 }
+
+

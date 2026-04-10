@@ -79,3 +79,5 @@ class GuardianNotificationController extends Controller
         return response()->json(['message' => 'تم وضع الإشعار كمقروء.']);
     }
 }
+
+

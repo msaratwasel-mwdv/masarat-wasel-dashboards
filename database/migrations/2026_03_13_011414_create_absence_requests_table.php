@@ -14,12 +14,11 @@ return new class extends Migration
         Schema::create('absence_requests', function (Blueprint $table) {
             $table->id();
             $table->foreignId('student_id')->constrained()->onDelete('cascade');
-            $table->foreignId('guardian_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('guardian_id')->constrained()->onDelete('cascade');
             $table->date('date');
             $table->enum('type', ['full_day', 'morning', 'afternoon'])->default('full_day');
             $table->text('reason')->nullable();
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->foreignId('processed_by')->nullable()->constrained('users')->onDelete('set null');
             $table->text('rejection_reason')->nullable();
             $table->timestamps();
         });

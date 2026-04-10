@@ -25,7 +25,7 @@ class FieldSupervisorApiController extends Controller
                 return [
                     'id' => $bus->id,
                     'bus_number' => $bus->bus_number,
-                    'bus_code' => $bus->bus_code,
+                    'bus_number' => $bus->bus_number,
                     'school' => $bus->school ? $bus->school->name : null,
                     'driver' => $bus->driver ? $bus->driver->name : null,
                     'supervisor' => $bus->supervisor ? $bus->supervisor->name : null,
@@ -184,3 +184,5 @@ class FieldSupervisorApiController extends Controller
         ], 201);
     }
 }
+
+

@@ -6,7 +6,7 @@ import { useTheme } from "@/Contexts/ThemeContext";
 interface Incident {
   id: number;
   reporter?: { name: string; role: string };
-  bus?: { bus_code: string; bus_number: string; driver?: { name: string } };
+  bus?: { bus_number: string; driver?: { name: string } };
   type: string;
   severity: string;
   description: string;
@@ -100,7 +100,7 @@ export default function EmergencyMonitor({
                   </h3>
 
                   <div className={`space-y-2 text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
-                    <p><strong>{isRTL ? "الحافلة:" : "Bus:"}</strong> {incident.bus?.bus_code} ({incident.bus?.bus_number})</p>
+                    <p><strong>{isRTL ? "الحافلة:" : "Bus:"}</strong> {incident.bus?.bus_number}</p>
                     <p><strong>{isRTL ? "المبلغ:" : "Reporter:"}</strong> {incident.reporter?.name} - {incident.reporter?.role}</p>
                     <p className="line-clamp-3 mt-2"><strong>{isRTL ? "التفاصيل:" : "Details:"}</strong><br/>{incident.description}</p>
                   </div>
@@ -171,7 +171,7 @@ export default function EmergencyMonitor({
                       {resolvedIncidents.map((incident) => (
                         <tr key={incident.id} className={isDark ? "hover:bg-gray-700/50" : "hover:bg-gray-50"}>
                           <td className="px-4 py-3 text-sm font-medium">{typeLabels[incident.type] || incident.type}</td>
-                          <td className="px-4 py-3 text-sm">{incident.bus?.bus_code}</td>
+                          <td className="px-4 py-3 text-sm">{incident.bus?.bus_number}</td>
                           <td className="px-4 py-3 text-sm truncate max-w-xs">{incident.description}</td>
                           <td className="px-4 py-3 text-sm text-gray-500">{incident.updated_at ? new Date(incident.updated_at).toLocaleString() : ''}</td>
                         </tr>

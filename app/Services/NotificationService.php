@@ -54,18 +54,21 @@ class NotificationService
         // 2. إرسال Push Notification عبر Firebase FCM
         try {
             $user = User::find($userId);
-            if ($user && $user->fcm_token) {
-                $this->sendFcmNotification(
-                    fcmToken: $user->fcm_token,
-                    title: $title,
-                    message: $message,
-                    data: array_merge($data ?? [], [
-                        'notification_id' => (string) $notification->id,
-                        'type'            => $type,
-                    ])
-                );
-            } else {
-                Log::warning('[FCM] المستخدم ' . $userId . ' لا يمتلك fcm_token مسجّلاً.');
+            if ($user) {
+                $fcmToken = $user->routeNotificationForFcm(null);
+                if ($fcmToken) {
+                    $this->sendFcmNotification(
+                        fcmToken: $fcmToken,
+                        title: $title,
+                        message: $message,
+                        data: array_merge($data ?? [], [
+                            'notification_id' => (string) $notification->id,
+                            'type'            => $type,
+                        ])
+                    );
+                } else {
+                    Log::warning('[FCM] المستخدم ' . $userId . ' لا يمتلك fcm_token مسجّلاً.');
+                }
             }
         } catch (\Exception $e) {
             Log::error('[FCM] Send Error: ' . $e->getMessage());
@@ -236,7 +239,7 @@ class NotificationService
         ?array $data = null,
         ?string $fromUserName = null
     ): Collection {
-        $adminIds = User::where('role', 'admin')
+        $adminIds = User::whereHas('roles', fn($q) => $q->where('name', 'admin'))
             ->pluck('id')
             ->toArray();
 
@@ -294,3 +297,5 @@ class NotificationService
         return $this->sendToUsers($guardianUserIds, $type, $title, $message, $data, 'نظام النقل');
     }
 }
+
+

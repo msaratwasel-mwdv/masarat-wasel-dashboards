@@ -91,3 +91,5 @@ class FieldTrip extends Model
         return $this->status === 'completed';
     }
 }
+
+

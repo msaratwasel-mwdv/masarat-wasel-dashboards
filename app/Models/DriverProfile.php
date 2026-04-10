@@ -18,3 +18,5 @@ class DriverProfile extends Model
         return $this->belongsTo(User::class);
     }
 }
+
+

@@ -64,3 +64,5 @@ class TeacherAttendanceMarked implements ShouldBroadcastNow
         ];
     }
 }
+
+

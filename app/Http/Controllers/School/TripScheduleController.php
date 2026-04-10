@@ -14,7 +14,7 @@ class TripScheduleController extends Controller
 {
     public function index()
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         $schedules = TripSchedule::where('school_id', $schoolId)
             ->with('bus')
@@ -54,7 +54,7 @@ class TripScheduleController extends Controller
             'exception_reason' => 'nullable|string|max:255',
         ]);
 
-        $validated['school_id'] = Auth::user()->school_id;
+        $validated['school_id'] = Auth::user()->getSchoolId();
         $schedule = TripSchedule::create($validated);
 
         // Send notifications to driver and supervisor
@@ -97,7 +97,7 @@ class TripScheduleController extends Controller
     public function update(Request $request, TripSchedule $tripSchedule)
     {
         // Ensure the schedule belongs to the authenticated user's school
-        if ($tripSchedule->school_id !== Auth::user()->school_id) {
+        if ($tripSchedule->school_id !== Auth::user()->getSchoolId()) {
             abort(403);
         }
 
@@ -159,7 +159,7 @@ class TripScheduleController extends Controller
             'bus_ids.*' => 'exists:buses,id',
         ]);
 
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         // Get schedules from source week
         $query = TripSchedule::where('school_id', $schoolId);
@@ -218,7 +218,7 @@ class TripScheduleController extends Controller
     public function destroy(TripSchedule $tripSchedule)
     {
         // Ensure the schedule belongs to the authenticated user's school
-        if ($tripSchedule->school_id !== Auth::user()->school_id) {
+        if ($tripSchedule->school_id !== Auth::user()->getSchoolId()) {
             abort(403);
         }
 
@@ -228,3 +228,5 @@ class TripScheduleController extends Controller
             ->with('success', 'تم حذف الجدول بنجاح');
     }
 }
+
+

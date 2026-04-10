@@ -16,7 +16,7 @@ class BusGroupController extends Controller
      */
     public function index()
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         $groups = BusGroup::with(['bus.supervisor'])
             ->where('school_id', $schoolId)
@@ -54,7 +54,7 @@ class BusGroupController extends Controller
             'bus_id' => 'required|exists:buses,id',
         ]);
 
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         // Ensure bus belongs to the school
         Bus::where('id', $validated['bus_id'])
@@ -80,7 +80,7 @@ class BusGroupController extends Controller
             'bus_id' => 'required|exists:buses,id',
         ]);
 
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         $group = BusGroup::where('id', $id)->where('school_id', $schoolId)->firstOrFail();
 
@@ -99,7 +99,7 @@ class BusGroupController extends Controller
      */
     public function destroy($id)
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         $group = BusGroup::where('id', $id)->where('school_id', $schoolId)->firstOrFail();
 
@@ -112,3 +112,5 @@ class BusGroupController extends Controller
         return redirect()->route('school.bus-groups.index')->with('success', 'Bus group deleted successfully.');
     }
 }
+
+

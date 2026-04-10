@@ -134,7 +134,7 @@ class ChatController extends Controller
 
             case 'field_supervisor':
                 // مشرف ميداني يرى جميع سائقي ومشرفي الحافلات النشطين
-                $staff = User::whereIn('role', ['driver', 'supervisor'])
+                $staff = User::whereHas('roles', fn($q) => $q->whereIn('name', ['driver', 'supervisor']))
                     ->where('is_active', true)
                     ->get();
                 foreach($staff as $contact) {
@@ -153,9 +153,17 @@ class ChatController extends Controller
 
             case 'school_admin':
                 // أدمن المدرسة يرى مستخدمي مدرسته فقط
-                $contacts = User::where('school_id', $user->school_id)
-                    ->where('id', '!=', $user->id)
-                    ->get();
+                $schoolId = $user->getSchoolId();
+                if ($schoolId) {
+                    // Users linked to this school through extension tables
+                    $contacts = User::whereHas('schoolAdmin', fn($q) => $q->where('school_id', $schoolId))
+                        ->orWhereHas('fieldSupervisor', fn($q) => $q->where('school_id', $schoolId))
+                        ->orWhereHas('driver', fn($q) => $q->where('school_id', $schoolId))
+                        ->where('id', '!=', $user->id)
+                        ->get();
+                } else {
+                    $contacts = collect();
+                }
                 foreach($contacts as $contact) {
                     $contact->chat_description = "موظف/ولي أمر في المدرسة";
                 }
@@ -220,7 +228,7 @@ class ChatController extends Controller
             // الأدمن يرى كل شيء
         } elseif ($user->role === 'school_admin') {
             // أدمن المدرسة يرى محادثات مدرسته
-            $query->where('school_id', $user->school_id);
+            $query->where('school_id', $user->getSchoolId());
         } else {
             // المستخدم العادي يرى محادثاته المسموحة فقط
             $validContactIds = $this->getValidContactsList($user)->pluck('id')->toArray();
@@ -277,7 +285,7 @@ class ChatController extends Controller
             $receiver = User::findOrFail($receiverId);
 
             $conversation = Conversation::create([
-                'school_id' => $user->school_id ?? $receiver->school_id,
+                'school_id' => $user->getSchoolId() ?? $receiver->getSchoolId(),
                 'type'      => 'private',
             ]);
 
@@ -473,3 +481,6 @@ class ChatController extends Controller
         return response()->json($response, $status);
     }
 }
+
+
+

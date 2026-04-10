@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('name'); // اسم المدرسة
             $table->string('logo')->nullable();
-            $table->string('location')->nullable(); // المدينة/الموقع
+            $table->geometry('location', 'point')->nullable(); // GPS point
+            $table->string('address')->nullable(); // المدينة/الموقع
             $table->enum('status', ['Active', 'Inactive'])->default('Active'); // الحالة
 
             // خطط الاشتراك (Subscription Plan)

@@ -155,3 +155,5 @@ class ChatMonitorController extends Controller
         return back()->with('success', 'تم إرسال التنبيه بنجاح.');
     }
 }
+
+

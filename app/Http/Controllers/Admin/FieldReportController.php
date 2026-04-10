@@ -16,15 +16,14 @@ class FieldReportController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Violation::with(['fieldSupervisor:id,name', 'bus:id,bus_code,bus_number']);
+        $query = Violation::with(['fieldSupervisor:id,name', 'bus:id,bus_number']);
 
         // Search by bus code/number or supervisor name
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->whereHas('bus', function ($bq) use ($search) {
-                    $bq->where('bus_code', 'like', "%{$search}%")
-                       ->orWhere('bus_number', 'like', "%{$search}%");
+                    $bq->where('bus_number', 'like', "%{$search}%");
                 })->orWhereHas('fieldSupervisor', function ($sq) use ($search) {
                     $sq->where('name', 'like', "%{$search}%");
                 });
@@ -54,3 +53,5 @@ class FieldReportController extends Controller
         ]);
     }
 }
+
+

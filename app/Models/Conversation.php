@@ -74,3 +74,5 @@ class Conversation extends Model
             ->first();
     }
 }
+
+

@@ -10,7 +10,7 @@ interface Violation {
   description: string;
   status: string;
   created_at: string;
-  bus?: { id: number; bus_code: string; bus_number: string };
+  bus?: { id: number; bus_number: string };
   field_supervisor?: { id: number; name: string };
 }
 
@@ -137,14 +137,8 @@ export default function FieldReports({
               </div>
               <div>
                 <p className="text-gray-500 font-bold mb-1">
-                  رقم الحافلة الطارئ:
+                  رقم الحافلة:
                 </p>
-                <p className="font-bold border-b border-gray-300 pb-1">
-                  {printingViolation.bus?.bus_code || "—"}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500 font-bold mb-1">رقم اللوحة:</p>
                 <p className="font-bold border-b border-gray-300 pb-1">
                   {printingViolation.bus?.bus_number || "—"}
                 </p>
@@ -458,13 +452,8 @@ export default function FieldReports({
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <div className="font-bold text-lg">
-                          {item.bus?.bus_code || "—"}
+                          {item.bus?.bus_number || "—"}
                         </div>
-                        {item.bus?.bus_number && (
-                          <div className="text-xs opacity-70">
-                            {item.bus.bus_number}
-                          </div>
-                        )}
                       </td>
                       <td className="px-6 py-4 text-sm font-bold">
                         {item.field_supervisor?.name || "—"}

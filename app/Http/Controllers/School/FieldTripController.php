@@ -17,7 +17,7 @@ class FieldTripController extends Controller
 {
     public function index()
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         $fieldTrips = FieldTrip::where('school_id', $schoolId)
             ->with(['bus.driver', 'bus.supervisor'])
@@ -38,19 +38,19 @@ class FieldTripController extends Controller
 
         // Fetch Supervisors
         $supervisors = User::where('school_id', $schoolId)
-            ->where('role', 'supervisor')
+            ->whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
             ->select('id', 'name')
             ->get();
 
         // Fetch Drivers (for future use or if needed now)
         $drivers = User::where('school_id', $schoolId)
-            ->where('role', 'driver')
+            ->whereHas('roles', fn($q) => $q->where('name', 'driver'))
             ->select('id', 'name')
             ->get();
 
         // Fetch Teachers for the Field Trip Members Selection
         $teachers = User::where('school_id', $schoolId)
-            ->where('role', 'teacher')
+            ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
             ->select('id', 'name', 'phone')
             ->get();
 
@@ -71,7 +71,7 @@ class FieldTripController extends Controller
         \Illuminate\Support\Facades\Log::info('FieldTripController@store BEGIN', [
             'request_all' => $request->all(),
             'user_id' => Auth::id(),
-            'school_id' => Auth::user()->school_id ?? 'NULL'
+            'school_id' => Auth::user()->getSchoolId() ?? 'NULL'
         ]);
 
         try {
@@ -104,7 +104,7 @@ class FieldTripController extends Controller
         DB::beginTransaction();
         try {
             $data = [
-                'school_id' => Auth::user()->school_id,
+                'school_id' => Auth::user()->getSchoolId(),
                 'trip_name' => $validated['trip_name'],
                 'description' => $validated['description'],
                 'trip_date' => $validated['trip_date'],
@@ -165,7 +165,7 @@ class FieldTripController extends Controller
     public function update(Request $request, FieldTrip $fieldTrip)
     {
         // Ensure the trip belongs to the authenticated user's school
-        if ($fieldTrip->school_id !== Auth::user()->school_id) {
+        if ($fieldTrip->school_id !== Auth::user()->getSchoolId()) {
             abort(403);
         }
 
@@ -209,7 +209,7 @@ class FieldTripController extends Controller
     public function destroy(FieldTrip $fieldTrip)
     {
         // Ensure the trip belongs to the authenticated user's school
-        if ($fieldTrip->school_id !== Auth::user()->school_id) {
+        if ($fieldTrip->school_id !== Auth::user()->getSchoolId()) {
             abort(403);
         }
 
@@ -225,3 +225,6 @@ class FieldTripController extends Controller
             ->with('success', 'تم حذف الرحلة بنجاح');
     }
 }
+
+
+

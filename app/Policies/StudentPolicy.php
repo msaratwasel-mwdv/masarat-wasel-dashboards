@@ -18,12 +18,12 @@ class StudentPolicy
         $enrollment = $student->currentEnrollment;
 
         // إذا لم يكن للطالب سجل التحاق، أو أن المستخدم ليس له مدرسة، امنعه
-        if (!$enrollment || !$user->school_id) {
+        if (!$enrollment || !$user->getSchoolId()) {
             return false;
         }
 
         // إذا تطابقت مدرسة المدير مع مدرسة الطالب، اسمح له
-        return $user->school_id === $enrollment->school_id;
+        return $user->getSchoolId() === $enrollment->school_id;
     }
 
     /**
@@ -50,3 +50,5 @@ class StudentPolicy
         return $this->belongsToSchool($user, $student);
     }
 }
+
+

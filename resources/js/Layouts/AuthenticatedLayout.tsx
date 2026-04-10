@@ -394,7 +394,7 @@ export default function Authenticated({
           <div className={`rounded-xl ${isCollapsed ? "p-1" : "p-3"} flex items-center ${flexDirection} justify-between group hover:bg-white/5 transition-colors`}>
             <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"} ${flexDirection}`}>
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-yellow to-yellow-600 flex items-center justify-center text-white font-bold shadow-lg shrink-0">
-                {user.name.charAt(0).toUpperCase()}
+                {user.name?.charAt(0).toUpperCase() || "?"}
               </div>
               {!isCollapsed && (
                 <div className={`flex flex-col ${isRTL ? "text-right" : "text-left"} overflow-hidden`}>
@@ -515,7 +515,7 @@ export default function Authenticated({
             <div className={`flex items-center gap-3 ${isRTL ? "pr-4 md:pr-6 border-r" : "pl-4 md:pl-6 border-l"} border-gray-100 dark:border-gray-700`}>
               <div className={`hidden sm:block ${isRTL ? "text-right" : "text-left"}`}>
                 <p className="text-[13px] font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap leading-none mb-1">
-                  {user.name}
+                  {user.name || "User"}
                 </p>
                 <div className={`flex items-center gap-1.5 ${flexDirection} opacity-50`}>
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />

@@ -13,23 +13,24 @@ return new class extends Migration
 
             // تحديد أطوال الحقول لتجنب المشكلة
             $table->string('student_code', 50)->unique()->nullable(); // ⬅️ تحديد طول 50
-            $table->string('full_name'); // اسم الطالب الكامل باللغة العربية
-            $table->string('full_name_en'); // اسم الطالب الكامل باللغة الإنجليزية
-            $table->string('national_id', 20)->nullable(); // ⬅️ تحديد طول 20 بدلاً من 191
+
+            $table->string('first_name_ar');
+            $table->string('second_name_ar');
+            $table->string('third_name_ar');
+            $table->string('last_name_ar');
+
+            $table->string('first_name_en');
+            $table->string('second_name_en');
+            $table->string('third_name_en');
+            $table->string('last_name_en');
+
+            $table->string('national_id', 20)->nullable();
             $table->enum('gender', ['male', 'female'])->nullable();
-            $table->string('grade')->nullable(); // الصف الدراسي
             $table->string('image')->nullable();
-            $table->boolean('is_active')->default(true); // حالة الطالب
+            $table->boolean('is_active')->default(true);
 
-            // العلاقات
-            $table->foreignId('guardian_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('supervisor_id')->nullable()->constrained('users')->onDelete('set null');
-            $table->foreignId('school_id')->constrained()->onDelete('cascade');
-
-            $table->foreignId('morning_group_id')->nullable()->constrained('bus_groups')->nullOnDelete();
-            $table->foreignId('afternoon_group_id')->nullable()->constrained('bus_groups')->nullOnDelete();
-            $table->foreignId('forth_route_id')->nullable()->constrained('routes')->nullOnDelete();
-            $table->foreignId('back_route_id')->nullable()->constrained('routes')->nullOnDelete();
+            $table->foreignId('forth_bus_id')->nullable()->constrained('buses')->nullOnDelete();
+            $table->foreignId('back_bus_id')->nullable()->constrained('buses')->nullOnDelete();
 
             $table->timestamps();
 

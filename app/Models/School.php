@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class School extends Model
 {
@@ -19,10 +20,32 @@ class School extends Model
         'has_attendance',
     ];
 
-    public function users(): HasMany
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array
+     */
+    protected $hidden = [
+        'location',
+    ];
+
+    /**
+     * School admin users — via school_admins extension table.
+     * NOTE: users do NOT have school_id directly on the users table.
+     */
+    public function schoolAdmins(): HasMany
     {
-        return $this->hasMany(User::class);
+        return $this->hasMany(SchoolAdmin::class);
     }
+
+    /**
+     * @deprecated school_id does not exist on users table.
+     * Use schoolAdmins() or hasManyThrough(User, SchoolAdmin) instead.
+     */
+    // public function users(): HasMany
+    // {
+    //     return $this->hasMany(User::class);
+    // }
 
     public function classrooms(): HasMany
     {
@@ -54,3 +77,5 @@ class School extends Model
         return $this->hasMany(FieldTrip::class);
     }
 }
+
+

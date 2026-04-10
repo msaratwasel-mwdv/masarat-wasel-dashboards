@@ -19,7 +19,7 @@ class TripReportController extends Controller
      */
     public function index()
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         // Buses for dropdown
         $buses = Bus::where('school_id', $schoolId)
@@ -29,7 +29,7 @@ class TripReportController extends Controller
 
         // Supervisors for dropdown (users with role supervisor in this school)
         $supervisors = User::where('school_id', $schoolId)
-            ->where('role', 'supervisor')
+            ->whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
             ->select('id', 'name', 'phone')
             ->get();
 
@@ -52,7 +52,7 @@ class TripReportController extends Controller
      */
     public function getData(Request $request)
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         $request->validate([
             'bus_id' => 'nullable|exists:buses,id',
@@ -180,3 +180,6 @@ class TripReportController extends Controller
         ]);
     }
 }
+
+
+

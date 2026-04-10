@@ -29,7 +29,7 @@ class FieldSupervisorController extends Controller
                 return [
                     'id'            => $bus->id,
                     'bus_number'    => $bus->bus_number,
-                    'bus_code'      => $bus->bus_code,
+                    'bus_number'      => $bus->bus_number,
                     'school'        => $bus->school?->name ?? 'N/A',
                     'driver'        => $bus->driver?->name ?? 'N/A',
                     'supervisor'    => $bus->supervisor?->name ?? 'N/A',
@@ -190,3 +190,5 @@ class FieldSupervisorController extends Controller
         ], 201);
     }
 }
+
+

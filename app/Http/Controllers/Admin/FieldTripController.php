@@ -45,7 +45,7 @@ class FieldTripController extends Controller
             'bus_id' => $validated['bus_id'],
         ]);
 
-        $schoolAdmin = $fieldTrip->school->users()->where('role', 'school_admin')->first();
+        $schoolAdmin = $fieldTrip->school->users()->whereHas('roles', fn($q) => $q->where('name', 'school_admin'))->first();
         
         if ($schoolAdmin) {
             try {
@@ -82,7 +82,7 @@ class FieldTripController extends Controller
             'rejection_reason' => $validated['rejection_reason'] ?? null,
         ]);
 
-        $schoolAdmin = $fieldTrip->school->users()->where('role', 'school_admin')->first();
+        $schoolAdmin = $fieldTrip->school->users()->whereHas('roles', fn($q) => $q->where('name', 'school_admin'))->first();
         
         if ($schoolAdmin) {
             try {
@@ -106,3 +106,6 @@ class FieldTripController extends Controller
         return redirect()->back()->with('success', 'تم إلغاء الرحلة بنجاح.');
     }
 }
+
+
+

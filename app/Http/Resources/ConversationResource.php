@@ -53,3 +53,5 @@ class ConversationResource extends JsonResource
         ];
     }
 }
+
+

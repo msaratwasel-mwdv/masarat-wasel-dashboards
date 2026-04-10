@@ -33,7 +33,7 @@ import {
 
 interface Bus {
   id: number;
-  bus_code: string;
+  bus_number: string;
   plate_number: string;
   capacity: number;
   driver_id: number | null;
@@ -412,7 +412,7 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
                                 {req.buses.map(bus => (
                                     <div key={bus.id} className={`p-4 rounded-xl border-l-4 border-[#0e7490] ${isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
                                         <div className="flex justify-between items-center mb-2">
-                                            <span className="font-bold text-sm">#{bus.bus_code}</span>
+                                            <span className="font-bold text-sm">#{bus.bus_number}</span>
                                             <span className="font-mono text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">{bus.plate_number}</span>
                                         </div>
                                         <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-3">
@@ -516,7 +516,7 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
                         
                         <div className="flex-1">
                            <div className={`flex justify-between items-center mb-1 ${isRTL ? "flex-row-reverse" : ""}`}>
-                              <span className="font-bold text-sm">#{bus.bus_code} - {bus.plate_number}</span>
+                              <span className="font-bold text-sm">#{bus.bus_number} - {bus.plate_number}</span>
                               <span className="text-xs font-black bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                                 {bus.capacity} {isRTL ? "مقعد" : "Seats"}
                               </span>

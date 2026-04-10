@@ -17,12 +17,13 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
         $query = Attendance::whereHas('student', function ($q) {
-            $q->where('school_id', Auth::user()->school_id);
+            $q->where('school_id', Auth::user()->getSchoolId());
         })->with([
             'student.guardian', // Fetch guardian
             'student.currentEnrollment.classroom', // Fetch enrollment to get class
-            'student:id,full_name,national_id,student_code', 
-            'classroom.teachers:id,name,national_id'
+            'student:id,first_name_ar,last_name_ar,national_id,student_code', 
+            'guardian:id,first_name_ar,last_name_ar',
+            'student.currentEnrollment.classroom.teacher:id,first_name_ar,last_name_ar,national_id'
         ]);
 
         if ($request->has('student_id') && $request->student_id) {
@@ -53,7 +54,7 @@ class AttendanceController extends Controller
                   ->orWhereHas('guardian', function($g) use ($request) {
                       $g->where('national_id', 'like', "%{$request->student_national_id}%");
                   })
-                  ->orWhereHas('currentEnrollment.classroom.teachers', function($t) use ($request) {
+                  ->orWhereHas('student.currentEnrollment.classroom.teacher', function($t) use ($request) {
                       $t->where('national_id', 'like', "%{$request->student_national_id}%");
                   });
             });
@@ -76,10 +77,10 @@ class AttendanceController extends Controller
 
         // Verify student belongs to same school
         $student = Student::where('id', $request->student_id)
-            ->where('school_id', Auth::user()->school_id) // This assumes school_id is on students table directly or via relation. 
+            ->where('school_id', Auth::user()->getSchoolId()) // This assumes school_id is on students table directly or via relation. 
             // Note: StudentController stores school_id in Enrollments. But user didn't change this part of Student model query.
             // If Student table doesn't have school_id, this check fails. 
-            // However, based on StudentController index method: $schoolId = Auth::user()->school_id; $students = Student::all(); // It doesn't filter by school on Student::all(). 
+            // However, based on StudentController index method: $schoolId = Auth::user()->getSchoolId(); $students = Student::all(); // It doesn't filter by school on Student::all(). 
             // But StudentController store method adds school_id to enrollment. 
             // Let's assume for now keeping existing logic intact but usually this needs join with enrollments.
             // BUT: User's 'Student.php' doesn't show school_id in fillable.
@@ -204,3 +205,5 @@ class AttendanceController extends Controller
         return response()->json($results, 201);
     }
 }
+
+

@@ -26,8 +26,8 @@ class SupervisorController extends Controller
         $search = $request->input('search');
 
         $supervisors = User::query()
-            ->where('school_id', $user->school_id)
-            ->where('role', 'supervisor')
+            ->where('school_id', $user->getSchoolId())
+            ->whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
             ->with(['supervisorProfile']) // نجلب بيانات البروفايل
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -67,7 +67,7 @@ class SupervisorController extends Controller
             });
 
         // جلب قائمة الباصات لاستخدامها في المودل
-        $buses = Bus::where('school_id', $user->school_id)->get(['id', 'bus_number', 'plate_number']);
+        $buses = Bus::where('school_id', $user->getSchoolId())->get(['id', 'bus_number', 'plate_number']);
 
         return Inertia::render('School/Supervisors/Index', [
             'supervisors' => $supervisors,
@@ -124,7 +124,7 @@ class SupervisorController extends Controller
                     $validated['password'] ?? $validated['phone'] // كلمة المرور = رقم الهاتف افتراضياً
                 ),
                 'role' => 'supervisor',
-                'school_id' => $user->school_id,
+                'school_id' => $user->getSchoolId(),
                 'is_active' => $validated['is_active'],
                 'image' => $imagePath,
                 'user_code' => 'SUP-' . strtoupper(uniqid()), // كود فريد
@@ -141,7 +141,7 @@ class SupervisorController extends Controller
             // ربط الباص إذا تم اختياره
             if (!empty($validated['bus_id'])) {
                 // نأكد من أن الباص يتبع للمدرسة
-                $bus = Bus::where('id', $validated['bus_id'])->where('school_id', $user->school_id)->first();
+                $bus = Bus::where('id', $validated['bus_id'])->where('school_id', $user->getSchoolId())->first();
                 if ($bus) {
                     $bus->update(['supervisor_id' => $newSupervisor->id]);
                 }
@@ -169,7 +169,7 @@ class SupervisorController extends Controller
 
         // 🔐 حماية: لا تعدّل مشرف من مدرسة ثانية
         if (
-            $supervisor->school_id !== $user->school_id ||
+            $supervisor->fieldSupervisor?->school_id !== $user->getSchoolId() ||
             $supervisor->role !== 'supervisor'
         ) {
             abort(403);
@@ -250,7 +250,7 @@ class SupervisorController extends Controller
             
             // ثانياً: ربط الباص الجديد
             if (!empty($validated['bus_id'])) {
-                $bus = Bus::where('id', $validated['bus_id'])->where('school_id', $user->school_id)->first();
+                $bus = Bus::where('id', $validated['bus_id'])->where('school_id', $user->getSchoolId())->first();
                 if ($bus) {
                     $bus->update(['supervisor_id' => $supervisor->id]);
                 }
@@ -278,7 +278,7 @@ class SupervisorController extends Controller
         $user = Auth::user();
 
         if (
-            $supervisor->school_id !== $user->school_id ||
+            $supervisor->fieldSupervisor?->school_id !== $user->getSchoolId() ||
             $supervisor->role !== 'supervisor'
         ) {
             abort(403);
@@ -298,3 +298,6 @@ class SupervisorController extends Controller
             ->with('success', 'Supervisor deleted successfully.');
     }
 }
+
+
+

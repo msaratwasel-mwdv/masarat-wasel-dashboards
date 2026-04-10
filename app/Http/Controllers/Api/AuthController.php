@@ -108,7 +108,7 @@ class AuthController extends Controller
             'phone'       => $user->phone,
             'role'        => $user->role,
             'image_url'   => $imageUrl,
-            'school_id'   => $user->school_id,
+            'school_id'   => $user->getSchoolId(),
             'bus_id'      => $this->getBusId($user),
         ];
 
@@ -164,7 +164,7 @@ class AuthController extends Controller
             'phone'       => $user->phone,
             'role'        => $user->role,
             'image_url'   => $imageUrl,
-            'school_id'   => $user->school_id,
+            'school_id'   => $user->getSchoolId(),
             'bus_id'      => $this->getBusId($user),
         ];
 
@@ -292,3 +292,5 @@ class AuthController extends Controller
         return null;
     }
 }
+
+

@@ -22,8 +22,8 @@ class TeacherController extends Controller
         $search = $request->input('search');
 
         $teachers = User::query()
-            ->where('school_id', $user->school_id)
-            ->where('role', 'teacher')
+            ->where('school_id', $user->getSchoolId())
+            ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
@@ -65,7 +65,7 @@ class TeacherController extends Controller
                 $validated['password'] ?? $validated['phone'] // كلمة المرور = رقم الهاتف افتراضياً
             ),
             'role' => 'teacher',
-            'school_id' => $user->school_id,
+            'school_id' => $user->getSchoolId(),
             'is_active' => true,
         ]);
 
@@ -84,7 +84,7 @@ class TeacherController extends Controller
 
         // 🔐 حماية: لا تعدّل مشرف من مدرسة ثانية
         if (
-            $teacher->school_id !== $user->school_id ||
+            $teacher->school_id !== $user->getSchoolId() ||
             $teacher->role !== 'teacher'
         ) {
             abort(403);
@@ -104,7 +104,7 @@ class TeacherController extends Controller
         $user = Auth::user();
 
         if (
-            $teacher->school_id !== $user->school_id ||
+            $teacher->school_id !== $user->getSchoolId() ||
             $teacher->role !== 'teacher'
         ) {
             abort(403);
@@ -156,7 +156,7 @@ class TeacherController extends Controller
         $user = Auth::user();
 
         if (
-            $teacher->school_id !== $user->school_id ||
+            $teacher->school_id !== $user->getSchoolId() ||
             $teacher->role !== 'teacher'
         ) {
             abort(403);
@@ -169,3 +169,6 @@ class TeacherController extends Controller
             ->with('success', 'Teacher deleted successfully.');
     }
 }
+
+
+

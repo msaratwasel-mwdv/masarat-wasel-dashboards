@@ -21,7 +21,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 
 interface AssignedBus {
   id: number;
-  bus_code: string;
+  bus_number: string;
   school: { id: number; name: string } | null;
 }
 
@@ -276,7 +276,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
           return bus ? (
             <div className={isRTL ? "text-right" : "text-left"}>
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${isDark ? "bg-orange-900/30 text-orange-300 border border-orange-700" : "bg-orange-100 text-orange-700 border border-orange-200"}`}>
-                🚌 {bus.bus_code}
+                🚌 {bus.bus_number}
               </span>
               {bus.school && (
                 <div className={`text-xs mt-0.5 ${isDark ? "text-gray-400" : "text-gray-500"}`}>

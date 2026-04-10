@@ -53,3 +53,5 @@ class EmergencyController extends Controller
         return redirect()->back()->with('success', 'تم تحديث حالة البلاغ بنجاح');
     }
 }
+
+

@@ -51,3 +51,5 @@ class Route extends Model
         return $this->hasMany(Student::class, 'back_route_id');
     }
 }
+
+

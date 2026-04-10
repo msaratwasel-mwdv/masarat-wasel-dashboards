@@ -7,7 +7,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 
 interface AssignedBus {
     id: number;
-    bus_code: string;
+    bus_number: string;
     plate_number: string;
     capacity: number;
 }
@@ -309,7 +309,7 @@ export default function RequestInvoiceModal({ show, onClose, request, schoolName
                           {idx + 1}
                         </td>
                         <td className="py-3 px-4 text-sm font-bold border border-gray-300 print:border-black text-center text-[#0e7490] print:text-black tracking-wide">
-                          {bus.bus_code}
+                          {bus.bus_number}
                         </td>
                         <td className="py-3 px-4 text-sm font-mono border border-gray-300 print:border-black text-center text-gray-700 print:text-black">
                           {bus.plate_number}

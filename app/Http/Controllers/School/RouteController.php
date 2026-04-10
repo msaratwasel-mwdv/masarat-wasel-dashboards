@@ -14,7 +14,7 @@ class RouteController extends Controller
 {
     public function index()
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
         
         $routes = Route::where('school_id', $schoolId)
             ->withCount(['morningStudents', 'afternoonStudents', 'buses'])
@@ -34,7 +34,7 @@ class RouteController extends Controller
             'description' => 'nullable|string|max:1000',
         ]);
 
-        $validated['school_id'] = Auth::user()->school_id;
+        $validated['school_id'] = Auth::user()->getSchoolId();
 
         Route::create($validated);
 
@@ -43,7 +43,7 @@ class RouteController extends Controller
 
     public function update(Request $request, Route $route)
     {
-        if ($route->school_id !== Auth::user()->school_id) {
+        if ($route->school_id !== Auth::user()->getSchoolId()) {
             abort(403);
         }
 
@@ -60,7 +60,7 @@ class RouteController extends Controller
 
     public function destroy(Route $route)
     {
-        if ($route->school_id !== Auth::user()->school_id) {
+        if ($route->school_id !== Auth::user()->getSchoolId()) {
             abort(403);
         }
 
@@ -74,3 +74,5 @@ class RouteController extends Controller
         return redirect()->back()->with('success', 'تم حذف المسار بنجاح');
     }
 }
+
+

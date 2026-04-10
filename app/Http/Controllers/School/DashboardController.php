@@ -15,7 +15,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         // 1. Basic Stats
         $studentsCount = Student::where('school_id', $schoolId)->count();
@@ -42,7 +42,7 @@ class DashboardController extends Controller
         $recentStudents = Student::where('school_id', $schoolId)
             ->latest()
             ->take(5)
-            ->get(['id', 'full_name', 'created_at', 'image']);
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'created_at', 'image']);
 
         return Inertia::render('School/Dashboard', [
             'stats' => [
@@ -58,3 +58,5 @@ class DashboardController extends Controller
         ]);
     }
 }
+
+

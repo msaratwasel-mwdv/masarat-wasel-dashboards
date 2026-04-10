@@ -15,12 +15,12 @@ class AbsenceRequestController extends Controller
      */
     public function index()
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         $requests = AbsenceRequest::whereHas('student', function($query) use ($schoolId) {
             $query->where('school_id', $schoolId);
         })
-        ->with(['student:id,full_name', 'guardian:id,name'])
+        ->with(['student:id,first_name_ar,last_name_ar', 'guardian:id,first_name_ar,last_name_ar'])
         ->latest()
         ->paginate(15);
 
@@ -34,7 +34,7 @@ class AbsenceRequestController extends Controller
      */
     public function process(Request $request, AbsenceRequest $absenceRequest)
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         // التأكد أن الطالب يتبع لمدرسة المستخدم الحالي
         if ($absenceRequest->student->school_id !== $schoolId) {
@@ -59,3 +59,5 @@ class AbsenceRequestController extends Controller
         return redirect()->back()->with('success', 'تم تحديث حالة الطلب بنجاح.');
     }
 }
+
+

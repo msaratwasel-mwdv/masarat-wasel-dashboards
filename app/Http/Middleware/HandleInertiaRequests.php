@@ -32,8 +32,10 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user() ? $request->user()->load('school') : null,
+                'user' => $request->user() ? $request->user()->append('school') : null,
             ],
         ];
     }
 }
+
+

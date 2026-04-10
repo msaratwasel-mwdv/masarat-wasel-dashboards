@@ -25,3 +25,5 @@ class StoreSchoolUserRequest extends FormRequest
         ];
     }
 }
+
+

@@ -30,3 +30,5 @@ class CreateDailyTripsCommand extends Command
         $this->info('Daily trips created successfully!');
     }
 }
+
+

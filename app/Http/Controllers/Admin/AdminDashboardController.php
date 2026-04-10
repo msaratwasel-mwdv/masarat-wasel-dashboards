@@ -22,13 +22,13 @@ class AdminDashboardController extends Controller
         $busAvailable = Bus::where('status', 'active')->whereNull('driver_id')->count();
 
         // --- 2. Driver Stats ---
-        $driverTotal = User::where('role', 'driver')->count();
+        $driverTotal = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))->count();
         // Drivers assigned to buses
         $driverBooked = Bus::whereNotNull('driver_id')->distinct('driver_id')->count();
         $driverAvailable = max(0, $driverTotal - $driverBooked);
 
         // --- 3. Supervisor Stats ---
-        $supervisorTotal = User::where('role', 'supervisor')->count();
+        $supervisorTotal = User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))->count();
         // Supervisors assigned to buses
         $supervisorBooked = Bus::whereNotNull('supervisor_id')->distinct('supervisor_id')->count();
         $supervisorAvailable = max(0, $supervisorTotal - $supervisorBooked);
@@ -145,17 +145,18 @@ class AdminDashboardController extends Controller
             ];
         }
 
-        // ب. فحص انتهاء الرخص (Real Logic)
-        // نبحث عن السائقين الذين ستنتهي رخصهم خلال 30 يوم
-        $expiringLicenses = \App\Models\DriverProfile::with('user')
+        // ب. فحص انتهاء الرخص — via drivers extension table
+        $expiringLicenses = \App\Models\Driver::with('user')
             ->whereDate('license_expiry_date', '<=', Carbon::now()->addDays(30))
-            ->whereDate('license_expiry_date', '>=', Carbon::now()) // لم تنتهِ بعد، بل ستنتهي قريباً
+            ->whereDate('license_expiry_date', '>=', Carbon::now())
             ->get();
 
         foreach ($expiringLicenses as $profile) {
             $expiryDate = Carbon::parse($profile->license_expiry_date);
-            $daysLeft = (int) ceil(Carbon::now()->floatDiffInDays($expiryDate, false)); // Ensure positive int
-            $driverName = $profile->user ? $profile->user->name : 'Unknown';
+            $daysLeft = (int) ceil(Carbon::now()->floatDiffInDays($expiryDate, false));
+            $driverName = $profile->user
+                ? ($profile->user->first_name_ar . ' ' . $profile->user->last_name_ar)
+                : 'Unknown';
             $formattedDate = $expiryDate->format('Y-m-d');
 
             $alerts[] = [
@@ -165,14 +166,16 @@ class AdminDashboardController extends Controller
             ];
         }
 
-        // ج. فحص الرخص المنتهية فعلياً (Expired)
-        $expiredLicenses = \App\Models\DriverProfile::with('user')
+        // ج. فحص الرخص المنتهية فعلياً — via drivers extension table
+        $expiredLicenses = \App\Models\Driver::with('user')
             ->whereDate('license_expiry_date', '<', Carbon::now())
             ->get();
 
         foreach ($expiredLicenses as $profile) {
             $expiryDate = Carbon::parse($profile->license_expiry_date);
-            $driverName = $profile->user ? $profile->user->name : 'Unknown';
+            $driverName = $profile->user
+                ? ($profile->user->first_name_ar . ' ' . $profile->user->last_name_ar)
+                : 'Unknown';
             $formattedDate = $expiryDate->format('Y-m-d');
 
             $alerts[] = [
@@ -218,7 +221,7 @@ class AdminDashboardController extends Controller
         // 4. Data for Filters
         $filterSchools = \App\Models\School::select('id', 'name')->get();
         $filterBuses = Bus::where('status', 'active')
-            ->select('id', 'bus_code', 'plate_number', 'school_id')
+            ->select('id', 'bus_number', 'plate_number', 'school_id')
             ->get();
 
         return Inertia::render('Admin/Dashboard', [
@@ -233,3 +236,5 @@ class AdminDashboardController extends Controller
         ]);
     }
 }
+
+

@@ -15,7 +15,7 @@ class BusController extends Controller
      */
     public function index()
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         // 1. Bus Inventory Data
         $buses = Bus::where('school_id', $schoolId)
@@ -86,11 +86,10 @@ class BusController extends Controller
             'model' => 'nullable|string',
             'year' => 'nullable|integer|min:1990|max:' . (date('Y') + 1),
             'color' => 'nullable|string',
-            'route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', Auth::user()->school_id)],
+            'route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', Auth::user()->getSchoolId())],
         ]);
 
-        $validated['school_id'] = Auth::user()->school_id;
-        $validated['bus_code'] = $validated['bus_number']; // Default code same as number for now
+        $validated['school_id'] = Auth::user()->getSchoolId();
 
         Bus::create($validated);
 
@@ -102,7 +101,7 @@ class BusController extends Controller
      */
     public function update(Request $request, Bus $bus)
     {
-        if ($bus->school_id !== Auth::user()->school_id) {
+        if ($bus->school_id !== Auth::user()->getSchoolId()) {
             abort(403);
         }
 
@@ -117,7 +116,7 @@ class BusController extends Controller
             'model' => 'nullable|string',
             'year' => 'nullable|integer',
             'color' => 'nullable|string',
-            'route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', Auth::user()->school_id)],
+            'route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', Auth::user()->getSchoolId())],
         ]);
 
         $bus->update($validated);
@@ -130,7 +129,7 @@ class BusController extends Controller
      */
     public function destroy(Bus $bus)
     {
-        if ($bus->school_id !== Auth::user()->school_id) {
+        if ($bus->school_id !== Auth::user()->getSchoolId()) {
             abort(403);
         }
 
@@ -149,7 +148,7 @@ class BusController extends Controller
             'ids.*' => 'exists:buses,id',
         ]);
 
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         Bus::whereIn('id', $validated['ids'])
             ->where('school_id', $schoolId)
@@ -163,7 +162,7 @@ class BusController extends Controller
      */
     public function liveTracking()
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         $buses = Bus::where('school_id', $schoolId)
             ->with(['driver'])
@@ -199,7 +198,7 @@ class BusController extends Controller
      */
     public function trackingApi()
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         $buses = Bus::where('school_id', $schoolId)
             ->whereNotNull('current_latitude')
@@ -227,7 +226,7 @@ class BusController extends Controller
      */
     public function assignStudentsPage(Request $request)
     {
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         // Fetch all bus groups
         $groups = \App\Models\BusGroup::with('bus')->where('school_id', $schoolId)->get();
@@ -235,8 +234,8 @@ class BusController extends Controller
         // Fetch all active students in the school
         $students = \App\Models\Student::where('school_id', $schoolId)
             ->where('is_active', true)
-            ->orderBy('full_name') // Using full_name based on Student model
-            ->get(['id', 'full_name', 'student_code', 'national_id', 'gender', 'morning_group_id', 'afternoon_group_id']) // Select only what's needed
+            ->orderBy('first_name_ar') 
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id', 'gender', 'morning_group_id', 'afternoon_group_id'])
             ->map(function ($student) {
                 return [
                     'id' => $student->id,
@@ -270,7 +269,7 @@ class BusController extends Controller
         ]);
 
         $groupId = $validated['group_id'];
-        $schoolId = Auth::user()->school_id;
+        $schoolId = Auth::user()->getSchoolId();
 
         $group = \App\Models\BusGroup::where('id', $groupId)
             ->where('school_id', $schoolId)
@@ -310,3 +309,5 @@ class BusController extends Controller
         return redirect()->back()->with('success', 'تم حفظ تعيينات المجموعات بنجاح');
     }
 }
+
+

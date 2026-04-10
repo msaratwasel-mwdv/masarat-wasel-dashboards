@@ -27,7 +27,6 @@ interface Inspection {
   };
   bus: {
     id: number;
-    bus_code: string;
     bus_number: string;
   };
   results: InspectionResult[];
@@ -338,7 +337,7 @@ export default function InspectionLogs({
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <div className="font-bold text-lg">
-                          {insp.bus?.bus_code || "—"}
+                          {insp.bus?.bus_number || "—"}
                         </div>
                         {insp.bus?.bus_number && (
                           <div className="text-xs opacity-70">
@@ -548,7 +547,7 @@ export default function InspectionLogs({
                     الحافلة
                   </p>
                   <p className="font-black text-lg print:text-black">
-                    {selectedInspection.bus?.bus_code}
+                    {selectedInspection.bus?.bus_number}
                   </p>
                   {selectedInspection.bus?.bus_number && (
                     <p className="text-sm opacity-70 print:text-black">

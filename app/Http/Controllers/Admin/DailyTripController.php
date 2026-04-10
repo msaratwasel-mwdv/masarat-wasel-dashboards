@@ -142,3 +142,5 @@ class DailyTripController extends Controller
         return back()->with('success', "Auto-creation complete: {$result['created']} trips created, {$result['skipped']} skipped.");
     }
 }
+
+

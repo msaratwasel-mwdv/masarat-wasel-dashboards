@@ -88,3 +88,5 @@ class FixImagePaths extends Command
         $this->info('Done! Broken image references have been nullified.');
     }
 }
+
+
