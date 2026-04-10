@@ -25,7 +25,7 @@ class SearchController extends Controller
         $results = [];
 
         // 1. البحث في الطلاب
-        $students = Student::where('school_id', $schoolId)
+        $students = Student::inSchool($schoolId)
             ->where(function ($q) use ($query) {
                 $q->where('first_name_ar', 'like', "%{$query}%")
                   ->orWhere('last_name_ar', 'like', "%{$query}%")
@@ -51,7 +51,7 @@ class SearchController extends Controller
         }
 
         // 2. البحث في الأولياء (الآن من جدول users بشرط role = parent)
-        $guardians = User::where('school_id', $schoolId)
+        $guardians = User::atSchool($schoolId)
             ->whereHas('roles', fn($q) => $q->where('name', 'parent'))
             ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
@@ -70,7 +70,7 @@ class SearchController extends Controller
         }
 
         // 3. البحث في المشرفين
-        $supervisors = User::where('school_id', $schoolId)
+        $supervisors = User::atSchool($schoolId)
             ->whereHas('roles', fn($q) => $q->whereIn('name', ['supervisor', 'teacher', 'school_admin']))
             ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")

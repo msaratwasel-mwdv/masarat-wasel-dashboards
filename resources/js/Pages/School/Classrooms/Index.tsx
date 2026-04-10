@@ -17,7 +17,7 @@ export interface Classroom {
   name: string;
   grade_level?: string;
   school_id: number;
-  teachers?: { id: number; name: string; email?: string }[];
+  teachers?: { user_id: number; name: string; email?: string }[];
 }
 
 interface Supervisor {
@@ -78,11 +78,6 @@ export default function ClassroomIndex({
     e.preventDefault();
     if (!classToEdit) return;
 
-    editForm.transform((data) => ({
-      ...data,
-      teacher_ids: data.teacher_id ? [parseInt(data.teacher_id)] : [],
-    }));
-
     editForm.put(route("school.classrooms.update", classToEdit.id), {
       preserveScroll: true,
       onSuccess: () => {
@@ -99,7 +94,7 @@ export default function ClassroomIndex({
       name: classroom.name,
       teacher_id:
         classroom.teachers && classroom.teachers.length > 0
-          ? classroom.teachers[0].id.toString()
+          ? classroom.teachers[0].user_id.toString()
           : "",
     });
     setShowEditModal(true);

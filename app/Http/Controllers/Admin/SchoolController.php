@@ -41,7 +41,7 @@ class SchoolController extends Controller
         // حساب الإحصائيات الحقيقية
         $stats = [
             // عدد الطلاب التابعين للمدرسة
-            'students_count' => \App\Models\Student::where('school_id', $school->id)->count(),
+            'students_count' => \App\Models\Student::inSchool($school->id)->count(),
 
             // عدد الباصات المخصصة للمدرسة
             'buses_count' => \App\Models\Bus::where('school_id', $school->id)->count(),

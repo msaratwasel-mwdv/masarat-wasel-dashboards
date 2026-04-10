@@ -16,7 +16,7 @@ class ClassroomController extends Controller
     {
         $schoolId = Auth::user()->getSchoolId();
         $classrooms = Classroom::where('school_id', $schoolId)
-            ->with(['teacher:id,name,national_id']) // load supervisor with national_id for search
+            ->with(['teacher.user']) // load teacher user
             ->orderBy('name')
             ->get(['id', 'name', 'grade_level']);
 
@@ -38,14 +38,14 @@ class ClassroomController extends Controller
                     ->orWhere('grade_level', 'like', "%{$search}%");
             })
             ->latest()
-            ->with('teacher') // Eager load teacher to display supervisor
+            ->with('teachers.user') // Eager load teachers with their user details
             ->get();
 
         // Fetch teachers to populate the dropdown
-        $teachers = User::where('school_id', $schoolId)
+        $teachers = User::atSchool($schoolId)
             ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
-            ->orderBy('name')
-            ->get(['id', 'name']);
+            ->orderBy('first_name_ar')
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'email']);
 
         return Inertia::render('School/Classrooms/Index', [
             'classrooms' => $classrooms,
@@ -65,14 +65,14 @@ class ClassroomController extends Controller
         }
 
         $teachers = User::query()
-            ->where('school_id', $user->getSchoolId())
+            ->atSchool($user->getSchoolId())
             ->whereHas('roles', fn($q) => $q->where('name', 'teacher')) // Show teachers
             ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'email']);
+            ->orderBy('first_name_ar')
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'email']);
 
         return Inertia::render('School/Classrooms/Edit', [
-            'classroom' => $classroom->load('teacher:id,name,email'),
+            'classroom' => $classroom->load('teacher.user'),
             'teachers' => $teachers,
         ]);
     }
@@ -86,24 +86,41 @@ class ClassroomController extends Controller
         if ($classroom->school_id !== $user->getSchoolId()) {
             abort(403);
         }
-
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'grade_level' => 'nullable|string|max:255',
             'teacher_id' => 'nullable|integer|exists:users,id',
+            'teacher_ids' => 'nullable|array',
+            'teacher_ids.*' => 'exists:users,id',
         ]);
 
         $classroom->update([
             'name' => $validated['name'],
-            'grade_level' => $validated['grade_level'] ?? null,
+            'grade_level' => $validated['grade_level'] ?? $classroom->grade_level,
         ]);
 
         // ربط المعلم
+        // أولاً: تصفير أي معلم مرتبط بهذا الفصل حالياً
         \App\Models\Teacher::where('classroom_id', $classroom->id)->update(['classroom_id' => null]);
+        
+        // ثانياً: جمع كل المعرفات المطلوب ربطها
+        $teacherIds = [];
         if (!empty($validated['teacher_id'])) {
-            \App\Models\Teacher::where('user_id', $validated['teacher_id'])
-                ->where('school_id', $user->getSchoolId())
-                ->update(['classroom_id' => $classroom->id]);
+            $teacherIds[] = $validated['teacher_id'];
+        }
+        if (!empty($validated['teacher_ids'])) {
+            $teacherIds = array_merge($teacherIds, $validated['teacher_ids']);
+        }
+        $teacherIds = array_unique($teacherIds);
+
+        foreach ($teacherIds as $id) {
+            \App\Models\Teacher::updateOrCreate(
+                ['user_id' => $id],
+                [
+                    'classroom_id' => $classroom->id,
+                    'school_id' => $user->getSchoolId()
+                ]
+            );
         }
 
         return redirect()->route('school.classrooms.index')->with('success', 'Class updated successfully');
@@ -129,9 +146,13 @@ class ClassroomController extends Controller
 
         // Attach teacher if selected
         if ($request->teacher_id) {
-            \App\Models\Teacher::where('user_id', $request->teacher_id)
-                ->where('school_id', $user->getSchoolId())
-                ->update(['classroom_id' => $classroom->id]);
+            \App\Models\Teacher::updateOrCreate(
+                ['user_id' => $request->teacher_id],
+                [
+                    'classroom_id' => $classroom->id,
+                    'school_id' => $user->getSchoolId()
+                ]
+            );
         }
 
         return redirect()->back()->with('success', 'Class created successfully');

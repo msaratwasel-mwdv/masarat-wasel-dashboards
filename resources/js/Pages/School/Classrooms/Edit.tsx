@@ -5,7 +5,7 @@ import { User } from "@/types";
 import useTranslation from "@/hooks/useTranslation";
 
 interface Teacher {
-    id: number;
+    user_id: number;
     name: string;
     email?: string;
 }
@@ -28,7 +28,7 @@ export default function EditClassroom({ auth, classroom, teachers }: Props) {
     const { data, setData, put, processing, errors } = useForm({
         name: classroom.name || "",
         grade_level: classroom.grade_level || "",
-        teacher_ids: classroom.teachers ? classroom.teachers.map((t) => t.id) : ([] as number[]),
+        teacher_ids: classroom.teachers ? classroom.teachers.map((t) => t.user_id) : ([] as number[]),
     });
 
     const toggleTeacher = (id: number) => {
@@ -104,12 +104,12 @@ export default function EditClassroom({ auth, classroom, teachers }: Props) {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto p-1">
                                     {teachers.length > 0 ? (
                                         teachers.map((t) => {
-                                            const checked = data.teacher_ids.includes(t.id);
+                                            const checked = data.teacher_ids.includes(t.user_id);
                                             return (
                                                 <button
-                                                    key={t.id}
+                                                    key={t.user_id}
                                                     type="button"
-                                                    onClick={() => toggleTeacher(t.id)}
+                                                    onClick={() => toggleTeacher(t.user_id)}
                                                     className={`text-start px-4 py-3 rounded-xl border transition-all ${checked
                                                             ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 shadow-sm"
                                                             : "border-gray-200 dark:border-gray-600 bg-white/50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"

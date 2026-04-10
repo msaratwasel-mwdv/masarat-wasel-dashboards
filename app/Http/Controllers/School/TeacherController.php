@@ -4,10 +4,12 @@ namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Classroom;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class TeacherController extends Controller
@@ -22,7 +24,7 @@ class TeacherController extends Controller
         $search = $request->input('search');
 
         $teachers = User::query()
-            ->where('school_id', $user->getSchoolId())
+            ->atSchool($user->getSchoolId())
             ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -34,10 +36,21 @@ class TeacherController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        $classrooms = Classroom::where('school_id', $user->getSchoolId())->get(['id', 'name']);
+
         return Inertia::render('School/Teachers/Index', [
             'teachers' => $teachers,
+            'classrooms' => $classrooms,
             'filters' => $request->only(['search']),
         ]);
+    }
+
+    /**
+     * Fallback for show route to avoid GET method errors
+     */
+    public function show()
+    {
+        return redirect()->route('school.teachers.index');
     }
 
     /**
@@ -54,20 +67,43 @@ class TeacherController extends Controller
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')],
             'phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')],
             'password' => 'nullable|string|min:6',
+            'classroom_id' => 'nullable|exists:classrooms,id',
         ]);
 
-        User::create([
-            'name' => $validated['name'],
-            'national_id' => $validated['national_id'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-            'password' => Hash::make(
-                $validated['password'] ?? $validated['phone'] // كلمة المرور = رقم الهاتف افتراضياً
-            ),
-            'role' => 'teacher',
-            'school_id' => $user->getSchoolId(),
-            'is_active' => true,
-        ]);
+        DB::transaction(function() use ($validated, $user) {
+            [$first, $second, $third, $last] = User::parseFullName($validated['name']);
+            
+            $teacherUser = User::create([
+                'first_name_ar'  => $first,
+                'second_name_ar' => $second,
+                'third_name_ar'  => $third,
+                'last_name_ar'   => $last,
+                'first_name_en'  => '',
+                'second_name_en' => '',
+                'third_name_en'  => '',
+                'last_name_en'   => '',
+                'national_id' => $validated['national_id'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'] ?? null,
+                'password' => Hash::make(
+                    $validated['password'] ?? $validated['phone']
+                ),
+                'is_active' => true,
+            ]);
+
+            // Assign role
+            $role = \App\Models\Role::where('name', 'teacher')->first();
+            if ($role) {
+                $teacherUser->roles()->attach($role->id);
+            }
+
+            // Create Teacher extension record
+            \App\Models\Teacher::create([
+                'user_id' => $teacherUser->id,
+                'school_id' => $user->getSchoolId(),
+                'classroom_id' => $validated['classroom_id'] ?? null,
+            ]);
+        });
 
         return redirect()
             ->back()
@@ -84,14 +120,17 @@ class TeacherController extends Controller
 
         // 🔐 حماية: لا تعدّل مشرف من مدرسة ثانية
         if (
-            $teacher->school_id !== $user->getSchoolId() ||
-            $teacher->role !== 'teacher'
+            $teacher->getSchoolId() !== $user->getSchoolId() ||
+            !$teacher->hasRole('teacher')
         ) {
             abort(403);
         }
 
+        $classrooms = Classroom::where('school_id', $user->getSchoolId())->get(['id', 'name']);
+
         return Inertia::render('School/Teachers/Edit', [
-            'teacher' => $teacher,
+            'teacher' => $teacher->load('teacher'),
+            'classrooms' => $classrooms,
         ]);
     }
 
@@ -104,8 +143,8 @@ class TeacherController extends Controller
         $user = Auth::user();
 
         if (
-            $teacher->school_id !== $user->getSchoolId() ||
-            $teacher->role !== 'teacher'
+            $teacher->getSchoolId() !== $user->getSchoolId() ||
+            !$teacher->hasRole('teacher')
         ) {
             abort(403);
         }
@@ -127,10 +166,16 @@ class TeacherController extends Controller
             'phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($teacher->id)],
             'is_active' => 'required|boolean',
             'password' => 'nullable|string|min:6',
+            'classroom_id' => 'nullable|exists:classrooms,id',
         ]);
 
+        [$first, $second, $third, $last] = User::parseFullName($validated['name']);
+
         $teacher->update([
-            'name'        => $validated['name'],
+            'first_name_ar'  => $first,
+            'second_name_ar' => $second,
+            'third_name_ar'  => $third,
+            'last_name_ar'   => $last,
             'national_id' => $validated['national_id'],
             'email'       => $validated['email'] ?? null,
             'phone'       => $validated['phone'],
@@ -140,6 +185,20 @@ class TeacherController extends Controller
         // تحديث كلمة المرور إذا أُدخلت
         if (!empty($validated['password'])) {
             $teacher->update(['password' => Hash::make($validated['password'])]);
+        }
+
+        // تحديث الفصل والمدرسة
+        if ($teacher->teacher) {
+            $teacher->teacher->update([
+                'classroom_id' => $validated['classroom_id'] ?? null,
+                'school_id' => $user->getSchoolId()
+            ]);
+        } else {
+            \App\Models\Teacher::create([
+                'user_id' => $teacher->id,
+                'school_id' => $user->getSchoolId(),
+                'classroom_id' => $validated['classroom_id'] ?? null,
+            ]);
         }
 
         return redirect()
@@ -156,8 +215,8 @@ class TeacherController extends Controller
         $user = Auth::user();
 
         if (
-            $teacher->school_id !== $user->getSchoolId() ||
-            $teacher->role !== 'teacher'
+            $teacher->getSchoolId() !== $user->getSchoolId() ||
+            !$teacher->hasRole('teacher')
         ) {
             abort(403);
         }

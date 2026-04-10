@@ -18,7 +18,7 @@ class DashboardController extends Controller
         $schoolId = Auth::user()->getSchoolId();
 
         // 1. Basic Stats
-        $studentsCount = Student::where('school_id', $schoolId)->count();
+        $studentsCount = Student::inSchool($schoolId)->count();
         $classesCount = Classroom::where('school_id', $schoolId)->count();
         
         // Buses stats instead of staff
@@ -28,7 +28,7 @@ class DashboardController extends Controller
         // 2. Attendance Stats (Today)
         $today = now()->format('Y-m-d');
         $attendanceQuery = Attendance::whereDate('date', $today)
-            ->whereHas('student', fn($q) => $q->where('school_id', $schoolId));
+            ->whereHas('student', fn($q) => $q->inSchool($schoolId));
         
         $totalAttendanceRecords = $attendanceQuery->count();
         $presentCount = $attendanceQuery->where('status', 'present')->count();
@@ -39,7 +39,7 @@ class DashboardController extends Controller
 
         // 3. Recent Activity (Last 5 events - e.g. new students or attendance)
         // Let's just show recent students for now
-        $recentStudents = Student::where('school_id', $schoolId)
+        $recentStudents = Student::inSchool($schoolId)
             ->latest()
             ->take(5)
             ->get(['id', 'first_name_ar', 'last_name_ar', 'created_at', 'image']);

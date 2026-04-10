@@ -28,7 +28,7 @@ class TripReportController extends Controller
             ->get();
 
         // Supervisors for dropdown (users with role supervisor in this school)
-        $supervisors = User::where('school_id', $schoolId)
+        $supervisors = User::atSchool($schoolId)
             ->whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
             ->select('id', 'name', 'phone')
             ->get();

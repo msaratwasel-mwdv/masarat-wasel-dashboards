@@ -283,7 +283,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::resource('classrooms', ClassroomController::class);
 
         // 3. إدارة المعلمين والمشرفين
-        Route::resource('teachers', TeacherController::class)->except(['show']);
+        Route::resource('teachers', TeacherController::class);
         Route::resource('supervisors', \App\Http\Controllers\School\SupervisorController::class)->except(['show']);
 
         // 4. إدارة الطلاب

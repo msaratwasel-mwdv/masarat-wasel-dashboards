@@ -23,7 +23,13 @@ class Classroom extends Model
         return $this->belongsTo(School::class);
     }
 
-    // ✅ العلاقة الصحيحة (1:1)
+    // ✅ العلاقة الجديدة لجلب قائمة المعلمين (Extension records)
+    public function teachers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Teacher::class, 'classroom_id');
+    }
+
+    // ✅ العلاقة الصحيحة (1:1 direct to user)
     public function teacher(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
     {
         return $this->hasOneThrough(

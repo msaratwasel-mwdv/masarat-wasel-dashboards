@@ -160,6 +160,16 @@ class Student extends Model
             ->where('created_at', '>=', now()->startOfDay())
             ->latest();
     }
+
+    /**
+     * Scope a query to only include students in a specific school.
+     */
+    public function scopeInSchool($query, $schoolId)
+    {
+        return $query->whereHas('enrollments.classroom', function($q) use ($schoolId) {
+            $q->where('school_id', $schoolId);
+        });
+    }
 }
 
 

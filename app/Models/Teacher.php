@@ -19,6 +19,13 @@ class Teacher extends Model
         'fcm_token',
     ];
 
+    protected $appends = ['name'];
+
+    public function getNameAttribute()
+    {
+        return $this->user ? $this->user->name : '';
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

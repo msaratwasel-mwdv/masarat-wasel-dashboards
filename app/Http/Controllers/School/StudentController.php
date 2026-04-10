@@ -27,7 +27,7 @@ class StudentController extends Controller
     {
         $schoolId = Auth::user()->getSchoolId();
 
-        $students = Student::where('school_id', $schoolId)
+        $students = Student::inSchool($schoolId)
             ->with([
                 'guardians:id,first_name_ar,last_name_ar,phone,national_id',
                 'currentEnrollment.classroom:id,name'
@@ -53,8 +53,9 @@ class StudentController extends Controller
         $search = $request->input('search');
 
         // ⬅️ أضف where لفلترة حسب المدرسة
-        $students = Student::whereHas('enrollments', function($q) use ($schoolId) {
-                $q->where('school_id', $schoolId)->where('is_active', true);
+        $students = Student::inSchool($schoolId)
+            ->whereHas('enrollments', function($q) {
+                $q->where('is_active', true);
             })
             ->with([
                 'guardians:id,first_name_ar,last_name_ar,phone,national_id',
@@ -271,7 +272,6 @@ class StudentController extends Controller
             $student->guardians()->attach($validated['guardian_id'], ['relationship_type' => 'Primary']);
 
             $student->enrollments()->create([
-                'school_id' => $schoolId,
                 'classroom_id' => $validated['classroom_id'],
                 'is_active' => true,
             ]);

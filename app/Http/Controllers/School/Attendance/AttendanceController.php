@@ -17,7 +17,7 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
         $query = Attendance::whereHas('student', function ($q) {
-            $q->where('school_id', Auth::user()->getSchoolId());
+            $q->inSchool(Auth::user()->getSchoolId());
         })->with([
             'student.guardian', // Fetch guardian
             'student.currentEnrollment.classroom', // Fetch enrollment to get class
@@ -77,7 +77,7 @@ class AttendanceController extends Controller
 
         // Verify student belongs to same school
         $student = Student::where('id', $request->student_id)
-            ->where('school_id', Auth::user()->getSchoolId()) // This assumes school_id is on students table directly or via relation. 
+            ->inSchool(Auth::user()->getSchoolId())
             // Note: StudentController stores school_id in Enrollments. But user didn't change this part of Student model query.
             // If Student table doesn't have school_id, this check fails. 
             // However, based on StudentController index method: $schoolId = Auth::user()->getSchoolId(); $students = Student::all(); // It doesn't filter by school on Student::all(). 

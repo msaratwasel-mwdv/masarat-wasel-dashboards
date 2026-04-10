@@ -37,19 +37,19 @@ class FieldTripController extends Controller
             ->get();
 
         // Fetch Supervisors
-        $supervisors = User::where('school_id', $schoolId)
+        $supervisors = User::atSchool($schoolId)
             ->whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
             ->select('id', 'name')
             ->get();
 
         // Fetch Drivers (for future use or if needed now)
-        $drivers = User::where('school_id', $schoolId)
+        $drivers = User::atSchool($schoolId)
             ->whereHas('roles', fn($q) => $q->where('name', 'driver'))
             ->select('id', 'name')
             ->get();
 
         // Fetch Teachers for the Field Trip Members Selection
-        $teachers = User::where('school_id', $schoolId)
+        $teachers = User::atSchool($schoolId)
             ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
             ->select('id', 'name', 'phone')
             ->get();

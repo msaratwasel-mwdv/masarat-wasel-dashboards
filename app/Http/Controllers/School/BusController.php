@@ -264,7 +264,7 @@ class BusController extends Controller
         $groups = \App\Models\BusGroup::with('bus')->where('school_id', $schoolId)->get();
 
         // Fetch all active students in the school
-        $students = \App\Models\Student::where('school_id', $schoolId)
+        $students = \App\Models\Student::inSchool($schoolId)
             ->where('is_active', true)
             ->orderBy('first_name_ar') 
             ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id', 'gender', 'morning_group_id', 'afternoon_group_id'])
@@ -313,26 +313,26 @@ class BusController extends Controller
         // Transaction for safety
         \Illuminate\Support\Facades\DB::transaction(function () use ($schoolId, $groupId, $morningIds, $afternoonIds) {
             // 1. Remove this group from any students who currently have it, but aren't in the new lists
-            \App\Models\Student::where('school_id', $schoolId)
+            \App\Models\Student::inSchool($schoolId)
                 ->where('morning_group_id', $groupId)
                 ->whereNotIn('id', $morningIds)
                 ->update(['morning_group_id' => null]);
 
-            \App\Models\Student::where('school_id', $schoolId)
+            \App\Models\Student::inSchool($schoolId)
                 ->where('afternoon_group_id', $groupId)
                 ->whereNotIn('id', $afternoonIds)
                 ->update(['afternoon_group_id' => null]);
 
             // 2. Add group to morning students
             if (!empty($morningIds)) {
-                \App\Models\Student::where('school_id', $schoolId)
+                \App\Models\Student::inSchool($schoolId)
                     ->whereIn('id', $morningIds)
                     ->update(['morning_group_id' => $groupId]);
             }
 
             // 3. Add group to afternoon students
             if (!empty($afternoonIds)) {
-                \App\Models\Student::where('school_id', $schoolId)
+                \App\Models\Student::inSchool($schoolId)
                     ->whereIn('id', $afternoonIds)
                     ->update(['afternoon_group_id' => $groupId]);
             }

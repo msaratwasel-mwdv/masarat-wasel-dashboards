@@ -177,6 +177,7 @@ class User extends Authenticatable
         return $this->schoolAdmin?->school_id
             ?? $this->driver?->school_id
             ?? $this->fieldSupervisor?->school_id
+            ?? $this->teacher?->school_id
             ?? null;
     }
 
@@ -366,6 +367,18 @@ class User extends Authenticatable
     {
         return $this->hasMany(BusDriverAssignment::class, 'driver_id');
     }
+
+    /**
+     * Scope a query to only include users belonging to a specific school.
+     */
+    public function scopeAtSchool($query, $schoolId)
+    {
+        return $query->where(function($q) use ($schoolId) {
+            $q->whereHas('schoolAdmin', fn($sq) => $sq->where('school_id', $schoolId))
+              ->orWhereHas('driver', fn($sq) => $sq->where('school_id', $schoolId))
+              ->orWhereHas('fieldSupervisor', fn($sq) => $sq->where('school_id', $schoolId))
+              ->orWhereHas('teacher', fn($sq) => $sq->where('school_id', $schoolId))
+              ->orWhereHas('students.enrollments.classroom', fn($sq) => $sq->where('school_id', $schoolId));
+        });
+    }
 }
-
-

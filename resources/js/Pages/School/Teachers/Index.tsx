@@ -13,15 +13,24 @@ interface Teacher {
   phone: string;
   is_active: boolean;
   image?: string | null;
+  teacher?: {
+    classroom_id: number | null;
+  };
+}
+
+interface Classroom {
+  id: number;
+  name: string;
 }
 
 interface Props {
   auth: any;
   teachers: Teacher[];
+  classrooms: Classroom[];
   filters: { search?: string };
 }
 
-export default function TeachersIndex({ auth, teachers, filters }: Props) {
+export default function TeachersIndex({ auth, teachers, classrooms, filters }: Props) {
   const { t, isRtl } = useTranslation();
   const [search, setSearch] = useState(filters.search || "");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,6 +50,7 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
     role: "teacher",
     is_active: true,
     image: null as File | null,
+    classroom_id: "" as string | number,
   });
 
   const openAddModal = () => {
@@ -67,6 +77,7 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
       role: "teacher",
       is_active: teacher.is_active,
       image: null,
+      classroom_id: teacher.teacher?.classroom_id || "",
     });
     clearErrors();
     setIsModalOpen(true);
@@ -467,7 +478,7 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
 
                 {/* Status Toggle */}
                 <div className="flex flex-col justify-start">
-                  <div className="justify-between items-center mb-1.5 opacity-0 pointer-events-none hidden md:flex">
+                  <div className="flex justify-between items-center mb-1.5 opacity-0 pointer-events-none hidden md:flex">
                      <label className="text-[10px] font-bold">Spacer</label>
                   </div>
                   <label className="flex items-center gap-3 cursor-pointer select-none">
@@ -485,6 +496,29 @@ export default function TeachersIndex({ auth, teachers, filters }: Props) {
                        {t("Active Account")}
                      </span>
                   </label>
+                </div>
+
+                {/* Classroom */}
+                <div className="md:col-span-2">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                      {t("Classroom")}
+                    </label>
+                    <span className="text-[10px] italic text-gray-400">{t("Optional")}</span>
+                  </div>
+                  <select 
+                    value={data.classroom_id} 
+                    onChange={(e) => setData("classroom_id", e.target.value)}
+                    className={`w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[20px] py-3 text-sm text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border`} 
+                  >
+                    <option value="">{t("Select Classroom")}</option>
+                    {classrooms.map((cls) => (
+                      <option key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.classroom_id && <div className="mt-1 text-sm text-red-500">{errors.classroom_id}</div>}
                 </div>
 
               </div>
