@@ -23,8 +23,8 @@ return new class extends Migration
             
             // العلاقات
             $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('assistant_id')->nullable()->constrained('assistants')->nullOnDelete();
-            $table->foreignId('field_supervisor_id')->nullable()->constrained('field_supervisors')->nullOnDelete();
+            $table->foreignId('assistant_id')->nullable();
+            $table->foreignId('field_supervisor_id')->nullable();
             $table->foreignId('route_id')->nullable()->constrained('routes')->nullOnDelete();
 
             // الحالة والبيانات الإضافية
@@ -33,7 +33,8 @@ return new class extends Migration
             $table->string('back_qr')->nullable();
             
             // حقول التتبع
-            $table->geometry('location', 'point')->nullable();
+            $table->decimal('latitude', 10, 7)->nullable();
+            $table->decimal('longitude', 10, 7)->nullable();
             $table->timestamp('last_location_update')->nullable();
 
             $table->timestamps();

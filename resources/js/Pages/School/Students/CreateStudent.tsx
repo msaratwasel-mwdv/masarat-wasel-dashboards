@@ -19,31 +19,27 @@ interface Supervisor {
   phone?: string;
 }
 
-interface BusGroup {
+interface Bus {
   id: number;
-  name: string;
-  bus?: {
-    capacity: number;
-  };
+  bus_number: string;
+  plate_number: string;
 }
 
 interface Props {
   auth: { user: User };
   classrooms: Classroom[];
-  busGroups?: BusGroup[];
+  buses?: Bus[];
   guardianResult?: {
     found: boolean;
     guardian: Guardian | null;
   } | null;
-  supervisors?: Supervisor[];
 }
 
 export default function CreateStudent({
   auth,
   classrooms,
-  busGroups = [],
+  buses = [],
   guardianResult,
-  supervisors = [],
 }: Props) {
   const { t, isRtl } = useTranslation();
 
@@ -105,15 +101,20 @@ export default function CreateStudent({
 
   // ---------- Student form (step 2) ----------
   const studentForm = useForm({
-    full_name: "",
-    full_name_en: "",
+    first_name_ar: "",
+    second_name_ar: "",
+    third_name_ar: "",
+    last_name_ar: "",
+    first_name_en: "",
+    second_name_en: "",
+    third_name_en: "",
+    last_name_en: "",
     student_code: "",
     national_id: "",
     classroom_id: "",
     guardian_id: selectedGuardian?.id || "",
-    supervisor_id: "",
-    morning_group_id: "",
-    afternoon_group_id: "",
+    forth_bus_id: "",
+    back_bus_id: "",
     gender: "",
     image: null as File | null,
   });
@@ -527,45 +528,55 @@ export default function CreateStudent({
 
               <form onSubmit={onSubmitStudent} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                       {t("Student Name (Arabic)")} *
                     </label>
-                    <input
-                      value={studentForm.data.full_name}
-                      onChange={(e) =>
-                        studentForm.setData("full_name", e.target.value)
-                      }
-                      className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
-                      required
-                      placeholder={t("Student Name (Arabic)")}
-                    />
-                    {studentForm.errors.full_name && (
-                      <div className="mt-1 text-xs font-medium text-red-500">
-                        {studentForm.errors.full_name}
-                      </div>
-                    )}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {["first", "second", "third", "last"].map((part) => {
+                        const fieldName = `${part}_name_ar` as keyof typeof studentForm.data;
+                        return (
+                          <div key={fieldName}>
+                            <input
+                              value={studentForm.data[fieldName] as string}
+                              onChange={(e) => studentForm.setData(fieldName, e.target.value)}
+                              className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
+                              required
+                              placeholder={t(`${part} Name`)}
+                            />
+                            {studentForm.errors[fieldName] && (
+                              <div className="mt-1 text-xs font-medium text-red-500">{studentForm.errors[fieldName]}</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                       {t("Student Name (English)")} *
                     </label>
-                    <input
-                      value={studentForm.data.full_name_en}
-                      onChange={(e) =>
-                        studentForm.setData("full_name_en", e.target.value)
-                      }
-                      className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4 text-left"
-                      dir="ltr"
-                      required
-                      placeholder={t("Student Name (English)")}
-                    />
-                    {studentForm.errors.full_name_en && (
-                      <div className="mt-1 text-xs font-medium text-red-500">
-                        {studentForm.errors.full_name_en}
-                      </div>
-                    )}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {["first", "second", "third", "last"].map((part) => {
+                        const fieldName = `${part}_name_en` as keyof typeof studentForm.data;
+                        return (
+                          <div key={fieldName}>
+                            <input
+                              value={studentForm.data[fieldName] as string}
+                              onChange={(e) => studentForm.setData(fieldName, e.target.value)}
+                              className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4 text-left"
+                              dir="ltr"
+                              required
+                              placeholder={`${part} Name`}
+                            />
+                            {studentForm.errors[fieldName] && (
+                              <div className="mt-1 text-xs font-medium text-red-500">{studentForm.errors[fieldName]}</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div>
@@ -662,93 +673,58 @@ export default function CreateStudent({
                     )}
                   </div>
 
-                  {/* Supervisor Selection */}
-                  {supervisors.length > 0 && (
-                    <div>
-                      <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {t("Supervisor")} ({t("Optional")})
-                      </label>
-                      <select
-                        value={studentForm.data.supervisor_id}
-                        onChange={(e) =>
-                          studentForm.setData("supervisor_id", e.target.value)
-                        }
-                        className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
-                      >
-                        <option value="">{t("Select a supervisor...")}</option>
-                        {supervisors.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
-                      {studentForm.errors.supervisor_id && (
-                        <div className="mt-1 text-xs font-medium text-red-500">
-                          {studentForm.errors.supervisor_id}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Bus Selection */}
+                  {buses.length > 0 && (
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
+                      <div>
+                        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {t("Morning Bus Assignment")} ({t("Optional")})
+                        </label>
+                        <select
+                          value={studentForm.data.forth_bus_id}
+                          onChange={(e) =>
+                            studentForm.setData("forth_bus_id", e.target.value)
+                          }
+                          className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
+                        >
+                          <option value="">{t("No bus assigned")}</option>
+                          {buses.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.bus_number} - {b.plate_number}
+                            </option>
+                          ))}
+                        </select>
+                        {studentForm.errors.forth_bus_id && (
+                          <div className="mt-1 text-xs font-medium text-red-500">
+                            {studentForm.errors.forth_bus_id}
+                          </div>
+                        )}
+                      </div>
 
-                  {/* Morning Group Selection */}
-                  {busGroups.length > 0 && (
-                    <div>
-                      <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {t("Morning Bus Group")} ({t("Optional")})
-                      </label>
-                      <select
-                        value={studentForm.data.morning_group_id}
-                        onChange={(e) =>
-                          studentForm.setData(
-                            "morning_group_id",
-                            e.target.value
-                          )
-                        }
-                        className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
-                      >
-                        <option value="">{t("Select a group...")}</option>
-                        {busGroups.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {g.name}
-                          </option>
-                        ))}
-                      </select>
-                      {studentForm.errors.morning_group_id && (
-                        <div className="mt-1 text-xs font-medium text-red-500">
-                          {studentForm.errors.morning_group_id}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Afternoon Group Selection */}
-                  {busGroups.length > 0 && (
-                    <div>
-                      <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {t("Afternoon Bus Group")} ({t("Optional")})
-                      </label>
-                      <select
-                        value={studentForm.data.afternoon_group_id}
-                        onChange={(e) =>
-                          studentForm.setData(
-                            "afternoon_group_id",
-                            e.target.value
-                          )
-                        }
-                        className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
-                      >
-                        <option value="">{t("Select a group...")}</option>
-                        {busGroups.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {g.name}
-                          </option>
-                        ))}
-                      </select>
-                      {studentForm.errors.afternoon_group_id && (
-                        <div className="mt-1 text-xs font-medium text-red-500">
-                          {studentForm.errors.afternoon_group_id}
-                        </div>
-                      )}
+                      <div>
+                        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {t("Afternoon Bus Assignment")} ({t("Optional")})
+                        </label>
+                        <select
+                          value={studentForm.data.back_bus_id}
+                          onChange={(e) =>
+                            studentForm.setData("back_bus_id", e.target.value)
+                          }
+                          className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
+                        >
+                          <option value="">{t("No bus assigned")}</option>
+                          {buses.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.bus_number} - {b.plate_number}
+                            </option>
+                          ))}
+                        </select>
+                        {studentForm.errors.back_bus_id && (
+                          <div className="mt-1 text-xs font-medium text-red-500">
+                            {studentForm.errors.back_bus_id}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 

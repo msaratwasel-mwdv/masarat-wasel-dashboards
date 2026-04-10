@@ -79,8 +79,12 @@ class StaffController extends Controller
     {
         $request->validate([
             'first_name_ar' => 'required|string|max:255',
+            'second_name_ar' => 'nullable|string|max:255',
+            'third_name_ar' => 'nullable|string|max:255',
             'last_name_ar' => 'required|string|max:255',
             'first_name_en' => 'nullable|string|max:255',
+            'second_name_en' => 'nullable|string|max:255',
+            'third_name_en' => 'nullable|string|max:255',
             'last_name_en' => 'nullable|string|max:255',
             'national_id' => 'required|numeric|unique:users,national_id',
             'email' => 'nullable|email|unique:users,email',
@@ -125,8 +129,14 @@ class StaffController extends Controller
     public function updateDriver(Request $request, User $driver)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'name_en' => 'nullable|string|max:255',
+            'first_name_ar' => 'required|string|max:255',
+            'second_name_ar' => 'nullable|string|max:255',
+            'third_name_ar' => 'nullable|string|max:255',
+            'last_name_ar' => 'required|string|max:255',
+            'first_name_en' => 'nullable|string|max:255',
+            'second_name_en' => 'nullable|string|max:255',
+            'third_name_en' => 'nullable|string|max:255',
+            'last_name_en' => 'nullable|string|max:255',
             // نستخدم ignore لتجاهل السائق الحالي عند التحقق من التكرار
             'national_id' => ['required', 'numeric', Rule::unique('users')->ignore($driver->id)],
             'email' => ['required', 'email', Rule::unique('users')->ignore($driver->id)],
@@ -137,6 +147,14 @@ class StaffController extends Controller
 
         DB::transaction(function () use ($request, $driver) {
             $driver->update([
+                'first_name_ar' => $request->first_name_ar,
+                'second_name_ar' => $request->second_name_ar ?? '',
+                'third_name_ar' => $request->third_name_ar ?? '',
+                'last_name_ar' => $request->last_name_ar,
+                'first_name_en' => $request->first_name_en ?? '',
+                'second_name_en' => $request->second_name_en ?? '',
+                'third_name_en' => $request->third_name_en ?? '',
+                'last_name_en' => $request->last_name_en ?? '',
                 'national_id' => $request->national_id,
                 'email' => $request->email,
                 'phone' => $request->phone,

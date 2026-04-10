@@ -26,7 +26,7 @@ class TripReportSeeder extends Seeder
         }
 
         // Get existing buses, groups, and students
-        $buses = Bus::where('school_id', $school->id)->with(['supervisor'])->get();
+        $buses = Bus::where('school_id', $school->id)->with(['fieldSupervisor'])->get();
         if ($buses->isEmpty()) {
             $this->command->error('❌ لا توجد حافلات. شغّل migrate:fresh --seed أولاً.');
             return;
@@ -89,7 +89,7 @@ class TripReportSeeder extends Seeder
                                 'direction' => 'to_school',
                                 'latitude' => 24.7136 + (rand(-100, 100) / 10000),
                                 'longitude' => 46.6753 + (rand(-100, 100) / 10000),
-                                'recorded_by' => $bus->supervisor_id,
+                                'recorded_by' => $bus->field_supervisor_id,
                                 'recorded_at' => $boardingTime,
                             ]);
 
@@ -103,7 +103,7 @@ class TripReportSeeder extends Seeder
                                 'direction' => 'to_school',
                                 'latitude' => 24.7200 + (rand(-50, 50) / 10000),
                                 'longitude' => 46.6800 + (rand(-50, 50) / 10000),
-                                'recorded_by' => $bus->supervisor_id,
+                                'recorded_by' => $bus->field_supervisor_id,
                                 'recorded_at' => $alightingTime,
                             ]);
                         }
@@ -125,7 +125,7 @@ class TripReportSeeder extends Seeder
                                 'direction' => 'to_home',
                                 'latitude' => 24.7200 + (rand(-50, 50) / 10000),
                                 'longitude' => 46.6800 + (rand(-50, 50) / 10000),
-                                'recorded_by' => $bus->supervisor_id,
+                                'recorded_by' => $bus->field_supervisor_id,
                                 'recorded_at' => $boardingTime,
                             ]);
 
@@ -138,7 +138,7 @@ class TripReportSeeder extends Seeder
                                 'direction' => 'to_home',
                                 'latitude' => 24.7136 + (rand(-100, 100) / 10000),
                                 'longitude' => 46.6753 + (rand(-100, 100) / 10000),
-                                'recorded_by' => $bus->supervisor_id,
+                                'recorded_by' => $bus->field_supervisor_id,
                                 'recorded_at' => $alightingTime,
                             ]);
                         }

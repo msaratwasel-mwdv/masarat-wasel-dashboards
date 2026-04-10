@@ -198,10 +198,9 @@ class NotificationService
         ?array $data = null,
         ?string $fromUserName = null
     ): Collection {
-        $driverIds = \Illuminate\Support\Facades\DB::table('buses')
-            ->whereIn('id', $busIds)
-            ->whereNotNull('driver_id')
-            ->pluck('driver_id')
+        $driverIds = \Illuminate\Support\Facades\DB::table('drivers')
+            ->whereIn('bus_id', $busIds)
+            ->pluck('user_id')
             ->unique()
             ->toArray();
 
@@ -221,8 +220,8 @@ class NotificationService
     ): Collection {
         $supervisorIds = \Illuminate\Support\Facades\DB::table('buses')
             ->whereIn('id', $busIds)
-            ->whereNotNull('supervisor_id')
-            ->pluck('supervisor_id')
+            ->whereNotNull('field_supervisor_id')
+            ->pluck('field_supervisor_id')
             ->unique()
             ->toArray();
 
@@ -257,15 +256,16 @@ class NotificationService
         string $message,
         ?array $data = null
     ): ?Notification {
-        $student = \App\Models\Student::with('guardian')->find($studentId);
+        $student = \App\Models\Student::with('guardians.user')->find($studentId);
 
-        if (! $student || ! $student->guardian) {
+        if (! $student || $student->guardians->isEmpty()) {
             \Illuminate\Support\Facades\Log::warning("[Notification] Student {$studentId} has no guardian, skipping notification.");
             return null;
         }
 
+        // Notify the first guardian as fallback or adapt to multiple
         return $this->sendToUser(
-            userId: $student->guardian->id,
+            userId: $student->guardians->first()->user_id,
             type: $type,
             title: $title,
             message: $message,
@@ -284,11 +284,13 @@ class NotificationService
         string $message,
         ?array $data = null
     ): Collection {
-        $guardianUserIds = \Illuminate\Support\Facades\DB::table('bus_students')
-            ->join('students', 'bus_students.student_id', '=', 'students.id')
-            ->join('guardians', 'students.guardian_id', '=', 'guardians.id')
-            ->where('bus_students.bus_id', $busId)
-            ->where('bus_students.is_active', true)
+        $guardianUserIds = \Illuminate\Support\Facades\DB::table('students')
+            ->join('guardian_student', 'students.id', '=', 'guardian_student.student_id')
+            ->join('guardians', 'guardian_student.guardian_id', '=', 'guardians.id')
+            ->where(function($q) use ($busId) {
+                $q->where('students.forth_bus_id', $busId)
+                  ->orWhere('students.back_bus_id', $busId);
+            })
             ->whereNotNull('guardians.user_id')
             ->pluck('guardians.user_id')
             ->unique()

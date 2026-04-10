@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('name'); // اسم المدرسة
             $table->string('logo')->nullable();
-            $table->geometry('location', 'point')->nullable(); // GPS point
+            $table->decimal('latitude', 10, 7)->nullable();
+            $table->decimal('longitude', 10, 7)->nullable();
             $table->string('address')->nullable(); // المدينة/الموقع
             $table->enum('status', ['Active', 'Inactive'])->default('Active'); // الحالة
 

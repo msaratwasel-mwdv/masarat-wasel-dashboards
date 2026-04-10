@@ -19,7 +19,7 @@ class BusController extends Controller
 
         // 1. Bus Inventory Data
         $buses = Bus::where('school_id', $schoolId)
-            ->with(['driver', 'supervisor'])
+            ->with(['drivers.user', 'fieldSupervisor'])
             ->withCount(['students' => function ($query) {
                 $query->where('bus_students.is_active', true);
             }])
@@ -36,8 +36,8 @@ class BusController extends Controller
                     'model' => $bus->model,
                     'year' => $bus->year,
                     'color' => $bus->color,
-                    'driver' => $bus->driver,
-                    'supervisor' => $bus->supervisor,
+                    'driver' => $bus->drivers->count() > 0 ? $bus->drivers->first()->user : null,
+                    'supervisor' => $bus->fieldSupervisor,
                     'students_count' => $bus->students_count,
                     'current_latitude' => (float) $bus->current_latitude,
                     'current_longitude' => (float) $bus->current_longitude,
@@ -47,11 +47,8 @@ class BusController extends Controller
                 ];
             });
 
-        // 2. Bus Requests Data
-        $requests = \App\Models\BusRequest::where('school_id', $schoolId)
-            ->with(['buses', 'approvedBy'])
-            ->latest()
-            ->get();
+        // 2. Bus Requests Data (BusRequest is deprecated)
+        $requests = collect([]);
 
         // 3. School Location for Map Center
         $school = Auth::user()->school;
@@ -91,7 +88,20 @@ class BusController extends Controller
 
         $validated['school_id'] = Auth::user()->getSchoolId();
 
-        Bus::create($validated);
+        if (isset($validated['supervisor_id'])) {
+            $validated['field_supervisor_id'] = $validated['supervisor_id'];
+            unset($validated['supervisor_id']);
+        }
+        $driverId = $validated['driver_id'] ?? null;
+        if (array_key_exists('driver_id', $validated)) {
+            unset($validated['driver_id']);
+        }
+
+        $bus = Bus::create($validated);
+        
+        if ($driverId) {
+            \App\Models\Driver::where('user_id', $driverId)->update(['bus_id' => $bus->id, 'school_id' => $validated['school_id']]);
+        }
 
         return back()->with('success', 'تم إضافة الحافلة بنجاح');
     }
@@ -119,7 +129,29 @@ class BusController extends Controller
             'route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', Auth::user()->getSchoolId())],
         ]);
 
-        $bus->update($validated);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($bus, $validated) {
+            $oldDriverId = $bus->drivers->first()->user_id ?? null;
+            $newDriverId = $validated['driver_id'] ?? null;
+            
+            if (isset($validated['supervisor_id'])) {
+                $validated['field_supervisor_id'] = $validated['supervisor_id'];
+                unset($validated['supervisor_id']);
+            }
+            if (array_key_exists('driver_id', $validated)) {
+                unset($validated['driver_id']);
+            }
+
+            $bus->update($validated);
+
+            if ($oldDriverId !== $newDriverId) {
+                if ($oldDriverId) {
+                    \App\Models\Driver::where('user_id', $oldDriverId)->update(['bus_id' => null, 'school_id' => null]);
+                }
+                if ($newDriverId) {
+                    \App\Models\Driver::where('user_id', $newDriverId)->update(['bus_id' => $bus->id, 'school_id' => $bus->school_id]);
+                }
+            }
+        });
 
         return back()->with('success', 'تم تحديث بيانات الحافلة بنجاح');
     }
@@ -165,7 +197,7 @@ class BusController extends Controller
         $schoolId = Auth::user()->getSchoolId();
 
         $buses = Bus::where('school_id', $schoolId)
-            ->with(['driver'])
+            ->with(['drivers.user'])
             ->get()
             ->map(function ($bus) {
                 return [
@@ -177,7 +209,7 @@ class BusController extends Controller
                     'current_latitude' => (float) $bus->current_latitude,
                     'current_longitude' => (float) $bus->current_longitude,
                     'trip_status' => $bus->trip_status,
-                    'driver' => $bus->driver,
+                    'driver' => $bus->drivers->count() > 0 ? $bus->drivers->first()->user : null,
                     'students_count' => $bus->students_count ?? 0,
                 ];
             });

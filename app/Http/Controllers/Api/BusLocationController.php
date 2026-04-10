@@ -31,7 +31,7 @@ class BusLocationController extends Controller
         ]);
 
         // حماية: السائق المسجل فقط هو من يمكنه تحديث موقع الباص
-        if ($bus->driver_id !== $request->user()->id) {
+        if (!$bus->hasCrewMember($request->user()->id)) {
             return response()->json(['message' => 'غير مصرح لك بتحديث موقع هذا الباص.'], 403);
         }
 
@@ -78,7 +78,7 @@ class BusLocationController extends Controller
         // التحقق من الصلاحية: السائق أو ولي أمر أحد الطلاب في الباص
         $user = $request->user();
         
-        $isDriver = $bus->driver_id === $user->id;
+        $isDriver = $bus->hasCrewMember($user->id);
         $isGuardian = false;
 
         if (!$isDriver) {

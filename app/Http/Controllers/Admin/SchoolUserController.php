@@ -26,15 +26,18 @@ class SchoolUserController extends Controller
     public function store(StoreSchoolUserRequest $request, School $school)
     {
         DB::transaction(function () use ($request, $school) {
+            $ar = \App\Models\User::parseFullName($request->name);
+            $en = \App\Models\User::parseFullName($request->name_en);
+
             $user = User::create([
-                'first_name_ar' => $request->first_name_ar ?? $request->name,
-                'second_name_ar' => $request->second_name_ar ?? '',
-                'third_name_ar' => $request->third_name_ar ?? '',
-                'last_name_ar' => $request->last_name_ar ?? '',
-                'first_name_en' => $request->first_name_en ?? '',
-                'second_name_en' => $request->second_name_en ?? '',
-                'third_name_en' => $request->third_name_en ?? '',
-                'last_name_en' => $request->last_name_en ?? '',
+                'first_name_ar' => $ar[0],
+                'second_name_ar' => $ar[1],
+                'third_name_ar' => $ar[2],
+                'last_name_ar' => $ar[3] ?: $ar[0],
+                'first_name_en' => $en[0],
+                'second_name_en' => $en[1],
+                'third_name_en' => $en[2],
+                'last_name_en' => $en[3],
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'national_id' => $request->national_id ?? '0000000000',
@@ -86,8 +89,13 @@ class SchoolUserController extends Controller
             'password' => 'nullable|min:8',
         ]);
 
+        $ar = \App\Models\User::parseFullName($validated['name']);
+        
         $updateData = [
-            'name' => $validated['name'],
+            'first_name_ar' => $ar[0],
+            'second_name_ar' => $ar[1],
+            'third_name_ar' => $ar[2],
+            'last_name_ar' => $ar[3] ?: $ar[0],
             'email' => $validated['email'],
             'phone' => $validated['phone'],
         ];

@@ -67,7 +67,7 @@ class TripReportTestSeeder extends Seeder
             ['bus_number' => 'B-999'],
             [
                 'school_id' => $school->id,
-                'supervisor_id' => $supervisor->id,
+                'field_supervisor_id' => $supervisor->id,
                 'plate_number' => 'XYZ-1234',
                                 'model' => 'Toyota Coaster',
                 'year' => 2024,

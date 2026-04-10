@@ -42,7 +42,7 @@ return new class extends Migration
         // 2. Field Supervisors
         Schema::create('field_supervisors', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
-            $table->foreignId('school_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
             $table->string('fcm_token')->nullable();
 
             $table->enum('status', ['active', 'inactive'])->default('active');
@@ -73,7 +73,7 @@ return new class extends Migration
         // 5. Drivers
         Schema::create('drivers', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
-            $table->foreignId('school_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
 
             $table->string('fcm_token')->nullable();
             $table->string('license_number')->unique();
@@ -94,6 +94,12 @@ return new class extends Migration
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
             $table->string('fcm_token')->nullable();
             $table->timestamps();
+        });
+
+        // Add foreign keys back to buses which reference these newly created tables
+        Schema::table('buses', function (Blueprint $table) {
+            $table->foreign('assistant_id')->references('user_id')->on('assistants')->nullOnDelete();
+            $table->foreign('field_supervisor_id')->references('user_id')->on('field_supervisors')->nullOnDelete();
         });
     }
 

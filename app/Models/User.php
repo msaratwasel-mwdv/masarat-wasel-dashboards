@@ -118,6 +118,24 @@ class User extends Authenticatable
     }
 
     /**
+     * Helper to split a full name into 4 parts.
+     */
+    public static function parseFullName(?string $fullName): array
+    {
+        if (empty($fullName)) {
+            return ['', '', '', ''];
+        }
+        $parts = array_filter(explode(' ', trim($fullName)));
+        
+        $first = count($parts) > 0 ? array_shift($parts) : '';
+        $last = count($parts) > 0 ? array_pop($parts) : '';
+        $second = count($parts) > 0 ? array_shift($parts) : '';
+        $third = implode(' ', $parts);
+
+        return [$first, $second, $third, $last];
+    }
+
+    /**
      * Get the user's full name in English.
      */
     public function getNameEnAttribute(): string
@@ -230,14 +248,21 @@ class User extends Authenticatable
 
     // ── Bus Assignments ─────────────────────────────────
 
-    public function assignedBus(): HasOne
+    public function assignedBus(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
     {
-        return $this->hasOne(Bus::class, 'driver_id');
+        return $this->hasOneThrough(
+            Bus::class,
+            Driver::class,
+            'user_id', // Foreign key on drivers table
+            'id',      // Foreign key on buses table
+            'id',      // Local key on users table
+            'bus_id'   // Local key on drivers table
+        );
     }
 
     public function assignedBusAsSupervisor(): HasOne
     {
-        return $this->hasOne(Bus::class, 'supervisor_id');
+        return $this->hasOne(Bus::class, 'field_supervisor_id');
     }
 
     // ── Chat ────────────────────────────────────────────
@@ -281,11 +306,12 @@ class User extends Authenticatable
 
     /**
      * Students linked to this user as guardian.
-     * NOTE: This uses guardian_id on the students table — verify this FK exists.
      */
-    public function students(): HasMany
+    public function students(): BelongsToMany
     {
-        return $this->hasMany(Student::class, 'guardian_id');
+        return $this->belongsToMany(Student::class, 'guardian_student', 'guardian_id', 'student_id')
+            ->withPivot('relationship_type')
+            ->withTimestamps();
     }
 
     // ── FCM ─────────────────────────────────────────────

@@ -53,7 +53,7 @@ interface Bus {
   type?: string;
   color?: string;
   status: "active" | "maintenance" | "out_of_service" | "inactive";
-  qr_code_path: string | null;
+  front_qr: string | null;
   school_id: number | null;
   driver_id: number | null;
   supervisor_id: number | null;
@@ -488,12 +488,12 @@ export default function Index({
                         {modalState.bus.model} — {modalState.bus.year}
                       </p>
                     </div>
-                    {modalState.bus.qr_code_path && (
+                    {modalState.bus.front_qr && (
                       <div className="flex flex-col items-center">
                         <div className={`p-1.5 bg-white rounded-lg border shadow-sm ${isDark ? "border-gray-600" : "border-gray-200"}`}>
-                          <img src={`/storage/${modalState.bus.qr_code_path}`} alt="QR" className="w-16 h-16" />
+                          <img src={`/storage/${modalState.bus.front_qr}`} alt="QR" className="w-16 h-16" />
                         </div>
-                        <a href={`/storage/${modalState.bus.qr_code_path}`} download className="mt-1.5 text-[10px] font-bold text-blue-500 hover:underline uppercase tracking-wide">
+                        <a href={`/storage/${modalState.bus.front_qr}`} download className="mt-1.5 text-[10px] font-bold text-blue-500 hover:underline uppercase tracking-wide">
                           {isRTL ? "تحميل QR" : "DOWNLOAD"}
                         </a>
                       </div>

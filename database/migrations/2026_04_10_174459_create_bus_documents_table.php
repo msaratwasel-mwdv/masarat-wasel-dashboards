@@ -11,15 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('routes', function (Blueprint $table) {
+        Schema::create('bus_documents', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('code')->unique()->nullable();
-            $table->text('description')->nullable();
-            $table->decimal('latitude', 10, 7)->nullable();
-            $table->decimal('longitude', 10, 7)->nullable();
+            $table->foreignId('bus_id')->constrained('buses')->cascadeOnDelete();
+            $table->string('type');
+            $table->string('file_path');
+            $table->date('expiry_date')->nullable();
             $table->timestamps();
-            $table->softDeletes();
         });
     }
 
@@ -28,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('routes');
+        Schema::dropIfExists('bus_documents');
     }
 };

@@ -108,7 +108,7 @@ class ChatController extends Controller
                 break;
 
             case 'driver':
-                $bus = Bus::where('driver_id', $user->id)->first();
+                $bus = $user->assignedBus;
                 if ($bus) {
                     $contacts = $contacts->merge($this->getGuardianUsersForBus($bus));
                 }
@@ -117,7 +117,7 @@ class ChatController extends Controller
             case 'supervisor':
             case 'teacher':
                 // 1. من خلال الباص (كل الطلاب في الباص)
-                $bus = Bus::where('supervisor_id', $user->id)->first();
+                $bus = $user->assignedBusAsSupervisor;
                 if ($bus) {
                     $contacts = $contacts->merge($this->getGuardianUsersForBus($bus));
                 }

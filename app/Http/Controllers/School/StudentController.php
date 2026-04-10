@@ -29,10 +29,10 @@ class StudentController extends Controller
 
         $students = Student::where('school_id', $schoolId)
             ->with([
-                'guardian:id,name,name_en,phone,national_id,address,home_number',
+                'guardians:id,first_name_ar,last_name_ar,phone,national_id',
                 'currentEnrollment.classroom:id,name'
             ])
-            ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id', 'guardian_id']);
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id']);
         // Note: classroom_id is not in students table, it's in enrollments.
 
         // Map data to include classroom_id at root level for frontend convenience
@@ -53,10 +53,11 @@ class StudentController extends Controller
         $search = $request->input('search');
 
         // ⬅️ أضف where لفلترة حسب المدرسة
-        $students = Student::where('school_id', $schoolId) // ⬅️ أضف هذا السطر
+        $students = Student::whereHas('enrollments', function($q) use ($schoolId) {
+                $q->where('school_id', $schoolId)->where('is_active', true);
+            })
             ->with([
-                'guardian:id,name,name_en,phone,national_id,address,home_number,image',
-                'supervisor:id,name,email',
+                'guardians:id,first_name_ar,last_name_ar,phone,national_id',
                 'currentEnrollment.classroom:id,name',
                 'forthBus.route', 'backBus.route'
             ])
@@ -66,8 +67,8 @@ class StudentController extends Controller
                       ->orWhere('last_name_ar', 'like', "%{$search}%")
                         ->orWhere('student_code', 'like', "%{$search}%")
                         ->orWhere('national_id', 'like', "%{$search}%")
-                        ->orWhereHas('guardian', function ($q) use ($search) {
-                            $q->where('name', 'like', "%{$search}%")
+                        ->orWhereHas('guardians', function ($q) use ($search) {
+                            $q->where('first_name_ar', 'like', "%{$search}%")
                                 ->orWhere('national_id', 'like', "%{$search}%")
                                 ->orWhere('phone', 'like', "%{$search}%"); // ⬅️ أضف هذا
                         });
@@ -76,17 +77,14 @@ class StudentController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        $buses = \App\Models\Bus::where('school_id', $schoolId)->orderBy('bus_number')->get(['id', 'bus_number', 'plate_number']);
+
         return Inertia::render('School/Students/IndexStudents', [
             'students' => $students,
             'filters' => $request->only(['search']),
             'classrooms' => Classroom::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
-            'routes' => \App\Models\Route::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
-            'supervisors' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['supervisor', 'teacher', 'school_admin']))
-                ->whereHas('schoolAdmin', fn($q) => $q->where('school_id', $schoolId))
-                ->orWhereHas('fieldSupervisor', fn($q) => $q->where('school_id', $schoolId))
-                ->orWhereHas('teacher')
-                ->orderBy('first_name_ar')
-                ->get(['id', 'first_name_ar', 'last_name_ar', 'email']),            'guardianResult' => session('guardianResult'),
+            'buses' => $buses,
+            'guardianResult' => session('guardianResult'),
         ]);
     }
     /**
@@ -109,12 +107,12 @@ class StudentController extends Controller
             ->orderBy('first_name_ar')
             ->get(['id', 'first_name_ar', 'last_name_ar', 'email']);
 
-        $busGroups = \App\Models\BusGroup::with('bus')->where('school_id', $schoolId)->orderBy('name')->get();
+        $buses = \App\Models\Bus::where('school_id', $schoolId)->orderBy('bus_number')->get(['id', 'bus_number', 'plate_number']);
 
         return Inertia::render('School/Students/CreateStudent', [
             'classrooms' => $classrooms,
-            'routes' => \App\Models\Route::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
-            'supervisors' => $supervisors,            'guardianResult' => session('guardianResult'),
+            'buses' => $buses,
+            'guardianResult' => session('guardianResult'),
         ]);
     }
 
@@ -239,11 +237,8 @@ class StudentController extends Controller
             'gender' => 'required|in:male,female',
             'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
             'guardian_id' => 'required|integer|exists:users,id',
-            'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('school_id', $schoolId)],
-            'forth_route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', $schoolId)],
-            'back_route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', $schoolId)],
-            'morning_group_id' => ['nullable', 'integer', Rule::exists('bus_groups', 'id')->where('school_id', $schoolId)],
-            'afternoon_group_id' => ['nullable', 'integer', Rule::exists('bus_groups', 'id')->where('school_id', $schoolId)],
+            'forth_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
+            'back_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
             'image' => 'nullable|image|max:5120',
         ]);
 
@@ -262,13 +257,8 @@ class StudentController extends Controller
                 'student_code' => $validated['student_code'] ?? 'ST-' . $validated['national_id'],
                 'national_id' => $validated['national_id'],
                 'gender' => $validated['gender'],
-                'guardian_id' => $validated['guardian_id'],
-                'supervisor_id' => $validated['supervisor_id'] ?? null,
-                'forth_route_id' => $validated['forth_route_id'] ?? null,
-                'back_route_id' => $validated['back_route_id'] ?? null,
-                'morning_group_id' => $validated['morning_group_id'] ?? null,
-                'afternoon_group_id' => $validated['afternoon_group_id'] ?? null,
-                'school_id' => $schoolId,
+                'forth_bus_id' => $validated['forth_bus_id'] ?? null,
+                'back_bus_id' => $validated['back_bus_id'] ?? null,
             ];
 
             // ⬅️ معالجة صورة الطالب
@@ -278,10 +268,11 @@ class StudentController extends Controller
 
             $student = Student::create($studentData);
 
+            $student->guardians()->attach($validated['guardian_id'], ['relationship_type' => 'Primary']);
+
             $student->enrollments()->create([
                 'school_id' => $schoolId,
                 'classroom_id' => $validated['classroom_id'],
-                'status' => 'active',
                 'is_active' => true,
             ]);
         });
@@ -314,18 +305,15 @@ class StudentController extends Controller
         // التحقق من أن المدير يملك صلاحية تعديل هذا الطالب
         $this->authorize('update', $student);
 
+        $schoolId = Auth::user()->getSchoolId();
+        
+        $buses = \App\Models\Bus::where('school_id', $schoolId)->orderBy('bus_number')->get(['id', 'bus_number', 'plate_number']);
+
         return Inertia::render('School/Students/EditStudent', [
-            'student' => $student->load(['currentEnrollment', 'guardian', 'supervisor:id,name', 'forthBus.route', 'backBus.route']),
-            'classrooms' => Classroom::where('school_id', Auth::user()->getSchoolId())->orderBy('name')->get(['id', 'name']),
-            'routes' => \App\Models\Route::where('school_id', Auth::user()->getSchoolId())->orderBy('name')->get(['id', 'name']),
-            'supervisors' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['supervisor', 'teacher', 'school_admin']))
-                ->where(fn($q) => $q
-                    ->whereHas('schoolAdmin', fn($q2) => $q2->where('school_id', Auth::user()->getSchoolId()))
-                    ->orWhereHas('fieldSupervisor', fn($q2) => $q2->where('school_id', Auth::user()->getSchoolId()))
-                    ->orWhereHas('teacher')
-                )
-                ->orderBy('first_name_ar')
-                ->get(['id', 'first_name_ar', 'last_name_ar', 'email']),        ]);
+            'student' => $student->load(['currentEnrollment', 'guardians', 'forthBus.route', 'backBus.route']),
+            'classrooms' => Classroom::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
+            'buses' => $buses,
+        ]);
     }
 
     /**
@@ -333,11 +321,10 @@ class StudentController extends Controller
      */
     public function update(Request $request, Student $student)
     {
-
         $this->authorize('update', $student);
-        $schoolId = Auth::user()->getSchoolId();;
-        // 🛠️ إصلاح مشكلة القيم الفارغة (fix empty strings failing validation)
+        $schoolId = Auth::user()->getSchoolId();
 
+        $guardianId = $student->guardians()->first()?->id;
 
         try {
             $validated = $request->validate([
@@ -353,29 +340,25 @@ class StudentController extends Controller
                 'national_id' => ['nullable', 'string', 'max:50', Rule::unique('students')->ignore($student->id)],
                 'gender' => 'required|in:male,female',
                 'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
-                'forth_route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', $schoolId)],
-                'back_route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', $schoolId)],
-                'morning_group_id' => ['nullable', 'integer', Rule::exists('bus_groups', 'id')->where('school_id', $schoolId)],
-                'afternoon_group_id' => ['nullable', 'integer', Rule::exists('bus_groups', 'id')->where('school_id', $schoolId)],
+                'forth_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
+                'back_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
                 'is_active' => 'required|boolean',
                 'image' => 'nullable|image|max:5120',
 
                 // Guardian Data (now referencing users table)
                 'guardian.name' => 'required|string|max:255',
                 'guardian.name_en' => 'nullable|string|max:255',
-                'guardian.national_id' => ['required', 'string', 'max:50', Rule::unique('users', 'national_id')->ignore($student->guardian_id)],
-                'guardian.phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($student->guardian_id)],
+                'guardian.national_id' => ['required', 'string', 'max:50', Rule::unique('users', 'national_id')->ignore($guardianId)],
+                'guardian.phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($guardianId)],
                 'guardian.address' => 'nullable|string|max:255',
                 'guardian.home_number' => 'nullable|string|max:50',
                 'guardian.image' => 'nullable|image|max:5120',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // 🛑 إظهار أخطاء التحقق لمعرفة المشكلة بالضبط
             dd($e->errors());
         }
 
         DB::transaction(function () use ($validated, $request, $student) {
-            // Update Student
             $studentData = [
                 'first_name_ar' => $validated['first_name_ar'],
                 'second_name_ar' => $validated['second_name_ar'],
@@ -387,10 +370,8 @@ class StudentController extends Controller
                 'last_name_en' => $validated['last_name_en'],
                 'national_id' => $validated['national_id'],
                 'gender' => $validated['gender'],
-                'forth_route_id' => $validated['forth_route_id'] ?? null,
-                'back_route_id' => $validated['back_route_id'] ?? null,
-                'morning_group_id' => $validated['morning_group_id'] ?? null,
-                'afternoon_group_id' => $validated['afternoon_group_id'] ?? null,
+                'forth_bus_id' => $validated['forth_bus_id'] ?? null,
+                'back_bus_id' => $validated['back_bus_id'] ?? null,
                 'is_active' => $validated['is_active'],
             ];
 
@@ -400,17 +381,15 @@ class StudentController extends Controller
 
             $student->update($studentData);
 
-            // Update Class Enrollment
             if ($student->currentEnrollment) {
                 $student->currentEnrollment->update([
                     'classroom_id' => $validated['classroom_id'],
                 ]);
             }
 
-            // Update Guardian (now a User record)
             $guardianData = [
-                'name' => $validated['guardian']['name'],
-                'name_en' => $validated['guardian']['name_en'],
+                'first_name_ar' => $validated['guardian']['name'],
+                'first_name_en' => $validated['guardian']['name_en'],
                 'national_id' => $validated['guardian']['national_id'],
                 'phone' => $validated['guardian']['phone'],
                 'address' => $validated['guardian']['address'],
@@ -421,7 +400,10 @@ class StudentController extends Controller
                 $guardianData['image'] = $request->file('guardian.image')->store('guardians', 'public');
             }
 
-            $student->guardian->update($guardianData);
+            $guardian = $student->guardians()->first();
+            if ($guardian) {
+                $guardian->update($guardianData);
+            }
         });
 
         return redirect()->route('school.students.index')->with('success', 'Student updated successfully.');

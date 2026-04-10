@@ -23,7 +23,7 @@ class BusController extends Controller
         $statusFilter = $request->input('status', 'all');
 
         // 1. Base query for buses
-        $query = Bus::with(['driver', 'supervisor', 'school', 'documents', 'route']);
+        $query = Bus::with(['drivers.user', 'fieldSupervisor', 'school', 'route']);
 
         // Filter by archive or status
         if ($statusFilter === 'archived') {
@@ -42,8 +42,8 @@ class BusController extends Controller
             'plate_number',
             'model',
             'school.name',
-            'driver.name',
-            'supervisor.name',
+            'drivers.user.name',
+            'fieldSupervisor.name',
             'route.name',
         ], 15, function($bus) {
             return [
@@ -54,8 +54,8 @@ class BusController extends Controller
                 'السعة' => $bus->capacity,
                 'المدرسة' => $bus->school ? $bus->school->name : 'غير محدد',
                 'المسار' => $bus->route ? $bus->route->name : 'غير محدد',
-                'السائق' => $bus->driver ? $bus->driver->name : 'متاح',
-                'المشرفة' => $bus->supervisor ? $bus->supervisor->name : 'متاح',
+                'السائق' => $bus->drivers->count() > 0 && $bus->drivers->first()->user ? $bus->drivers->first()->user->name : 'متاح',
+                'المشرفة' => $bus->fieldSupervisor ? $bus->fieldSupervisor->name : 'متاح',
                 'الحالة' => match($bus->status) {
                     'active' => 'نشط',
                     'maintenance' => 'صيانة',
@@ -80,25 +80,24 @@ class BusController extends Controller
         ];
 
         // 3. جلب السائقين المتاحين
-        $assignedDriverIds = Bus::whereNotNull('driver_id')->pluck('driver_id')->toArray();
+        $assignedDriverIds = \App\Models\Driver::whereNotNull('bus_id')->pluck('user_id')->toArray();
         $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
             ->whereNotIn('id', $assignedDriverIds)
             ->select('id', 'first_name_ar', 'last_name_ar', 'national_id')
             ->get();
 
         // 4. جلب المشرفين المتاحين
-        $assignedSupervisorIds = Bus::whereNotNull('supervisor_id')->pluck('supervisor_id')->toArray();
+        $assignedSupervisorIds = Bus::whereNotNull('field_supervisor_id')->pluck('field_supervisor_id')->toArray();
         $supervisors = User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
             ->whereNotIn('id', $assignedSupervisorIds)
             ->select('id', 'first_name_ar', 'last_name_ar', 'national_id')
             ->get();
 
         // 5. جلب المدارس النشطة
-        $schools = School::where('status', 'active')->get();
+        $schools = School::where('status', 'Active')->get();
 
         // 6. جلب جميع المسارات
-        $routes = \App\Models\Route::select('id', 'name', 'code', 'school_id')
-            ->with('school:id,name')
+        $routes = \App\Models\Route::select('id', 'name', 'code')
             ->orderBy('name')
             ->get();
 
@@ -118,7 +117,7 @@ class BusController extends Controller
 
     public function create()
     {
-        $schools = School::where('status', 'active')->get();
+        $schools = School::where('status', 'Active')->get();
         // NOTE: school_id does NOT exist on users table — filter via extension tables
         $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
             ->whereDoesntHave('driver', fn($q) => $q->whereNotNull('school_id'))
@@ -143,7 +142,7 @@ class BusController extends Controller
                 'exists:users,id',
                 // يمنع تعيين سائق مرتبط بباص آخر
                 function ($attribute, $value, $fail) {
-                    if ($value && Bus::where('driver_id', $value)->exists()) {
+                    if ($value && \App\Models\Driver::where('user_id', $value)->whereNotNull('bus_id')->exists()) {
                         $fail('هذا السائق مُعيَّن لباص آخر بالفعل.');
                     }
                 },
@@ -153,7 +152,7 @@ class BusController extends Controller
                 'exists:users,id',
                 // يمنع تعيين مشرف مرتبط بباص آخر
                 function ($attribute, $value, $fail) {
-                    if ($value && Bus::where('supervisor_id', $value)->exists()) {
+                    if ($value && Bus::where('field_supervisor_id', $value)->exists()) {
                         $fail('هذا المشرف مُعيَّن لباص آخر بالفعل.');
                     }
                 },
@@ -171,18 +170,22 @@ class BusController extends Controller
                 'model'         => $request->model,
                 'year'          => $request->year,
                 'capacity'      => $request->capacity,
-                'type'          => 'permanent',
                 'status'        => 'active',
-                'school_id'     => null,
-                'driver_id'     => $request->driver_id,
-                'supervisor_id' => $request->supervisor_id,
+                'school_id'             => null,
+                'field_supervisor_id'   => $request->supervisor_id,
             ]);
+
+            // Map driver model directly
+            if ($request->driver_id) {
+                \App\Models\Driver::where('user_id', $request->driver_id)
+                    ->update(['bus_id' => $bus->id, 'school_id' => null]);
+            }
 
             $qrData = "ID: $bus->id\nNumber: $busNumber\nPlate: $request->plate_number\nEmergency: 999";
             $qrFileName = 'qrcodes/' . $busNumber . '.svg';
             Storage::disk('public')->makeDirectory('qrcodes');
             Storage::disk('public')->put($qrFileName, QrCode::format('svg')->size(300)->generate($qrData));
-            $bus->update(['qr_code_path' => $qrFileName]);
+            $bus->update(['front_qr' => $qrFileName]);
 
             $this->uploadFiles($request, $bus);
         });
@@ -234,25 +237,25 @@ class BusController extends Controller
         $schools = School::where('status', 'active')->get();
 
         // السائقون المتاحون: غير مُعيَّنين لأي باص + السائق الحالي لهذا الباص
-        $assignedDriverIds = Bus::whereNotNull('driver_id')
-            ->where('id', '!=', $bus->id)
-            ->pluck('driver_id')
+        $assignedDriverIds = \App\Models\Driver::whereNotNull('bus_id')
+            ->where('bus_id', '!=', $bus->id)
+            ->pluck('user_id')
             ->toArray();
         $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
             ->whereNotIn('id', $assignedDriverIds)
             ->get();
 
         // المشرفون المتاحون: غير مُعيَّنين لأي باص + المشرف الحالي لهذا الباص
-        $assignedSupervisorIds = Bus::whereNotNull('supervisor_id')
+        $assignedSupervisorIds = Bus::whereNotNull('field_supervisor_id')
             ->where('id', '!=', $bus->id)
-            ->pluck('supervisor_id')
+            ->pluck('field_supervisor_id')
             ->toArray();
         $supervisors = User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
             ->whereNotIn('id', $assignedSupervisorIds)
             ->get();
 
         return Inertia::render('Admin/Buses/Edit', [
-            'bus' => $bus->load(['school', 'driver', 'supervisor']),
+            'bus' => $bus->load(['school', 'drivers.user', 'fieldSupervisor']),
             'schools' => $schools,
             'drivers' => $drivers,
             'supervisors' => $supervisors,
@@ -275,7 +278,7 @@ class BusController extends Controller
                 'exists:users,id',
                 // يمنع تعيين سائق مرتبط بباص آخر (غير هذا الباص)
                 function ($attribute, $value, $fail) use ($busId) {
-                    if ($value && Bus::where('driver_id', $value)->where('id', '!=', $busId)->exists()) {
+                    if ($value && \App\Models\Driver::where('user_id', $value)->whereNotNull('bus_id')->where('bus_id', '!=', $busId)->exists()) {
                         $fail('هذا السائق مُعيَّن لباص آخر بالفعل.');
                     }
                 },
@@ -285,7 +288,7 @@ class BusController extends Controller
                 'exists:users,id',
                 // يمنع تعيين مشرف مرتبط بباص آخر (غير هذا الباص)
                 function ($attribute, $value, $fail) use ($busId) {
-                    if ($value && Bus::where('supervisor_id', $value)->where('id', '!=', $busId)->exists()) {
+                    if ($value && Bus::where('field_supervisor_id', $value)->where('id', '!=', $busId)->exists()) {
                         $fail('هذا المشرف مُعيَّن لباص آخر بالفعل.');
                     }
                 },
@@ -293,11 +296,20 @@ class BusController extends Controller
         ]);
 
         DB::transaction(function () use ($bus, $validated) {
-            $oldDriverId     = $bus->driver_id;
-            $oldSupervisorId = $bus->supervisor_id;
+            $oldDriverId     = $bus->drivers->first()->user_id ?? null;
+            $oldSupervisorId = $bus->field_supervisor_id;
             $newDriverId     = $validated['driver_id'] ?? null;
             $newSupervisorId = $validated['supervisor_id'] ?? null;
             $schoolId        = $bus->school_id; // احتفظ بمدرسة الباص الحالية
+            
+            // Map request supervisor_id to field_supervisor_id
+            if (array_key_exists('supervisor_id', $validated)) {
+                $validated['field_supervisor_id'] = $validated['supervisor_id'];
+                unset($validated['supervisor_id']);
+            }
+            if (array_key_exists('driver_id', $validated)) {
+                unset($validated['driver_id']);
+            }
 
             $bus->update($validated);
 
@@ -306,10 +318,10 @@ class BusController extends Controller
             // Update those extension records when driver/supervisor assignment changes.
             if ($oldDriverId !== $newDriverId) {
                 if ($oldDriverId) {
-                    \App\Models\Driver::where('user_id', $oldDriverId)->update(['school_id' => null]);
+                    \App\Models\Driver::where('user_id', $oldDriverId)->update(['bus_id' => null, 'school_id' => null]);
                 }
                 if ($newDriverId) {
-                    \App\Models\Driver::where('user_id', $newDriverId)->update(['school_id' => $bus->school_id]);
+                    \App\Models\Driver::where('user_id', $newDriverId)->update(['bus_id' => $bus->id, 'school_id' => $bus->school_id]);
                 }
             }
 
@@ -354,13 +366,13 @@ class BusController extends Controller
             $bus->update(['school_id' => $schoolId]);
 
             // 2. Update driver extension record (school_id lives in drivers table)
-            if ($bus->driver_id) {
-                \App\Models\Driver::where('user_id', $bus->driver_id)->update(['school_id' => $schoolId]);
+            if ($bus->drivers()->exists()) {
+                $bus->drivers()->update(['school_id' => $schoolId]);
             }
 
             // 3. Update supervisor extension record (school_id lives in field_supervisors table)
-            if ($bus->supervisor_id) {
-                \App\Models\FieldSupervisor::where('user_id', $bus->supervisor_id)->update(['school_id' => $schoolId]);
+            if ($bus->field_supervisor_id) {
+                \App\Models\FieldSupervisor::where('user_id', $bus->field_supervisor_id)->update(['school_id' => $schoolId]);
             }
         });
 

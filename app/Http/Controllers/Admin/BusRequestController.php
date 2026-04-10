@@ -113,11 +113,11 @@ class BusRequestController extends Controller
                 $bus->update(['school_id' => $schoolId]);
                 
                 // Update driver and supervisor school_id
-                if ($bus->driver_id) {
-                    User::where('id', $bus->driver_id)->update(['school_id' => $schoolId]);
+                if ($bus->driver?->id) {
+                    \App\Models\Driver::where('user_id', $bus->driver->id)->update(['school_id' => $schoolId]);
                 }
-                if ($bus->supervisor_id) {
-                    User::where('id', $bus->supervisor_id)->update(['school_id' => $schoolId]);
+                if ($bus->field_supervisor_id) {
+                    \App\Models\FieldSupervisor::where('user_id', $bus->field_supervisor_id)->update(['school_id' => $schoolId]);
                 }
             }
 

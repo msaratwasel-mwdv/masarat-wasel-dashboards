@@ -36,24 +36,34 @@ interface BusGroup {
   };
 }
 
+interface Bus {
+  id: number;
+  bus_number: string;
+  plate_number: string;
+}
+
 interface Student {
   id: number;
+  first_name_ar: string;
+  second_name_ar?: string;
+  third_name_ar?: string;
+  last_name_ar?: string;
+  first_name_en?: string;
+  second_name_en?: string;
+  third_name_en?: string;
+  last_name_en?: string;
   full_name: string;
   full_name_en?: string;
   national_id?: string;
   gender?: string;
   image?: string;
   is_active: boolean;
-  guardian?: Guardian;
-  supervisor?: Supervisor;
+  guardians?: Guardian[];
   guardian_id?: number;
-  supervisor_id?: number;
-  forth_route_id?: number | null;
-  back_route_id?: number | null;
-  morning_group_id?: number | null;
-  afternoon_group_id?: number | null;
-  morning_group?: BusGroup | null;
-  afternoon_group?: BusGroup | null;
+  forth_bus_id?: number | null;
+  back_bus_id?: number | null;
+  forth_bus?: { route?: { name?: string } } | null;
+  back_bus?: { route?: { name?: string } } | null;
   current_enrollment: {
     classroom: Classroom;
     classroom_id?: number;
@@ -65,9 +75,7 @@ interface Props {
   students: Student[];
   filters: { search?: string };
   classrooms: Classroom[];
-  routes: { id: number; name: string }[];
-  supervisors: Supervisor[];
-  busGroups?: BusGroup[];
+  buses?: Bus[];
   storage_url: string;
 }
 
@@ -76,9 +84,7 @@ export default function IndexStudents({
   students,
   filters,
   classrooms,
-  routes = [],
-  supervisors,
-  busGroups = [],
+  buses = [],
   storage_url,
 }: Props) {
   const { t, isRtl } = useTranslation();
@@ -172,16 +178,20 @@ export default function IndexStudents({
   });
 
   const studentForm = useForm({
-    full_name: "",
-    full_name_en: "",
+    first_name_ar: "",
+    second_name_ar: "",
+    third_name_ar: "",
+    last_name_ar: "",
+    first_name_en: "",
+    second_name_en: "",
+    third_name_en: "",
+    last_name_en: "",
     national_id: "",
     gender: "male",
     classroom_id: "",
     guardian_id: "",
-    forth_route_id: "",
-    back_route_id: "",
-    morning_group_id: "",
-    afternoon_group_id: "",
+    forth_bus_id: "",
+    back_bus_id: "",
     image: null as File | null,
     is_active: true,
     // For editing guardian inside student modal
@@ -224,26 +234,32 @@ export default function IndexStudents({
     resetForms();
 
     // Populate Form
+    const currentGuardian = student.guardians && student.guardians.length > 0 ? student.guardians[0] : null;
+
     studentForm.setData({
-      full_name: student.full_name,
-      full_name_en: student.full_name_en || "",
+      first_name_ar: student.first_name_ar || "",
+      second_name_ar: student.second_name_ar || "",
+      third_name_ar: student.third_name_ar || "",
+      last_name_ar: student.last_name_ar || "",
+      first_name_en: student.first_name_en || "",
+      second_name_en: student.second_name_en || "",
+      third_name_en: student.third_name_en || "",
+      last_name_en: student.last_name_en || "",
       national_id: student.national_id || "",
       gender: student.gender || "male",
       classroom_id: student.current_enrollment?.classroom?.id?.toString() || "",
-      guardian_id: student.guardian_id?.toString() || "",
-      forth_route_id: student.forth_route_id?.toString() || "",
-      back_route_id: student.back_route_id?.toString() || "",
-      morning_group_id: student.morning_group_id?.toString() || "",
-      afternoon_group_id: student.afternoon_group_id?.toString() || "",
+      guardian_id: currentGuardian?.id?.toString() || "",
+      forth_bus_id: student.forth_bus_id?.toString() || "",
+      back_bus_id: student.back_bus_id?.toString() || "",
       image: null,
       is_active: student.is_active,
       guardian: {
-        name: student.guardian?.name || "",
-        name_en: student.guardian?.name_en || "",
-        national_id: student.guardian?.national_id || "",
-        phone: student.guardian?.phone || "",
-        address: student.guardian?.address || "",
-        home_number: student.guardian?.home_number || "",
+        name: currentGuardian?.name || "",
+        name_en: currentGuardian?.name_en || "",
+        national_id: currentGuardian?.national_id || "",
+        phone: currentGuardian?.phone || "",
+        address: currentGuardian?.address || "",
+        home_number: currentGuardian?.home_number || "",
         image: null,
       },
     });
@@ -613,34 +629,34 @@ export default function IndexStudents({
                         {student.current_enrollment?.classroom?.name || "-"}
                       </td>
 
-                      {/* المجموعة الصباحية */}
+                      {/* المجموعة الصباحية المعادة للحافلة */}
                       <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
-                        {student.morning_group?.name || "-"}
+                        {student.forth_bus?.route?.name || "-"}
                       </td>
 
-                      {/* المجموعة المسائية */}
+                      {/* المجموعة المسائية المعادة للحافلة */}
                       <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
-                        {student.afternoon_group?.name || "-"}
+                        {student.back_bus?.route?.name || "-"}
                       </td>
 
                       {/* اسم ولي الأمر */}
                       <td className="px-4 py-4 text-sm font-bold text-gray-800 dark:text-white">
-                        {student.guardian?.name || "-"}
+                        {(student.guardians && student.guardians.length > 0) ? student.guardians[0].name : "-"}
                       </td>
 
                       {/* الرقم المدني لولي الأمر */}
                       <td className="px-4 py-4 font-mono text-sm text-gray-600 dark:text-gray-300">
-                        {student.guardian?.national_id || "-"}
+                       {(student.guardians && student.guardians.length > 0) ? student.guardians[0].national_id : "-"}
                       </td>
 
                       {/* جوال ولي الأمر */}
                       <td className="px-4 py-4 font-mono text-sm text-gray-600 dark:text-gray-300">
-                        {student.guardian?.phone || "-"}
+                        {(student.guardians && student.guardians.length > 0) ? student.guardians[0].phone : "-"}
                       </td>
 
                       {/* العنوان */}
                       <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
-                        {student.guardian?.address || "-"}
+                        {(student.guardians && student.guardians.length > 0) ? student.guardians[0].address : "-"}
                       </td>
 
                       {/* صورة ولي الأمر */}
@@ -648,10 +664,10 @@ export default function IndexStudents({
                         <div className="w-12 h-12 overflow-hidden bg-gray-100 border border-gray-200 rounded-[15px] dark:bg-gray-700 dark:border-gray-600">
                           <img
                             src={getImageUrl(
-                              student.guardian?.image,
+                              (student.guardians && student.guardians.length > 0) ? student.guardians[0].image : null,
                               "guardian"
                             )}
-                            alt={student.guardian?.name || "Guardian"}
+                            alt={(student.guardians && student.guardians.length > 0) ? student.guardians[0].name : "Guardian"}
                             className="object-cover w-full h-full"
                             onError={(e) => handleImageError(e, "guardian")}
                           />
@@ -1148,37 +1164,49 @@ export default function IndexStudents({
                   </h4>
 
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <div>
-                      <InputLabel
-                        value={t("Student Name (Arabic)") + " *"}
-                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                      />
-                      <TextInput
-                        value={studentForm.data.full_name}
-                        onChange={(e) =>
-                          studentForm.setData("full_name", e.target.value)
-                        }
-                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                        required
-                      />
-                      <InputError message={studentForm.errors.full_name} />
+                    <div className="md:col-span-2">
+                      <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {t("Student Name (Arabic)")} *
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {["first", "second", "third", "last"].map((part) => {
+                          const fieldName = `${part}_name_ar` as keyof typeof studentForm.data;
+                          return (
+                            <div key={fieldName}>
+                              <input
+                                value={studentForm.data[fieldName] as string}
+                                onChange={(e) => studentForm.setData(fieldName, e.target.value)}
+                                className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
+                                required
+                                placeholder={t(`${part} Name`)}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
 
-                    <div>
-                      <InputLabel
-                        value={t("Student Name (English)") + " *"}
-                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                      />
-                      <TextInput
-                        value={studentForm.data.full_name_en}
-                        onChange={(e) =>
-                          studentForm.setData("full_name_en", e.target.value)
-                        }
-                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent text-left"
-                        dir="ltr"
-                        required
-                      />
-                      <InputError message={studentForm.errors.full_name_en} />
+                    <div className="md:col-span-2">
+                      <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {t("Student Name (English)")} *
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {["first", "second", "third", "last"].map((part) => {
+                          const fieldName = `${part}_name_en` as keyof typeof studentForm.data;
+                          return (
+                            <div key={fieldName}>
+                              <input
+                                value={studentForm.data[fieldName] as string}
+                                onChange={(e) => studentForm.setData(fieldName, e.target.value)}
+                                className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4 text-left"
+                                dir="ltr"
+                                required
+                                placeholder={`${part} Name`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
 
                     <div>
@@ -1238,119 +1266,50 @@ export default function IndexStudents({
                       <InputError message={studentForm.errors.classroom_id} />
                     </div>
 
-                    {/* Forth Route Selection */}
-                    <div>
-                      <InputLabel
-                        value={t("Forth Route") + " (" + t("Optional") + ")"}
-                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                      />
-                      <select
-                        value={studentForm.data.forth_route_id}
-                        onChange={(e) =>
-                          studentForm.setData("forth_route_id", e.target.value)
-                        }
-                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                      >
-                        <option value="">{t("Select a route...")}</option>
-                        {routes.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </select>
-                      <InputError message={studentForm.errors.forth_route_id} />
-                    </div>
+                    {/* Bus Selection */}
+                    {buses.length > 0 && (
+                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
+                        <div>
+                          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {t("Morning Bus Assignment")} ({t("Optional")})
+                          </label>
+                          <select
+                            value={studentForm.data.forth_bus_id}
+                            onChange={(e) =>
+                              studentForm.setData("forth_bus_id", e.target.value)
+                            }
+                            className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
+                          >
+                            <option value="">{t("No bus assigned")}</option>
+                            {buses.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.bus_number} - {b.plate_number}
+                              </option>
+                            ))}
+                          </select>
+                          <InputError message={studentForm.errors.forth_bus_id as string} />
+                        </div>
 
-                    {/* Back Route Selection */}
-                    <div>
-                      <InputLabel
-                        value={t("Back Route") + " (" + t("Optional") + ")"}
-                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                      />
-                      <select
-                        value={studentForm.data.back_route_id}
-                        onChange={(e) =>
-                          studentForm.setData("back_route_id", e.target.value)
-                        }
-                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                      >
-                        <option value="">{t("Select a route...")}</option>
-                        {routes.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </select>
-                      <InputError message={studentForm.errors.back_route_id} />
-                    </div>
-
-                    {busGroups.length > 0 && (
-                      <div>
-                        <InputLabel
-                          value={
-                            t("Morning Bus Group") + " (" + t("Optional") + ")"
-                          }
-                          className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                        />
-                        <select
-                          value={studentForm.data.morning_group_id}
-                          onChange={(e) =>
-                            studentForm.setData(
-                              "morning_group_id",
-                              e.target.value
-                            )
-                          }
-                          className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                        >
-                          <option value="">{t("Select a group...")}</option>
-                          {busGroups.map((g) => (
-                            <option key={g.id} value={g.id}>
-                              {g.name}
-                            </option>
-                          ))}
-                        </select>
-                        <InputError
-                          message={
-                            studentForm.errors.morning_group_id as string
-                          }
-                        />
-                      </div>
-                    )}
-
-                    {/* Afternoon Group Selection */}
-                    {busGroups.length > 0 && (
-                      <div>
-                        <InputLabel
-                          value={
-                            t("Afternoon Bus Group") +
-                            " (" +
-                            t("Optional") +
-                            ")"
-                          }
-                          className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                        />
-                        <select
-                          value={studentForm.data.afternoon_group_id}
-                          onChange={(e) =>
-                            studentForm.setData(
-                              "afternoon_group_id",
-                              e.target.value
-                            )
-                          }
-                          className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                        >
-                          <option value="">{t("Select a group...")}</option>
-                          {busGroups.map((g) => (
-                            <option key={g.id} value={g.id}>
-                              {g.name}
-                            </option>
-                          ))}
-                        </select>
-                        <InputError
-                          message={
-                            studentForm.errors.afternoon_group_id as string
-                          }
-                        />
+                        <div>
+                          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {t("Afternoon Bus Assignment")} ({t("Optional")})
+                          </label>
+                          <select
+                            value={studentForm.data.back_bus_id}
+                            onChange={(e) =>
+                              studentForm.setData("back_bus_id", e.target.value)
+                            }
+                            className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
+                          >
+                            <option value="">{t("No bus assigned")}</option>
+                            {buses.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.bus_number} - {b.plate_number}
+                              </option>
+                            ))}
+                          </select>
+                          <InputError message={studentForm.errors.back_bus_id as string} />
+                        </div>
                       </div>
                     )}
 

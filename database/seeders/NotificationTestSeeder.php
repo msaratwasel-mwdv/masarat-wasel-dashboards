@@ -94,7 +94,7 @@ class NotificationTestSeeder extends Seeder
         }
 
         // 5. Find existing bus for supervisor or create new one
-        $bus = Bus::where('supervisor_id', $supervisor->id)->first() ?? Bus::create([
+        $bus = Bus::where('field_supervisor_id', $supervisor->id)->first() ?? Bus::create([
             'bus_number' => 'WAS-TEST-777',
                         'plate_number' => 'أ ب ج 777',
             'capacity' => 14,
@@ -102,13 +102,16 @@ class NotificationTestSeeder extends Seeder
             'year' => 2024,
                         'status' => 'active',
             'school_id' => $school->id,
-            'supervisor_id' => $supervisor->id,
-            'driver_id' => $driver->id,
+            'field_supervisor_id' => $supervisor->id,
         ]);
+        
+        $driverModel = Driver::where('user_id', $driver->id)->first();
+        if ($driverModel) {
+            $driverModel->update(['bus_id' => $bus->id]);
+        }
 
         $bus->update([
             'bus_number' => 'WAS-TEST-777',
-            'driver_id' => $driver->id,
         ]);
 
         // 7. Create Guardian
@@ -166,23 +169,17 @@ class NotificationTestSeeder extends Seeder
                 'gender' => ($index % 2 == 0) ? 'male' : 'female',
                 'forth_bus_id' => $bus->id,
                 'back_bus_id' => $bus->id,
-                'grade' => 'الثاني الابتدائي',
                 'is_active' => true,
-                'school_id' => $school->id,
-                'guardian_id' => $parentUser->id,
+            ]);
+
+            // Sync with parent via Pivot
+            $student->guardians()->syncWithoutDetaching([
+                $parentUser->id => ['relationship_type' => 'father']
             ]);
 
             // Enroll Student in classroom
             $student->enrollments()->create([
-                'school_id' => $school->id,
                 'classroom_id' => $classroom->id,
-                'status' => 'active',
-                'is_active' => true,
-            ]);
-
-            // IMPORTANT: Attach student to the bus in the pivot table (used by supervisor app)
-            $bus->students()->attach($student->id, [
-                'trip_type' => 'both',
                 'is_active' => true,
             ]);
 

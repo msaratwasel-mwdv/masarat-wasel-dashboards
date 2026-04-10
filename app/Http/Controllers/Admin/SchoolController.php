@@ -53,15 +53,14 @@ class SchoolController extends Controller
                 ->count(),
 
             // عدد السائقين المخصصين لباصات هذه المدرسة
-            'drivers_count' => \App\Models\Bus::where('school_id', $school->id)
-                ->whereNotNull('driver_id')
-                ->distinct('driver_id')
-                ->count(),
+            'drivers_count' => \App\Models\Driver::whereHas('bus', function($q) use ($school) {
+                $q->where('school_id', $school->id);
+            })->count(),
 
             // عدد المشرفين المخصصين لباصات هذه المدرسة
             'supervisors_count' => \App\Models\Bus::where('school_id', $school->id)
-                ->whereNotNull('supervisor_id')
-                ->distinct('supervisor_id')
+                ->whereNotNull('field_supervisor_id')
+                ->distinct('field_supervisor_id')
                 ->count(),
 
             // عدد مدراء المدرسة — via school_admins extension table

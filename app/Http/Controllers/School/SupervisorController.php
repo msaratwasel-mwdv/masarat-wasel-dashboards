@@ -40,7 +40,7 @@ class SupervisorController extends Controller
             ->get()
             ->map(function ($supervisor) {
                 // نبحث عن الباص الذي يشرف عليه (إن وجد)
-                $bus = Bus::where('supervisor_id', $supervisor->id)->first();
+                $bus = Bus::where('field_supervisor_id', $supervisor->id)->first();
                 $profile = $supervisor->supervisorProfile;
 
                 return [
@@ -143,7 +143,7 @@ class SupervisorController extends Controller
                 // نأكد من أن الباص يتبع للمدرسة
                 $bus = Bus::where('id', $validated['bus_id'])->where('school_id', $user->getSchoolId())->first();
                 if ($bus) {
-                    $bus->update(['supervisor_id' => $newSupervisor->id]);
+                    $bus->update(['field_supervisor_id' => $newSupervisor->id]);
                 }
             }
 
@@ -246,13 +246,13 @@ class SupervisorController extends Controller
 
             // تحديث الباص
             // أولاً: تصفير مشرف الباص القديم
-            Bus::where('supervisor_id', $supervisor->id)->update(['supervisor_id' => null]);
+            Bus::where('field_supervisor_id', $supervisor->id)->update(['field_supervisor_id' => null]);
             
             // ثانياً: ربط الباص الجديد
             if (!empty($validated['bus_id'])) {
                 $bus = Bus::where('id', $validated['bus_id'])->where('school_id', $user->getSchoolId())->first();
                 if ($bus) {
-                    $bus->update(['supervisor_id' => $supervisor->id]);
+                    $bus->update(['field_supervisor_id' => $supervisor->id]);
                 }
             }
 
@@ -289,7 +289,7 @@ class SupervisorController extends Controller
             Storage::disk('public')->delete($supervisor->image);
         }
 
-        // سيتم تصفير supervisor_id في جدول buses تلقائياً بسبب ON DELETE SET NULL
+        // سيتم تصفير field_supervisor_id في جدول buses تلقائياً بسبب ON DELETE SET NULL
         // وسيتم حذف بروفايله تلقائياً بفضل ON DELETE CASCADE
         $supervisor->delete();
 

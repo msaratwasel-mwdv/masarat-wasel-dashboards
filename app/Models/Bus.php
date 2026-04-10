@@ -13,39 +13,14 @@ class Bus extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $appends = ['driver', 'supervisor', 'driver_id', 'supervisor_id'];
+
     protected static function booted()
     {
-        static::saved(function ($bus) {
-            if ($bus->isDirty('driver_id')) {
-                $oldDriverId = $bus->getOriginal('driver_id');
-                $newDriverId = $bus->driver_id;
-
-                // Close previous assignment
-                if ($oldDriverId) {
-                    BusDriverAssignment::where('bus_id', $bus->id)
-                        ->where('driver_id', $oldDriverId)
-                        ->whereNull('unassigned_at')
-                        ->update(['unassigned_at' => now()]);
-                }
-
-                // Start new assignment
-                if ($newDriverId) {
-                    BusDriverAssignment::create([
-                        'bus_id' => $bus->id,
-                        'driver_id' => $newDriverId,
-                        'assigned_at' => now(),
-                    ]);
-                }
-            }
-        });
-
         static::deleting(function ($bus) {
-            if ($bus->driver_id) {
-                BusDriverAssignment::where('bus_id', $bus->id)
-                    ->where('driver_id', $bus->driver_id)
-                    ->whereNull('unassigned_at')
-                    ->update(['unassigned_at' => now()]);
-            }
+            BusDriverAssignment::where('bus_id', $bus->id)
+                ->whereNull('unassigned_at')
+                ->update(['unassigned_at' => now()]);
         });
     }
 
@@ -57,8 +32,8 @@ class Bus extends Model
         'year',
         'type',
         'school_id',
-        'driver_id',
-        'supervisor_id',
+        'field_supervisor_id',
+        'assistant_id',
         'status',
         'qr_code_path',
         'color',
@@ -86,19 +61,50 @@ class Bus extends Model
     }
 
     /**
-     * Get the driver assigned to the bus.
+     * Get the drivers assigned to the bus.
      */
-    public function driver(): BelongsTo
+    public function drivers(): HasMany
     {
-        return $this->belongsTo(User::class, 'driver_id');
+        return $this->hasMany(Driver::class, 'bus_id', 'id');
     }
 
     /**
      * Get the supervisor assigned to the bus.
      */
+    public function fieldSupervisor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'field_supervisor_id');
+    }
+
+    /**
+     * Alias for fieldSupervisor for backward compatibility.
+     */
     public function supervisor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'supervisor_id');
+        return $this->fieldSupervisor();
+    }
+
+    /**
+     * Get the primary driver user for backward compatibility.
+     */
+    public function getDriverAttribute()
+    {
+        return $this->drivers->first()?->user;
+    }
+
+    public function getSupervisorAttribute()
+    {
+        return $this->fieldSupervisor;
+    }
+
+    public function getDriverIdAttribute()
+    {
+        return $this->drivers->first()?->user_id;
+    }
+
+    public function getSupervisorIdAttribute()
+    {
+        return $this->field_supervisor_id;
     }
 
     /**
@@ -230,7 +236,16 @@ class Bus extends Model
      */
     public function hasCompleteCrew(): bool
     {
-        return $this->driver_id !== null && $this->supervisor_id !== null;
+        return $this->drivers()->exists() && $this->field_supervisor_id !== null;
+    }
+
+    /**
+     * Check if the given user ID is part of the bus crew (driver or supervisor).
+     */
+    public function hasCrewMember(int $userId): bool
+    {
+        return $this->field_supervisor_id === $userId || 
+               $this->drivers()->where('user_id', $userId)->exists();
     }
 
     /**

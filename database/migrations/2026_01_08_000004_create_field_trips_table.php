@@ -22,7 +22,8 @@ return new class extends Migration
             $table->time('arrival_time');
             $table->integer('duration_days')->default(1);
             $table->string('destination_address')->nullable();
-            $table->geometry('destination_location');
+            $table->decimal('destination_latitude', 10, 7)->nullable();
+            $table->decimal('destination_longitude', 10, 7)->nullable();
             $table->decimal('cost', 10, 2)->unsigned()->nullable();
             $table->enum('status', ['pending', 'approved', 'started', 'in_progress', 'completed', 'cancelled'])->default('pending');
             $table->text('rejection_reason')->nullable();

@@ -9,6 +9,9 @@ class Teacher extends Model
 {
     protected $table = 'teachers';
 
+    protected $primaryKey = 'user_id';
+    public $incrementing = false;
+
     protected $fillable = [
         'user_id',
         'school_id',

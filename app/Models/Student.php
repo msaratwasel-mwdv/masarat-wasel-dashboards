@@ -26,7 +26,6 @@ class Student extends Model
         'student_code',
         'national_id',
         'gender',
-        'grade',
         'image',
         'is_active',
         'forth_bus_id',
@@ -101,14 +100,11 @@ class Student extends Model
         return $this->hasOne(StudentSchoolEnrollment::class)->where('is_active', true)->latestOfMany();
     }
 
-    public function guardian(): BelongsTo
+    public function guardians(): BelongsToMany
     {
-        return $this->belongsTo(User::class, 'guardian_id');
-    }
-
-    public function supervisor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'supervisor_id');
+        return $this->belongsToMany(Guardian::class, 'guardian_student', 'student_id', 'guardian_id')
+            ->withPivot('relationship_type')
+            ->withTimestamps();
     }
 
     // ⬅️ أضف هذه العلاقة
@@ -127,24 +123,14 @@ class Student extends Model
             ->withTimestamps();
     }
 
-    public function morningGroup(): BelongsTo
+    public function forthBus(): BelongsTo
     {
-        return $this->belongsTo(BusGroup::class, 'morning_group_id');
+        return $this->belongsTo(Bus::class, 'forth_bus_id');
     }
 
-    public function afternoonGroup(): BelongsTo
+    public function backBus(): BelongsTo
     {
-        return $this->belongsTo(BusGroup::class, 'afternoon_group_id');
-    }
-
-    public function forthRoute(): BelongsTo
-    {
-        return $this->belongsTo(Route::class, 'forth_route_id');
-    }
-
-    public function backRoute(): BelongsTo
-    {
-        return $this->belongsTo(Route::class, 'back_route_id');
+        return $this->belongsTo(Bus::class, 'back_bus_id');
     }
 
     public function tripAttendances(): HasMany

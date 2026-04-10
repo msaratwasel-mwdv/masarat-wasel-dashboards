@@ -75,8 +75,14 @@ class SupervisorController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'name_en' => 'nullable|string|max:255',
+            'first_name_ar' => 'required|string|max:255',
+            'second_name_ar' => 'nullable|string|max:255',
+            'third_name_ar' => 'nullable|string|max:255',
+            'last_name_ar' => 'required|string|max:255',
+            'first_name_en' => 'nullable|string|max:255',
+            'second_name_en' => 'nullable|string|max:255',
+            'third_name_en' => 'nullable|string|max:255',
+            'last_name_en' => 'nullable|string|max:255',
             'national_id' => 'required|numeric|unique:users,national_id',
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|unique:users,phone',
@@ -88,11 +94,11 @@ class SupervisorController extends Controller
 
         DB::transaction(function () use ($request) {
             $user = User::create([
-                'first_name_ar' => $request->first_name_ar ?? $request->name,
+                'first_name_ar' => $request->first_name_ar,
                 'second_name_ar' => $request->second_name_ar ?? '',
                 'third_name_ar' => $request->third_name_ar ?? '',
-                'last_name_ar' => $request->last_name_ar ?? '',
-                'first_name_en' => $request->first_name_en ?? $request->name_en ?? '',
+                'last_name_ar' => $request->last_name_ar,
+                'first_name_en' => $request->first_name_en ?? '',
                 'second_name_en' => $request->second_name_en ?? '',
                 'third_name_en' => $request->third_name_en ?? '',
                 'last_name_en' => $request->last_name_en ?? '',
@@ -119,8 +125,14 @@ class SupervisorController extends Controller
     public function update(Request $request, User $supervisor)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'name_en' => 'nullable|string|max:255',
+            'first_name_ar' => 'required|string|max:255',
+            'second_name_ar' => 'nullable|string|max:255',
+            'third_name_ar' => 'nullable|string|max:255',
+            'last_name_ar' => 'required|string|max:255',
+            'first_name_en' => 'nullable|string|max:255',
+            'second_name_en' => 'nullable|string|max:255',
+            'third_name_en' => 'nullable|string|max:255',
+            'last_name_en' => 'nullable|string|max:255',
             'national_id' => ['required', 'numeric', Rule::unique('users')->ignore($supervisor->id)],
             'email' => ['required', 'email', Rule::unique('users')->ignore($supervisor->id)],
             'phone' => ['required', Rule::unique('users')->ignore($supervisor->id)],
@@ -132,8 +144,14 @@ class SupervisorController extends Controller
 
         DB::transaction(function () use ($request, $supervisor) {
             $data = [
-                'name' => $request->name,
-                'name_en' => $request->name_en,
+                'first_name_ar' => $request->first_name_ar,
+                'second_name_ar' => $request->second_name_ar ?? '',
+                'third_name_ar' => $request->third_name_ar ?? '',
+                'last_name_ar' => $request->last_name_ar,
+                'first_name_en' => $request->first_name_en ?? '',
+                'second_name_en' => $request->second_name_en ?? '',
+                'third_name_en' => $request->third_name_en ?? '',
+                'last_name_en' => $request->last_name_en ?? '',
                 'national_id' => $request->national_id,
                 'email' => $request->email,
                 'phone' => $request->phone,

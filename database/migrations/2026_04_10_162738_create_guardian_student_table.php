@@ -11,15 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('routes', function (Blueprint $table) {
+        Schema::create('guardian_student', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('code')->unique()->nullable();
-            $table->text('description')->nullable();
-            $table->decimal('latitude', 10, 7)->nullable();
-            $table->decimal('longitude', 10, 7)->nullable();
+            $table->foreignId('guardian_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('student_id')->constrained('students')->cascadeOnDelete();
+            $table->string('relationship_type')->nullable();
             $table->timestamps();
-            $table->softDeletes();
+
+            $table->unique(['guardian_id', 'student_id']);
         });
     }
 
@@ -28,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('routes');
+        Schema::dropIfExists('guardian_student');
     }
 };

@@ -58,16 +58,17 @@ class TripScheduleController extends Controller
         $schedule = TripSchedule::create($validated);
 
         // Send notifications to driver and supervisor
-        $bus = Bus::with(['driver', 'supervisor'])->find($validated['bus_id']);
+        $bus = Bus::with(['drivers.user', 'fieldSupervisor'])->find($validated['bus_id']);
         $notificationService = app(NotificationService::class);
         $schoolName = Auth::user()->school->name ?? 'المدرسة';
         
         $days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
         $dayName = $days[$validated['day_of_week']] ?? '';
         
-        if ($bus && $bus->driver_id) {
+        $driverId = $bus && $bus->drivers->count() > 0 ? $bus->drivers->first()->user_id : null;
+        if ($driverId) {
             $notificationService->sendToUser(
-                $bus->driver_id,
+                $driverId,
                 'trip_schedule_created',
                 'جدول رحلة جديد',
                 "تم إنشاء جدول رحلة جديد لحافلة {$bus->bus_number} يوم {$dayName}",
@@ -76,9 +77,9 @@ class TripScheduleController extends Controller
             );
         }
         
-        if ($bus && $bus->supervisor_id) {
+        if ($bus && $bus->field_supervisor_id) {
             $notificationService->sendToUser(
-                $bus->supervisor_id,
+                $bus->field_supervisor_id,
                 'trip_schedule_created',
                 'جدول رحلة جديد',
                 "تم إنشاء جدول رحلة جديد لحافلة {$bus->bus_number} يوم {$dayName}",
@@ -114,16 +115,17 @@ class TripScheduleController extends Controller
         $tripSchedule->update($validated);
 
         // Send notifications to driver and supervisor
-        $bus = Bus::with(['driver', 'supervisor'])->find($tripSchedule->bus_id);
+        $bus = Bus::with(['drivers.user', 'fieldSupervisor'])->find($tripSchedule->bus_id);
         $notificationService = app(NotificationService::class);
         $schoolName = Auth::user()->school->name ?? 'المدرسة';
         
         $days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
         $dayName = $days[$tripSchedule->day_of_week] ?? '';
         
-        if ($bus && $bus->driver_id) {
+        $driverId = $bus && $bus->drivers->count() > 0 ? $bus->drivers->first()->user_id : null;
+        if ($driverId) {
             $notificationService->sendToUser(
-                $bus->driver_id,
+                $driverId,
                 'trip_schedule_updated',
                 'تحديث جدول الرحلة',
                 "تم تحديث جدول رحلة حافلة {$bus->bus_number} يوم {$dayName}",
@@ -132,9 +134,9 @@ class TripScheduleController extends Controller
             );
         }
         
-        if ($bus && $bus->supervisor_id) {
+        if ($bus && $bus->field_supervisor_id) {
             $notificationService->sendToUser(
-                $bus->supervisor_id,
+                $bus->field_supervisor_id,
                 'trip_schedule_updated',
                 'تحديث جدول الرحلة',
                 "تم تحديث جدول رحلة حافلة {$bus->bus_number} يوم {$dayName}",

@@ -39,7 +39,7 @@ class BusBoardingController extends Controller
         // ══════════════════════════════════════════════════════════
         // ① التحقق من صلاحية المستخدم (سائق أو مشرف لهذا الباص)
         // ══════════════════════════════════════════════════════════
-        if ($bus->driver_id !== $user->id && $bus->supervisor_id !== $user->id) {
+        if (!$bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك بتسجيل الركوب لهذا الباص.'], 403);
         }
 
@@ -187,7 +187,7 @@ class BusBoardingController extends Controller
         $user = $request->user();
 
         // ① التحقق من الصلاحية
-        if ($bus->driver_id !== $user->id && $bus->supervisor_id !== $user->id) {
+        if (!$bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك بتسجيل النزول لهذا الباص.'], 403);
         }
 
@@ -305,7 +305,7 @@ class BusBoardingController extends Controller
         ]);
 
         $user = $request->user();
-        if ($bus->driver_id !== $user->id && $bus->supervisor_id !== $user->id) {
+        if (!$bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
@@ -460,7 +460,7 @@ class BusBoardingController extends Controller
     public function startTrip(Request $request, Bus $bus)
     {
         $user = $request->user();
-        if ($bus->driver_id !== $user->id && $bus->supervisor_id !== $user->id) {
+        if (!$bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
@@ -493,7 +493,7 @@ class BusBoardingController extends Controller
     public function endTrip(Request $request, Bus $bus)
     {
         $user = $request->user();
-        if ($bus->driver_id !== $user->id && $bus->supervisor_id !== $user->id) {
+        if (!$bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 

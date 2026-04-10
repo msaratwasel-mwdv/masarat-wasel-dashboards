@@ -16,21 +16,20 @@ class AdminDashboardController extends Controller
         $busTotal = Bus::count();
         $busMaintenance = Bus::where('status', 'maintenance')->count();
         // Booked/Assigned: Active and has a driver
-        $busBooked = Bus::where('status', 'active')->whereNotNull('driver_id')->count();
+        $busBooked = Bus::where('status', 'active')->has('drivers')->count();
         // Available: Active (or just not maintenance) but no driver
-        // Note: Strict definition of available might be 'active' and no driver.
-        $busAvailable = Bus::where('status', 'active')->whereNull('driver_id')->count();
+        $busAvailable = Bus::where('status', 'active')->doesntHave('drivers')->count();
 
         // --- 2. Driver Stats ---
         $driverTotal = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))->count();
         // Drivers assigned to buses
-        $driverBooked = Bus::whereNotNull('driver_id')->distinct('driver_id')->count();
+        $driverBooked = \App\Models\Driver::whereNotNull('bus_id')->distinct('user_id')->count();
         $driverAvailable = max(0, $driverTotal - $driverBooked);
 
         // --- 3. Supervisor Stats ---
         $supervisorTotal = User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))->count();
         // Supervisors assigned to buses
-        $supervisorBooked = Bus::whereNotNull('supervisor_id')->distinct('supervisor_id')->count();
+        $supervisorBooked = Bus::whereNotNull('field_supervisor_id')->distinct('field_supervisor_id')->count();
         $supervisorAvailable = max(0, $supervisorTotal - $supervisorBooked);
 
         // --- 4. General Stats ---
@@ -110,18 +109,8 @@ class AdminDashboardController extends Controller
             ];
         });
 
-        $recentRequests = \App\Models\BusRequest::with('school')->latest()->take(3)->get()->map(function($item) {
-            return [
-                'id' => $item->id,
-                'type' => 'request',
-                'title' => 'طلب باص جديد',
-                'description' => "مدرسة {$item->school->name}: {$item->reason}",
-                'time' => $item->created_at->diffForHumans(),
-                'timestamp' => $item->created_at->timestamp,
-                'status' => $item->status,
-                'link' => route('admin.bus-requests.index'),
-            ];
-        });
+        // BusRequest table is deprecated / moved to @oldfile, returning empty collection for now
+        $recentRequests = collect([]);
 
         $recentActivities = $recentRequests->concat($recentViolations)
             ->sortByDesc('timestamp')
@@ -133,7 +122,7 @@ class AdminDashboardController extends Controller
 
         // أ. فحص الباصات النشطة بدون سائقين (Existing)
         $unassignedBuses = Bus::where('status', 'active')
-            ->whereNull('driver_id')
+            ->doesntHave('drivers')
             ->get();
 
         foreach ($unassignedBuses as $bus) {

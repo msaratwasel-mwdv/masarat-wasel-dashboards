@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('video_check')->default(false); // video path
             $table->dateTime('departure_time')->nullable();
             $table->dateTime('arrival_time')->nullable();
-            $table->string('status', ['pending', 'in_progress', 'finished'])->default('pending');
+            $table->enum('status', ['pending', 'in_progress', 'finished'])->default('pending');
             $table->timestamps();
         });
     }
