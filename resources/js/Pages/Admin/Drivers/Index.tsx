@@ -42,7 +42,7 @@ interface Driver {
   national_id: string;
   user_code: string;
   school_id: number | null;
-  driver_profile: {
+  driver: {
     license_number: string;
     license_expiry_date: string;
     status: string;
@@ -103,6 +103,7 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
     phone: "",
     license_number: "",
     license_expiry_date: "",
+    address: "",
     image: null as File | null,
   });
 
@@ -160,8 +161,9 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
       national_id: driver.national_id || "",
       email: driver.email || "",
       phone: driver.phone || "",
-      license_number: driver.driver_profile?.license_number || "",
-      license_expiry_date: driver.driver_profile?.license_expiry_date || "",
+      license_number: driver.driver?.license_number || "",
+      license_expiry_date: driver.driver?.license_expiry_date || "",
+      address: driver.address || "",
       image: null,
     });
     clearErrors();
@@ -269,19 +271,19 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
           );
         },
       }),
-      columnHelper.accessor("driver_profile.license_number", {
+      columnHelper.accessor("driver.license_number", {
         header: isRTL ? "الرخصة" : "License",
         cell: (info) => {
           const driver = info.row.original;
-          const licExpired = IS_EXPIRED(driver.driver_profile?.license_expiry_date);
+          const licExpired = IS_EXPIRED(driver.driver?.license_expiry_date);
           return (
             <div className={isRTL ? "text-right" : "text-left"}>
               <div className={`text-sm font-mono ${isDark ? "text-gray-300" : "text-gray-800"}`}>
-                {driver.driver_profile?.license_number || "—"}
+                {driver.driver?.license_number || "—"}
               </div>
               <div className={`text-xs font-medium ${licExpired ? "text-red-500" : (isDark ? "text-gray-500" : "text-gray-400")}`}>
-                {driver.driver_profile?.license_expiry_date
-                  ? (licExpired ? "⚠ " : "") + (isRTL ? "ينتهي: " : "Exp: ") + driver.driver_profile.license_expiry_date
+                {driver.driver?.license_expiry_date
+                  ? (licExpired ? "⚠ " : "") + (isRTL ? "ينتهي: " : "Exp: ") + driver.driver.license_expiry_date
                   : "—"}
               </div>
             </div>
@@ -310,11 +312,11 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
           );
         },
       }),
-      columnHelper.accessor("driver_profile.status", {
+      columnHelper.accessor("driver.status", {
         header: isRTL ? "الحالة" : "Status",
         cell: (info) => {
           const status = info.getValue();
-          const isActive = status === "Active";
+          const isActive = status === "active" || status === "Active";
           return (
             <span className={`px-2 py-0.5 inline-flex text-xs font-semibold rounded-full ${isActive ? (isDark ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-800") : (isDark ? "bg-yellow-900/30 text-yellow-400" : "bg-yellow-100 text-yellow-800")}`}>
               {isRTL ? (isActive ? "نشط" : (status || "غير محدد")) : (status || "N/A")}
@@ -560,6 +562,14 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
                           <input type="date" value={data.license_expiry_date} onChange={e => setData("license_expiry_date", e.target.value)} dir="ltr" required
                             className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"}`} />
                           <InputError message={errors.license_expiry_date} className="mt-1" />
+                        </div>
+
+                        {/* Address */}
+                        <div className="md:col-span-2">
+                          <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "العنوان" : "Address"}</label>
+                          <input type="text" value={data.address} onChange={e => setData("address", e.target.value)}
+                            className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"}`} />
+                          <InputError message={errors.address} className="mt-1" />
                         </div>
                       </div>
 

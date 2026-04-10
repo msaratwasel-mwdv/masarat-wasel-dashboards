@@ -42,7 +42,7 @@ interface Supervisor {
   national_id: string;
   user_code: string;
   school_id: number | null;
-  supervisor_profile: {
+  assistant: {
     emergency_contact_name: string;
     emergency_contact_phone: string;
     status: string;
@@ -103,7 +103,8 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
     phone: "",
     emergency_contact_name: "",
     emergency_contact_phone: "",
-    status: "Trainee",
+    status: "active",
+    address: "",
     image: null as File | null,
   });
 
@@ -161,9 +162,10 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
       national_id: sup.national_id || "",
       email: sup.email,
       phone: sup.phone || "",
-      emergency_contact_name: sup.supervisor_profile?.emergency_contact_name || "",
-      emergency_contact_phone: sup.supervisor_profile?.emergency_contact_phone || "",
-      status: sup.supervisor_profile?.status || "Trainee",
+      emergency_contact_name: sup.assistant?.emergency_contact_name || "",
+      emergency_contact_phone: sup.assistant?.emergency_contact_phone || "",
+      status: sup.assistant?.status === 'active' ? 'active' : 'inactive',
+      address: sup.address || "",
       image: null,
     });
     clearErrors();
@@ -204,12 +206,10 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
 
   const statusLabel = (status: string) => {
     const map: Record<string, string> = {
-      Active: "نشط",
-      Trainee: "متدرب",
-      "On Leave": "إجازة",
-      Inactive: "غير نشط",
+      active: "نشط",
+      inactive: "غير نشط",
     };
-    return isRTL ? map[status] || status : status;
+    return isRTL ? map[status.toLowerCase()] || status : (status.charAt(0).toUpperCase() + status.slice(1));
   };
 
   // --- Columns ---
@@ -276,17 +276,17 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
           );
         },
       }),
-      columnHelper.accessor("supervisor_profile.emergency_contact_name", {
+      columnHelper.accessor("assistant.emergency_contact_name", {
         header: isRTL ? "طوارئ الاستجابة" : "Emergency",
         cell: (info) => {
           const sup = info.row.original;
           return (
             <div className={isRTL ? "text-right" : "text-left"}>
               <div className={`text-sm font-medium ${isDark ? "text-red-400" : "text-red-600"}`}>
-                {sup.supervisor_profile?.emergency_contact_phone || "—"}
+                {sup.assistant?.emergency_contact_phone || "—"}
               </div>
               <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                {sup.supervisor_profile?.emergency_contact_name || "—"}
+                {sup.assistant?.emergency_contact_name || "—"}
               </div>
             </div>
           );
@@ -314,13 +314,13 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
           );
         },
       }),
-      columnHelper.accessor("supervisor_profile.status", {
+      columnHelper.accessor("assistant.status", {
         header: isRTL ? "الحالة" : "Status",
         cell: (info) => {
           const status = info.getValue() || "N/A";
-          const isActive = status === "Active";
+          const isActive = status === "Active" || status === "active";
           return (
-            <span className={`px-2 py-0.5 inline-flex text-xs font-semibold rounded-full ${isActive ? (isDark ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-800") : (isDark ? "bg-yellow-900/30 text-yellow-400" : "bg-yellow-100 text-yellow-800")}`}>
+            <span className={`px-2 py-0.5 inline-flex text-xs font-semibold rounded-full ${isActive ? (isDark ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-800") : (isDark ? "bg-red-900/30 text-red-400" : "bg-red-100 text-red-800")}`}>
               {statusLabel(status)}
             </span>
           );
@@ -555,12 +555,17 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
                           <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "الحالة" : "Status"}</label>
                           <select value={data.status} onChange={e => setData("status", e.target.value)} required
                             className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"}`}>
-                            <option value="Active">{isRTL ? "نشط" : "Active"}</option>
-                            <option value="Trainee">{isRTL ? "متدرب" : "Trainee"}</option>
-                            <option value="On Leave">{isRTL ? "إجازة" : "On Leave"}</option>
-                            <option value="Inactive">{isRTL ? "غير نشط" : "Inactive"}</option>
+                            <option value="active">{isRTL ? "نشط" : "Active"}</option>
+                            <option value="inactive">{isRTL ? "غير نشط" : "Inactive"}</option>
                           </select>
                           <InputError message={errors.status} className="mt-1" />
+                        </div>
+                        {/* Address */}
+                        <div>
+                          <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "العنوان" : "Address"}</label>
+                          <input type="text" value={data.address} onChange={e => setData("address", e.target.value)}
+                            className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy focus:border-transparent"}`} />
+                          <InputError message={errors.address} className="mt-1" />
                         </div>
                       </div>
 
@@ -569,6 +574,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
                         <h3 className={`text-xs font-bold uppercase mb-4 ${isDark ? "text-red-400" : "text-red-800"} ${isRTL ? "text-right" : ""}`}>
                           {isRTL ? "جهات اتصال الطوارئ" : "Emergency Contact"}
                         </h3>
+
                         <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 ${isRTL ? "rtl" : "ltr"}`}>
                           <div>
                             <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "اسم جهة الطوارئ" : "Contact Name"}</label>

@@ -80,9 +80,7 @@ class AuthController extends Controller
 
         // حفظ التوكن الخاص بـ Firebase إن وجد
         if ($request->has('fcm_token') && !empty($request->fcm_token)) {
-            $user->update([
-                'fcm_token' => $request->fcm_token,
-            ]);
+            $user->updateFcmToken($request->fcm_token);
         }
 
         // حذف التوكنات القديمة لنفس الجهاز لتجنب التراكم

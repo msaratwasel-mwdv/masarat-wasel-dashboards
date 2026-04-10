@@ -20,7 +20,7 @@ class SupervisorController extends Controller
         $statusFilter = $request->input('status', 'all');
 
         $query = User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
-            ->with(['fieldSupervisor', 'assignedBusAsSupervisor.school']);
+            ->with(['assistant', 'assignedBusAsSupervisor.school']);
 
         if ($statusFilter === 'assigned') {
             $query->whereHas('assignedBusAsSupervisor');
@@ -44,10 +44,10 @@ class SupervisorController extends Controller
                 'رقم الجوال' => $supervisor->phone,
                 'البريد الإلكتروني' => $supervisor->email,
                 'الباص المعين' => $supervisor->assignedBusAsSupervisor?->bus_number ?? 'متاح',
-                'الحالة' => match($supervisor->fieldSupervisor?->status ?? '') {
+                'الحالة' => match($supervisor->assistant?->status ?? '') {
                     'active' => 'نشط',
                     'inactive' => 'غير نشط',
-                    default => $supervisor->fieldSupervisor?->status ?? 'نشط',
+                    default => $supervisor->assistant?->status ?? 'نشط',
                 },
             ];
         });
@@ -90,6 +90,8 @@ class SupervisorController extends Controller
             // بيانات البروفايل
             'emergency_contact_name' => 'required|string|max:255',
             'emergency_contact_phone' => 'required|string|max:20',
+            'status' => 'nullable|in:active,inactive',
+            'address' => 'nullable|string|max:500',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -106,16 +108,19 @@ class SupervisorController extends Controller
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'password' => Hash::make($request->phone),
-                'is_active' => true,
+                'address' => $request->address,
+                'image' => $request->hasFile('image') ? $request->file('image')->store('avatars', 'public') : null,
             ]);
 
             // Attach role via user_roles pivot
             $supervisorRole = \App\Models\Role::firstOrCreate(['name' => 'supervisor']);
             $user->roles()->attach($supervisorRole->id);
 
-            // Create extension record in field_supervisors table
-            $user->fieldSupervisor()->create([
-                'status' => 'active',
+            // Create extension record in assistants table
+            $user->assistant()->create([
+                'status' => strtolower($request->status ?? 'active'),
+                'emergency_contact_name' => $request->emergency_contact_name,
+                'emergency_contact_phone' => $request->emergency_contact_phone,
             ]);
         });
 
@@ -139,7 +144,8 @@ class SupervisorController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'emergency_contact_name' => 'required|string',
             'emergency_contact_phone' => 'required|string',
-            'status' => 'required|in:Trainee,Active,On Leave,Inactive',
+            'status' => 'required|in:active,inactive',
+            'address' => 'nullable|string|max:500',
         ]);
 
         DB::transaction(function () use ($request, $supervisor) {
@@ -155,6 +161,7 @@ class SupervisorController extends Controller
                 'national_id' => $request->national_id,
                 'email' => $request->email,
                 'phone' => $request->phone,
+                'address' => $request->address,
             ];
 
             if ($request->hasFile('image')) {
@@ -166,10 +173,14 @@ class SupervisorController extends Controller
 
             $supervisor->update($data);
 
-            // Update field supervisor extension record
-            $supervisor->fieldSupervisor()->updateOrCreate(
+            // Update assistant extension record
+            $supervisor->assistant()->updateOrCreate(
                 ['user_id' => $supervisor->id],
-                ['status' => $request->status ?? 'active']
+                [
+                    'status' => strtolower($request->status ?? 'active'),
+                    'emergency_contact_name' => $request->emergency_contact_name,
+                    'emergency_contact_phone' => $request->emergency_contact_phone,
+                ]
             );
         });
 

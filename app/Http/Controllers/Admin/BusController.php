@@ -137,6 +137,11 @@ class BusController extends Controller
     {
         $request->validate([
             'school_id'         => 'nullable|exists:schools,id',
+            'route_id'          => 'nullable|exists:routes,id',
+            'plate_number'      => 'required|string|unique:buses,plate_number',
+            'model'             => 'required|string|max:100',
+            'year'              => 'required|integer|min:2000|max:' . (date('Y') + 1),
+            'capacity'          => 'required|integer|min:5|max:100',
             'driver_id'         => [
                 'nullable',
                 'exists:users,id',
@@ -171,8 +176,9 @@ class BusController extends Controller
                 'year'          => $request->year,
                 'capacity'      => $request->capacity,
                 'status'        => 'active',
-                'school_id'             => null,
-                'field_supervisor_id'   => $request->supervisor_id,
+                'school_id'           => $request->school_id,
+                'route_id'            => $request->route_id,
+                'field_supervisor_id' => $request->supervisor_id,
             ]);
 
             // Map driver model directly
@@ -268,6 +274,7 @@ class BusController extends Controller
 
         $validated = $request->validate([
             'school_id'    => 'nullable|exists:schools,id',
+            'route_id'     => 'nullable|exists:routes,id',
             'plate_number' => ['required', 'string', Rule::unique('buses')->ignore($bus->id)],
             'model'        => 'required|string|max:100',
             'year'         => 'required|integer|min:2000|max:' . (date('Y') + 1),

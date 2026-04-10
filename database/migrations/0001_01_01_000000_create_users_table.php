@@ -27,17 +27,11 @@ return new class extends Migration
             $table->string('email')->nullable()->unique();
             $table->string('phone')->nullable()->unique();
 
-            // Profile / guardian data
-            // $table->string('name_en')->nullable();
-            // $table->text('address')->nullable();
-            // $table->decimal('home_latitude', 10, 7)->nullable();
-            // $table->decimal('home_longitude', 10, 7)->nullable();
-            // $table->integer('proximity_alert_distance')->default(500);
-            // $table->string('home_number')->nullable();
-            // $table->enum('preferred_language', ['ar', 'en'])->default('ar');
-            // $table->string('image')->nullable();
+             $table->text('address')->nullable();
+             $table->decimal('latitude', 10, 7)->nullable();
+             $table->decimal('longitude', 10, 7)->nullable();
+             $table->string('image')->nullable();
 
-            $table->boolean('is_active')->default(true);
 
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');

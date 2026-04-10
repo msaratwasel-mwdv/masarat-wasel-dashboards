@@ -50,7 +50,6 @@ class NotificationTestSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'national_id' => '1002004001',
                 'phone' => '966519999001',
-                'is_active' => true,
             ]);
         
         if (!$supervisor->roles()->where('name', 'supervisor')->exists()) {
@@ -78,7 +77,6 @@ class NotificationTestSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'national_id' => '1002005001',
                 'phone' => '966599999001',
-                'is_active' => true,
             ]);
 
         if (!$driver->roles()->where('name', 'driver')->exists()) {
@@ -128,7 +126,6 @@ class NotificationTestSeeder extends Seeder
             'password' => Hash::make('password'),
             'phone' => '966500000003',
             'national_id' => '1000200030',
-            'is_active' => true,
         ]);
 
         if (!$parentUser->roles()->where('name', 'parent')->exists()) {
@@ -169,7 +166,6 @@ class NotificationTestSeeder extends Seeder
                 'gender' => ($index % 2 == 0) ? 'male' : 'female',
                 'forth_bus_id' => $bus->id,
                 'back_bus_id' => $bus->id,
-                'is_active' => true,
             ]);
 
             // Sync with parent via Pivot

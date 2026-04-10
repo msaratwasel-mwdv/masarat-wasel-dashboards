@@ -31,16 +31,21 @@ class FieldSupervisorController extends Controller
     {
         $request->validate([
             'first_name_ar'  => 'required|string|max:255',
+            'second_name_ar' => 'nullable|string|max:255',
+            'third_name_ar'  => 'nullable|string|max:255',
             'last_name_ar'   => 'required|string|max:255',
             'first_name_en'  => 'nullable|string|max:255',
+            'second_name_en' => 'nullable|string|max:255',
+            'third_name_en'  => 'nullable|string|max:255',
             'last_name_en'   => 'nullable|string|max:255',
             'national_id'    => 'required|numeric|unique:users,national_id',
-            'email'          => 'nullable|email|unique:users,email',
-            'phone'          => 'required|unique:users,phone',
+            'email'          => 'required|email|unique:users,email',
+            'image'          => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'address'        => 'nullable|string|max:500',
         ]);
 
         DB::transaction(function () use ($request) {
-            $user = User::create([
+            $userData = [
                 'first_name_ar'  => $request->first_name_ar,
                 'second_name_ar' => $request->second_name_ar ?? '',
                 'third_name_ar'  => $request->third_name_ar ?? '',
@@ -53,8 +58,14 @@ class FieldSupervisorController extends Controller
                 'email'          => $request->email,
                 'phone'          => $request->phone,
                 'password'       => Hash::make($request->phone),
-                'is_active'      => true,
-            ]);
+                'address'        => $request->address,
+            ];
+
+            if ($request->hasFile('image')) {
+                $userData['image'] = $request->file('image')->store('avatars', 'public');
+            }
+
+            $user = User::create($userData);
 
             // Attach role via user_roles pivot
             $role = Role::firstOrCreate(['name' => 'field_supervisor']);
@@ -73,18 +84,51 @@ class FieldSupervisorController extends Controller
     public function update(Request $request, User $field_supervisor)
     {
         $request->validate([
-            'national_id' => ['required', 'numeric', Rule::unique('users')->ignore($field_supervisor->id)],
-            'email'       => ['nullable', 'email', Rule::unique('users')->ignore($field_supervisor->id)],
-            'phone'       => ['required', Rule::unique('users')->ignore($field_supervisor->id)],
-            'is_active'   => 'boolean',
+            'first_name_ar'  => 'required|string|max:255',
+            'second_name_ar' => 'nullable|string|max:255',
+            'third_name_ar'  => 'nullable|string|max:255',
+            'last_name_ar'   => 'required|string|max:255',
+            'first_name_en'  => 'nullable|string|max:255',
+            'second_name_en' => 'nullable|string|max:255',
+            'third_name_en'  => 'nullable|string|max:255',
+            'last_name_en'   => 'nullable|string|max:255',
+            'national_id'    => ['required', 'numeric', Rule::unique('users')->ignore($field_supervisor->id)],
+            'email'          => ['required', 'email', Rule::unique('users')->ignore($field_supervisor->id)],
+            'phone'          => ['required', Rule::unique('users')->ignore($field_supervisor->id)],
+            'is_active'      => 'boolean',
+            'image'          => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'address'        => 'nullable|string|max:500',
         ]);
 
-        $field_supervisor->update([
-            'national_id' => $request->national_id,
-            'email'       => $request->email,
-            'phone'       => $request->phone,
-            'is_active'   => $request->has('is_active') ? $request->is_active : $field_supervisor->is_active,
-        ]);
+        $data = [
+            'first_name_ar'  => $request->first_name_ar,
+            'second_name_ar' => $request->second_name_ar ?? '',
+            'third_name_ar'  => $request->third_name_ar ?? '',
+            'last_name_ar'   => $request->last_name_ar,
+            'first_name_en'  => $request->first_name_en ?? '',
+            'second_name_en' => $request->second_name_en ?? '',
+            'third_name_en'  => $request->third_name_en ?? '',
+            'last_name_en'   => $request->last_name_en ?? '',
+            'national_id'    => $request->national_id,
+            'email'          => $request->email,
+            'phone'          => $request->phone,
+            'address'        => $request->address,
+        ];
+
+        if ($request->hasFile('image')) {
+            if ($field_supervisor->image) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($field_supervisor->image);
+            }
+            $data['image'] = $request->file('image')->store('avatars', 'public');
+        }
+
+        $field_supervisor->update($data);
+
+        // Update status in the extension table
+        $field_supervisor->fieldSupervisor()->updateOrCreate(
+            ['user_id' => $field_supervisor->id],
+            ['status' => strtolower($request->status ?? 'active')]
+        );
 
         return redirect()->back()->with('success', 'Field Supervisor updated successfully');
     }

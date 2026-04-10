@@ -189,7 +189,6 @@ class StudentController extends Controller
                 'phone'          => $validated['phone'],
                 'email'          => $validated['email'] ?? null,
                 'password'       => Hash::make($validated['phone']),
-                'is_active'      => true,
             ];
 
             if ($request->hasFile('image')) {

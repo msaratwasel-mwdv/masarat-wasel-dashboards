@@ -42,7 +42,6 @@ class SchoolUserController extends Controller
                 'phone' => $request->phone,
                 'national_id' => $request->national_id ?? '0000000000',
                 'password' => Hash::make($request->password),
-                'is_active' => true,
             ]);
 
             // Attach role via user_roles pivot

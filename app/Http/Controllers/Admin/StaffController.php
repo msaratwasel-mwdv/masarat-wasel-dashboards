@@ -35,11 +35,11 @@ class StaffController extends Controller
             'national_id',
             'phone',
             'email',
-            'user_code',
-            'driver.license_number',
         ], 15, function($driver) {
             return [
-                'الاسم' => $driver->national_id,
+                'id' => $driver->id,
+                'الاسم' => $driver->name,
+                'الاسم (EN)' => $driver->name_en,
                 'الهوية' => $driver->national_id,
                 'رقم الجوال' => $driver->phone,
                 'البريد الإلكتروني' => $driver->email,
@@ -91,6 +91,8 @@ class StaffController extends Controller
             'phone' => 'required|unique:users,phone',
             'license_number' => 'required|unique:drivers,license_number',
             'license_expiry_date' => 'required|date|after:today',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'address' => 'nullable|string|max:500',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -107,7 +109,8 @@ class StaffController extends Controller
                 'phone' => $request->phone,
                 'national_id' => $request->national_id,
                 'password' => Hash::make($request->phone),
-                'is_active' => true,
+                'address' => $request->address,
+                'image' => $request->hasFile('image') ? $request->file('image')->store('avatars', 'public') : null,
             ]);
 
             // Attach role via user_roles pivot
@@ -141,12 +144,14 @@ class StaffController extends Controller
             'national_id' => ['required', 'numeric', Rule::unique('users')->ignore($driver->id)],
             'email' => ['required', 'email', Rule::unique('users')->ignore($driver->id)],
             'phone' => ['required', Rule::unique('users')->ignore($driver->id)],
-            'license_number' => ['required', Rule::unique('drivers', 'license_number')->ignore($driver->driver?->user_id)],
+            'license_number' => ['required', Rule::unique('drivers', 'license_number')->ignore($driver->id, 'user_id')],
             'license_expiry_date' => 'required|date',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'address' => 'nullable|string|max:500',
         ]);
 
         DB::transaction(function () use ($request, $driver) {
-            $driver->update([
+            $updateData = [
                 'first_name_ar' => $request->first_name_ar,
                 'second_name_ar' => $request->second_name_ar ?? '',
                 'third_name_ar' => $request->third_name_ar ?? '',
@@ -158,7 +163,17 @@ class StaffController extends Controller
                 'national_id' => $request->national_id,
                 'email' => $request->email,
                 'phone' => $request->phone,
-            ]);
+                'address' => $request->address,
+            ];
+
+            if ($request->hasFile('image')) {
+                if ($driver->image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver->image);
+                }
+                $updateData['image'] = $request->file('image')->store('avatars', 'public');
+            }
+
+            $driver->update($updateData);
 
             // Update extension record in drivers table
             $driver->driver()->updateOrCreate(
@@ -166,6 +181,7 @@ class StaffController extends Controller
                 [
                     'license_number' => $request->license_number,
                     'license_expiry_date' => $request->license_expiry_date,
+                    'status' => strtolower($request->status ?? 'active'),
                 ]
             );
         });

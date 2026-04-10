@@ -8,8 +8,8 @@ use App\Models\Classroom;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class TeacherController extends Controller
@@ -88,20 +88,18 @@ class TeacherController extends Controller
                 'password' => Hash::make(
                     $validated['password'] ?? $validated['phone']
                 ),
-                'is_active' => true,
             ]);
 
             // Assign role
-            $role = \App\Models\Role::where('name', 'teacher')->first();
-            if ($role) {
-                $teacherUser->roles()->attach($role->id);
-            }
+            $teacherRole = \App\Models\Role::firstOrCreate(['name' => 'teacher']);
+            $teacherUser->roles()->attach($teacherRole->id);
 
             // Create Teacher extension record
             \App\Models\Teacher::create([
                 'user_id' => $teacherUser->id,
                 'school_id' => $user->getSchoolId(),
                 'classroom_id' => $validated['classroom_id'] ?? null,
+                'status' => 'active',
             ]);
         });
 
@@ -164,7 +162,6 @@ class TeacherController extends Controller
                 Rule::unique('users', 'email')->ignore($teacher->id),
             ],
             'phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($teacher->id)],
-            'is_active' => 'required|boolean',
             'password' => 'nullable|string|min:6',
             'classroom_id' => 'nullable|exists:classrooms,id',
         ]);
@@ -179,7 +176,6 @@ class TeacherController extends Controller
             'national_id' => $validated['national_id'],
             'email'       => $validated['email'] ?? null,
             'phone'       => $validated['phone'],
-            'is_active'   => $validated['is_active'],
         ]);
 
         // تحديث كلمة المرور إذا أُدخلت

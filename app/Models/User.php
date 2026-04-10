@@ -37,7 +37,10 @@ class User extends Authenticatable
         'email',
         'password',
         'phone',
-        'is_active',
+        'image',
+        'address',
+        'latitude',
+        'longitude',
     ];
 
     /**
@@ -45,7 +48,7 @@ class User extends Authenticatable
      *
      * @var array
      */
-    protected $appends = ['name', 'name_en', 'role'];
+    protected $appends = ['name', 'name_en', 'role', 'is_active'];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -87,6 +90,32 @@ class User extends Authenticatable
     public function getRoleAttribute(): ?string
     {
         return $this->roles->first()?->name;
+    }
+
+    public function getIsActiveAttribute(): bool
+    {
+        // For roles with extension tables, check their status enum
+        if ($this->hasRole('driver')) {
+            return ($this->driver?->status ?? 'inactive') === 'active';
+        }
+        if ($this->hasRole('supervisor') || $this->hasRole('assistant')) {
+            return ($this->assistant?->status ?? 'inactive') === 'active';
+        }
+        if ($this->hasRole('field_supervisor')) {
+            return ($this->fieldSupervisor?->status ?? 'inactive') === 'active';
+        }
+        if ($this->hasRole('teacher')) {
+            return ($this->teacher?->status ?? 'inactive') === 'active';
+        }
+        if ($this->hasRole('parent')) {
+            return ($this->guardian?->status ?? 'inactive') === 'active';
+        }
+        if ($this->hasRole('school_admin')) {
+            return ($this->schoolAdmin?->status ?? 'inactive') === 'active';
+        }
+
+        // For other roles (like administrators), assume true
+        return true;
     }
 
     /**
@@ -178,6 +207,7 @@ class User extends Authenticatable
             ?? $this->driver?->school_id
             ?? $this->fieldSupervisor?->school_id
             ?? $this->teacher?->school_id
+            ?? $this->assistant?->school_id
             ?? null;
     }
 
@@ -231,21 +261,7 @@ class User extends Authenticatable
         return $this->hasOne(Guardian::class);
     }
 
-    // ── Legacy / Deprecated Profiles ───────────────────
-    // These tables (driver_profiles, supervisor_profiles) still exist in the DB
-    // but role-specific data has moved to the drivers / field_supervisors tables.
-
-    /** @deprecated Use driver() instead */
-    public function driverProfile(): HasOne
-    {
-        return $this->hasOne(DriverProfile::class);
-    }
-
-    /** @deprecated Use fieldSupervisor() instead */
-    public function supervisorProfile(): HasOne
-    {
-        return $this->hasOne(SupervisorProfile::class);
-    }
+    // ── Field supervisor profile ───────────────────
 
     // ── Bus Assignments ─────────────────────────────────
 
@@ -334,6 +350,21 @@ class User extends Authenticatable
             ?? $this->assistant?->fcm_token
             ?? $this->guardian?->fcm_token
             ?? null;
+    }
+
+    public function updateFcmToken(?string $token): void
+    {
+        if ($this->hasRole('driver')) {
+            $this->driver()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
+        } elseif ($this->hasRole('field_supervisor')) {
+            $this->fieldSupervisor()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
+        } elseif ($this->hasRole('supervisor') || $this->hasRole('assistant')) {
+            $this->assistant()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
+        } elseif ($this->hasRole('teacher')) {
+            $this->teacher()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
+        } elseif ($this->hasRole('parent')) {
+            $this->guardian()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
+        }
     }
 
     // ── Classrooms (Teacher role) ───────────────────────

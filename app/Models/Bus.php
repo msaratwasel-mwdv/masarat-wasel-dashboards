@@ -15,15 +15,6 @@ class Bus extends Model
 
     protected $appends = ['driver', 'supervisor', 'driver_id', 'supervisor_id'];
 
-    protected static function booted()
-    {
-        static::deleting(function ($bus) {
-            BusDriverAssignment::where('bus_id', $bus->id)
-                ->whereNull('unassigned_at')
-                ->update(['unassigned_at' => now()]);
-        });
-    }
-
     protected $fillable = [
         'bus_number',
         'plate_number',
@@ -69,7 +60,15 @@ class Bus extends Model
     }
 
     /**
-     * Get the supervisor assigned to the bus.
+     * Get the assistant (المشرفة) assigned to the bus.
+     */
+    public function assistant(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assistant_id');
+    }
+
+    /**
+     * Get the field supervisor (المشرف الميداني) assigned to the bus.
      */
     public function fieldSupervisor(): BelongsTo
     {
@@ -77,11 +76,11 @@ class Bus extends Model
     }
 
     /**
-     * Alias for fieldSupervisor for backward compatibility.
+     * Alias for assistant (المشرفة) for backward compatibility in parts where it was called supervisor.
      */
     public function supervisor(): BelongsTo
     {
-        return $this->fieldSupervisor();
+        return $this->assistant();
     }
 
     /**
@@ -94,7 +93,7 @@ class Bus extends Model
 
     public function getSupervisorAttribute()
     {
-        return $this->fieldSupervisor;
+        return $this->assistant;
     }
 
     public function getDriverIdAttribute()
@@ -104,7 +103,7 @@ class Bus extends Model
 
     public function getSupervisorIdAttribute()
     {
-        return $this->field_supervisor_id;
+        return $this->assistant_id;
     }
 
     /**
@@ -246,14 +245,6 @@ class Bus extends Model
     {
         return $this->field_supervisor_id === $userId || 
                $this->drivers()->where('user_id', $userId)->exists();
-    }
-
-    /**
-     * Get the history of drivers assigned to this bus.
-     */
-    public function driverHistory(): HasMany
-    {
-        return $this->hasMany(BusDriverAssignment::class);
     }
 }
 

@@ -59,11 +59,7 @@ export default function SchoolAuthenticatedLayout({
       route: "school.teachers.index",
       icon: "teacher",
     },
-    {
-      label: isRtl ? "إدارة المشرفين" : "Supervisors Management",
-      route: "school.supervisors.index",
-      icon: "users",
-    },
+
     {
       label: isRtl ? "الطلاب" : "Students",
       route: "school.students.index",

@@ -36,36 +36,43 @@ return new class extends Migration
         Schema::create('school_admins', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
             $table->foreignId('school_id')->constrained()->cascadeOnDelete();
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });
 
-        // 2. Field Supervisors
+        // 2. Field Supervisors (المشرف الميداني)
         Schema::create('field_supervisors', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
             $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
             $table->string('fcm_token')->nullable();
-
             $table->enum('status', ['active', 'inactive'])->default('active');
-
             $table->timestamps();
         });
 
         // 3. Teachers
         Schema::create('teachers', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
+            $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
+
             $table->foreignId('classroom_id')
                   ->nullable()
                   ->constrained('classrooms')
                   ->nullOnDelete();
             $table->string('fcm_token')->nullable();
-
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });
 
-        // 4. Assistants
+        // 4. Assistants (المشرفة)
         Schema::create('assistants', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
+            $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
             $table->string('fcm_token')->nullable();
+
+            $table->string('emergency_contact_name')->nullable();
+            $table->string('emergency_contact_phone')->nullable();
+
+            $table->enum('status', ['active', 'inactive'])->default('active');
 
             $table->timestamps();
         });
@@ -93,6 +100,7 @@ return new class extends Migration
         Schema::create('guardians', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
             $table->string('fcm_token')->nullable();
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });
 
