@@ -10,8 +10,8 @@ interface Bus {
     plate_number: string;
     capacity: number;
     status: 'active' | 'maintenance' | 'inactive';
-    current_latitude?: number;
-    current_longitude?: number;
+    latitude?: number;
+    longitude?: number;
     trip_status?: string;
     driver?: { id: number; name: string };
     students_count?: number;
@@ -42,7 +42,7 @@ export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng 
 
     // Filter buses
     const busesWithLocation = useMemo(() => buses.filter(bus => {
-        if (!bus.current_latitude || !bus.current_longitude) return false;
+        if (!bus.latitude || !bus.longitude) return false;
         const matchesStatus = statusFilter === 'all' || bus.status === statusFilter;
         const matchesSearch = bus.bus_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
             bus.plate_number.toLowerCase().includes(searchQuery.toLowerCase());
@@ -97,8 +97,8 @@ export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng 
         setIsFullscreen(!isFullscreen);
     };
 
-    const mapCenter: [number, number] = selectedBus?.current_latitude && selectedBus?.current_longitude
-        ? [selectedBus.current_latitude, selectedBus.current_longitude]
+    const mapCenter: [number, number] = selectedBus?.latitude && selectedBus?.longitude
+        ? [selectedBus.latitude, selectedBus.longitude]
         : [centerLat, centerLng];
 
     return (
@@ -236,7 +236,7 @@ export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng 
                     {busesWithLocation.map(bus => (
                         <Marker
                             key={bus.id}
-                            position={[bus.current_latitude!, bus.current_longitude!]}
+                            position={[bus.latitude!, bus.longitude!]}
                             icon={createMarkerIcon(bus.status, selectedBus?.id === bus.id)}
                             eventHandlers={{
                                 click: () => setSelectedBus(bus),

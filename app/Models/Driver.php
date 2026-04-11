@@ -12,7 +12,6 @@ class Driver extends Model
 
     protected $fillable = [
         'user_id',
-        'school_id',
         'fcm_token',
         'license_number',
         'license_expiry_date',
@@ -24,10 +23,6 @@ class Driver extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function school(): BelongsTo
-    {
-        return $this->belongsTo(School::class);
-    }
 }
 
 

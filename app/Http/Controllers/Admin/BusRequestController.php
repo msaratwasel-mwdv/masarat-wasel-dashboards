@@ -21,7 +21,7 @@ class BusRequestController extends Controller
      */
     public function index(Request $request)
     {
-        $query = BusRequest::with(['school', 'approvedBy', 'buses.driver', 'buses.supervisor']);
+        $query = BusRequest::with(['school', 'approvedBy', 'buses.driver', 'buses.assistant', 'buses.fieldSupervisor']);
 
         // Status filter
         $status = $request->input('status');
@@ -72,7 +72,7 @@ class BusRequestController extends Controller
         // Get available buses (not assigned to a school)
         $availableBuses = Bus::whereNull('school_id')
             ->where('status', 'active')
-            ->with(['driver', 'supervisor'])
+            ->with(['driver', 'assistant', 'fieldSupervisor'])
             ->get();
 
         return Inertia::render('Admin/BusRequests/Index', [
@@ -111,14 +111,6 @@ class BusRequestController extends Controller
 
             foreach ($buses as $bus) {
                 $bus->update(['school_id' => $schoolId]);
-                
-                // Update driver and supervisor school_id
-                if ($bus->driver?->id) {
-                    \App\Models\Driver::where('user_id', $bus->driver->id)->update(['school_id' => $schoolId]);
-                }
-                if ($bus->field_supervisor_id) {
-                    \App\Models\FieldSupervisor::where('user_id', $bus->field_supervisor_id)->update(['school_id' => $schoolId]);
-                }
             }
 
             // Sync with pivot table

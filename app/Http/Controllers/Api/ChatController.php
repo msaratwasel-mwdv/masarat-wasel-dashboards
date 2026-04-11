@@ -34,138 +34,93 @@ class ChatController extends Controller
 
         switch ($user->role) {
             case 'parent':
-                // طلاب ولي الأمر الناشطين
-                $myStudents = $user->students()->where('is_active', true)->with(['supervisor'])->get();
+                // طلاب ولي الأمر الناشطين (عبر علاقة الكثير للكثير)
+                $myStudents = $user->students()
+                    ->where('is_active', true)
+                    ->with(['forthBus.assistant', 'forthBus.fieldSupervisor', 'forthBus.driver.user',
+                            'backBus.assistant', 'backBus.fieldSupervisor', 'backBus.driver.user'])
+                    ->get();
+
                 if ($myStudents->isEmpty()) return collect();
 
-                $busesMap = [];
-                $directStaffMap = [];
-
                 foreach ($myStudents as $student) {
-                    // 1. التعامل مع المشرف/المعلم المرتبط بالطالب مباشرة
-                    if ($student->supervisor) {
-                        $sId = $student->supervisor->id;
-                        if (!isset($directStaffMap[$sId])) {
-                            $directStaffMap[$sId] = [
-                                'user' => clone $student->supervisor,
-                                'student_names' => []
-                            ];
+                    $buses = array_filter([$student->forthBus, $student->backBus]);
+                    $studentsNames = $student->full_name;
+
+                    foreach ($buses as $bus) {
+                        // 1. السائق
+                        $driver = $bus->driver;
+                        if ($driver) {
+                            $driverContact = clone $driver;
+                            $driverContact->chat_description = "سائق الحافلة ({$bus->bus_number}) - الطالب: " . $studentsNames;
+                            $contacts->push($driverContact);
                         }
-                        $directStaffMap[$sId]['student_names'][] = $student->full_name;
-                    }
 
-                    // 2. التعامل مع باصات الطالب
-                    $studentBuses = collect();
-
-                    // - من خلال الربط المباشر بالباص
-                    foreach ($student->buses()->wherePivot('is_active', true)->get() as $bus) {
-                        $studentBuses->push($bus);
-                    }
-
-                    // - من خلال المجموعات
-                    if ($student->morningGroup && $student->morningGroup->bus) {
-                        $studentBuses->push($student->morningGroup->bus);
-                    }
-                    if ($student->afternoonGroup && $student->afternoonGroup->bus) {
-                        $studentBuses->push($student->afternoonGroup->bus);
-                    }
-
-                    foreach ($studentBuses->unique('id') as $bus) {
-                        if (!isset($busesMap[$bus->id])) {
-                            $busesMap[$bus->id] = [
-                                'bus' => $bus,
-                                'student_names' => []
-                            ];
+                        // 2. المساعدة (المشرفة سابقاً)
+                        if ($bus->assistant) {
+                            $assistant = clone $bus->assistant;
+                            $assistant->chat_description = "مشرفة الحافلة ({$bus->bus_number}) - الطالب: " . $studentsNames;
+                            $contacts->push($assistant);
                         }
-                        $busesMap[$bus->id]['student_names'][] = $student->full_name;
-                    }
-                }
 
-                // إضافة الموظفين المرتبطين مباشرة
-                foreach ($directStaffMap as $staffData) {
-                    $staff = $staffData['user'];
-                    $names = implode('، ', array_unique($staffData['student_names']));
-                    $staff->chat_description = "معلم/مشرف مسار - الطالب: " . $names;
-                    $contacts->push($staff);
-                }
-
-                // إضافة موظفي الباصات
-                foreach ($busesMap as $busData) {
-                    $bus = $busData['bus'];
-                    $studentsNames = implode('، ', array_unique($busData['student_names']));
-
-                    if ($bus->driver) {
-                        $driver = clone $bus->driver;
-                        $driver->chat_description = "سائق مسار - الطالب: " . $studentsNames;
-                        $contacts->push($driver);
-                    }
-                    if ($bus->supervisor) {
-                        $supervisor = clone $bus->supervisor;
-                        $supervisor->chat_description = "مشرفة مسار - الطالب: " . $studentsNames;
-                        $contacts->push($supervisor);
+                        // 3. المشرف الميداني
+                        if ($bus->fieldSupervisor) {
+                            $fieldSv = clone $bus->fieldSupervisor;
+                            $fieldSv->chat_description = "المشرف الميداني ({$bus->bus_number}) - الطالب: " . $studentsNames;
+                            $contacts->push($fieldSv);
+                        }
                     }
                 }
                 break;
 
             case 'driver':
-                $bus = $user->assignedBus;
+                // السائق يرى أولياء أمور الطلاب في حافلته
+                $bus = \App\Models\Bus::whereHas('drivers', fn($q) => $q->where('user_id', $user->id))->first();
                 if ($bus) {
                     $contacts = $contacts->merge($this->getGuardianUsersForBus($bus));
                 }
                 break;
 
-            case 'supervisor':
-            case 'teacher':
-                // 1. من خلال الباص (كل الطلاب في الباص)
-                $bus = $user->assignedBusAsSupervisor;
-                if ($bus) {
-                    $contacts = $contacts->merge($this->getGuardianUsersForBus($bus));
-                }
-
-                // 2. من خلال الطلاب المرتبطين به مباشرة (في جدول الطلاب)
-                $directStudents = \App\Models\Student::where('supervisor_id', $user->id)
-                    ->where('is_active', true)
-                    ->with('guardian')
-                    ->get();
-                if ($directStudents->isNotEmpty()) {
-                    $contacts = $contacts->merge($this->processStudentsToContacts($directStudents));
-                }
-                break;
-
+            case 'assistant':
             case 'field_supervisor':
-                // مشرف ميداني يرى جميع سائقي ومشرفي الحافلات النشطين
-                $staff = User::whereHas('roles', fn($q) => $q->whereIn('name', ['driver', 'supervisor']))
-                    ->where('is_active', true)
-                    ->get();
-                foreach($staff as $contact) {
-                    $contact->chat_description = "موظف حافلة - " . ($contact->role === 'driver' ? 'سائق' : 'مشرف');
-                    $contacts->push($contact);
+                // المشرفة أو المشرف الميداني يرى أولياء أمور الطلاب في الحافلة المرتبطة به
+                $busQueries = [];
+                if ($user->role === 'assistant') {
+                    $busQueries[] = Bus::where('assistant_id', $user->id);
+                } else {
+                    $busQueries[] = Bus::where('field_supervisor_id', $user->id);
+                }
+
+                foreach ($busQueries as $query) {
+                    $buses = $query->get();
+                    foreach ($buses as $bus) {
+                        $contacts = $contacts->merge($this->getGuardianUsersForBus($bus));
+                    }
                 }
                 break;
 
             case 'admin':
-                // الأدمن العام يرى جميع المستخدمين
-                $contacts = User::where('id', '!=', $user->id)->get();
-                foreach($contacts as $contact) {
-                    $contact->chat_description = "مستخدم النظام - دور: " . $contact->role;
-                }
-                break;
-
             case 'school_admin':
-                // أدمن المدرسة يرى مستخدمي مدرسته فقط
-                $schoolId = $user->getSchoolId();
-                if ($schoolId) {
-                    // Users linked to this school through extension tables
-                    $contacts = User::whereHas('schoolAdmin', fn($q) => $q->where('school_id', $schoolId))
-                        ->orWhereHas('fieldSupervisor', fn($q) => $q->where('school_id', $schoolId))
-                        ->orWhereHas('driver', fn($q) => $q->where('school_id', $schoolId))
-                        ->where('id', '!=', $user->id)
-                        ->get();
-                } else {
-                    $contacts = collect();
+                // الأدمن يرى الجميع (مع تصفية المدرسة لأدمن المدرسة)
+                $query = User::where('id', '!=', $user->id);
+                
+                if ($user->role === 'school_admin') {
+                    $schoolId = $user->getSchoolId();
+                    $query->where(function($q) use ($schoolId) {
+                        $q->whereHas('schoolAdmin', fn($s) => $s->where('school_id', $schoolId))
+                          ->orWhereHas('teacher', fn($t) => $t->where('school_id', $schoolId))
+                          ->orWhereHas('driver', fn($d) => $d->where('school_id', $schoolId));
+                        // ملاحظة: المساعدات والمشرفين الميدانيين ليسوا مرتبطين بمدرسة مباشرة حسب الطلب الأخير
+                        // ولكن يمكن رؤيتهم إذا كانوا مرتبطين بباصات المدرسة
+                        $q->orWhereHas('assignedBusAsAssistant', fn($b) => $b->where('school_id', $schoolId))
+                          ->orWhereHas('assignedBusAsFieldSupervisor', fn($b) => $b->where('school_id', $schoolId));
+                    });
                 }
-                foreach($contacts as $contact) {
-                    $contact->chat_description = "موظف/ولي أمر في المدرسة";
+
+                $allContacts = $query->get();
+                foreach($allContacts as $contact) {
+                    $contact->chat_description = "مستخدم النظام - دور: " . ($contact->role ?? 'غير محدد');
+                    $contacts->push($contact);
                 }
                 break;
         }

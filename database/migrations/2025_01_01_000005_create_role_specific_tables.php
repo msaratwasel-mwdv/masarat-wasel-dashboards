@@ -43,7 +43,6 @@ return new class extends Migration
         // 2. Field Supervisors (المشرف الميداني)
         Schema::create('field_supervisors', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
-            $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
             $table->string('fcm_token')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
@@ -66,7 +65,6 @@ return new class extends Migration
         // 4. Assistants (المشرفة)
         Schema::create('assistants', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
-            $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
             $table->string('fcm_token')->nullable();
 
             $table->string('emergency_contact_name')->nullable();
@@ -80,7 +78,6 @@ return new class extends Migration
         // 5. Drivers
         Schema::create('drivers', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
-            $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
 
             $table->string('fcm_token')->nullable();
             $table->string('license_number')->unique();

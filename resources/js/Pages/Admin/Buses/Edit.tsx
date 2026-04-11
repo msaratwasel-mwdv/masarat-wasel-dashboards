@@ -13,16 +13,20 @@ interface Bus {
     type: 'permanent' | 'temporary';
     status: 'active' | 'maintenance' | 'inactive';
     driver_id?: number;
-    supervisor_id?: number;
+    assistant_id?: number;
+    field_supervisor_id?: number;
 }
 
 interface EditProps {
     auth: any;
     bus: Bus;
     schools: Array<{id: number; name: string}>;
+    drivers: Array<{id: number; name: string}>;
+    assistants: Array<{id: number; name: string}>;
+    fieldSupervisors: Array<{id: number; name: string}>;
 }
 
-export default function Edit({ auth, bus, schools }: EditProps) {
+export default function Edit({ auth, bus, schools, drivers, assistants, fieldSupervisors }: EditProps) {
     const { t, isRtl } = useTranslation();
     
     const { data, setData, put, processing, errors } = useForm({
@@ -33,7 +37,8 @@ export default function Edit({ auth, bus, schools }: EditProps) {
         type: bus.type,
         status: bus.status,
         driver_id: bus.driver_id || null,
-        supervisor_id: bus.supervisor_id || null,
+        assistant_id: bus.assistant_id || null,
+        field_supervisor_id: bus.field_supervisor_id || null,
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -145,7 +150,7 @@ export default function Edit({ auth, bus, schools }: EditProps) {
                                 </label>
                                 <select
                                     value={data.type}
-                                    onChange={e => setData('type', e.target.value as 'permanent' | 'temporary')}
+                                    onChange={e => setData('type', e.target.value as any)}
                                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow"
                                     required
                                 >
@@ -155,21 +160,77 @@ export default function Edit({ auth, bus, schools }: EditProps) {
                             </div>
                         </div>
 
-                        {/* Status */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                {t('Status')} *
-                            </label>
-                            <select
-                                value={data.status}
-                                onChange={e => setData('status', e.target.value as 'active' | 'maintenance' | 'inactive')}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow"
-                                required
-                            >
-                                <option value="active">{t('Active')}</option>
-                                <option value="maintenance">{t('Maintenance')}</option>
-                                <option value="inactive">{t('Inactive')}</option>
-                            </select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Status */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    {t('Status')} *
+                                </label>
+                                <select
+                                    value={data.status}
+                                    onChange={e => setData('status', e.target.value as any)}
+                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow"
+                                    required
+                                >
+                                    <option value="active">{t('Active')}</option>
+                                    <option value="maintenance">{t('Maintenance')}</option>
+                                    <option value="inactive">{t('Inactive')}</option>
+                                </select>
+                            </div>
+
+                            {/* Driver */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    {t('Driver')}
+                                </label>
+                                <select
+                                    value={data.driver_id || ''}
+                                    onChange={e => setData('driver_id', e.target.value ? parseInt(e.target.value) : null)}
+                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow"
+                                >
+                                    <option value="">{t('Select Driver')}</option>
+                                    {drivers.map(d => (
+                                        <option key={d.id} value={d.id}>{d.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Assistant */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    {t('Assistant')}
+                                </label>
+                                <select
+                                    value={data.assistant_id || ''}
+                                    onChange={e => setData('assistant_id', e.target.value ? parseInt(e.target.value) : null)}
+                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow"
+                                >
+                                    <option value="">{t('Select Assistant')}</option>
+                                    {assistants.map(a => (
+                                        <option key={a.id} value={a.id}>{a.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Field Supervisor */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    {t('Field Supervisor')}
+                                </label>
+                                <select
+                                    value={data.field_supervisor_id || ''}
+                                    onChange={e => setData('field_supervisor_id', e.target.value ? parseInt(e.target.value) : null)}
+                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow"
+                                >
+                                    <option value="">{t('Select Field Supervisor')}</option>
+                                    {fieldSupervisors.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         {/* Actions */}

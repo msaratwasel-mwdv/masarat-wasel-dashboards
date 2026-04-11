@@ -426,11 +426,11 @@ export default function IndexStudents({
         getImageUrl(students[0].image, "student")
       );
 
-      if (students[0].guardian) {
-        console.log("First guardian image path:", students[0].guardian?.image);
+      if (students[0].guardians && students[0].guardians.length > 0) {
+        console.log("First guardian image path:", students[0].guardians[0].image);
         console.log(
           "First guardian image full URL:",
-          getImageUrl(students[0].guardian?.image, "guardian")
+          getImageUrl(students[0].guardians[0].image, "guardian")
         );
       }
     }

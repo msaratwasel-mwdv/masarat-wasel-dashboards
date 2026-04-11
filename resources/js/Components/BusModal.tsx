@@ -13,7 +13,8 @@ interface Bus {
     year?: number;
     color?: string;
     driver_id?: number;
-    supervisor_id?: number;
+    assistant_id?: number;
+    field_supervisor_id?: number;
     route_id?: number | null;
 }
 
@@ -22,11 +23,12 @@ interface BusModalProps {
     onClose: () => void;
     bus?: Bus | null;
     drivers?: Array<{ id: number; name: string }>;
-    supervisors?: Array<{ id: number; name: string }>;
+    assistants?: Array<{ id: number; name: string }>;
+    field_supervisors?: Array<{ id: number; name: string }>;
     routes?: Array<{ id: number; name: string }>;
 }
 
-export default function BusModal({ show, onClose, bus, drivers = [], supervisors = [], routes = [] }: BusModalProps) {
+export default function BusModal({ show, onClose, bus, drivers = [], assistants = [], field_supervisors = [], routes = [] }: BusModalProps) {
     const { t } = useTranslation();
     const isEditing = !!bus;
 
@@ -40,7 +42,8 @@ export default function BusModal({ show, onClose, bus, drivers = [], supervisors
         year: bus?.year || new Date().getFullYear(),
         color: bus?.color || '',
         driver_id: bus?.driver_id || undefined,
-        supervisor_id: bus?.supervisor_id || undefined,
+        assistant_id: bus?.assistant_id || undefined,
+        field_supervisor_id: bus?.field_supervisor_id || undefined,
         route_id: bus?.route_id || null,
     });
 
@@ -56,7 +59,8 @@ export default function BusModal({ show, onClose, bus, drivers = [], supervisors
                 year: bus.year || new Date().getFullYear(),
                 color: bus.color || '',
                 driver_id: bus.driver_id,
-                supervisor_id: bus.supervisor_id,
+                assistant_id: bus.assistant_id,
+                field_supervisor_id: bus.field_supervisor_id,
                 route_id: bus.route_id,
             });
         }
@@ -266,17 +270,35 @@ export default function BusModal({ show, onClose, bus, drivers = [], supervisors
 
                         <div>
                             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                                {t('Supervisor')}
+                                {t('Assistant')}
                             </label>
                             <div className="relative">
                                 <select
-                                    value={data.supervisor_id || ''}
-                                    onChange={e => setData('supervisor_id', e.target.value ? parseInt(e.target.value) : undefined)}
+                                    value={data.assistant_id || ''}
+                                    onChange={e => setData('assistant_id', e.target.value ? parseInt(e.target.value) : undefined)}
                                     className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] appearance-none transition-all"
                                 >
-                                    <option value="">{t('Not Assigned')}</option>
-                                    {supervisors.map(supervisor => (
-                                        <option key={supervisor.id} value={supervisor.id}>{supervisor.name}</option>
+                                    <option value="">{t('No Assistant')}</option>
+                                    {assistants.map(assistant => (
+                                        <option key={assistant.id} value={assistant.id}>{assistant.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
+                                {t('Field Supervisor')}
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={data.field_supervisor_id || ''}
+                                    onChange={e => setData('field_supervisor_id', e.target.value ? parseInt(e.target.value) : undefined)}
+                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] appearance-none transition-all"
+                                >
+                                    <option value="">{t('No Field Supervisor')}</option>
+                                    {field_supervisors.map(sv => (
+                                        <option key={sv.id} value={sv.id}>{sv.name}</option>
                                     ))}
                                 </select>
                             </div>

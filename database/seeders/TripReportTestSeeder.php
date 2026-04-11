@@ -52,13 +52,12 @@ class TripReportTestSeeder extends Seeder
             ]
         );
 
-        if (!$supervisor->roles()->where('name', 'supervisor')->exists()) {
-            $role = Role::firstOrCreate(['name' => 'supervisor']);
+        if (!$supervisor->roles()->where('name', 'field_supervisor')->exists()) {
+            $role = Role::firstOrCreate(['name' => 'field_supervisor']);
             $supervisor->roles()->attach($role->id);
             
             FieldSupervisor::firstOrCreate([
                 'user_id' => $supervisor->id,
-                'school_id' => $school->id,
             ]);
         }
 

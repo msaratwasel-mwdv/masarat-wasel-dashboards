@@ -20,7 +20,7 @@ class FieldTripController extends Controller
         $schoolId = Auth::user()->getSchoolId();
 
         $fieldTrips = FieldTrip::where('school_id', $schoolId)
-            ->with(['bus.driver', 'bus.supervisor'])
+            ->with(['bus.driver', 'bus.assistant'])
             ->latest('trip_date')
             ->get()
             ->map(function ($trip) {
@@ -33,12 +33,12 @@ class FieldTripController extends Controller
 
         $buses = Bus::where('school_id', $schoolId)
             ->where('status', 'active')
-            ->with(['driver', 'supervisor'])
+            ->with(['driver', 'assistant'])
             ->get();
 
-        // Fetch Supervisors
-        $supervisors = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
+        // Fetch Assistants
+        $assistants = User::atSchool($schoolId)
+            ->whereHas('roles', fn($q) => $q->where('name', 'assistant'))
             ->select('id', 'name')
             ->get();
 
@@ -57,7 +57,7 @@ class FieldTripController extends Controller
         return Inertia::render('School/FieldTrips/Index', [
             'fieldTrips' => $fieldTrips,
             'buses' => $buses,
-            'supervisors' => $supervisors,
+            'assistants' => $assistants,
             'drivers' => $drivers,
             'teachers' => $teachers,
         ]);
@@ -183,9 +183,9 @@ class FieldTripController extends Controller
             
             // Notify participants
             $driverIds = $fieldTrip->participants()->where('participant_type', 'driver')->pluck('participant_id')->toArray();
-            $supervisorIds = $fieldTrip->participants()->where('participant_type', 'supervisor')->pluck('participant_id')->toArray();
+            $assistantIds = $fieldTrip->participants()->where('participant_type', 'assistant')->pluck('participant_id')->toArray();
             
-            $allParticipants = array_merge($driverIds, $supervisorIds);
+            $allParticipants = array_merge($driverIds, $assistantIds);
             
             if (!empty($allParticipants)) {
                 $notificationService->sendToUsers(

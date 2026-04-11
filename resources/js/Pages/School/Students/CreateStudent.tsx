@@ -647,7 +647,7 @@ export default function CreateStudent({
 
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {t("Class")} *
+                      {t("Class")}
                     </label>
                     <select
                       value={studentForm.data.classroom_id}
@@ -655,9 +655,8 @@ export default function CreateStudent({
                         studentForm.setData("classroom_id", e.target.value)
                       }
                       className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
-                      required
                     >
-                      <option value="" disabled>
+                      <option value="">
                         {t("Select a class...")}
                       </option>
                       {classrooms.map((c) => (

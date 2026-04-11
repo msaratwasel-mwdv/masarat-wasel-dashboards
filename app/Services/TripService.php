@@ -77,12 +77,12 @@ class TripService
             return [$existingTrip, 'already_exists'];
         }
 
-        $driverId = $bus->driver?->id;
-        $supervisorId = $bus->field_supervisor_id;
+        $driverUserId = $bus->driver_id;
+        $assistantUserId = $bus->assistant_id;
 
-        // Driver and Assistant (Supervisor) must be assigned to the bus
-        if (!$driverId || !$supervisorId) {
-            Log::warning('[TripService] Missing staff assignment', ['bus_id' => $bus->id, 'driver' => $driverId, 'supervisor' => $supervisorId]);
+        // Driver and Assistant (المشرفة) must be assigned to the bus for daily routines
+        if (!$driverUserId || !$assistantUserId) {
+            Log::warning('[TripService] Missing staff assignment', ['bus_id' => $bus->id, 'driver' => $driverUserId, 'assistant' => $assistantUserId]);
             return [null, 'missing_staff_assignment'];
         }
 
@@ -90,8 +90,8 @@ class TripService
             'school_id' => $bus->school_id,
             'bus_id' => $bus->id,
             'route_id' => $routeId,
-            'driver_id' => $driverId,
-            'assistant_id' => $supervisorId,
+            'driver_id' => $driverUserId,
+            'assistant_id' => $assistantUserId,
             'trip_date' => $date,
             'type' => $type,
             'status' => 'pending',

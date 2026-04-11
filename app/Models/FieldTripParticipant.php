@@ -34,7 +34,7 @@ class FieldTripParticipant extends Model
             case 'bus':
                 return Bus::find($this->participant_id);
             case 'driver':
-            case 'supervisor':
+            case 'assistant':
             case 'teacher':
                 return User::find($this->participant_id);
             default:

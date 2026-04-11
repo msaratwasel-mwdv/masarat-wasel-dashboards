@@ -22,19 +22,19 @@ class TripDashboardController extends Controller
         // Fetch today's regular trips
         $dailyTrips = Trip::where('school_id', $schoolId)
             ->whereDate('trip_date', $date)
-            ->with(['bus.driver', 'bus.supervisor', 'route'])
+            ->with(['bus.driver', 'bus.assistant', 'route'])
             ->withCount('attendances')
             ->get();
 
         // Fetch active field trips
         $activeFieldTrips = FieldTrip::where('school_id', $schoolId)
             ->whereIn('status', ['approved', 'started'])
-            ->with(['bus.driver', 'bus.supervisor'])
+            ->with(['bus.driver', 'bus.assistant'])
             ->get();
 
         // Fetch buses with location data for the map
         $buses = Bus::where('school_id', $schoolId)
-            ->with(['driver', 'supervisor'])
+            ->with(['driver', 'assistant'])
             ->get()
             ->map(function ($bus) use ($dailyTrips) {
                 $currentTrip = $dailyTrips->where('bus_id', $bus->id)->first();
@@ -70,7 +70,7 @@ class TripDashboardController extends Controller
             abort(403);
         }
 
-        $trip->load(['bus.driver', 'bus.supervisor', 'route', 'attendances.student']);
+        $trip->load(['bus.driver', 'bus.assistant', 'route', 'attendances.student']);
 
         return Inertia::render('School/Trips/TripDetails', [
             'trip' => $trip

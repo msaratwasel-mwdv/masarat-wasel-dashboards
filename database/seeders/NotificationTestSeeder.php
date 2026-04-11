@@ -58,7 +58,6 @@ class NotificationTestSeeder extends Seeder
             
             FieldSupervisor::firstOrCreate([
                 'user_id' => $supervisor->id,
-                'school_id' => $school->id,
             ]);
         }
 
@@ -85,32 +84,62 @@ class NotificationTestSeeder extends Seeder
 
             Driver::firstOrCreate([
                 'user_id' => $driver->id,
-                'school_id' => $school->id,
                 'license_number' => 'DRV-LIC-777',
                 'license_expiry_date' => now()->addYears(3),
             ]);
         }
 
         // 5. Find existing bus for supervisor or create new one
-        $bus = Bus::where('field_supervisor_id', $supervisor->id)->first() ?? Bus::create([
-            'bus_number' => 'WAS-TEST-777',
-                        'plate_number' => 'أ ب ج 777',
-            'capacity' => 14,
-            'model' => 'Toyota Coaster',
-            'year' => 2024,
-                        'status' => 'active',
-            'school_id' => $school->id,
-            'field_supervisor_id' => $supervisor->id,
+        $route = \App\Models\Route::firstOrCreate([
+            'name' => "المسار رقم 99",
+            'code' => "R-99",
+            'school_id' => $school->id ?? null,
         ]);
+
+        $assistant = User::where('national_id', '1002006001')->first() 
+            ?? User::create([
+                'first_name_ar' => 'مساعدة',
+                'second_name_ar' => 'الباص',
+                'third_name_ar' => '1',
+                'last_name_ar' => 'الإخطار',
+                'first_name_en' => 'Assistant',
+                'second_name_en' => 'Bus',
+                'third_name_en' => '1',
+                'last_name_en' => 'Notify',
+                'email' => 'assistant_notify@wasel.com',
+                'password' => Hash::make('password'),
+                'national_id' => '1002006001',
+                'phone' => '966589999001',
+            ]);
+
+        if (!$assistant->roles()->where('name', 'assistant')->exists()) {
+            $role = Role::firstOrCreate(['name' => 'assistant']);
+            $assistant->roles()->attach($role->id);
+            
+            \App\Models\Assistant::firstOrCreate([
+                'user_id' => $assistant->id,
+            ]);
+        }
+
+        $bus = Bus::updateOrCreate(
+            ['bus_number' => "B-9900"],
+            [
+                'school_id' => $school->id,
+                'plate_number' => "ABC-9999",
+                'capacity' => 20,
+                'model' => 'Mercedes',
+                'year' => 2024,
+                'field_supervisor_id' => $supervisor->id,
+                'assistant_id' => $assistant->id,
+                'route_id' => $route->id,
+                'status' => 'active',
+            ]
+        );
         
         $driverModel = Driver::where('user_id', $driver->id)->first();
         if ($driverModel) {
             $driverModel->update(['bus_id' => $bus->id]);
         }
-
-        $bus->update([
-            'bus_number' => 'WAS-TEST-777',
-        ]);
 
         // 7. Create Guardian
         $parentUser = User::where('national_id', '1000200030')->first() ?? User::create([
@@ -152,21 +181,23 @@ class NotificationTestSeeder extends Seeder
         ];
 
         foreach ($studentsData as $index => $data) {
-            $student = Student::create([
-                'first_name_ar' => $data['name'],
-                'second_name_ar' => 'اسم',
-                'third_name_ar' => 'ثاني',
-                'last_name_ar' => 'أخير',
-                'first_name_en' => $data['name_en'],
-                'second_name_en' => 'Second',
-                'third_name_en' => 'Third',
-                'last_name_en' => 'Last',
-                'student_code' => "TEST-ST-" . (100 + $index),
-                'national_id' => $data['id'],
-                'gender' => ($index % 2 == 0) ? 'male' : 'female',
-                'forth_bus_id' => $bus->id,
-                'back_bus_id' => $bus->id,
-            ]);
+            $student = Student::updateOrCreate(
+                ['student_code' => "TEST-ST-" . (100 + $index)],
+                [
+                    'first_name_ar' => $data['name'],
+                    'second_name_ar' => 'اسم',
+                    'third_name_ar' => 'ثاني',
+                    'last_name_ar' => 'أخير',
+                    'first_name_en' => $data['name_en'],
+                    'second_name_en' => 'Second',
+                    'third_name_en' => 'Third',
+                    'last_name_en' => 'Last',
+                    'national_id' => $data['id'],
+                    'gender' => ($index % 2 == 0) ? 'male' : 'female',
+                    'forth_bus_id' => $bus->id,
+                    'back_bus_id' => $bus->id,
+                ]
+            );
 
             // Sync with parent via Pivot
             $student->guardians()->syncWithoutDetaching([

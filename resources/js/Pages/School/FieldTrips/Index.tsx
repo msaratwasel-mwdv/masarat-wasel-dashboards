@@ -9,7 +9,7 @@ interface FieldTripsProps {
     auth: any;
     fieldTrips: MockFieldTrip[];
     buses: any[];
-    supervisors?: any[];
+    assistants?: any[];
     drivers?: any[];
     teachers?: any[];
 }

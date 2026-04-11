@@ -99,17 +99,18 @@ class ParentController extends Controller
         $user = $request->user();
 
         // جلب طلاب ولي الأمر مع بياناتهم الكاملة
-        $students = Student::where('guardian_id', $user->id)
+        $students = $user->students()
             ->where('is_active', true)
             ->withCount('trips')
             ->with([
                 'tripAttendances',
-                'morningGroup:id,name,bus_id',
-                'morningGroup.bus.driver:id,name,phone',
-                'morningGroup.bus.supervisor:id,name,phone',
-                'afternoonGroup.bus',
-                'school:id,name,location',
+                'forthBus.route', 
+                'backBus.route',
+                'forthBus.driver:id,first_name_ar,last_name_ar,phone',
+                'backBus.driver:id,first_name_ar,last_name_ar,phone',
+                'school:id,name,latitude,longitude',
                 'lastBusLog',
+                'currentEnrollment.classroom'
             ])
             ->get();
 
@@ -187,11 +188,11 @@ class ParentController extends Controller
                         'phone' => $activeBus->driver->phone,
                         'image_url' => $activeBus->driver->image ? (str_starts_with($activeBus->driver->image, 'http') ? $activeBus->driver->image : url(Storage::url($activeBus->driver->image))) : null,
                     ] : null,
-                    'supervisor' => $activeBus->supervisor ? [
-                        'id'    => $activeBus->supervisor->id,
-                        'name'  => $activeBus->supervisor->name,
-                        'phone' => $activeBus->supervisor->phone,
-                        'image_url' => $activeBus->supervisor->image ? (str_starts_with($activeBus->supervisor->image, 'http') ? $activeBus->supervisor->image : url(Storage::url($activeBus->supervisor->image))) : null,
+                    'assistant' => $activeBus->assistant ? [
+                        'id'    => $activeBus->assistant->id,
+                        'name'  => $activeBus->assistant->name,
+                        'phone' => $activeBus->assistant->phone,
+                        'image_url' => $activeBus->assistant->image ? (str_starts_with($activeBus->assistant->image, 'http') ? $activeBus->assistant->image : url(Storage::url($activeBus->assistant->image))) : null,
                     ] : null,
                 ] : null,
             ];
@@ -212,8 +213,8 @@ class ParentController extends Controller
         $user = $request->user();
 
         // التحقق من أن الطالب يتبع لولي الأمر
-        $student = Student::where('guardian_id', $user->id)
-            ->where('id', $id)
+        $student = $user->students()
+            ->where('student_id', $id)
             ->first();
 
         if (!$student) {
@@ -276,8 +277,8 @@ class ParentController extends Controller
         $user = $request->user();
 
         // التأكد أن الطالب يتبع لولي الأمر
-        $student = Student::where('guardian_id', $user->id)
-            ->where('id', $request->student_id)
+        $student = $user->students()
+            ->where('student_id', $request->student_id)
             ->first();
 
         if (!$student) {

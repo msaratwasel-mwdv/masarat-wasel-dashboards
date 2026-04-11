@@ -279,12 +279,16 @@ class AuthController extends Controller
      */
     private function getBusId(User $user): ?int
     {
-        if ($user->role === 'driver') {
-            $bus = Bus::where('driver_id', $user->id)->first();
-            return $bus ? $bus->id : null;
-        } elseif ($user->role === 'supervisor') {
-            $bus = Bus::where('supervisor_id', $user->id)->first();
-            return $bus ? $bus->id : null;
+        if ($user->hasRole('driver')) {
+            return $user->assignedBus?->id;
+        } 
+        
+        if ($user->hasRole('assistant')) {
+            return $user->assignedBusAsAssistant?->id;
+        }
+
+        if ($user->hasRole('field_supervisor')) {
+            return $user->assignedBusAsFieldSupervisor?->id;
         }
 
         return null;

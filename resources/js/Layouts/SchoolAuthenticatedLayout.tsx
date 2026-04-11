@@ -70,11 +70,7 @@ export default function SchoolAuthenticatedLayout({
       route: "school.buses.index",
       icon: "bus",
     },
-    {
-      label: isRtl ? "مجموعات الباص" : "Bus Groups",
-      route: "school.bus-groups.index",
-      icon: "users",
-    },
+
     {
       label: isRtl ? "التتبع المباشر" : "Live Tracking",
       route: "school.live-tracking.index",
@@ -90,11 +86,7 @@ export default function SchoolAuthenticatedLayout({
       route: "school.notifications.index",
       icon: "bell",
     },
-    {
-      label: isRtl ? "جداول الرحلات" : "Trip Schedules",
-      route: "school.trip-schedules.index",
-      icon: "calendar",
-    },
+
     {
       label: isRtl ? "لوحة الرحلات" : "Trips Dashboard",
       route: "school.trips.dashboard",

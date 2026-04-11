@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('routes', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('school_id')->nullable()->constrained('schools')->onDelete('cascade');
             $table->string('name');
             $table->string('code')->unique()->nullable();
             $table->text('description')->nullable();

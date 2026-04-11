@@ -48,100 +48,93 @@ class TripReportSeeder extends Seeder
         ];
 
         foreach ($buses as $bus) {
-            
-            
+            // Get students in this bus
+            $students = Student::where('forth_bus_id', $bus->id)
+                ->orWhere('back_bus_id', $bus->id)
+                ->where('is_active', true)
+                ->get();
 
-            {
-                // Get students in this group
-                $students = Student::where('forth_bus_id', $bus->id)->orWhere('back_bus_id', $bus->id)
-                    ->where('is_active', true)
-                    ->get();
+            if ($students->isEmpty()) continue;
 
-                if ($students->isEmpty()) continue;
+            // Update student names to Arabic for better test display
+            foreach ($students as $idx => $student) {
+                if (isset($arabicNames[$idx])) {
+                    $student->update(['first_name_ar' => $arabicNames[$idx]]);
+                }
+            }
 
-                // Update student names to Arabic for better test display
+            foreach ($testDates as $date) {
+                // ===== Morning Trip (to_school) =====
+                $morningStartBase = $date->copy()->setTime(6, 30, 0);
+
                 foreach ($students as $idx => $student) {
-                    if (isset($arabicNames[$idx])) {
-                        $student->update(['first_name_ar' => $arabicNames[$idx]]);
+                    // 70% of students arrive, 30% absent
+                    $isPresent = $idx < (int)($students->count() * 0.7);
+
+                    if ($isPresent) {
+                        // Boarding time: each student boards 1-3 min after the previous
+                        $boardingTime = $morningStartBase->copy()->addMinutes($idx * 2 + rand(0, 2))->addSeconds(rand(0, 59));
+
+                        // Boarding event
+                        BusBoardingLog::create([
+                            'student_id' => $student->id,
+                            'bus_id' => $bus->id,
+                            'type' => 'boarding',
+                            'direction' => 'to_school',
+                            'latitude' => 24.7136 + (rand(-100, 100) / 10000),
+                            'longitude' => 46.6753 + (rand(-100, 100) / 10000),
+                            'recorded_by' => $bus->field_supervisor_id,
+                            'recorded_at' => $boardingTime,
+                        ]);
+
+                        // Alighting event (at school, ~30-50 min later)
+                        $alightingTime = $boardingTime->copy()->addMinutes(rand(30, 50));
+
+                        BusBoardingLog::create([
+                            'student_id' => $student->id,
+                            'bus_id' => $bus->id,
+                            'type' => 'alighting',
+                            'direction' => 'to_school',
+                            'latitude' => 24.7200 + (rand(-50, 50) / 10000),
+                            'longitude' => 46.6800 + (rand(-50, 50) / 10000),
+                            'recorded_by' => $bus->field_supervisor_id,
+                            'recorded_at' => $alightingTime,
+                        ]);
                     }
                 }
 
-                foreach ($testDates as $date) {
-                    // ===== Morning Trip (to_school) =====
-                    $morningStartBase = $date->copy()->setTime(6, 30, 0);
+                // ===== Afternoon Trip (to_home) =====
+                $afternoonStartBase = $date->copy()->setTime(13, 0, 0);
 
-                    foreach ($students as $idx => $student) {
-                        // 70% of students arrive, 30% absent
-                        $isPresent = $idx < (int)($students->count() * 0.7);
+                foreach ($students as $idx => $student) {
+                    $isPresent = $idx < (int)($students->count() * 0.7);
 
-                        if ($isPresent) {
-                            // Boarding time: each student boards 1-3 min after the previous
-                            $boardingTime = $morningStartBase->copy()->addMinutes($idx * 2 + rand(0, 2))->addSeconds(rand(0, 59));
+                    if ($isPresent) {
+                        $boardingTime = $afternoonStartBase->copy()->addMinutes($idx * 2 + rand(0, 2))->addSeconds(rand(0, 59));
 
-                            // Bus at door notification (~2 min before boarding)
-                            $busAtDoorTime = $boardingTime->copy()->subMinutes(rand(1, 3));
+                        BusBoardingLog::create([
+                            'student_id' => $student->id,
+                            'bus_id' => $bus->id,
+                            'type' => 'boarding',
+                            'direction' => 'to_home',
+                            'latitude' => 24.7200 + (rand(-50, 50) / 10000),
+                            'longitude' => 46.6800 + (rand(-50, 50) / 10000),
+                            'recorded_by' => $bus->field_supervisor_id,
+                            'recorded_at' => $boardingTime,
+                        ]);
 
-                            // Boarding event
-                            BusBoardingLog::create([
-                                'student_id' => $student->id,
-                                'bus_id' => $bus->id,
-                                'type' => 'boarding',
-                                'direction' => 'to_school',
-                                'latitude' => 24.7136 + (rand(-100, 100) / 10000),
-                                'longitude' => 46.6753 + (rand(-100, 100) / 10000),
-                                'recorded_by' => $bus->field_supervisor_id,
-                                'recorded_at' => $boardingTime,
-                            ]);
+                        $alightingTime = $boardingTime->copy()->addMinutes(rand(25, 45));
 
-                            // Alighting event (at school, ~30-50 min later)
-                            $alightingTime = $boardingTime->copy()->addMinutes(rand(30, 50));
-
-                            BusBoardingLog::create([
-                                'student_id' => $student->id,
-                                'bus_id' => $bus->id,
-                                'type' => 'alighting',
-                                'direction' => 'to_school',
-                                'latitude' => 24.7200 + (rand(-50, 50) / 10000),
-                                'longitude' => 46.6800 + (rand(-50, 50) / 10000),
-                                'recorded_by' => $bus->field_supervisor_id,
-                                'recorded_at' => $alightingTime,
-                            ]);
-                        }
-                    }
-
-                    // ===== Afternoon Trip (to_home) =====
-                    $afternoonStartBase = $date->copy()->setTime(13, 0, 0);
-
-                    foreach ($students as $idx => $student) {
-                        $isPresent = $idx < (int)($students->count() * 0.7);
-
-                        if ($isPresent) {
-                            $boardingTime = $afternoonStartBase->copy()->addMinutes($idx * 2 + rand(0, 2))->addSeconds(rand(0, 59));
-
-                            BusBoardingLog::create([
-                                'student_id' => $student->id,
-                                'bus_id' => $bus->id,
-                                'type' => 'boarding',
-                                'direction' => 'to_home',
-                                'latitude' => 24.7200 + (rand(-50, 50) / 10000),
-                                'longitude' => 46.6800 + (rand(-50, 50) / 10000),
-                                'recorded_by' => $bus->field_supervisor_id,
-                                'recorded_at' => $boardingTime,
-                            ]);
-
-                            $alightingTime = $boardingTime->copy()->addMinutes(rand(25, 45));
-
-                            BusBoardingLog::create([
-                                'student_id' => $student->id,
-                                'bus_id' => $bus->id,
-                                'type' => 'alighting',
-                                'direction' => 'to_home',
-                                'latitude' => 24.7136 + (rand(-100, 100) / 10000),
-                                'longitude' => 46.6753 + (rand(-100, 100) / 10000),
-                                'recorded_by' => $bus->field_supervisor_id,
-                                'recorded_at' => $alightingTime,
-                            ]);
-                        }
+                        BusBoardingLog::create([
+                            'student_id' => $student->id,
+                            'bus_id' => $bus->id,
+                            'type' => 'alighting',
+                            'direction' => 'to_home',
+                            'latitude' => 24.7136 + (rand(-100, 100) / 10000),
+                            'longitude' => 46.6753 + (rand(-100, 100) / 10000),
+                            'recorded_by' => $bus->field_supervisor_id,
+                            'recorded_at' => $alightingTime,
+                        ]);
                     }
                 }
             }

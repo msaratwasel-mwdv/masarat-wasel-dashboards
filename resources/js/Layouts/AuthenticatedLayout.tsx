@@ -70,8 +70,8 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "user",
   },
   {
-    label: isRTL ? "المشرفين" : "Supervisors",
-    route: "admin.supervisors.index",
+    label: isRTL ? "المساعدين" : "Assistants",
+    route: "admin.assistants.index",
     icon: "teacher",
   },
   {

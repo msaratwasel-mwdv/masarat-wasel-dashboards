@@ -18,7 +18,7 @@ class FieldSupervisorApiController extends Controller
      */
     public function buses(Request $request): JsonResponse
     {
-        $buses = Bus::with(['driver', 'school', 'supervisor'])
+        $buses = Bus::with(['driver', 'school', 'assistant', 'fieldSupervisor'])
             ->active()
             ->get()
             ->map(function ($bus) {
@@ -28,7 +28,8 @@ class FieldSupervisorApiController extends Controller
                     'bus_number' => $bus->bus_number,
                     'school' => $bus->school ? $bus->school->name : null,
                     'driver' => $bus->driver ? $bus->driver->name : null,
-                    'supervisor' => $bus->supervisor ? $bus->supervisor->name : null,
+                    'assistant' => $bus->assistant ? $bus->assistant->name : null,
+                    'field_supervisor' => $bus->fieldSupervisor ? $bus->fieldSupervisor->name : null,
                     'location_lat' => (double) $bus->current_latitude,
                     'location_lng' => (double) $bus->current_longitude,
                     'status' => $bus->status,

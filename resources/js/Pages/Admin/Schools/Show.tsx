@@ -55,7 +55,7 @@ interface Stats {
   active_buses: number;
   maintenance_buses: number;
   drivers_count: number;
-  supervisors_count: number;
+  assistants_count: number;
   admins_count: number;
 }
 
@@ -199,7 +199,7 @@ export default function ShowSchool({
             <StatBox icon={<Users />} label={isRTL ? "الطلاب" : "Students"} value={stats.students_count} color="emerald" isDark={isDark} isRTL={isRTL} />
             <StatBox icon={<BusIcon />} label={isRTL ? "الباصات" : "Buses"} value={stats.buses_count} color="blue" isDark={isDark} isRTL={isRTL} />
             <StatBox icon={<ShieldCheck />} label={isRTL ? "السائقين" : "Drivers"} value={stats.drivers_count} color="purple" isDark={isDark} isRTL={isRTL} />
-            <StatBox icon={<ShieldCheck />} label={isRTL ? "المشرفين" : "Supervisors"} value={stats.supervisors_count} color="indigo" isDark={isDark} isRTL={isRTL} />
+            <StatBox icon={<ShieldCheck />} label={isRTL ? "المساعدين" : "Assistants"} value={stats.assistants_count} color="indigo" isDark={isDark} isRTL={isRTL} />
         </div>
 
         {/* 3. Managers Section */}

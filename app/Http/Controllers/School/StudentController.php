@@ -29,7 +29,7 @@ class StudentController extends Controller
 
         $students = Student::inSchool($schoolId)
             ->with([
-                'guardians:id,first_name_ar,last_name_ar,phone,national_id',
+                'guardians:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,first_name_en,second_name_en,third_name_en,last_name_en,phone,national_id,address,image',
                 'currentEnrollment.classroom:id,name'
             ])
             ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id']);
@@ -58,7 +58,7 @@ class StudentController extends Controller
                 $q->where('is_active', true);
             })
             ->with([
-                'guardians:id,first_name_ar,last_name_ar,phone,national_id',
+                'guardians:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,first_name_en,second_name_en,third_name_en,last_name_en,phone,national_id,address,image',
                 'currentEnrollment.classroom:id,name',
                 'forthBus.route', 'backBus.route'
             ])
@@ -99,7 +99,7 @@ class StudentController extends Controller
         $classrooms = Classroom::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']);
 
         // جلب المشرفين المتاحين في نفس المدرسة
-        $supervisors = User::whereHas('roles', fn($q) => $q->whereIn('name', ['supervisor', 'teacher', 'school_admin']))
+        $supervisors = User::whereHas('roles', fn($q) => $q->whereIn('name', ['assistant', 'teacher', 'school_admin']))
             ->where(fn($q) => $q
                 ->whereHas('schoolAdmin', fn($q2) => $q2->where('school_id', $schoolId))
                 ->orWhereHas('fieldSupervisor', fn($q2) => $q2->where('school_id', $schoolId))
@@ -383,6 +383,11 @@ class StudentController extends Controller
             if ($student->currentEnrollment) {
                 $student->currentEnrollment->update([
                     'classroom_id' => $validated['classroom_id'],
+                ]);
+            } else {
+                $student->enrollments()->create([
+                    'classroom_id' => $validated['classroom_id'],
+                    'is_active' => true,
                 ]);
             }
 

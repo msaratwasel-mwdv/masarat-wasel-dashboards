@@ -3,9 +3,7 @@ import { Head, router } from "@inertiajs/react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import useTranslation from "@/hooks/useTranslation";
 import BusModal from "@/Components/BusModal";
-import BusRequestModal from "@/Components/BusRequestModal";
 import LiveTrackingMap from "@/Components/LiveTrackingMap";
-import RequestInvoiceModal from "@/Components/RequestInvoiceModal";
 
 interface Bus {
   id: number;
@@ -18,46 +16,29 @@ interface Bus {
   year?: number;
   color?: string;
   driver?: { id: number; name: string };
-  supervisor?: { id: number; name: string };
+  assistant?: { id: number; name: string };
+  field_supervisor?: { id: number; name: string };
   students_count?: number;
-  current_latitude?: number;
-  current_longitude?: number;
+  latitude?: number;
+  longitude?: number;
   last_location_update?: string;
   trip_status?: "at_school" | "on_route" | "stopped" | "idle";
   route_id?: number | null;
-}
-
-interface BusRequest {
-  id: number;
-  request_type: string;
-  requested_seats: number;
-  start_date: string;
-  end_date?: string;
-  reason: string;
-  special_requirements?: string;
-  status: "pending" | "approved" | "rejected";
-  total_cost?: string | number | null;
-  approvedBy?: { name: string };
-  rejection_reason?: string;
-  approved_at?: string;
-  created_at: string;
-  buses?: Array<{ id: number; bus_number: string; plate_number: string; capacity: number }>;
+  route?: { id: number; name: string; code?: string };
 }
 
 interface Props {
   auth: any;
   buses: Bus[];
-  requests: BusRequest[];
   routes: { id: number; name: string }[];
   schoolLocation: { lat: number; lng: number };
 }
 
-type TabType = "inventory" | "tracking" | "requests";
+type TabType = "inventory" | "tracking";
 
 export default function BusesManagement({
   auth,
-  buses,
-  requests,
+  buses = [],
   routes = [],
   schoolLocation,
 }: Props) {
@@ -66,38 +47,23 @@ export default function BusesManagement({
   const [activeTab, setActiveTab] = useState<TabType>("inventory");
   const [showBusModal, setShowBusModal] = useState(false);
   const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<BusRequest | null>(
-    null
-  );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "maintenance" | "inactive"
   >("all");
   const [selectedBuses, setSelectedBuses] = useState<number[]>([]);
-  const [requestSearchQuery, setRequestSearchQuery] = useState("");
-
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [selectedInvoiceRequest, setSelectedInvoiceRequest] = useState<BusRequest | null>(null);
 
   // Filter buses
-  const filteredBuses = buses.filter((bus) => {
+  const filteredBuses = (buses || []).filter((bus) => {
+    const s = searchQuery?.toLowerCase() || "";
     const matchesSearch =
-      bus.bus_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bus.plate_number.toLowerCase().includes(searchQuery.toLowerCase());
+      (bus.bus_number?.toLowerCase() || "").includes(s) ||
+      (bus.plate_number?.toLowerCase() || "").includes(s);
     const matchesStatus = statusFilter === "all" || bus.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  // Filter requests
-  const filteredRequests = requests.filter((request) => {
-    const searchLower = requestSearchQuery.toLowerCase();
-    return (
-      t(request.request_type).toLowerCase().includes(searchLower) ||
-      request.reason.toLowerCase().includes(searchLower) ||
-      request.status.toLowerCase().includes(searchLower)
-    );
-  });
+
 
   // Stats
   const totalBuses = buses.length;
@@ -153,15 +119,7 @@ export default function BusesManagement({
     }
   };
 
-  const handleAddRequest = () => {
-    setSelectedRequest(null);
-    setShowRequestModal(true);
-  };
 
-  const handleEditRequest = (request: BusRequest) => {
-    setSelectedRequest(request);
-    setShowRequestModal(true);
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -271,20 +229,7 @@ export default function BusesManagement({
           >
             🗺️ {t("Live Tracking")}
           </button>
-          <button
-            onClick={() => setActiveTab("requests")}
-            className={`px-8 py-3 rounded-[30px] font-bold transition-all ${activeTab === "requests"
-                ? "bg-[#0e7490] text-white shadow-lg"
-                : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-              }`}
-          >
-            📝 {t("Requests")}{" "}
-            {requests.length > 0 && (
-              <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-sm">
-                {requests.length}
-              </span>
-            )}
-          </button>
+
         </div>
 
         {/* Tab Content */}
@@ -357,7 +302,10 @@ export default function BusesManagement({
                         {t("Capacity")}
                       </th>
                       <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase">
-                        {t("Driver / Supervisor")}
+                        {t("Route")}
+                      </th>
+                      <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase">
+                        {t("Crew")}
                       </th>
                       <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">
                         {t("Status")}
@@ -365,9 +313,9 @@ export default function BusesManagement({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {filteredBuses.map((bus) => (
+                    {filteredBuses.map((bus, index) => (
                       <tr
-                        key={bus.id}
+                        key={bus.id || `bus-${index}`}
                         className="group hover:bg-cyan-50/50 dark:hover:bg-cyan-900/10 transition-colors"
                       >
                         <td className="px-6 py-4">
@@ -403,6 +351,17 @@ export default function BusesManagement({
                           </div>
                         </td>
                         <td className="px-6 py-4">
+                          <div className="font-medium text-gray-800 dark:text-gray-200">
+                            {bus.route?.name ? (
+                              <span className="bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-[10px] text-sm">
+                                🛣️ {bus.route.name}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 italic text-sm">{t("Unassigned")}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 text-sm">
                               <span className="text-gray-400">👨‍✈️</span>
@@ -417,15 +376,27 @@ export default function BusesManagement({
                               </span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
-                              <span className="text-gray-400">👀</span>
+                              <span className="text-gray-400" title={t("Assistant")}>👩‍🏫</span>
                               <span
                                 className={
-                                  bus.supervisor
+                                  bus.assistant
                                     ? "text-gray-900 dark:text-white font-medium"
                                     : "text-gray-400 italic"
                                 }
                               >
-                                {bus.supervisor?.name || t("No Supervisor")}
+                                {bus.assistant?.name || t("No Assistant")}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="text-gray-400" title={t("Field Supervisor")}>🏢</span>
+                              <span
+                                className={
+                                  bus.field_supervisor
+                                    ? "text-gray-900 dark:text-white font-medium"
+                                    : "text-gray-400 italic"
+                                }
+                              >
+                                {bus.field_supervisor?.name || t("No Field Supervisor")}
                               </span>
                             </div>
                           </div>
@@ -437,7 +408,7 @@ export default function BusesManagement({
                     ))}
                     {filteredBuses.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-16 text-center">
+                        <td colSpan={6} className="py-16 text-center">
                           <div className="text-6xl mb-6 opacity-20">🔍</div>
                           <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
                             {t("No Buses Found")}
@@ -465,182 +436,7 @@ export default function BusesManagement({
             </div>
           )}
 
-          {/* Tab 3: Bus Requests Table */}
-          {activeTab === "requests" && (
-            <div>
-              {/* Toolbar */}
-              <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-                <div className="flex items-center gap-6">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-white">
-                      {t("Bus Request History")}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {t("Manage your transportation requests")}
-                    </p>
-                  </div>
-                  <div className="relative w-80">
-                    <input
-                      type="text"
-                      placeholder={t("Search requests...")}
-                      value={requestSearchQuery}
-                      onChange={(e) => setRequestSearchQuery(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-[20px] bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
-                    />
-                    <svg
-                      className="w-5 h-5 text-gray-400 absolute left-4 top-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <button
-                  onClick={handleAddRequest}
-                  className="px-8 py-3 bg-[#0e7490] text-white font-bold rounded-[20px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
-                >
-                  <span className="text-xl">➕</span>
-                  {t("New Request")}
-                </button>
-              </div>
 
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
-                      <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase">
-                        {t("Request Type")}
-                      </th>
-                      <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">
-                        {t("Seats")}
-                      </th>
-                      <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase">
-                        {t("Dates")}
-                      </th>
-                      <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase">
-                        {t("Reason")}
-                      </th>
-                      <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">
-                        {t("Status")}
-                      </th>
-                      <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">
-                        {t("Actions")}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {filteredRequests.map((request) => (
-                      <tr
-                        key={request.id}
-                        className="group hover:bg-cyan-50/50 dark:hover:bg-cyan-900/10 transition-colors"
-                      >
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-gray-900 dark:text-white capitalize">
-                            {t(request.request_type)}
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            {new Date(request.created_at).toLocaleDateString()}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="inline-flex items-center px-3 py-1 rounded-[10px] bg-blue-50 text-blue-700 font-bold">
-                            💺 {request.requested_seats}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                            {t("Start")}: {request.start_date}
-                          </div>
-                          {request.end_date && (
-                            <div className="text-xs text-gray-500">
-                              {t("End")}: {request.end_date}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <p
-                            className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1 max-w-xs"
-                            title={request.reason}
-                          >
-                            {request.reason}
-                          </p>
-                          {request.special_requirements && (
-                            <span className="text-xs text-orange-500 flex items-center gap-1 mt-1">
-                              ⚠️ {t("Special Requirements")}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span
-                            className={`px-3 py-1.5 rounded-[10px] text-xs font-bold capitalize inline-flex items-center gap-1 ${request.status === "pending"
-                                ? "bg-amber-100 text-amber-700"
-                                : request.status === "approved"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-red-100 text-red-700"
-                              }`}
-                          >
-                            {request.status === "pending" && "⏳"}
-                            {request.status === "approved" && "✅"}
-                            {request.status === "rejected" && "❌"}
-                            {t(request.status)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {request.status === "pending" && (
-                              <button
-                                onClick={() => handleEditRequest(request)}
-                                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-[12px] hover:bg-[#0e7490] hover:text-white font-bold text-xs transition-all"
-                              >
-                                ✏️ {t("Edit")}
-                              </button>
-                            )}
-                            {request.status === "approved" && (
-                              <button
-                                onClick={() => {
-                                  setSelectedInvoiceRequest(request);
-                                  setShowInvoiceModal(true);
-                                }}
-                                className="px-4 py-2 bg-cyan-100 dark:bg-[#0e7490]/20 text-[#0e7490] dark:text-cyan-400 rounded-[12px] hover:bg-[#0e7490] hover:text-white font-bold text-xs transition-all"
-                                title={t("View Invoice / Receipt")}
-                              >
-                                🖨️ {t("Print")}
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredRequests.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="py-16 text-center">
-                          <div className="text-6xl mb-6 opacity-20">📝</div>
-                          <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-                            {t("No Requests Found")}
-                          </h3>
-                          <p className="text-gray-500">
-                            {t(
-                              requestSearchQuery
-                                ? "No requests match your search"
-                                : "Click New Request to submit one"
-                            )}
-                          </p>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -655,26 +451,7 @@ export default function BusesManagement({
         routes={routes}
       />
 
-      {/* Bus Request Modal */}
-      <BusRequestModal
-        show={showRequestModal}
-        onClose={() => {
-          setShowRequestModal(false);
-          setSelectedRequest(null);
-        }}
-        request={selectedRequest}
-      />
 
-      {/* Invoice Modal */}
-      <RequestInvoiceModal 
-        show={showInvoiceModal}
-        onClose={() => {
-          setShowInvoiceModal(false);
-          setSelectedInvoiceRequest(null);
-        }}
-        request={selectedInvoiceRequest}
-        schoolName={auth.user?.name || "المدرسة الطالبه"}
-      />
     </SchoolAuthenticatedLayout>
   );
 }

@@ -11,7 +11,7 @@ export interface User {
     name: string;
     email: string;
     email_verified_at: string;
-    role: "admin" | "school_admin" | "driver" | "parent" | "teacher" | "student";
+    role: "admin" | "school_admin" | "driver" | "parent" | "teacher" | "student" | "assistant" | "field_supervisor";
     school_id?: number;
     school?: School;
     // حقول ولي الأمر (متاحة عندما يكون role = parent)
@@ -27,7 +27,7 @@ export interface User {
 // Guardian هو الآن نفس User (للتوافق مع الكود القديم)
 export type Guardian = User;
 
-export interface Supervisor {
+export interface Assistant {
     id: number;
     name: string;
     email?: string;
@@ -57,12 +57,12 @@ export interface Student {
     image?: string;
     is_active: boolean;
     guardian_id?: number;
-    supervisor_id?: number;
+    assistant_id?: number;
     forth_route_id?: number; // ⬅️ أضف هذا
     back_route_id?: number;  // ⬅️ أضف هذا
     school_id?: number;
     guardian?: Guardian | null;
-    supervisor?: Supervisor | null;
+    assistant?: Assistant | null;
     forth_route?: Route | null; // ⬅️ أضف هذا
     back_route?: Route | null;  // ⬅️ أضف هذا
     current_enrollment: {

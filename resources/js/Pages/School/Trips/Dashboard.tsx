@@ -14,7 +14,7 @@ interface Bus {
     current_longitude?: number;
     trip_status?: string;
     driver?: { id: number; name: string };
-    supervisor?: { id: number; name: string };
+    assistant?: { id: number; name: string };
 }
 
 interface Trip {

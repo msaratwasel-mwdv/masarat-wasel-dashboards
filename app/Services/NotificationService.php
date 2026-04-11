@@ -229,6 +229,50 @@ class NotificationService
     }
 
     /**
+     * إرسال إشعار لمساعدات (مشرفات) حافلات محددة.
+     */
+    public function notifyBusAssistants(
+        array $busIds,
+        string $type,
+        string $title,
+        string $message,
+        ?array $data = null,
+        ?string $fromUserName = null
+    ): Collection {
+        $assistantIds = \Illuminate\Support\Facades\DB::table('buses')
+            ->whereIn('id', $busIds)
+            ->whereNotNull('assistant_id')
+            ->pluck('assistant_id')
+            ->unique()
+            ->toArray();
+
+        return $this->sendToUsers($assistantIds, $type, $title, $message, $data, $fromUserName);
+    }
+
+    /**
+     * إرسال إشعار لجميع طاقم الحافلة (سائق، مساعدة، مشرف ميداني).
+     */
+    public function notifyBusCrew(
+        int $busId,
+        string $type,
+        string $title,
+        string $message,
+        ?array $data = null,
+        ?string $fromUserName = null
+    ): Collection {
+        $bus = \App\Models\Bus::find($busId);
+        if (!$bus) return collect();
+
+        $userIds = array_filter([
+            $bus->driver_id,
+            $bus->assistant_id,
+            $bus->field_supervisor_id
+        ]);
+
+        return $this->sendToUsers(array_unique($userIds), $type, $title, $message, $data, $fromUserName);
+    }
+
+    /**
      * إرسال إشعار لجميع مديري الشركة.
      */
     public function notifyCompanyAdmins(

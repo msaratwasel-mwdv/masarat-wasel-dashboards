@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Validation\Rule;
 
-class SupervisorController extends Controller
+class AssistantController extends Controller
 {
     use \App\Traits\DataTableTrait;
 
@@ -19,13 +19,13 @@ class SupervisorController extends Controller
     {
         $statusFilter = $request->input('status', 'all');
 
-        $query = User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
-            ->with(['assistant', 'assignedBusAsSupervisor.school']);
+        $query = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
+            ->with(['assistant', 'assignedBusAsAssistant.school']);
 
         if ($statusFilter === 'assigned') {
-            $query->whereHas('assignedBusAsSupervisor');
+            $query->whereHas('assignedBusAsAssistant');
         } elseif ($statusFilter === 'available') {
-            $query->whereDoesntHave('assignedBusAsSupervisor');
+            $query->whereDoesntHave('assignedBusAsAssistant');
         }
 
         $paginated = $this->applyDataTable($query, $request, [
@@ -35,19 +35,19 @@ class SupervisorController extends Controller
             'phone',
             'email',
             'user_code',
-        ], 15, function($supervisor) {
+        ], 15, function($assistant) {
             return [
-                'الاسم' => $supervisor->name,
-                'الاسم (EN)' => $supervisor->name_en,
-                'الكود' => $supervisor->user_code,
-                'الهوية' => $supervisor->national_id,
-                'رقم الجوال' => $supervisor->phone,
-                'البريد الإلكتروني' => $supervisor->email,
-                'الباص المعين' => $supervisor->assignedBusAsSupervisor?->bus_number ?? 'متاح',
-                'الحالة' => match($supervisor->assistant?->status ?? '') {
+                'الاسم' => $assistant->name,
+                'الاسم (EN)' => $assistant->name_en,
+                'الكود' => $assistant->user_code,
+                'الهوية' => $assistant->national_id,
+                'رقم الجوال' => $assistant->phone,
+                'البريد الإلكتروني' => $assistant->email,
+                'الباص المعين' => $assistant->assignedBusAsAssistant?->bus_number ?? 'متاح',
+                'الحالة' => match($assistant->assistant?->status ?? '') {
                     'active' => 'نشط',
                     'inactive' => 'غير نشط',
-                    default => $supervisor->assistant?->status ?? 'نشط',
+                    default => $assistant->assistant?->status ?? 'نشط',
                 },
             ];
         });
@@ -57,13 +57,13 @@ class SupervisorController extends Controller
         }
 
         $counts = [
-            'all' => User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))->count(),
-            'assigned' => User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))->whereHas('assignedBusAsSupervisor')->count(),
-            'available' => User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))->whereDoesntHave('assignedBusAsSupervisor')->count(),
+            'all' => User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))->count(),
+            'assigned' => User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))->whereHas('assignedBusAsAssistant')->count(),
+            'available' => User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))->whereDoesntHave('assignedBusAsAssistant')->count(),
         ];
 
-        return Inertia::render('Admin/Supervisors/Index', [
-            'supervisors' => $paginated,
+        return Inertia::render('Admin/Assistants/Index', [
+            'assistants' => $paginated,
             'counts'      => $counts,
             'filters'     => [
                 'search' => $request->input('search', ''),
@@ -113,8 +113,8 @@ class SupervisorController extends Controller
             ]);
 
             // Attach role via user_roles pivot
-            $supervisorRole = \App\Models\Role::firstOrCreate(['name' => 'supervisor']);
-            $user->roles()->attach($supervisorRole->id);
+            $assistantRole = \App\Models\Role::firstOrCreate(['name' => 'assistant']);
+            $user->roles()->attach($assistantRole->id);
 
             // Create extension record in assistants table
             $user->assistant()->create([
@@ -124,10 +124,10 @@ class SupervisorController extends Controller
             ]);
         });
 
-        return redirect()->back()->with('success', 'Supervisor registered successfully');
+        return redirect()->back()->with('success', 'Assistant registered successfully');
     }
 
-    public function update(Request $request, User $supervisor)
+    public function update(Request $request, User $assistant)
     {
         $request->validate([
             'first_name_ar' => 'required|string|max:255',
@@ -138,9 +138,9 @@ class SupervisorController extends Controller
             'second_name_en' => 'nullable|string|max:255',
             'third_name_en' => 'nullable|string|max:255',
             'last_name_en' => 'nullable|string|max:255',
-            'national_id' => ['required', 'numeric', Rule::unique('users')->ignore($supervisor->id)],
-            'email' => ['required', 'email', Rule::unique('users')->ignore($supervisor->id)],
-            'phone' => ['required', Rule::unique('users')->ignore($supervisor->id)],
+            'national_id' => ['required', 'numeric', Rule::unique('users')->ignore($assistant->id)],
+            'email' => ['required', 'email', Rule::unique('users')->ignore($assistant->id)],
+            'phone' => ['required', Rule::unique('users')->ignore($assistant->id)],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'emergency_contact_name' => 'required|string',
             'emergency_contact_phone' => 'required|string',
@@ -148,7 +148,7 @@ class SupervisorController extends Controller
             'address' => 'nullable|string|max:500',
         ]);
 
-        DB::transaction(function () use ($request, $supervisor) {
+        DB::transaction(function () use ($request, $assistant) {
             $data = [
                 'first_name_ar' => $request->first_name_ar,
                 'second_name_ar' => $request->second_name_ar ?? '',
@@ -165,17 +165,17 @@ class SupervisorController extends Controller
             ];
 
             if ($request->hasFile('image')) {
-                if ($supervisor->image) {
-                    Storage::disk('public')->delete($supervisor->image);
+                if ($assistant->image) {
+                    Storage::disk('public')->delete($assistant->image);
                 }
                 $data['image'] = $request->file('image')->store('avatars', 'public');
             }
 
-            $supervisor->update($data);
+            $assistant->update($data);
 
             // Update assistant extension record
-            $supervisor->assistant()->updateOrCreate(
-                ['user_id' => $supervisor->id],
+            $assistant->assistant()->updateOrCreate(
+                ['user_id' => $assistant->id],
                 [
                     'status' => strtolower($request->status ?? 'active'),
                     'emergency_contact_name' => $request->emergency_contact_name,
@@ -184,13 +184,13 @@ class SupervisorController extends Controller
             );
         });
 
-        return redirect()->back()->with('success', 'Supervisor updated successfully');
+        return redirect()->back()->with('success', 'Assistant updated successfully');
     }
 
-    public function destroy(User $supervisor)
+    public function destroy(User $assistant)
     {
-        $supervisor->delete();
-        return redirect()->back()->with('success', 'Supervisor deleted successfully');
+        $assistant->delete();
+        return redirect()->back()->with('success', 'Assistant deleted successfully');
     }
 }
 

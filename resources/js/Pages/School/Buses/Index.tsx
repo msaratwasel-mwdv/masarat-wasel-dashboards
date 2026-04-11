@@ -11,7 +11,7 @@ interface Bus {
     type: 'permanent' | 'temporary';
     status: 'active' | 'maintenance' | 'inactive';
     driver?: { id: number; name: string };
-    supervisor?: { id: number; name: string };
+    assistant?: { id: number; name: string };
 }
 
 interface BusesProps {
@@ -231,9 +231,9 @@ export default function Index({ auth, buses }: BusesProps) {
                                             <div className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
                                                 <span className="text-2xl">👨‍🏫</span>
                                                 <div className="flex-1">
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400">{t('Supervisor')}</p>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400">{t('Assistant')}</p>
                                                     <p className="font-semibold text-gray-800 dark:text-white">
-                                                        {bus.supervisor ? bus.supervisor.name : <span className="text-gray-400">{t('Not Assigned')}</span>}
+                                                        {bus.assistant ? bus.assistant.name : <span className="text-gray-400">{t('Not Assigned')}</span>}
                                                     </p>
                                                 </div>
                                             </div>
@@ -260,7 +260,7 @@ export default function Index({ auth, buses }: BusesProps) {
                                         <th className="px-6 py-4 text-start text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{t('Capacity')}</th>
                                         <th className="px-6 py-4 text-start text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{t('Type')}</th>
                                         <th className="px-6 py-4 text-start text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{t('Driver')}</th>
-                                        <th className="px-6 py-4 text-start text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{t('Supervisor')}</th>
+                                        <th className="px-6 py-4 text-start text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{t('Assistant')}</th>
                                         <th className="px-6 py-4 text-start text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{t('Status')}</th>
                                     </tr>
                                 </thead>
@@ -289,7 +289,7 @@ export default function Index({ auth, buses }: BusesProps) {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="text-sm text-gray-700 dark:text-gray-300">
-                                                        {bus.supervisor ? bus.supervisor.name : <span className="text-gray-400 dark:text-gray-500">{t('Not Assigned')}</span>}
+                                                        {bus.assistant ? bus.assistant.name : <span className="text-gray-400 dark:text-gray-500">{t('Not Assigned')}</span>}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">

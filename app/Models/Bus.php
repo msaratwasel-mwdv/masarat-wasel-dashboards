@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Bus extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $appends = ['driver', 'supervisor', 'driver_id', 'supervisor_id'];
 
     protected $fillable = [
         'bus_number',
@@ -52,11 +52,11 @@ class Bus extends Model
     }
 
     /**
-     * Get the drivers assigned to the bus.
+     * Get the primary driver assigned to the bus.
      */
-    public function drivers(): HasMany
+    public function driver(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
-        return $this->hasMany(Driver::class, 'bus_id', 'id');
+        return $this->hasOne(Driver::class, 'bus_id', 'id');
     }
 
     /**
@@ -75,36 +75,8 @@ class Bus extends Model
         return $this->belongsTo(User::class, 'field_supervisor_id');
     }
 
-    /**
-     * Alias for assistant (المشرفة) for backward compatibility in parts where it was called supervisor.
-     */
-    public function supervisor(): BelongsTo
-    {
-        return $this->assistant();
-    }
 
-    /**
-     * Get the primary driver user for backward compatibility.
-     */
-    public function getDriverAttribute()
-    {
-        return $this->drivers->first()?->user;
-    }
 
-    public function getSupervisorAttribute()
-    {
-        return $this->assistant;
-    }
-
-    public function getDriverIdAttribute()
-    {
-        return $this->drivers->first()?->user_id;
-    }
-
-    public function getSupervisorIdAttribute()
-    {
-        return $this->assistant_id;
-    }
 
     /**
      * Get the users (drivers/supervisors) associated with this bus through a pivot table.
@@ -138,6 +110,11 @@ class Bus extends Model
     public function trips(): HasMany
     {
         return $this->hasMany(Trip::class);
+    }
+
+    public function latestTrip(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Trip::class)->latestOfMany();
     }
     public function documents()
     {
@@ -189,6 +166,22 @@ class Bus extends Model
     }
 
     /**
+     * Scope to include students count efficiently.
+     */
+    public function scopeWithStudentsCount($query)
+    {
+        return $query->addSelect('buses.*')->selectSub(function ($query) {
+            $query->from('students')
+                ->selectRaw('count(*)')
+                ->where('is_active', true)
+                ->where(function ($q) {
+                    $q->whereColumn('students.forth_bus_id', 'buses.id')
+                        ->orWhereColumn('students.back_bus_id', 'buses.id');
+                });
+        }, 'students_count');
+    }
+
+    /**
      * Scope for available buses (not assigned to any school).
      */
     public function scopeAvailable($query)
@@ -197,13 +190,30 @@ class Bus extends Model
     }
 
     /**
-     * Get the students assigned to this bus.
+     * Get the students assigned to this bus for morning trips.
      */
-    public function students(): BelongsToMany
+    public function forthStudents(): HasMany
     {
-        return $this->belongsToMany(Student::class, 'bus_students')
-            ->withPivot('is_active', 'trip_type')
-            ->withTimestamps();
+        return $this->hasMany(Student::class, 'forth_bus_id');
+    }
+
+    /**
+     * Get the students assigned to this bus for afternoon trips.
+     */
+    public function backStudents(): HasMany
+    {
+        return $this->hasMany(Student::class, 'back_bus_id');
+    }
+
+    /**
+     * Get all unique students assigned to this bus (morning or afternoon).
+     * This is a "fake" relationship to satisfy existing withCount calls if possible,
+     * but since Eloquent doesn't support multiple keys easily, we'll keep it as a placeholder.
+     */
+    public function students(): HasMany
+    {
+        // Default to forthStudents for now to avoid breaking relationships that expect HasMany/BelongsToMany
+        return $this->forthStudents();
     }
 
     /**
@@ -219,7 +229,12 @@ class Bus extends Model
      */
     public function getStudentsCountAttribute(): int
     {
-        return $this->students()->wherePivot('is_active', true)->count();
+        return Student::where(function ($query) {
+            $query->where('forth_bus_id', $this->id)
+                ->orWhere('back_bus_id', $this->id);
+        })
+        ->where('is_active', true)
+        ->count();
     }
 
     /**
@@ -231,20 +246,20 @@ class Bus extends Model
     }
 
     /**
-     * Check if the bus has a complete crew (driver and supervisor).
+     * Check if the bus has a complete crew (driver and field supervisor).
      */
     public function hasCompleteCrew(): bool
     {
-        return $this->drivers()->exists() && $this->field_supervisor_id !== null;
+        return $this->driver()->exists() && $this->field_supervisor_id !== null;
     }
 
     /**
-     * Check if the given user ID is part of the bus crew (driver or supervisor).
+     * Check if the given user ID is part of the bus crew (driver or field supervisor).
      */
     public function hasCrewMember(int $userId): bool
     {
         return $this->field_supervisor_id === $userId || 
-               $this->drivers()->where('user_id', $userId)->exists();
+               $this->driver?->user_id === $userId;
     }
 }
 

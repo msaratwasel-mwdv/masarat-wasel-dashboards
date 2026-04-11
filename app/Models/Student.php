@@ -102,9 +102,17 @@ class Student extends Model
 
     public function guardians(): BelongsToMany
     {
-        return $this->belongsToMany(Guardian::class, 'guardian_student', 'student_id', 'guardian_id')
+        return $this->belongsToMany(User::class, 'guardian_student', 'student_id', 'guardian_id')
             ->withPivot('relationship_type')
             ->withTimestamps();
+    }
+
+    /**
+     * Get the primary guardian of the student.
+     */
+    public function guardian(): BelongsToMany
+    {
+        return $this->guardians(); // Returns the relationship so it can be used in with('guardian')
     }
 
     // ⬅️ أضف هذه العلاقة
@@ -113,15 +121,6 @@ class Student extends Model
         return $this->belongsTo(School::class);
     }
 
-    /**
-     * Get the buses this student is assigned to.
-     */
-    public function buses(): BelongsToMany
-    {
-        return $this->belongsToMany(Bus::class, 'bus_students')
-            ->withPivot('is_active')
-            ->withTimestamps();
-    }
 
     public function forthBus(): BelongsTo
     {

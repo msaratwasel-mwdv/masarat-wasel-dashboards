@@ -32,7 +32,7 @@ interface AssignedBus {
   school: { id: number; name: string } | null;
 }
 
-interface Supervisor {
+interface Assistant {
   id: number;
   first_name_ar: string;
   second_name_ar: string;
@@ -55,12 +55,13 @@ interface Supervisor {
     status: string;
   } | null;
   image?: string | null;
-  assigned_bus_as_supervisor: AssignedBus | null;
+  address?: string | null;
+  assigned_bus_as_assistant: AssignedBus | null;
 }
 
 interface Props {
-  supervisors: {
-    data: Supervisor[];
+  assistants: {
+    data: Assistant[];
     links: PaginationMeta["links"];
     current_page: number;
     last_page: number;
@@ -82,7 +83,7 @@ interface Props {
 
 // ─── Component ───────────────────────────────────────────────────
 
-export default function SupervisorsIndex({ supervisors, counts, filters }: Props) {
+export default function AssistantsIndex({ assistants, counts, filters }: Props) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -120,7 +121,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
     () =>
       debounce((value: string) => {
         router.get(
-          route("admin.supervisors.index"),
+          route("admin.assistants.index"),
           { search: value, status: filters.status === "all" ? undefined : filters.status },
           { preserveState: true, replace: true }
         );
@@ -135,7 +136,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
 
   const handleFilterChange = (key: string) => {
     router.get(
-      route("admin.supervisors.index"),
+      route("admin.assistants.index"),
       { search: filters.search, status: key === "all" ? undefined : key },
       { preserveState: true, replace: true }
     );
@@ -152,27 +153,27 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
     setIsModalOpen(true);
   };
 
-  const openEditModal = (sup: Supervisor) => {
+  const openEditModal = (assistant: Assistant) => {
     setIsEditing(true);
-    setCurrentId(sup.id);
-    setPreviewImage(sup.image ? `/storage/${sup.image}` : null);
+    setCurrentId(assistant.id);
+    setPreviewImage(assistant.image ? `/storage/${assistant.image}` : null);
     setData({
       _method: "put",
-      first_name_ar: sup.first_name_ar || "",
-      second_name_ar: sup.second_name_ar || "",
-      third_name_ar: sup.third_name_ar || "",
-      last_name_ar: sup.last_name_ar || "",
-      first_name_en: sup.first_name_en || "",
-      second_name_en: sup.second_name_en || "",
-      third_name_en: sup.third_name_en || "",
-      last_name_en: sup.last_name_en || "",
-      national_id: sup.national_id || "",
-      email: sup.email,
-      phone: sup.phone || "",
-      emergency_contact_name: sup.assistant?.emergency_contact_name || "",
-      emergency_contact_phone: sup.assistant?.emergency_contact_phone || "",
-      status: sup.assistant?.status === 'active' ? 'active' : 'inactive',
-      address: sup.address || "",
+      first_name_ar: assistant.first_name_ar || "",
+      second_name_ar: assistant.second_name_ar || "",
+      third_name_ar: assistant.third_name_ar || "",
+      last_name_ar: assistant.last_name_ar || "",
+      first_name_en: assistant.first_name_en || "",
+      second_name_en: assistant.second_name_en || "",
+      third_name_en: assistant.third_name_en || "",
+      last_name_en: assistant.last_name_en || "",
+      national_id: assistant.national_id || "",
+      email: assistant.email,
+      phone: assistant.phone || "",
+      emergency_contact_name: assistant.assistant?.emergency_contact_name || "",
+      emergency_contact_phone: assistant.assistant?.emergency_contact_phone || "",
+      status: assistant.assistant?.status === 'active' ? 'active' : 'inactive',
+      address: assistant.address || "",
       image: null,
     });
     clearErrors();
@@ -189,18 +190,18 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isEditing && currentId) {
-      post(route("admin.supervisors.update", currentId), {
+      post(route("admin.assistants.update", currentId), {
         forceFormData: true,
         onSuccess: () => closeModal(),
       });
     } else {
-      post(route("admin.supervisors.store"), { onSuccess: () => closeModal() });
+      post(route("admin.assistants.store"), { onSuccess: () => closeModal() });
     }
   };
 
-  const deleteSupervisor = (id: number) => {
-    if (confirm(isRTL ? "هل أنت متأكد من حذف هذه المشرفة؟" : "Are you sure?")) {
-      router.delete(route("admin.supervisors.destroy", id));
+  const deleteAssistant = (id: number) => {
+    if (confirm(isRTL ? "هل أنت متأكد من حذف هذه المساعدة؟" : "Are you sure?")) {
+      router.delete(route("admin.assistants.destroy", id));
     }
   };
 
@@ -220,30 +221,30 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
   };
 
   // --- Columns ---
-  const columnHelper = createColumnHelper<Supervisor>();
+  const columnHelper = createColumnHelper<Assistant>();
 
   const columns = useMemo(
     () => [
       columnHelper.accessor("name", {
-        header: isRTL ? "المشرف(ة)" : "Supervisor",
+        header: isRTL ? "المساعد(ة)" : "Assistant",
         cell: (info) => {
-          const sup = info.row.original;
+          const assistant = info.row.original;
           return (
             <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
               <div className="flex-shrink-0 h-10 w-10 rounded-full bg-brand-navy/10 text-brand-navy flex items-center justify-center font-bold text-sm overflow-hidden ring-2 ring-offset-1 ring-brand-dark/10">
-                {sup.image ? (
-                  <img src={`/storage/${sup.image}`} alt={sup.name} className="w-full h-full object-cover" />
+                {assistant.image ? (
+                  <img src={`/storage/${assistant.image}`} alt={assistant.name} className="w-full h-full object-cover" />
                 ) : (
-                  sup.name.charAt(0)
+                  assistant.name.charAt(0)
                 )}
               </div>
               <div className={isRTL ? "text-right" : "text-left"}>
                 <div className={`text-sm font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
-                  {sup.name}
+                  {assistant.name}
                 </div>
-                {sup.name_en && (
+                {assistant.name_en && (
                   <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                    {sup.name_en}
+                    {assistant.name_en}
                   </div>
                 )}
               </div>
@@ -254,14 +255,14 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
       columnHelper.accessor("national_id", {
         header: isRTL ? "الهوية / الكود" : "ID / Code",
         cell: (info) => {
-          const sup = info.row.original;
+          const assistant = info.row.original;
           return (
             <div className={isRTL ? "text-right" : "text-left"}>
               <div className={`text-sm font-mono font-medium ${isDark ? "text-gray-300" : "text-gray-800"}`}>
-                {sup.national_id || "—"}
+                {assistant.national_id || "—"}
               </div>
               <div className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>
-                {sup.user_code}
+                {assistant.user_code}
               </div>
             </div>
           );
@@ -270,14 +271,14 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
       columnHelper.accessor("phone", {
         header: isRTL ? "بيانات الاتصال" : "Contact",
         cell: (info) => {
-          const sup = info.row.original;
+          const assistant = info.row.original;
           return (
             <div className={isRTL ? "text-right" : "text-left"}>
               <div className={`text-sm font-mono ${isDark ? "text-gray-300" : "text-gray-800"}`}>
-                {sup.phone}
+                {assistant.phone}
               </div>
               <div className={`text-xs truncate max-w-[160px] ${isDark ? "text-gray-500" : "text-gray-400"}`}>
-                {sup.email}
+                {assistant.email}
               </div>
             </div>
           );
@@ -286,20 +287,20 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
       columnHelper.accessor("assistant.emergency_contact_name", {
         header: isRTL ? "طوارئ الاستجابة" : "Emergency",
         cell: (info) => {
-          const sup = info.row.original;
+          const assistant = info.row.original;
           return (
             <div className={isRTL ? "text-right" : "text-left"}>
               <div className={`text-sm font-medium ${isDark ? "text-red-400" : "text-red-600"}`}>
-                {sup.assistant?.emergency_contact_phone || "—"}
+                {assistant.assistant?.emergency_contact_phone || "—"}
               </div>
               <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                {sup.assistant?.emergency_contact_name || "—"}
+                {assistant.assistant?.emergency_contact_name || "—"}
               </div>
             </div>
           );
         },
       }),
-      columnHelper.accessor("assigned_bus_as_supervisor", {
+      columnHelper.accessor("assigned_bus_as_assistant", {
         header: isRTL ? "الباص المُعيَّن" : "Assigned Bus",
         cell: (info) => {
           const bus = info.getValue() as AssignedBus | null;
@@ -337,17 +338,17 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
         id: "actions",
         header: isRTL ? "الإجراءات" : "Actions",
         cell: (info) => {
-          const sup = info.row.original;
+          const assistant = info.row.original;
           return (
             <div className={`flex gap-2 column-actions ${isRTL ? "justify-start" : "justify-end"}`}>
               <ActionButton
                 label={isRTL ? "تعديل" : "Edit"}
-                onClick={() => openEditModal(sup)}
+                onClick={() => openEditModal(assistant)}
                 color="indigo"
               />
               <ActionButton
                 label={isRTL ? "حذف" : "Delete"}
-                onClick={() => deleteSupervisor(sup.id)}
+                onClick={() => deleteAssistant(assistant.id)}
                 color="red"
               />
             </div>
@@ -360,13 +361,13 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
 
   // --- Pagination metadata ---
   const pagination: PaginationMeta = {
-    links: supervisors.links,
-    current_page: supervisors.current_page,
-    last_page: supervisors.last_page,
-    per_page: supervisors.per_page,
-    total: supervisors.total,
-    from: supervisors.from,
-    to: supervisors.to,
+    links: assistants.links,
+    current_page: assistants.current_page,
+    last_page: assistants.last_page,
+    per_page: assistants.per_page,
+    total: assistants.total,
+    from: assistants.from,
+    to: assistants.to,
   };
 
   const headerAction = (
@@ -374,7 +375,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
       onClick={openAddModal}
       className="bg-brand-yellow text-brand-dark hover:bg-yellow-500"
     >
-      {isRTL ? "+ إضافة مشرفة جديدة" : "+ Add New Supervisor"}
+      {isRTL ? "+ إضافة مساعدة جديدة" : "+ Add New Assistant"}
     </PrimaryButton>
   );
 
@@ -382,11 +383,11 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
     <AuthenticatedLayout
       header={
         <h2 className={`font-bold text-xl ${isDark ? "text-gray-200" : "text-gray-800"}`}>
-          {isRTL ? "إدارة المشرفين" : "Supervisors Management"}
+          {isRTL ? "إدارة المساعدين" : "Assistants Management"}
         </h2>
       }
     >
-      <Head title={isRTL ? "المشرفين" : "Supervisors"} />
+      <Head title={isRTL ? "المساعدين" : "Assistants"} />
 
       <div className={`pb-8 space-y-6 dir-${isRTL ? "rtl" : "ltr"}`}>
 
@@ -398,11 +399,11 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
           className="grid grid-cols-3 gap-4"
         >
           {[
-            { label: isRTL ? "إجمالي المشرفين" : "Total Supervisors", value: counts.all, icon: <Users className="w-5 h-5" />, color: "blue" as const },
+            { label: isRTL ? "إجمالي المساعدين" : "Total Assistants", value: counts.all, icon: <Users className="w-5 h-5" />, color: "blue" as const },
             { label: isRTL ? "متاح" : "Available", value: counts.available, icon: <CheckCircle2 className="w-5 h-5" />, color: "green" as const },
             { label: isRTL ? "معين" : "Assigned", value: counts.assigned, icon: <BusIcon className="w-5 h-5" />, color: "orange" as const },
           ].map((stat, i) => (
-            <SupStatCard key={i} {...stat} isDark={isDark} isRTL={isRTL} />
+            <AssistantStatCard key={i} {...stat} isDark={isDark} isRTL={isRTL} />
           ))}
         </motion.div>
 
@@ -412,11 +413,11 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.15 }}
         >
-          <BaseDataTable<Supervisor>
+          <BaseDataTable<Assistant>
             columns={columns}
-            data={supervisors.data}
+            data={assistants.data}
             pagination={pagination}
-            title={isRTL ? "مشرفو الحافلات" : "Bus Supervisors"}
+            title={isRTL ? "مساعدو الحافلات" : "Bus Assistants"}
             /* subtitle={
               isRTL
                 ? `${counts.all} مشرف — ${counts.assigned} معين — ${counts.available} متاح`
@@ -430,16 +431,16 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
             filterTabs={filterTabs}
             activeFilter={filters.status}
             onFilterChange={handleFilterChange}
-            emptyMessage={isRTL ? "لا يوجد مشرفون" : "No Supervisors Yet"}
+            emptyMessage={isRTL ? "لا يوجد مساعدين" : "No Assistants Yet"}
             emptyDescription={
               isRTL
-                ? "لم يتم تسجيل أي مشرف بعد. ابدأ بإضافة أول مشرف للأسطول."
-                : "No supervisors registered yet. Add your first bus supervisor."
+                ? "لم يتم تسجيل أي مساعدة بعد. ابدأ بإضافة أول مساعدة للأسطول."
+                : "No assistants registered yet. Add your first bus assistant."
             }
             emptyIcon={<UserCog className="w-10 h-10" />}
             emptyAction={
               filters.status === "all" || !filters.status
-                ? { label: isRTL ? "+ إضافة مشرف" : "+ Add New Supervisor", onClick: openAddModal }
+                ? { label: isRTL ? "+ إضافة مساعدة" : "+ Add New Assistant", onClick: openAddModal }
                 : undefined
             }
           />
@@ -461,7 +462,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
                             {/* Header */}
               <div className={`px-8 pt-8 pb-6 border-b ${isDark ? "border-gray-800" : "border-gray-100"}`}>
                 <h2 className={`text-2xl font-bold ${isDark ? "text-white" : "text-brand-navy"}`}>
-                  {isEditing ? (isRTL ? "تعديل بيانات المشرفة" : "Edit Supervisor Details") : (isRTL ? "تسجيل بيانات مشرفة جديدة" : "Register New Supervisor")}
+                  {isEditing ? (isRTL ? "تعديل بيانات المساعدة" : "Edit Assistant Details") : (isRTL ? "تسجيل بيانات مساعدة جديدة" : "Register New Assistant")}
                 </h2>
 
                 {/* Stepper */}
@@ -502,7 +503,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
 
                         <div className={`flex-1 ${isRTL ? "text-right" : "text-left"}`}>
                           <h4 className={`font-bold ${isDark ? "text-gray-200" : "text-gray-800"}`}>
-                            {isRTL ? "صورة الملف الشخصي للمشرفة" : "Supervisor Profile Image"}
+                            {isRTL ? "صورة الملف الشخصي للمساعدة" : "Assistant Profile Image"}
                           </h4>
                           <div className={`flex gap-3 mt-3 ${isRTL ? "flex-row-reverse justify-end" : ""}`}>
                             <label className={`cursor-pointer px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${isDark ? "bg-brand-navy border border-gray-600 text-white hover:bg-gray-800" : "bg-brand-navy text-white hover:bg-opacity-90"}`}>
@@ -655,7 +656,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
                       </button>
                     ) : (
                       <button type="submit" disabled={processing} className={`px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-opacity disabled:opacity-50 ${isDark ? "bg-brand-yellow text-brand-dark hover:opacity-90" : "bg-brand-yellow text-brand-dark hover:opacity-90"}`}>
-                        {isEditing ? (isRTL ? "حفظ التعديلات" : "Save Changes") : (isRTL ? "إضافة المشرفة" : "Add Supervisor")}
+                        {isEditing ? (isRTL ? "حفظ التعديلات" : "Save Changes") : (isRTL ? "إضافة المساعدة" : "Add Assistant")}
                       </button>
                     )}
                   </div>
@@ -670,19 +671,19 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
   );
 }
 
-// ─── SupStatCard ───────────────────────────────────────
+// ─── AssistantStatCard ───────────────────────────────────────
 
-const supStatColorMap = {
+const assistantStatColorMap = {
   blue: { bg: "bg-blue-50 dark:bg-blue-900/20", icon: "text-blue-500", border: "border-blue-100 dark:border-blue-900/30" },
   green: { bg: "bg-emerald-50 dark:bg-emerald-900/20", icon: "text-emerald-500", border: "border-emerald-100 dark:border-emerald-900/30" },
   orange: { bg: "bg-orange-50 dark:bg-orange-900/20", icon: "text-orange-500", border: "border-orange-100 dark:border-orange-900/30" },
 };
 
-function SupStatCard({ label, value, icon, color, isDark, isRTL }: {
+function AssistantStatCard({ label, value, icon, color, isDark, isRTL }: {
   label: string; value: number; icon: React.ReactNode;
-  color: keyof typeof supStatColorMap; isDark: boolean; isRTL: boolean;
+  color: keyof typeof assistantStatColorMap; isDark: boolean; isRTL: boolean;
 }) {
-  const scheme = supStatColorMap[color];
+  const scheme = assistantStatColorMap[color];
   return (
     <motion.div
       whileHover={{ y: -2 }}

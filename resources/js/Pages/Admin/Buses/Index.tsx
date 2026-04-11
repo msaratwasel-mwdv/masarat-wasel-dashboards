@@ -72,10 +72,12 @@ interface Bus {
   front_qr: string | null;
   school_id: number | null;
   driver_id: number | null;
-  supervisor_id: number | null;
+  assistant_id: number | null;
+  field_supervisor_id: number | null;
   route_id: number | null;
   driver?: User;
-  supervisor?: User;
+  assistant?: User;
+  field_supervisor?: User;
   school?: School;
   route?: Route;
   documents?: BusDocument[];
@@ -105,7 +107,8 @@ interface Props {
     status: string;
   };
   availableDrivers: User[];
-  availableSupervisors: User[];
+  availableFieldSupervisors: User[];
+  availableAssistants: User[];
   schools: School[];
   routes: Route[];
 }
@@ -117,7 +120,8 @@ export default function Index({
   counts,
   filters,
   availableDrivers,
-  availableSupervisors,
+  availableFieldSupervisors,
+  availableAssistants,
   schools,
   routes,
 }: Props) {
@@ -168,7 +172,8 @@ export default function Index({
     capacity: 25,
     status: "active",
     driver_id: "",
-    supervisor_id: "",
+    field_supervisor_id: "",
+    assistant_id: "",
     school_id: "",
     route_id: "",
     photos: [] as File[],
@@ -219,7 +224,8 @@ export default function Index({
         capacity: bus.capacity,
         status: bus.status as any,
         driver_id: bus.driver_id?.toString() || "",
-        supervisor_id: bus.supervisor_id?.toString() || "",
+        field_supervisor_id: bus.field_supervisor_id?.toString() || "",
+        assistant_id: bus.assistant_id?.toString() || "",
         school_id: bus.school_id?.toString() || "",
         route_id: bus.route_id?.toString() || "",
         photos: [],
@@ -245,7 +251,8 @@ export default function Index({
     formData.append("capacity", String(d.capacity));
     formData.append("status", d.status);
     if (d.driver_id) formData.append("driver_id", d.driver_id);
-    if (d.supervisor_id) formData.append("supervisor_id", d.supervisor_id);
+    if (d.field_supervisor_id) formData.append("field_supervisor_id", d.field_supervisor_id);
+    if (d.assistant_id) formData.append("assistant_id", d.assistant_id);
     if (d.school_id) formData.append("school_id", d.school_id);
     if (d.route_id) formData.append("route_id", d.route_id);
     if (d.photos && d.photos.length > 0) {
@@ -287,13 +294,21 @@ export default function Index({
     return alreadyIn ? availableDrivers : [currentDriver, ...availableDrivers];
   }, [modalState, availableDrivers]);
 
-  const editSupervisorOptions = useMemo(() => {
-    if (modalState.type !== "edit" || !modalState.bus) return availableSupervisors;
-    const currentSupervisor = modalState.bus.supervisor;
-    if (!currentSupervisor) return availableSupervisors;
-    const alreadyIn = availableSupervisors.some((s) => s.id === currentSupervisor.id);
-    return alreadyIn ? availableSupervisors : [currentSupervisor, ...availableSupervisors];
-  }, [modalState, availableSupervisors]);
+  const editFieldSupervisorOptions = useMemo(() => {
+    if (modalState.type !== "edit" || !modalState.bus) return availableFieldSupervisors;
+    const currentSupervisor = modalState.bus.field_supervisor;
+    if (!currentSupervisor) return availableFieldSupervisors;
+    const alreadyIn = availableFieldSupervisors.some((s) => s.id === currentSupervisor.id);
+    return alreadyIn ? availableFieldSupervisors : [currentSupervisor, ...availableFieldSupervisors];
+  }, [modalState, availableFieldSupervisors]);
+
+  const editAssistantOptions = useMemo(() => {
+    if (modalState.type !== "edit" || !modalState.bus) return availableAssistants;
+    const currentAssistant = modalState.bus.assistant;
+    if (!currentAssistant) return availableAssistants;
+    const alreadyIn = availableAssistants.some((s) => s.id === currentAssistant.id);
+    return alreadyIn ? availableAssistants : [currentAssistant, ...availableAssistants];
+  }, [modalState, availableAssistants]);
 
   // --- Helpers ---
   const getStatusVariant = (status: string): "green" | "yellow" | "red" | "gray" => {
@@ -369,9 +384,15 @@ export default function Index({
                 </span>
               </div>
               <div className={`text-xs ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+                <span className={`font-bold ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "مساعدة:" : "A:"} </span>
+                <span className={!bus.assistant ? "text-red-400 italic" : ""}>
+                  {bus.assistant?.name || (isRTL ? "غير مسند" : "—")}
+                </span>
+              </div>
+              <div className={`text-xs ${isDark ? "text-gray-300" : "text-gray-700"}`}>
                 <span className={`font-bold ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "مشرف:" : "S:"} </span>
-                <span className={!bus.supervisor ? "text-red-400 italic" : ""}>
-                  {bus.supervisor?.name || (isRTL ? "غير مسند" : "—")}
+                <span className={!bus.field_supervisor ? "text-red-400 italic" : ""}>
+                  {bus.field_supervisor?.name || (isRTL ? "غير مسند" : "—")}
                 </span>
               </div>
             </div>
@@ -631,12 +652,13 @@ export default function Index({
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     
                     {/* Operational Alignment */}
-                    <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-4">
-                       {[
-                         { title: isRTL ? "الطيار (السائق)" : "PILOT", name: modalState.bus.driver?.name, icon: "👨‍✈️", color: "amber", sub: isRTL ? "المشغل الرئيسي" : "Main Operator" },
-                         { title: isRTL ? "المشرفة" : "SAFETY", name: modalState.bus.supervisor?.name, icon: "🛡️", color: "violet", sub: isRTL ? "سلامة الركاب" : "Passenger Safety" },
-                         { title: isRTL ? "الموقع (المسار)" : "LOCATION", name: modalState.bus.school?.name, icon: "🏫", color: "emerald", sub: modalState.bus.route?.name || (isRTL ? "في وضع الانتظار" : "Standby Route") }
-                       ].map(card => (
+                        <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-4 gap-4">
+                           {[
+                             { title: isRTL ? "الطيار (السائق)" : "PILOT", name: modalState.bus.driver?.name, icon: "👨‍✈️", color: "amber", sub: isRTL ? "المشغل الرئيسي" : "Main Operator" },
+                             { title: isRTL ? "المساعدة" : "ASSISTANT", name: modalState.bus.assistant?.name, icon: "👩‍🏫", color: "rose", sub: isRTL ? "سلامة الركاب" : "Passenger Safety" },
+                             { title: isRTL ? "المشرف الميداني" : "SUPERVISOR", name: modalState.bus.field_supervisor?.name, icon: "🏢", color: "violet", sub: isRTL ? "عمليات الميدان" : "Field Operations" },
+                             { title: isRTL ? "الموقع (المدرسة)" : "LOCATION", name: modalState.bus.school?.name, icon: "🏫", color: "emerald", sub: modalState.bus.route?.name || (isRTL ? "في وضع الانتظار" : "Standby Route") }
+                           ].map(card => (
                          <div key={card.title} className={`p-4 rounded-[2rem] border transition-all ${isDark ? "bg-gray-800/40 border-gray-800 hover:bg-gray-800" : "bg-white border-gray-100 hover:shadow-lg shadow-sm"}`}>
                             <p className={`text-[9px] font-black mb-3 uppercase tracking-widest ${card.color === "amber" ? "text-amber-500" : card.color === "violet" ? "text-violet-500" : "text-emerald-500"}`}>{card.title}</p>
                             <div className="flex items-center gap-4">
@@ -836,9 +858,16 @@ export default function Index({
                         </div>
                         <div className={isRTL ? "text-right" : ""}>
                           <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المشرف الميداني" : "Field Supervisor"}</label>
-                           <select value={busForm.data.supervisor_id || ""} onChange={(e) => busForm.setData("supervisor_id", e.target.value ? Number(e.target.value) : null)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
+                           <select value={busForm.data.field_supervisor_id || ""} onChange={(e) => busForm.setData("field_supervisor_id", e.target.value ? Number(e.target.value) : null)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
                             <option value="">{isRTL ? "— بدون مشرف —" : "— No Supervision —"}</option>
-                            {(modalState.type === "edit" ? editSupervisorOptions : availableSupervisors).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            {(modalState.type === "edit" ? editFieldSupervisorOptions : availableFieldSupervisors).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                          </select>
+                        </div>
+                        <div className={isRTL ? "text-right" : ""}>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المساعدة" : "Assistant"}</label>
+                           <select value={busForm.data.assistant_id || ""} onChange={(e) => busForm.setData("assistant_id", e.target.value ? Number(e.target.value) : null)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
+                            <option value="">{isRTL ? "— بدون مساعدة —" : "— No Assistant —"}</option>
+                            {(modalState.type === "edit" ? editAssistantOptions : availableAssistants).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
                         </div>
                       </div>

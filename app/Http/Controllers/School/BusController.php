@@ -19,10 +19,8 @@ class BusController extends Controller
 
         // 1. Bus Inventory Data
         $buses = Bus::where('school_id', $schoolId)
-            ->with(['drivers.user', 'fieldSupervisor'])
-            ->withCount(['students' => function ($query) {
-                $query->where('bus_students.is_active', true);
-            }])
+            ->with(['driver.user', 'fieldSupervisor', 'assistant', 'latestTrip', 'route'])
+            ->withStudentsCount()
             ->latest()
             ->get()
             ->map(function ($bus) {
@@ -36,19 +34,20 @@ class BusController extends Controller
                     'model' => $bus->model,
                     'year' => $bus->year,
                     'color' => $bus->color,
-                    'driver' => $bus->drivers->count() > 0 ? $bus->drivers->first()->user : null,
-                    'supervisor' => $bus->fieldSupervisor,
+                    'driver' => $bus->driver?->user,
+                    'assistant' => $bus->assistant,
+                    'field_supervisor' => $bus->fieldSupervisor,
                     'students_count' => $bus->students_count,
-                    'current_latitude' => (float) $bus->current_latitude,
-                    'current_longitude' => (float) $bus->current_longitude,
+                    'latitude' => (float) $bus->latitude,
+                    'longitude' => (float) $bus->longitude,
                     'last_location_update' => $bus->last_location_update,
-                    'trip_status' => $bus->trip_status,
+                    'trip_status' => $bus->latestTrip?->status ?? 'idle',
                     'route_id' => $bus->route_id,
+                    'route' => $bus->route ? ['id' => $bus->route->id, 'name' => $bus->route->name, 'code' => $bus->route->code] : null,
                 ];
             });
 
-        // 2. Bus Requests Data (BusRequest is deprecated)
-        $requests = collect([]);
+
 
         // 3. School Location for Map Center
         $school = Auth::user()->school;
@@ -61,7 +60,6 @@ class BusController extends Controller
 
         return Inertia::render('School/Buses/BusesManagement', [
             'buses' => $buses,
-            'requests' => $requests,
             'routes' => \App\Models\Route::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
             'schoolLocation' => $schoolLocation,
         ]);
@@ -79,7 +77,8 @@ class BusController extends Controller
             'type' => 'required|in:permanent,temporary',
             'status' => 'required|in:active,maintenance,inactive',
             'driver_id' => 'nullable|exists:users,id',
-            'supervisor_id' => 'nullable|exists:users,id',
+            'assistant_id' => 'nullable|exists:users,id',
+            'field_supervisor_id' => 'nullable|exists:users,id',
             'model' => 'nullable|string',
             'year' => 'nullable|integer|min:1990|max:' . (date('Y') + 1),
             'color' => 'nullable|string',
@@ -88,10 +87,7 @@ class BusController extends Controller
 
         $validated['school_id'] = Auth::user()->getSchoolId();
 
-        if (isset($validated['supervisor_id'])) {
-            $validated['field_supervisor_id'] = $validated['supervisor_id'];
-            unset($validated['supervisor_id']);
-        }
+        // field_supervisor_id and assistant_id already have correct keys for mass assignment
         $driverId = $validated['driver_id'] ?? null;
         if (array_key_exists('driver_id', $validated)) {
             unset($validated['driver_id']);
@@ -100,7 +96,7 @@ class BusController extends Controller
         $bus = Bus::create($validated);
         
         if ($driverId) {
-            \App\Models\Driver::where('user_id', $driverId)->update(['bus_id' => $bus->id, 'school_id' => $validated['school_id']]);
+            \App\Models\Driver::where('user_id', $driverId)->update(['bus_id' => $bus->id]);
         }
 
         return back()->with('success', 'تم إضافة الحافلة بنجاح');
@@ -122,7 +118,8 @@ class BusController extends Controller
             'type' => 'required|in:permanent,temporary',
             'status' => 'required|in:active,maintenance,inactive',
             'driver_id' => 'nullable|exists:users,id',
-            'supervisor_id' => 'nullable|exists:users,id',
+            'assistant_id' => 'nullable|exists:users,id',
+            'field_supervisor_id' => 'nullable|exists:users,id',
             'model' => 'nullable|string',
             'year' => 'nullable|integer',
             'color' => 'nullable|string',
@@ -130,13 +127,10 @@ class BusController extends Controller
         ]);
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($bus, $validated) {
-            $oldDriverId = $bus->drivers->first()->user_id ?? null;
+            $oldDriverId = $bus->driver?->user_id;
             $newDriverId = $validated['driver_id'] ?? null;
             
-            if (isset($validated['supervisor_id'])) {
-                $validated['field_supervisor_id'] = $validated['supervisor_id'];
-                unset($validated['supervisor_id']);
-            }
+            // field_supervisor_id and assistant_id already have correct keys for mass assignment
             if (array_key_exists('driver_id', $validated)) {
                 unset($validated['driver_id']);
             }
@@ -145,10 +139,10 @@ class BusController extends Controller
 
             if ($oldDriverId !== $newDriverId) {
                 if ($oldDriverId) {
-                    \App\Models\Driver::where('user_id', $oldDriverId)->update(['bus_id' => null, 'school_id' => null]);
+                    \App\Models\Driver::where('user_id', $oldDriverId)->update(['bus_id' => null]);
                 }
                 if ($newDriverId) {
-                    \App\Models\Driver::where('user_id', $newDriverId)->update(['bus_id' => $bus->id, 'school_id' => $bus->school_id]);
+                    \App\Models\Driver::where('user_id', $newDriverId)->update(['bus_id' => $bus->id]);
                 }
             }
         });
@@ -197,7 +191,8 @@ class BusController extends Controller
         $schoolId = Auth::user()->getSchoolId();
 
         $buses = Bus::where('school_id', $schoolId)
-            ->with(['drivers.user'])
+            ->with(['driver.user'])
+            ->withStudentsCount()
             ->get()
             ->map(function ($bus) {
                 return [
@@ -209,7 +204,7 @@ class BusController extends Controller
                     'current_latitude' => (float) $bus->current_latitude,
                     'current_longitude' => (float) $bus->current_longitude,
                     'trip_status' => $bus->trip_status,
-                    'driver' => $bus->drivers->count() > 0 ? $bus->drivers->first()->user : null,
+                    'driver' => $bus->driver?->user,
                     'students_count' => $bus->students_count ?? 0,
                 ];
             });
@@ -254,91 +249,98 @@ class BusController extends Controller
     }
 
     /**
-     * Show the generic page to assign students to buses.
+     * Show page to assign students to buses (forth/back trip).
      */
     public function assignStudentsPage(Request $request)
     {
         $schoolId = Auth::user()->getSchoolId();
 
-        // Fetch all bus groups
-        $groups = \App\Models\BusGroup::with('bus')->where('school_id', $schoolId)->get();
+        $buses = Bus::where('school_id', $schoolId)
+            ->where('status', 'active')
+            ->with(['driver.user', 'assistant', 'route'])
+            ->get()
+            ->map(fn($bus) => [
+                'id'           => $bus->id,
+                'bus_number'   => $bus->bus_number,
+                'plate_number' => $bus->plate_number,
+                'capacity'     => $bus->capacity,
+                'route'        => $bus->route ? ['id' => $bus->route->id, 'name' => $bus->route->name] : null,
+                'driver'       => $bus->driver?->user?->name,
+                'assistant'    => $bus->assistant?->name,
+            ]);
 
-        // Fetch all active students in the school
         $students = \App\Models\Student::inSchool($schoolId)
             ->where('is_active', true)
-            ->orderBy('first_name_ar') 
-            ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id', 'gender', 'morning_group_id', 'afternoon_group_id'])
-            ->map(function ($student) {
-                return [
-                    'id' => $student->id,
-                    'name' => $student->full_name,
-                    'student_code' => $student->student_code,
-                    'national_id' => $student->national_id,
-                    'gender' => $student->gender,
-                    'morning_group_id' => $student->morning_group_id,
-                    'afternoon_group_id' => $student->afternoon_group_id,
-                ];
-            });
+            ->orderBy('first_name_ar')
+            ->get(['id', 'first_name_ar', 'second_name_ar', 'last_name_ar', 'student_code', 'national_id', 'gender', 'forth_bus_id', 'back_bus_id'])
+            ->map(fn($s) => [
+                'id'           => $s->id,
+                'name'         => $s->full_name,
+                'student_code' => $s->student_code,
+                'national_id'  => $s->national_id,
+                'gender'       => $s->gender,
+                'forth_bus_id' => $s->forth_bus_id,
+                'back_bus_id'  => $s->back_bus_id,
+            ]);
 
         return Inertia::render('School/Buses/AssignStudents', [
-            'groups' => $groups,
-            'students' => $students,
-            'selectedGroupId' => $request->query('group_id'), // Pre-select group if provided in query
+            'buses'         => $buses,
+            'students'      => $students,
+            'selectedBusId' => $request->query('bus_id'),
         ]);
     }
 
     /**
-     * Save assigned students to a specific bus.
+     * Save student-to-bus assignments (forth + back trip).
      */
     public function saveAssignedStudents(Request $request)
     {
         $validated = $request->validate([
-            'group_id' => 'required|exists:bus_groups,id',
-            'morning_student_ids' => 'array',
-            'morning_student_ids.*' => 'exists:students,id',
-            'afternoon_student_ids' => 'array',
-            'afternoon_student_ids.*' => 'exists:students,id',
+            'bus_id'            => 'required|exists:buses,id',
+            'forth_student_ids' => 'array',
+            'forth_student_ids.*' => 'exists:students,id',
+            'back_student_ids'  => 'array',
+            'back_student_ids.*' => 'exists:students,id',
         ]);
 
-        $groupId = $validated['group_id'];
+        $busId    = $validated['bus_id'];
         $schoolId = Auth::user()->getSchoolId();
 
-        $group = \App\Models\BusGroup::where('id', $groupId)
-            ->where('school_id', $schoolId)
-            ->firstOrFail();
+        // Ensure the bus belongs to this school
+        Bus::where('id', $busId)->where('school_id', $schoolId)->firstOrFail();
 
-        $morningIds = collect($validated['morning_student_ids'] ?? [])->unique()->values()->all();
-        $afternoonIds = collect($validated['afternoon_student_ids'] ?? [])->unique()->values()->all();
+        $forthIds = collect($validated['forth_student_ids'] ?? [])->unique()->values()->all();
+        $backIds  = collect($validated['back_student_ids']  ?? [])->unique()->values()->all();
 
-        // Transaction for safety
-        \Illuminate\Support\Facades\DB::transaction(function () use ($schoolId, $groupId, $morningIds, $afternoonIds) {
-            // 1. Remove this group from any students who currently have it, but aren't in the new lists
+        \Illuminate\Support\Facades\DB::transaction(function () use ($schoolId, $busId, $forthIds, $backIds) {
+            // Clear removed forth students
             \App\Models\Student::inSchool($schoolId)
-                ->where('morning_group_id', $groupId)
-                ->whereNotIn('id', $morningIds)
-                ->update(['morning_group_id' => null]);
+                ->where('forth_bus_id', $busId)
+                ->whereNotIn('id', $forthIds)
+                ->update(['forth_bus_id' => null]);
 
+            // Clear removed back students
             \App\Models\Student::inSchool($schoolId)
-                ->where('afternoon_group_id', $groupId)
-                ->whereNotIn('id', $afternoonIds)
-                ->update(['afternoon_group_id' => null]);
+                ->where('back_bus_id', $busId)
+                ->whereNotIn('id', $backIds)
+                ->update(['back_bus_id' => null]);
 
-            // 2. Add group to morning students
-            if (!empty($morningIds)) {
+            // Assign forth students
+            if (!empty($forthIds)) {
                 \App\Models\Student::inSchool($schoolId)
-                    ->whereIn('id', $morningIds)
-                    ->update(['morning_group_id' => $groupId]);
+                    ->whereIn('id', $forthIds)
+                    ->update(['forth_bus_id' => $busId]);
             }
 
-            // 3. Add group to afternoon students
-            if (!empty($afternoonIds)) {
+            // Assign back students
+            if (!empty($backIds)) {
                 \App\Models\Student::inSchool($schoolId)
-                    ->whereIn('id', $afternoonIds)
-                    ->update(['afternoon_group_id' => $groupId]);
+                    ->whereIn('id', $backIds)
+                    ->update(['back_bus_id' => $busId]);
             }
         });
 
-        return redirect()->back()->with('success', 'تم حفظ تعيينات المجموعات بنجاح');
+        return redirect()->back()->with('success', 'تم حفظ تعيينات الطلاب بنجاح');
     }
 }
 

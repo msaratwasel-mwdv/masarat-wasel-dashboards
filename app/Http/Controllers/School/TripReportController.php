@@ -27,13 +27,17 @@ class TripReportController extends Controller
             ->select('id', 'bus_number', 'plate_number')
             ->get();
 
-        // Supervisors for dropdown (users with role supervisor in this school)
-        $supervisors = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
-            ->select('id', 'name', 'phone')
+        // Assistants for dropdown
+        $assistants = User::whereHas('assignedBusAsAssistant', fn($q) => $q->where('school_id', $schoolId))
+            ->select('id', 'first_name_ar', 'last_name_ar', 'phone')
             ->get();
 
-        // Bus groups for dropdown
+        // Field Supervisors for dropdown
+        $field_supervisors = User::whereHas('assignedBusAsFieldSupervisor', fn($q) => $q->where('school_id', $schoolId))
+            ->select('id', 'first_name_ar', 'last_name_ar', 'phone')
+            ->get();
+
+        // Bus groups fallback - check if still using legacy groups
         $groups = BusGroup::where('school_id', $schoolId)
             ->with('bus:id,bus_number')
             ->select('id', 'name', 'bus_id')
@@ -41,7 +45,8 @@ class TripReportController extends Controller
 
         return Inertia::render('School/TripReports/Index', [
             'buses' => $buses,
-            'supervisors' => $supervisors,
+            'assistants' => $assistants,
+            'field_supervisors' => $field_supervisors,
             'groups' => $groups,
             'school' => Auth::user()->school,
         ]);
@@ -59,7 +64,8 @@ class TripReportController extends Controller
             'trip_type' => 'nullable|in:to_school,to_home,both',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
-            'supervisor_id' => 'nullable|exists:users,id',
+            'assistant_id' => 'nullable|exists:users,id',
+            'field_supervisor_id' => 'nullable|exists:users,id',
             'group_id' => 'nullable|exists:bus_groups,id',
         ]);
 
@@ -67,17 +73,21 @@ class TripReportController extends Controller
         $tripType = $request->input('trip_type', 'both');
         $dateFrom = $request->input('date_from', now()->toDateString());
         $dateTo = $request->input('date_to', now()->toDateString());
-        $supervisorId = $request->input('supervisor_id');
+        $assistantId = $request->input('assistant_id');
+        $fieldSupervisorId = $request->input('field_supervisor_id');
         $groupId = $request->input('group_id');
 
         // Build the bus query
-        $busQuery = Bus::where('school_id', $schoolId)->with(['supervisor:id,name,phone', 'groups']);
+        $busQuery = Bus::where('school_id', $schoolId)->with(['assistant', 'fieldSupervisor', 'groups']);
 
         if ($busId) {
             $busQuery->where('id', $busId);
         }
-        if ($supervisorId) {
-            $busQuery->where('supervisor_id', $supervisorId);
+        if ($assistantId) {
+            $busQuery->where('assistant_id', $assistantId);
+        }
+        if ($fieldSupervisorId) {
+            $busQuery->where('field_supervisor_id', $fieldSupervisorId);
         }
 
         $buses = $busQuery->get();
@@ -135,11 +145,8 @@ class TripReportController extends Controller
                         $boardingLog = $studentLogs->where('type', 'boarding')->first();
                         $alightingLog = $studentLogs->where('type', 'alighting')->first();
 
-                        // "Bus at door" and "Bus nearby" are derived from the boarding timestamps
-                        // In the reference image these are separate columns
-                        // We use the boarding recorded_at as the boarding time
                         $busAtDoor = $boardingLog?->recorded_at?->format('h:i:s A');
-                        $busNearby = null; // This would need a separate event type in the future
+                        $busNearby = null; 
                         $boardingTime = $boardingLog?->recorded_at?->format('h:i:s A');
                         $alightingTime = $alightingLog?->recorded_at?->format('h:i:s A');
 
@@ -161,8 +168,8 @@ class TripReportController extends Controller
                         'date' => $dateFrom,
                         'bus_number' => $bus->bus_number,
                         'plate_number' => $bus->plate_number,
-                        'supervisor_name' => $bus->supervisor?->name ?? '-',
-                        'supervisor_phone' => $bus->supervisor?->phone ?? '-',
+                        'supervisor_name' => $bus->assistant?->full_name ?? '-',
+                        'field_supervisor_name' => $bus->fieldSupervisor?->full_name ?? '-',
                         'group_name' => $group->name,
                         'direction' => $direction,
                         'direction_label' => $direction === 'to_school' ? 'رحلة ذهاب' : 'رحلة عودة',

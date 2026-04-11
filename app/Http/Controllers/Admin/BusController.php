@@ -25,7 +25,7 @@ class BusController extends Controller
 
         // 1. Base query for buses
         $query = Bus::with([
-            'drivers.user:id,first_name_ar,last_name_ar,image',
+            'driver.user:id,first_name_ar,last_name_ar,image',
             'assistant:id,first_name_ar,last_name_ar,image',
             'fieldSupervisor:id,first_name_ar,last_name_ar,image',
             'school:id,name',
@@ -50,7 +50,7 @@ class BusController extends Controller
             'plate_number',
             'model',
             'school.name',
-            'drivers.user.name',
+            'driver.user.name',
             'fieldSupervisor.name',
             'route.name',
         ], 15, function($bus) {
@@ -62,8 +62,9 @@ class BusController extends Controller
                 'السعة' => $bus->capacity,
                 'المدرسة' => $bus->school ? $bus->school->name : 'غير محدد',
                 'المسار' => $bus->route ? $bus->route->name : 'غير محدد',
-                'السائق' => $bus->drivers->count() > 0 && $bus->drivers->first()->user ? $bus->drivers->first()->user->name : 'متاح',
-                'المشرفة' => $bus->fieldSupervisor ? $bus->fieldSupervisor->name : 'متاح',
+                'السائق' => $bus->driver?->user?->name ?? 'متاح',
+                'المشرفة (مرافق)' => $bus->assistant ? $bus->assistant->name : 'متاح',
+                'المشرف الميداني' => $bus->fieldSupervisor ? $bus->fieldSupervisor->name : 'متاح',
                 'الحالة' => match($bus->status) {
                     'active' => 'نشط',
                     'maintenance' => 'صيانة',
@@ -94,17 +95,24 @@ class BusController extends Controller
             ->select('id', 'first_name_ar', 'last_name_ar', 'national_id')
             ->get();
 
-        // 4. جلب المشرفين المتاحين
-        $assignedSupervisorIds = Bus::whereNotNull('field_supervisor_id')->pluck('field_supervisor_id')->toArray();
-        $supervisors = User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
-            ->whereNotIn('id', $assignedSupervisorIds)
+        // 4. جلب المشرفين الميدانيين المتاحين
+        $assignedFieldSupervisorIds = Bus::whereNotNull('field_supervisor_id')->pluck('field_supervisor_id')->toArray();
+        $fieldSupervisors = User::whereHas('roles', fn($q) => $q->where('name', 'field_supervisor'))
+            ->whereNotIn('id', $assignedFieldSupervisorIds)
             ->select('id', 'first_name_ar', 'last_name_ar', 'national_id')
             ->get();
 
-        // 5. جلب المدارس النشطة
+        // 5. جلب مساعدات الباص المتاحات (المشرفات سابقاً)
+        $assignedAssistantIds = Bus::whereNotNull('assistant_id')->pluck('assistant_id')->toArray();
+        $assistants = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
+            ->whereNotIn('id', $assignedAssistantIds)
+            ->select('id', 'first_name_ar', 'last_name_ar', 'national_id')
+            ->get();
+
+        // 6. جلب المدارس النشطة
         $schools = School::where('status', 'Active')->get();
 
-        // 6. جلب جميع المسارات
+        // 7. جلب جميع المسارات
         $routes = \App\Models\Route::select('id', 'name', 'code')
             ->orderBy('name')
             ->get();
@@ -117,7 +125,8 @@ class BusController extends Controller
                 'status' => $statusFilter,
             ],
             'availableDrivers'     => $drivers,
-            'availableSupervisors' => $supervisors,
+            'availableFieldSupervisors' => $fieldSupervisors,
+            'availableAssistants'  => $assistants,
             'schools'              => $schools,
             'routes'               => $routes,
         ]);
@@ -130,14 +139,13 @@ class BusController extends Controller
         $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
             ->whereDoesntHave('driver', fn($q) => $q->whereNotNull('school_id'))
             ->get();
-        $supervisors = User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
-            ->whereDoesntHave('fieldSupervisor', fn($q) => $q->whereNotNull('school_id'))
+        $assistants = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
             ->get();
 
         return Inertia::render('Admin/Buses/Create', [
             'schools' => $schools,
             'drivers' => $drivers,
-            'supervisors' => $supervisors,
+            'assistants' => $assistants,
         ]);
     }
 
@@ -160,13 +168,23 @@ class BusController extends Controller
                     }
                 },
             ],
-            'supervisor_id'     => [
+            'field_supervisor_id' => [
                 'nullable',
                 'exists:users,id',
                 // يمنع تعيين مشرف مرتبط بباص آخر
                 function ($attribute, $value, $fail) {
                     if ($value && Bus::where('field_supervisor_id', $value)->exists()) {
                         $fail('هذا المشرف مُعيَّن لباص آخر بالفعل.');
+                    }
+                },
+            ],
+            'assistant_id' => [
+                'nullable',
+                'exists:users,id',
+                // يمنع تعيين مساعدة مرتبطة بباص آخر
+                function ($attribute, $value, $fail) {
+                    if ($value && Bus::where('assistant_id', $value)->exists()) {
+                        $fail('هذه المساعدة مُعيَّنة لباص آخر بالفعل.');
                     }
                 },
             ],
@@ -186,13 +204,14 @@ class BusController extends Controller
                 'status'        => 'active',
                 'school_id'           => $request->school_id,
                 'route_id'            => $request->route_id,
-                'field_supervisor_id' => $request->supervisor_id,
+                'field_supervisor_id' => $request->field_supervisor_id,
+                'assistant_id'        => $request->assistant_id,
             ]);
 
             // Map driver model directly
             if ($request->driver_id) {
                 \App\Models\Driver::where('user_id', $request->driver_id)
-                    ->update(['bus_id' => $bus->id, 'school_id' => $bus->school_id]);
+                    ->update(['bus_id' => $bus->id]);
             }
 
             $qrData = route('admin.buses.index') . "?bus=" . $bus->id;
@@ -280,20 +299,30 @@ class BusController extends Controller
             ->whereNotIn('id', $assignedDriverIds)
             ->get();
 
-        // المشرفون المتاحون: غير مُعيَّنين لأي باص + المشرف الحالي لهذا الباص
-        $assignedSupervisorIds = Bus::whereNotNull('field_supervisor_id')
+        // المشرفون الميدانيون المتاحون: غير مُعيَّنين لأي باص + المشرف الحالي لهذا الباص
+        $assignedFieldSupervisorIds = Bus::whereNotNull('field_supervisor_id')
             ->where('id', '!=', $bus->id)
             ->pluck('field_supervisor_id')
             ->toArray();
-        $supervisors = User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))
-            ->whereNotIn('id', $assignedSupervisorIds)
+        $fieldSupervisors = User::whereHas('roles', fn($q) => $q->where('name', 'field_supervisor'))
+            ->whereNotIn('id', $assignedFieldSupervisorIds)
+            ->get();
+
+        // مساعدات الباص المتاحات: غير مُعيَّنات لأي باص + المساعدة الحالية لهذا الباص
+        $assignedAssistantIds = Bus::whereNotNull('assistant_id')
+            ->where('id', '!=', $bus->id)
+            ->pluck('assistant_id')
+            ->toArray();
+        $assistants = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
+            ->whereNotIn('id', $assignedAssistantIds)
             ->get();
 
         return Inertia::render('Admin/Buses/Edit', [
-            'bus' => $bus->load(['school', 'drivers.user', 'fieldSupervisor']),
+            'bus' => $bus->load(['school', 'driver.user', 'fieldSupervisor', 'assistant']),
             'schools' => $schools,
             'drivers' => $drivers,
-            'supervisors' => $supervisors,
+            'fieldSupervisors' => $fieldSupervisors,
+            'assistants' => $assistants,
         ]);
     }
 
@@ -319,7 +348,7 @@ class BusController extends Controller
                     }
                 },
             ],
-            'supervisor_id' => [
+            'field_supervisor_id' => [
                 'nullable',
                 'exists:users,id',
                 // يمنع تعيين مشرف مرتبط بباص آخر (غير هذا الباص)
@@ -329,20 +358,27 @@ class BusController extends Controller
                     }
                 },
             ],
+            'assistant_id' => [
+                'nullable',
+                'exists:users,id',
+                // يمنع تعيين مساعدة مرتبطة بباص آخر (غير هذا الباص)
+                function ($attribute, $value, $fail) use ($busId) {
+                    if ($value && Bus::where('assistant_id', $value)->where('id', '!=', $busId)->exists()) {
+                        $fail('هذه المساعدة مُعيَّنة لباص آخر بالفعل.');
+                    }
+                },
+            ],
         ]);
 
         DB::transaction(function () use ($bus, $validated) {
-            $oldDriverId     = $bus->drivers->first()->user_id ?? null;
+            $oldDriverId     = $bus->driver?->user_id;
             $oldSupervisorId = $bus->field_supervisor_id;
+            $oldAssistantId  = $bus->assistant_id;
             $newDriverId     = $validated['driver_id'] ?? null;
-            $newSupervisorId = $validated['supervisor_id'] ?? null;
+            $newSupervisorId = $validated['field_supervisor_id'] ?? null;
+            $newAssistantId  = $validated['assistant_id'] ?? null;
             $schoolId        = $bus->school_id; // احتفظ بمدرسة الباص الحالية
             
-            // Map request supervisor_id to field_supervisor_id
-            if (array_key_exists('supervisor_id', $validated)) {
-                $validated['field_supervisor_id'] = $validated['supervisor_id'];
-                unset($validated['supervisor_id']);
-            }
             if (array_key_exists('driver_id', $validated)) {
                 unset($validated['driver_id']);
             }
@@ -352,23 +388,19 @@ class BusController extends Controller
             // NOTE: school_id does NOT exist on the users table.
             // Driver/supervisor school association lives in drivers.school_id / field_supervisors.school_id.
             // Update those extension records when driver/supervisor assignment OR bus school changes.
-            if ($oldDriverId !== $newDriverId || $bus->wasChanged('school_id')) {
-                if ($oldDriverId && $oldDriverId != $newDriverId) {
-                    \App\Models\Driver::where('user_id', $oldDriverId)->update(['bus_id' => null, 'school_id' => null]);
+            // 1. Update Driver
+            if ($oldDriverId !== $newDriverId) {
+                if ($oldDriverId) {
+                    \App\Models\Driver::where('user_id', $oldDriverId)->update(['bus_id' => null]);
                 }
                 if ($newDriverId) {
-                    \App\Models\Driver::where('user_id', $newDriverId)->update(['bus_id' => $bus->id, 'school_id' => $bus->school_id]);
+                    \App\Models\Driver::where('user_id', $newDriverId)->update(['bus_id' => $bus->id]);
                 }
             }
 
-            if ($oldSupervisorId !== $newSupervisorId || $bus->wasChanged('school_id')) {
-                if ($oldSupervisorId && $oldSupervisorId != $newSupervisorId) {
-                    \App\Models\FieldSupervisor::where('user_id', $oldSupervisorId)->update(['school_id' => null]);
-                }
-                if ($newSupervisorId) {
-                    \App\Models\FieldSupervisor::where('user_id', $newSupervisorId)->update(['school_id' => $bus->school_id]);
-                }
-            }
+            // 2. No direct mapping table for supervisors/assistants to buses (they are foreign keys on buses table)
+            // But if we need to clear flags or something, we could do it here. 
+            // The bus update already handled changing the IDs on the bus itself.
 
             // Upload new files if provided
             $this->uploadFiles(request(), $bus);
@@ -403,16 +435,6 @@ class BusController extends Controller
         DB::transaction(function () use ($schoolId, $bus) {
             // 1. Update bus school
             $bus->update(['school_id' => $schoolId]);
-
-            // 2. Update driver extension record (school_id lives in drivers table)
-            if ($bus->drivers()->exists()) {
-                $bus->drivers()->update(['school_id' => $schoolId]);
-            }
-
-            // 3. Update supervisor extension record (school_id lives in field_supervisors table)
-            if ($bus->field_supervisor_id) {
-                \App\Models\FieldSupervisor::where('user_id', $bus->field_supervisor_id)->update(['school_id' => $schoolId]);
-            }
         });
 
         $message = $schoolId ? 'تم إسناد الباص للمدرسة بنجاح' : 'تم سحب الباص للمقر الرئيسي بنجاح';

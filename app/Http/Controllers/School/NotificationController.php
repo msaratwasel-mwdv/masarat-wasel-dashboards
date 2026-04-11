@@ -250,8 +250,9 @@ class NotificationController extends Controller
                 $busIds = $filter['bus_ids'] ?? [];
                 return User::atSchool($schoolId)
                     ->whereHas('roles', fn($q) => $q->where('name', 'parent'))
-                    ->whereHas('students.buses', function ($q) use ($busIds) {
-                        $q->whereIn('buses.id', $busIds);
+                    ->whereHas('students', function ($q) use ($busIds) {
+                        $q->whereIn('forth_bus_id', $busIds)
+                          ->orWhereIn('back_bus_id', $busIds);
                     })->get();
 
             case 'specific_parent': // تم تحديث المسمى ليطابق Create.tsx

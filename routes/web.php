@@ -6,7 +6,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SchoolController;
 use App\Http\Controllers\Admin\SchoolUserController;
 use App\Http\Controllers\Admin\StaffController;
-use App\Http\Controllers\Admin\SupervisorController;
+use App\Http\Controllers\Admin\AssistantController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\School\Attendance\AttendanceController;
 use App\Http\Controllers\School\ClassroomController;
@@ -212,7 +212,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::delete('drivers/{driver}', [StaffController::class, 'destroyDriver'])->name('drivers.destroy');
 
         // المشرفين
-        Route::resource('supervisors', SupervisorController::class)->except(['create', 'edit', 'show']);
+        Route::resource('assistants', AssistantController::class)->except(['create', 'edit', 'show']);
 
         // المشرفين الميدانيين
         Route::resource('field-supervisors', \App\Http\Controllers\Admin\FieldSupervisorController::class)
@@ -319,7 +319,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         // 6. الحافلات والرحلات
         Route::resource('buses', \App\Http\Controllers\School\BusController::class);
         Route::post('buses/bulk-destroy', [\App\Http\Controllers\School\BusController::class, 'bulkDestroy'])->name('buses.bulk-destroy');
-        Route::resource('bus-groups', \App\Http\Controllers\School\BusGroupController::class);
+
         Route::get('buses/tracking/api', [\App\Http\Controllers\School\BusController::class, 'trackingApi'])->name('buses.tracking.api');
         Route::get('live-tracking', [\App\Http\Controllers\School\BusController::class, 'liveTracking'])->name('live-tracking.index');
         Route::get('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'assignStudentsPage'])->name('buses.students.assign');
@@ -334,8 +334,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::resource('notifications', \App\Http\Controllers\School\NotificationController::class);
         Route::post('notifications/preview', [\App\Http\Controllers\School\NotificationController::class, 'preview'])->name('notifications.preview');
 
-        Route::resource('trip-schedules', \App\Http\Controllers\School\TripScheduleController::class);
-        Route::post('trip-schedules/copy', [\App\Http\Controllers\School\TripScheduleController::class, 'copy'])->name('trip-schedules.copy');
+
 
         Route::resource('routes', \App\Http\Controllers\School\RouteController::class);
         Route::resource('field-trips', \App\Http\Controllers\School\FieldTripController::class);

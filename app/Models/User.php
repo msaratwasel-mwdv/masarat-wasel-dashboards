@@ -98,7 +98,7 @@ class User extends Authenticatable
         if ($this->hasRole('driver') && $this->relationLoaded('driver')) {
             return ($this->driver?->status ?? 'inactive') === 'active';
         }
-        if (($this->hasRole('supervisor') || $this->hasRole('assistant')) && $this->relationLoaded('assistant')) {
+        if ($this->hasRole('assistant') && $this->relationLoaded('assistant')) {
             return ($this->assistant?->status ?? 'inactive') === 'active';
         }
         if ($this->hasRole('field_supervisor') && $this->relationLoaded('fieldSupervisor')) {
@@ -195,19 +195,21 @@ class User extends Authenticatable
     }
 
     /**
-     * Resolve the user's school_id from the appropriate extension table.
+     * Resolve the user's school_id from the appropriate extension table OR assigned bus.
      * school_id does NOT exist on the users table directly.
-     * - school_admin  → school_admins.school_id
-     * - driver        → drivers.school_id
-     * - supervisor    → field_supervisors.school_id
      */
     public function getSchoolId(): ?int
     {
-        return $this->schoolAdmin?->school_id
-            ?? $this->driver?->school_id
-            ?? $this->fieldSupervisor?->school_id
-            ?? $this->teacher?->school_id
-            ?? $this->assistant?->school_id
+        // 1. Check extension tables (Teachers and School Admins are definitely linked)
+        $schoolId = $this->schoolAdmin?->school_id
+            ?? $this->teacher?->school_id;
+
+        if ($schoolId) return $schoolId;
+
+        // 2. For drivers, assistants, and field supervisors, resolve via assigned bus
+        return $this->assignedBus?->school_id
+            ?? $this->assignedBusAsAssistant?->school_id
+            ?? $this->assignedBusAsFieldSupervisor?->school_id
             ?? null;
     }
 
@@ -277,9 +279,14 @@ class User extends Authenticatable
         );
     }
 
-    public function assignedBusAsSupervisor(): HasOne
+    public function assignedBusAsFieldSupervisor(): HasOne
     {
         return $this->hasOne(Bus::class, 'field_supervisor_id');
+    }
+
+    public function assignedBusAsAssistant(): HasOne
+    {
+        return $this->hasOne(Bus::class, 'assistant_id');
     }
 
     // ── Chat ────────────────────────────────────────────
@@ -358,7 +365,7 @@ class User extends Authenticatable
             $this->driver()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
         } elseif ($this->hasRole('field_supervisor')) {
             $this->fieldSupervisor()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
-        } elseif ($this->hasRole('supervisor') || $this->hasRole('assistant')) {
+        } elseif ($this->hasRole('assistant')) {
             $this->assistant()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
         } elseif ($this->hasRole('teacher')) {
             $this->teacher()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
@@ -406,8 +413,6 @@ class User extends Authenticatable
     {
         return $query->where(function($q) use ($schoolId) {
             $q->whereHas('schoolAdmin', fn($sq) => $sq->where('school_id', $schoolId))
-              ->orWhereHas('driver', fn($sq) => $sq->where('school_id', $schoolId))
-              ->orWhereHas('fieldSupervisor', fn($sq) => $sq->where('school_id', $schoolId))
               ->orWhereHas('teacher', fn($sq) => $sq->where('school_id', $schoolId))
               ->orWhereHas('students.enrollments.classroom', fn($sq) => $sq->where('school_id', $schoolId));
         });

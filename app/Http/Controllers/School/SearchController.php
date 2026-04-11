@@ -32,9 +32,9 @@ class SearchController extends Controller
                     ->orWhere('national_id', 'like', "%{$query}%")
                     ->orWhere('student_code', 'like', "%{$query}%");
             })
-            ->with(['guardian:id,name,national_id,phone', 'currentEnrollment.classroom:id,name'])
+            ->with(['guardians:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,phone,national_id', 'currentEnrollment.classroom:id,name'])
             ->limit(5)
-            ->get(['id', 'first_name_ar', 'last_name_ar', 'national_id', 'student_code', 'guardian_id']);
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'national_id', 'student_code']);
 
         foreach ($students as $student) {
             $results[] = [
@@ -44,7 +44,7 @@ class SearchController extends Controller
                     'full_name' => $student->full_name,
                     'national_id' => $student->national_id,
                     'student_code' => $student->student_code,
-                    'guardian' => $student->guardian,
+                    'guardian' => $student->guardians->first(),
                     'classroom' => $student->currentEnrollment?->classroom
                 ]
             ];
@@ -69,9 +69,9 @@ class SearchController extends Controller
             ];
         }
 
-        // 3. البحث في المشرفين
-        $supervisors = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->whereIn('name', ['supervisor', 'teacher', 'school_admin']))
+        // 3. البحث في المساعدين
+        $assistants = User::atSchool($schoolId)
+            ->whereHas('roles', fn($q) => $q->whereIn('name', ['assistant', 'teacher', 'school_admin']))
             ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
                     ->orWhere('email', 'like', "%{$query}%")
@@ -80,10 +80,10 @@ class SearchController extends Controller
             ->limit(5)
             ->get(['id', 'name', 'email', 'phone', 'role']);
 
-        foreach ($supervisors as $supervisor) {
+        foreach ($assistants as $assistant) {
             $results[] = [
-                'type' => 'supervisor',
-                'data' => $supervisor
+                'type' => 'assistant',
+                'data' => $assistant
             ];
         }
 

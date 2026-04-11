@@ -26,11 +26,14 @@ class AdminDashboardController extends Controller
         $driverBooked = \App\Models\Driver::whereNotNull('bus_id')->distinct('user_id')->count();
         $driverAvailable = max(0, $driverTotal - $driverBooked);
 
-        // --- 3. Supervisor Stats ---
-        $supervisorTotal = User::whereHas('roles', fn($q) => $q->where('name', 'supervisor'))->count();
-        // Supervisors assigned to buses
-        $supervisorBooked = Bus::whereNotNull('field_supervisor_id')->distinct('field_supervisor_id')->count();
-        $supervisorAvailable = max(0, $supervisorTotal - $supervisorBooked);
+        // --- 3. Crew Stats (Assistants & Field Supervisors) ---
+        $fieldSupervisorTotal = User::whereHas('roles', fn($q) => $q->where('name', 'field_supervisor'))->count();
+        $fieldSupervisorBooked = Bus::whereNotNull('field_supervisor_id')->distinct('field_supervisor_id')->count();
+        $fieldSupervisorAvailable = max(0, $fieldSupervisorTotal - $fieldSupervisorBooked);
+
+        $assistantTotal = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))->count();
+        $assistantBooked = Bus::whereNotNull('assistant_id')->distinct('assistant_id')->count();
+        $assistantAvailable = max(0, $assistantTotal - $assistantBooked);
 
         // --- 4. General Stats ---
         $stats = [
@@ -53,11 +56,18 @@ class AdminDashboardController extends Controller
                 'booked' => $driverBooked,
             ],
 
-            // Supervisors Detailed
-            'supervisors' => [
-                'total' => $supervisorTotal,
-                'available' => $supervisorAvailable,
-                'booked' => $supervisorBooked,
+            // Field Supervisors Detailed
+            'field_supervisors' => [
+                'total' => $fieldSupervisorTotal,
+                'available' => $fieldSupervisorAvailable,
+                'booked' => $fieldSupervisorBooked,
+            ],
+
+            // Assistants Detailed
+            'assistants' => [
+                'total' => $assistantTotal,
+                'available' => $assistantAvailable,
+                'booked' => $assistantBooked,
             ],
         ];
 

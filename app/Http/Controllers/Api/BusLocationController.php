@@ -82,11 +82,10 @@ class BusLocationController extends Controller
         $isGuardian = false;
 
         if (!$isDriver) {
-            $isGuardian = \App\Models\Student::where('guardian_id', $user->id)
+            $isGuardian = \App\Models\Student::whereHas('guardians', fn($q) => $q->where('users.id', $user->id))
                 ->where(function($q) use ($bus) {
-                    $q->whereHas('morningGroup', fn($g) => $g->where('bus_id', $bus->id))
-                      ->orWhereHas('afternoonGroup', fn($g) => $g->where('bus_id', $bus->id))
-                      ->orWhereHas('buses', fn($b) => $b->where('buses.id', $bus->id));
+                    $q->where('forth_bus_id', $bus->id)
+                      ->orWhere('back_bus_id', $bus->id);
                 })->exists();
         }
 
@@ -114,7 +113,7 @@ class BusLocationController extends Controller
         // Per-student boarding status for this bus (for real-time updates)
         $guardianStudents = [];
         if ($isGuardian) {
-            $guardianStudentIds = \App\Models\Student::where('guardian_id', $user->id)->pluck('id');
+            $guardianStudentIds = \App\Models\Student::whereHas('guardians', fn($q) => $q->where('users.id', $user->id))->pluck('id');
             foreach ($guardianStudentIds as $sid) {
                 $lastLog = \App\Models\BusBoardingLog::where('student_id', $sid)
                     ->where('bus_id', $bus->id)
@@ -174,14 +173,17 @@ class BusLocationController extends Controller
      */
     private function checkProximityToHomes(Bus $bus, float $busLat, float $busLon): void
     {
-        // جلب الطلاب المسجلين في الباص مع أولياء أمورهم
-        $students = $bus->students()
-            ->wherePivot('is_active', true)
-            ->with('guardian')
+        // جلب الطلاب المسجلين في الباص
+        $students = \App\Models\Student::where('is_active', true)
+            ->where(function($q) use ($bus) {
+                $q->where('forth_bus_id', $bus->id)
+                  ->orWhere('back_bus_id', $bus->id);
+            })
+            ->with('guardians')
             ->get();
 
         foreach ($students as $student) {
-            $guardian = $student->guardian;
+            $guardian = $student->guardians->first();
 
             if (! $guardian || ! $guardian->home_latitude || ! $guardian->home_longitude) {
                 continue;

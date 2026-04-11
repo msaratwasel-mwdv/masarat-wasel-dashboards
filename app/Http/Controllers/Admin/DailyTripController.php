@@ -19,7 +19,7 @@ class DailyTripController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Trip::with(['bus.drivers.user', 'bus.route', 'driver', 'assistant'])
+        $query = Trip::with(['bus.driver.user', 'bus.route', 'driver', 'assistant'])
             ->whereIn('type', ['forth', 'back'])
             ->orderByDesc('departure_time');
 
@@ -47,7 +47,7 @@ class DailyTripController extends Controller
     public function create()
     {
         // Show all buses so the admin can select them and see specific error messages if data is missing
-        $buses = Bus::with(['drivers.user', 'supervisor'])->get();
+        $buses = Bus::with(['driver.user', 'assistant'])->get();
         $routes = Route::all();
 
         return Inertia::render('Admin/DailyTrips/Create', [
@@ -88,7 +88,7 @@ class DailyTripController extends Controller
     public function edit(Trip $trip)
     {
         $trip->load(['bus', 'driver', 'assistant']);
-        $buses = Bus::with(['drivers.user', 'supervisor'])->get();
+        $buses = Bus::with(['driver.user', 'assistant'])->get();
         $routes = Route::all();
 
         return Inertia::render('Admin/DailyTrips/Edit', [

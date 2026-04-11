@@ -27,7 +27,8 @@ interface DashboardProps {
     total_trips: number;
     buses: { total: number; available: number; booked: number; maintenance: number };
     drivers: { total: number; available: number; booked: number };
-    supervisors: { total: number; available: number; booked: number };
+    field_supervisors: { total: number; available: number; booked: number };
+    assistants: { total: number; available: number; booked: number };
   };
   alerts: Array<{ type: "warning" | "critical"; category?: string; message: string }>;
   mapData: Array<{ id: number; code: string; lat: number; lng: number; status: string; speed: string; school_id?: number }>;
@@ -101,7 +102,7 @@ export default function Dashboard({
         </div>
 
         {/* --- KPI Grid --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
           <StatCard 
             title={isRTL ? "إجمالي الحافلات" : "Total Buses"}
             value={stats.buses.total}
@@ -121,11 +122,29 @@ export default function Dashboard({
             isRTL={isRTL}
           />
           <StatCard 
-            title={isRTL ? "المدارس المشتركة" : "Partner Schools"}
-            value={stats.total_schools}
-            icon={<SchoolIcon className="w-6 h-6" />}
-            trend="0%"
+            title={isRTL ? "السائقين" : "Drivers"}
+            value={stats.drivers.total}
+            icon={<Users className="w-6 h-6" />}
+            trend="+8%"
+            color="emerald"
+            isDark={isDark}
+            isRTL={isRTL}
+          />
+          <StatCard 
+            title={isRTL ? "المشرفات" : "Assistants"}
+            value={stats.assistants.total}
+            icon={<Users className="w-6 h-6" />}
+            trend="+15%"
             color="indigo"
+            isDark={isDark}
+            isRTL={isRTL}
+          />
+          <StatCard 
+            title={isRTL ? "المشرفين" : "Field Supervisors"}
+            value={stats.field_supervisors.total}
+            icon={<Users className="w-6 h-6" />}
+            trend="+3%"
+            color="rose"
             isDark={isDark}
             isRTL={isRTL}
           />
@@ -414,8 +433,10 @@ function StatCard({ title, value, icon, trend, color, isDark, isRTL }: any) {
   const colorSchemes = {
     blue: "text-blue-500 bg-blue-500/10",
     green: "text-emerald-500 bg-emerald-500/10",
+    emerald: "text-emerald-500 bg-emerald-500/10",
     yellow: "text-amber-500 bg-amber-500/10",
     indigo: "text-indigo-500 bg-indigo-500/10",
+    rose: "text-rose-500 bg-rose-500/10",
   } as any;
 
   return (
