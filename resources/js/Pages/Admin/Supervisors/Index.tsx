@@ -16,6 +16,13 @@ import BaseDataTable, {
   type PaginationMeta,
 } from "@/Components/BaseDataTable";
 import { createColumnHelper } from "@tanstack/react-table";
+import { motion } from "framer-motion";
+import {
+  Users,
+  CheckCircle2,
+  Bus as BusIcon,
+  UserCog,
+} from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -381,18 +388,40 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
     >
       <Head title={isRTL ? "المشرفين" : "Supervisors"} />
 
-      <div className={`py-6 dir-${isRTL ? "rtl" : "ltr"}`}>
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+      <div className={`pb-8 space-y-6 dir-${isRTL ? "rtl" : "ltr"}`}>
+
+        {/* Stats Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="grid grid-cols-3 gap-4"
+        >
+          {[
+            { label: isRTL ? "إجمالي المشرفين" : "Total Supervisors", value: counts.all, icon: <Users className="w-5 h-5" />, color: "blue" as const },
+            { label: isRTL ? "متاح" : "Available", value: counts.available, icon: <CheckCircle2 className="w-5 h-5" />, color: "green" as const },
+            { label: isRTL ? "معين" : "Assigned", value: counts.assigned, icon: <BusIcon className="w-5 h-5" />, color: "orange" as const },
+          ].map((stat, i) => (
+            <SupStatCard key={i} {...stat} isDark={isDark} isRTL={isRTL} />
+          ))}
+        </motion.div>
+
+        {/* Main Table */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+        >
           <BaseDataTable<Supervisor>
             columns={columns}
             data={supervisors.data}
             pagination={pagination}
             title={isRTL ? "مشرفو الحافلات" : "Bus Supervisors"}
-            subtitle={
+            /* subtitle={
               isRTL
-                ? `${counts.all} مشرفة — ${counts.assigned} محجوزة — ${counts.available} متاحة`
+                ? `${counts.all} مشرف — ${counts.assigned} معين — ${counts.available} متاح`
                 : `${counts.all} total — ${counts.assigned} assigned — ${counts.available} available`
-            }
+            } */
             headerAction={headerAction}
             exportEnabled={true}
             searchValue={search}
@@ -401,7 +430,18 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
             filterTabs={filterTabs}
             activeFilter={filters.status}
             onFilterChange={handleFilterChange}
-            emptyMessage={isRTL ? "لا يوجد مشرفين مطابقين." : "No supervisors found."}
+            emptyMessage={isRTL ? "لا يوجد مشرفون" : "No Supervisors Yet"}
+            emptyDescription={
+              isRTL
+                ? "لم يتم تسجيل أي مشرف بعد. ابدأ بإضافة أول مشرف للأسطول."
+                : "No supervisors registered yet. Add your first bus supervisor."
+            }
+            emptyIcon={<UserCog className="w-10 h-10" />}
+            emptyAction={
+              filters.status === "all" || !filters.status
+                ? { label: isRTL ? "+ إضافة مشرف" : "+ Add New Supervisor", onClick: openAddModal }
+                : undefined
+            }
           />
 
           {/* Modern Add/Edit Modal */}
@@ -423,7 +463,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
                 <h2 className={`text-2xl font-bold ${isDark ? "text-white" : "text-brand-navy"}`}>
                   {isEditing ? (isRTL ? "تعديل بيانات المشرفة" : "Edit Supervisor Details") : (isRTL ? "تسجيل بيانات مشرفة جديدة" : "Register New Supervisor")}
                 </h2>
-                
+
                 {/* Stepper */}
                 <div className="mt-6 relative flex items-center justify-between px-10">
                   <div className="absolute left-10 right-10 top-1/2 -translate-y-1/2 h-1 bg-gray-200 rounded-full z-0"></div>
@@ -439,11 +479,11 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
 
               <form onSubmit={submit} className="flex flex-col">
                 <div className="p-8 space-y-8">
-                  
+
                   {/* Step 1 */}
                   {currentStep === 1 && (
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                      
+
                       {/* Photo Upload Section */}
                       <div className={`flex items-start gap-6 ${isRTL ? "flex-row-reverse" : ""}`}>
                         <div className="relative w-24 h-24 rounded-2xl bg-gray-100 flex items-center justify-center border border-gray-200 flex-shrink-0 overflow-visible">
@@ -459,7 +499,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
                             )}
                           </div>
                         </div>
-                        
+
                         <div className={`flex-1 ${isRTL ? "text-right" : "text-left"}`}>
                           <h4 className={`font-bold ${isDark ? "text-gray-200" : "text-gray-800"}`}>
                             {isRTL ? "صورة الملف الشخصي للمشرفة" : "Supervisor Profile Image"}
@@ -524,7 +564,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
                   {/* Step 2 */}
                   {currentStep === 2 && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-                      
+
                       <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 ${isRTL ? "rtl" : "ltr"}`}>
                         {/* National ID */}
                         <div>
@@ -607,7 +647,7 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
                       {isRTL ? "السابق" : "Previous"}
                     </button>
                   )}
-                  
+
                   <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
                     {currentStep === 1 ? (
                       <button type="button" onClick={(e) => { e.preventDefault(); setCurrentStep(2); }} className={`px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-opacity ${isDark ? "bg-brand-navy text-white hover:opacity-90" : "bg-brand-navy text-white hover:opacity-90"}`}>
@@ -624,8 +664,43 @@ export default function SupervisorsIndex({ supervisors, counts, filters }: Props
 
             </div>
           </Modal>
-        </div>
+        </motion.div>
       </div>
     </AuthenticatedLayout>
+  );
+}
+
+// ─── SupStatCard ───────────────────────────────────────
+
+const supStatColorMap = {
+  blue: { bg: "bg-blue-50 dark:bg-blue-900/20", icon: "text-blue-500", border: "border-blue-100 dark:border-blue-900/30" },
+  green: { bg: "bg-emerald-50 dark:bg-emerald-900/20", icon: "text-emerald-500", border: "border-emerald-100 dark:border-emerald-900/30" },
+  orange: { bg: "bg-orange-50 dark:bg-orange-900/20", icon: "text-orange-500", border: "border-orange-100 dark:border-orange-900/30" },
+};
+
+function SupStatCard({ label, value, icon, color, isDark, isRTL }: {
+  label: string; value: number; icon: React.ReactNode;
+  color: keyof typeof supStatColorMap; isDark: boolean; isRTL: boolean;
+}) {
+  const scheme = supStatColorMap[color];
+  return (
+    <motion.div
+      whileHover={{ y: -2 }}
+      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+        isDark ? "bg-gray-800/80 border-gray-700 hover:bg-gray-800" : `bg-white ${scheme.border} hover:shadow-md shadow-sm`
+      } ${isRTL ? "flex-row-reverse" : ""}`}
+    >
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
+        isDark ? "bg-gray-700" : scheme.bg
+      }`}><span className={scheme.icon}>{icon}</span></div>
+      <div className={isRTL ? "text-right" : "text-left"}>
+        <p className={`text-[11px] font-bold uppercase tracking-wide ${
+          isDark ? "text-gray-500" : "text-gray-400"
+        }`}>{label}</p>
+        <p className={`text-2xl font-black mt-0.5 ${
+          isDark ? "text-white" : "text-gray-900"
+        }`}>{value}</p>
+      </div>
+    </motion.div>
   );
 }

@@ -16,6 +16,13 @@ import BaseDataTable, {
   type PaginationMeta,
 } from "@/Components/BaseDataTable";
 import { createColumnHelper } from "@tanstack/react-table";
+import { motion } from "framer-motion";
+import {
+  Users,
+  CheckCircle2,
+  Bus as BusIcon,
+  UserCheck,
+} from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -379,18 +386,40 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
     >
       <Head title={isRTL ? "السائقين" : "Drivers"} />
 
-      <div className={`py-6 dir-${isRTL ? "rtl" : "ltr"}`}>
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+      <div className={`pb-8 space-y-6 dir-${isRTL ? "rtl" : "ltr"}`}>
+
+        {/* Stats Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="grid grid-cols-3 gap-4"
+        >
+          {[
+            { label: isRTL ? "إجمالي السائقين" : "Total Drivers", value: counts.all, icon: <Users className="w-5 h-5" />, color: "blue" as const },
+            { label: isRTL ? "متاح" : "Available", value: counts.available, icon: <CheckCircle2 className="w-5 h-5" />, color: "green" as const },
+            { label: isRTL ? "معين" : "Assigned", value: counts.assigned, icon: <BusIcon className="w-5 h-5" />, color: "orange" as const },
+          ].map((stat, i) => (
+            <PersonStatCard key={i} {...stat} isDark={isDark} isRTL={isRTL} />
+          ))}
+        </motion.div>
+
+        {/* Main Table */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+        >
           <BaseDataTable<Driver>
             columns={columns}
             data={drivers.data}
             pagination={pagination}
             title={isRTL ? "سائقو الأسطول" : "Fleet Drivers"}
-            subtitle={
+/*             subtitle={
               isRTL
-                ? `${counts.all} سائق — ${counts.assigned} محجوز — ${counts.available} متاح`
+                ? `${counts.all} سائق — ${counts.assigned} معين — ${counts.available} متاح`
                 : `${counts.all} total — ${counts.assigned} assigned — ${counts.available} available`
-            }
+            } */
             headerAction={headerAction}
             exportEnabled={true}
             searchValue={search}
@@ -399,7 +428,18 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
             filterTabs={filterTabs}
             activeFilter={filters.status}
             onFilterChange={handleFilterChange}
-            emptyMessage={isRTL ? "لا يوجد سائقين مطابَقين." : "No drivers found."}
+            emptyMessage={isRTL ? "لا يوجد سائقون" : "No Drivers Yet"}
+            emptyDescription={
+              isRTL
+                ? "لم يتم تسجيل أي سائق بعد. ابدأ بإضافة أول سائق للأسطول."
+                : "No drivers registered yet. Add your first fleet driver."
+            }
+            emptyIcon={<UserCheck className="w-10 h-10" />}
+            emptyAction={
+              filters.status === "all" || !filters.status
+                ? { label: isRTL ? "+ إضافة سائق" : "+ Add New Driver", onClick: openAddModal }
+                : undefined
+            }
           />
 
           {/* Modern Add/Edit Modal */}
@@ -606,8 +646,61 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
 
             </div>
           </Modal>
-        </div>
+        </motion.div>
       </div>
     </AuthenticatedLayout>
+  );
+}
+
+// ─── PersonStatCard ───────────────────────────────────────
+
+const personStatColorMap = {
+  blue: {
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    icon: "text-blue-500",
+    border: "border-blue-100 dark:border-blue-900/30",
+  },
+  green: {
+    bg: "bg-emerald-50 dark:bg-emerald-900/20",
+    icon: "text-emerald-500",
+    border: "border-emerald-100 dark:border-emerald-900/30",
+  },
+  orange: {
+    bg: "bg-orange-50 dark:bg-orange-900/20",
+    icon: "text-orange-500",
+    border: "border-orange-100 dark:border-orange-900/30",
+  },
+};
+
+function PersonStatCard({
+  label, value, icon, color, isDark, isRTL,
+}: {
+  label: string; value: number; icon: React.ReactNode;
+  color: keyof typeof personStatColorMap; isDark: boolean; isRTL: boolean;
+}) {
+  const scheme = personStatColorMap[color];
+  return (
+    <motion.div
+      whileHover={{ y: -2 }}
+      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+        isDark
+          ? "bg-gray-800/80 border-gray-700 hover:bg-gray-800"
+          : `bg-white ${scheme.border} hover:shadow-md shadow-sm`
+      } ${isRTL ? "flex-row-reverse" : ""}`}
+    >
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
+        isDark ? "bg-gray-700" : scheme.bg
+      }`}>
+        <span className={scheme.icon}>{icon}</span>
+      </div>
+      <div className={isRTL ? "text-right" : "text-left"}>
+        <p className={`text-[11px] font-bold uppercase tracking-wide ${
+          isDark ? "text-gray-500" : "text-gray-400"
+        }`}>{label}</p>
+        <p className={`text-2xl font-black mt-0.5 ${
+          isDark ? "text-white" : "text-gray-900"
+        }`}>{value}</p>
+      </div>
+    </motion.div>
   );
 }

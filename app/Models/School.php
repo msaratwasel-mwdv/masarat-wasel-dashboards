@@ -14,7 +14,7 @@ class School extends Model
     protected $fillable = [
         'name',
         'logo',
-        'location',
+        'address',
         'status',
         'has_transport',
         'has_attendance',
@@ -26,7 +26,7 @@ class School extends Model
      * @var array
      */
     protected $hidden = [
-        'location',
+        // 'address', unhidden to support frontend editing
     ];
 
     /**

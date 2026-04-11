@@ -17,12 +17,28 @@ import BaseDataTable, {
   type PaginationMeta,
 } from "@/Components/BaseDataTable";
 import { createColumnHelper } from "@tanstack/react-table";
+import { motion } from "framer-motion";
+import {
+  Bus as BusIcon,
+  CheckCircle2,
+  Wrench,
+  XCircle,
+  Archive,
+  TrendingUp,
+  X as LucideX,
+  Image as PhotoIcon,
+  FolderUp,
+  AlertTriangle,
+  FileText,
+  Smartphone,
+} from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────
 
 interface User {
   id: number;
   name: string;
+  image?: string | null;
 }
 
 interface School {
@@ -114,6 +130,8 @@ export default function Index({
     type: "add" | "edit" | "view" | "archive" | null;
     bus: Bus | null;
   }>({ type: null, bus: null });
+  const [photoPreviews, setPhotoPreviews] = useState<{ url: string; file: File }[]>([]);
+  const [regPreview, setRegPreview] = useState<{ url: string; file: File; name: string } | null>(null);
 
   // --- Search & Filter ---
   // Handle debounced search securely
@@ -163,10 +181,36 @@ export default function Index({
     setModalState({ type: null, bus: null });
     busForm.reset();
     archiveForm.reset();
+    setPhotoPreviews([]);
+    setRegPreview(null);
+  };
+
+  const handlePhotoSelect = (files: FileList | null) => {
+    if (!files) return;
+    const newFiles = Array.from(files);
+    const newPreviews = newFiles.map((f) => ({ url: URL.createObjectURL(f), file: f }));
+    const merged = [...photoPreviews, ...newPreviews];
+    setPhotoPreviews(merged);
+    busForm.setData("photos", merged.map((p) => p.file));
+  };
+
+  const removePhotoPreview = (idx: number) => {
+    const updated = photoPreviews.filter((_, i) => i !== idx);
+    setPhotoPreviews(updated);
+    busForm.setData("photos", updated.map((p) => p.file));
+  };
+
+  const handleRegFileSelect = (file: File | null) => {
+    if (!file) { setRegPreview(null); busForm.setData("registration_file", null); return; }
+    const url = file.type.startsWith("image/") ? URL.createObjectURL(file) : "";
+    setRegPreview({ url, file, name: file.name });
+    busForm.setData("registration_file", file);
   };
 
   const openModal = (type: "add" | "edit" | "view" | "archive", bus: Bus | null = null) => {
     setModalState({ type, bus });
+    setPhotoPreviews([]);
+    setRegPreview(null);
     if (type === "edit" && bus) {
       busForm.setData({
         plate_number: bus.plate_number,
@@ -189,35 +233,36 @@ export default function Index({
 
   const submitBusForm = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Always use FormData to properly send files
+    const formData = new FormData();
+    const d = busForm.data;
+
+    if (modalState.type === "edit") formData.append("_method", "put");
+    formData.append("plate_number", d.plate_number);
+    formData.append("model", d.model);
+    formData.append("year", String(d.year));
+    formData.append("capacity", String(d.capacity));
+    formData.append("status", d.status);
+    if (d.driver_id) formData.append("driver_id", d.driver_id);
+    if (d.supervisor_id) formData.append("supervisor_id", d.supervisor_id);
+    if (d.school_id) formData.append("school_id", d.school_id);
+    if (d.route_id) formData.append("route_id", d.route_id);
+    if (d.photos && d.photos.length > 0) {
+      d.photos.forEach((p) => formData.append("photos[]", p));
+    }
+    if (d.registration_file) formData.append("registration_file", d.registration_file);
+
     if (modalState.type === "add") {
-      busForm.post(route("admin.buses.store"), { onSuccess: closeModal });
+      router.post(route("admin.buses.store"), formData as any, {
+        forceFormData: true,
+        onSuccess: closeModal,
+      });
     } else if (modalState.type === "edit" && modalState.bus) {
       const bus = modalState.bus;
-      const { school_id, route_id, photos, registration_file, ...coreData } = busForm.data;
-
-      const formData = new FormData();
-      formData.append("_method", "put");
-      Object.entries(coreData).forEach(([key, val]) => {
-        if (val !== null && val !== undefined) formData.append(key, String(val));
-      });
-      if (photos && photos.length > 0) {
-        photos.forEach((p) => formData.append("photos[]", p));
-      }
-      if (registration_file) formData.append("registration_file", registration_file);
-
       router.post(route("admin.buses.update", bus.id), formData as any, {
         forceFormData: true,
         onSuccess: () => {
-          const newSchoolId = school_id || "";
-          const oldSchoolId = bus.school_id?.toString() || "";
-          if (newSchoolId !== oldSchoolId) {
-            router.post(route("admin.buses.assign", bus.id), { school_id: newSchoolId }, { preserveScroll: true });
-          }
-          const newRouteId = route_id || "";
-          const oldRouteId = bus.route_id?.toString() || "";
-          if (newRouteId !== oldRouteId) {
-            router.post(route("admin.buses.assign-route", bus.id), { route_id: newRouteId }, { preserveScroll: true });
-          }
           closeModal();
         },
       });
@@ -440,8 +485,51 @@ export default function Index({
     >
       <Head title={isRTL ? "الحافلات" : "Buses"} />
 
-      <div className={`py-6 dir-${isRTL ? "rtl" : "ltr"}`}>
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+      <div className={`pb-8 space-y-6 dir-${isRTL ? "rtl" : "ltr"}`}>
+
+        {/* ── Stats Header Panel ── */}
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, staggerChildren: 0.08 }}
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        >
+          {[
+            {
+              label: isRTL ? "إجمالي الحافلات" : "Total Buses",
+              value: counts.all,
+              icon: <BusIcon className="w-5 h-5" />,
+              color: "blue" as const,
+            },
+            {
+              label: isRTL ? "نشطة" : "Active",
+              value: counts.active,
+              icon: <CheckCircle2 className="w-5 h-5" />,
+              color: "green" as const,
+            },
+            {
+              label: isRTL ? "في الصيانة" : "Maintenance",
+              value: counts.maintenance,
+              icon: <Wrench className="w-5 h-5" />,
+              color: "yellow" as const,
+            },
+            {
+              label: isRTL ? "خارج الخدمة" : "Out of Service",
+              value: counts.out_of_service,
+              icon: <XCircle className="w-5 h-5" />,
+              color: "red" as const,
+            },
+          ].map((stat, i) => (
+            <BusStatCard key={i} {...stat} isDark={isDark} isRTL={isRTL} />
+          ))}
+        </motion.div>
+
+        {/* ── Main Table ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+        >
           <BaseDataTable<Bus>
             columns={columns}
             data={buses.data}
@@ -449,7 +537,7 @@ export default function Index({
             title={isRTL ? "أسطول الحافلات" : "Fleet Vehicles"}
             subtitle={
               isRTL
-                ? `${counts.all} حافلة — ${counts.active} نشط — ${counts.maintenance} صيانة — ${counts.out_of_service} خارج الخدمة`
+                ? `${counts.all} حافلة — ${counts.active} نشطة — ${counts.maintenance} صيانة — ${counts.out_of_service} خارج الخدمة`
                 : `${counts.all} total — ${counts.active} active — ${counts.maintenance} maintenance — ${counts.out_of_service} out of service`
             }
             headerAction={headerAction}
@@ -460,331 +548,374 @@ export default function Index({
             filterTabs={filterTabs}
             activeFilter={filters.status}
             onFilterChange={handleFilterChange}
-            emptyMessage={isRTL ? "لا توجد حافلات مطابقة." : "No buses found."}
+            emptyMessage={isRTL ? "لا توجد حافلات" : "No Buses Yet"}
+            emptyDescription={
+              isRTL
+                ? "لم يتم تسجيل أي حافلة في النظام بعد، ابدأ بإضافة أول حافلة."
+                : "No buses have been registered yet. Start by adding your first bus."
+            }
+            emptyIcon={<BusIcon className="w-10 h-10" />}
+            emptyAction={
+              filters.status === "all" || !filters.status
+                ? { label: isRTL ? "+ تسجيل حافلة جديدة" : "+ Register New Bus", onClick: () => openModal("add") }
+                : undefined
+            }
           />
 
           {/* ==================== MODALS ==================== */}
 
-          {/* View Modal */}
+          {/* ──────────────────────────────────────────────────────────────────────── */}
+          {/* View Modal — Premium Operational Dashboard */}
           {modalState.type === "view" && modalState.bus && (
-            <Modal show={true} onClose={closeModal} maxWidth="2xl">
-              <div className={`overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}>
-                {/* Header */}
-                <div className={`relative px-6 py-5 border-b ${isDark ? "border-gray-700 bg-gray-900/50" : "bg-gray-50 border-gray-200"}`}>
-                  <div className={`flex justify-between items-start ${isRTL ? "flex-row-reverse" : ""}`}>
-                    <div className={isRTL ? "text-right" : "text-left"}>
-                      <div className={`flex items-center gap-3 mb-1 ${isRTL ? "flex-row-reverse" : ""}`}>
-                        <h2 className={`text-2xl font-black tracking-tight ${isDark ? "text-white" : "text-gray-900"}`}>
-                          {modalState.bus.bus_number}
-                        </h2>
-                        <StatusBadge
-                          label={getStatusLabel(modalState.bus.status)}
-                          variant={getStatusVariant(modalState.bus.status)}
-                        />
+            <Modal show={true} onClose={closeModal} maxWidth="4xl">
+              <div className={`flex flex-col h-[90vh] ${isDark ? "bg-[#0f172a]" : "bg-white"} overflow-hidden shadow-2xl rounded-3xl relative`}>
+                
+                {/* ── Header Area ── */}
+                <div className={`relative px-8 pt-10 pb-12 flex flex-col md:flex-row items-center md:items-start justify-between gap-8 ${isDark ? "bg-gradient-to-br from-[#1e293b] to-[#0f172a]" : "bg-gradient-to-br from-brand-dark to-brand-navy"} text-white overflow-hidden`}>
+                  {/* Decorative Elements */}
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl pointer-events-none" />
+                  
+                  <div className={`relative flex-1 ${isRTL ? "text-right" : "text-left"}`}>
+                    <div className="flex items-center gap-3 mb-4 justify-center md:justify-start">
+                      <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-lg text-[10px] font-black uppercase tracking-widest text-brand-yellow border border-white/10">
+                        {isRTL ? "مواصفات الأسطول الرقمي" : "Digital Fleet Specs"}
+                      </span>
+                      <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                        modalState.bus.status === "active" ? "bg-green-500/20 text-green-400" : "bg-amber-500/20 text-amber-400"
+                      }`}>
+                         {modalState.bus.status}
                       </div>
-                      <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                        <span className="font-mono font-bold">{modalState.bus.plate_number}</span>
-                        <span className="mx-2">•</span>
-                        {modalState.bus.model} — {modalState.bus.year}
-                      </p>
                     </div>
-                    {modalState.bus.front_qr && (
-                      <div className="flex flex-col items-center">
-                        <div className={`p-1.5 bg-white rounded-lg border shadow-sm ${isDark ? "border-gray-600" : "border-gray-200"}`}>
-                          <img src={`/storage/${modalState.bus.front_qr}`} alt="QR" className="w-16 h-16" />
-                        </div>
-                        <a href={`/storage/${modalState.bus.front_qr}`} download className="mt-1.5 text-[10px] font-bold text-blue-500 hover:underline uppercase tracking-wide">
-                          {isRTL ? "تحميل QR" : "DOWNLOAD"}
-                        </a>
+                    <h2 className="text-5xl font-black tracking-tighter mb-4 drop-shadow-xl flex items-center gap-4 justify-center md:justify-start">
+                      {modalState.bus.bus_number}
+                      <span className="text-brand-yellow font-mono text-2xl opacity-80">{modalState.bus.plate_number}</span>
+                    </h2>
+                    <div className={`flex flex-wrap gap-4 justify-center md:justify-start ${isRTL ? "flex-row-reverse" : ""}`}>
+                      <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-2xl border border-white/10">
+                        <span className="text-xs opacity-50 font-bold uppercase tracking-widest leading-none">Model:</span>
+                        <span className="text-sm font-black whitespace-nowrap">{modalState.bus.model} {modalState.bus.year}</span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-2xl border border-white/10">
+                        <span className="text-xs opacity-50 font-bold uppercase tracking-widest leading-none">Seats:</span>
+                        <span className="text-sm font-black whitespace-nowrap">{modalState.bus.capacity}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* QR Code Passport */}
+                  <div className="relative group shrink-0">
+                    <div className="p-4 bg-white rounded-3xl shadow-2xl transition-transform duration-500 group-hover:rotate-6 group-hover:scale-105">
+                      {modalState.bus.front_qr ? (
+                        <img 
+                          src={`/storage/${modalState.bus.front_qr}?t=${new Date(modalState.bus.updated_at || "").getTime()}`} 
+                          className="w-28 h-28" 
+                          alt="Passport QR" 
+                        />
+                      ) : (
+                        <div className="w-28 h-28 flex flex-col items-center justify-center gap-3 text-gray-300 dark:text-gray-700">
+                          <div className="relative">
+                            <Smartphone className="w-10 h-10 opacity-20 animate-pulse" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="w-2 h-2 bg-brand-yellow rounded-full animate-ping" />
+                            </div>
+                          </div>
+                          <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40 italic">Syncing Data...</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Body */}
-                <div className="p-6 space-y-5 max-h-[65vh] overflow-y-auto">
-                  {/* Quick Stats */}
-                  <div className={`grid grid-cols-4 gap-3 ${isRTL ? "rtl" : ""}`}>
-                    {[
-                      { label: isRTL ? "السعة" : "Capacity", value: `${modalState.bus.capacity}`, icon: "🪑" },
-                      { label: isRTL ? "السنة" : "Year", value: `${modalState.bus.year}`, icon: "📅" },
-                      { label: isRTL ? "النوع" : "Type", value: modalState.bus.type === "permanent" ? (isRTL ? "دائم" : "Permanent") : (isRTL ? "مؤقت" : "Temporary"), icon: "🔖" },
-                      { label: isRTL ? "اللون" : "Color", value: modalState.bus.color || "—", icon: "🎨" },
-                    ].map((item, i) => (
-                      <div key={i} className={`text-center p-3 rounded-xl border ${isDark ? "bg-gray-700/30 border-gray-700" : "bg-gray-50 border-gray-100"}`}>
-                        <div className="text-lg mb-0.5">{item.icon}</div>
-                        <div className={`text-xs font-medium mb-0.5 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{item.label}</div>
-                        <div className={`text-sm font-bold ${isDark ? "text-white" : "text-gray-900"}`}>{item.value}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Crew */}
-                  <div>
-                    <h3 className={`text-xs font-bold uppercase tracking-widest mb-3 pb-2 border-b ${isDark ? "text-gray-400 border-gray-700" : "text-gray-400 border-gray-100"} ${isRTL ? "text-right" : ""}`}>
-                      {isRTL ? "الطاقم" : "CREW"}
-                    </h3>
-                    <div className={`grid grid-cols-2 gap-3 ${isRTL ? "rtl" : ""}`}>
-                      {[
-                        { label: isRTL ? "السائق" : "Driver", value: modalState.bus.driver?.name, icon: "🚗" },
-                        { label: isRTL ? "المشرف" : "Supervisor", value: modalState.bus.supervisor?.name, icon: "👤" },
-                      ].map((item, i) => (
-                        <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border ${isDark ? "bg-gray-700/30 border-gray-700" : "bg-gray-50 border-gray-100"} ${isRTL ? "flex-row-reverse" : ""}`}>
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${isDark ? "bg-gray-700" : "bg-gray-200/60"}`}>
-                            {item.icon}
-                          </div>
-                          <div className={isRTL ? "text-right" : ""}>
-                            <div className={`text-[10px] font-bold uppercase ${isDark ? "text-gray-500" : "text-gray-400"}`}>{item.label}</div>
-                            <div className={`text-sm font-bold ${item.value ? (isDark ? "text-white" : "text-gray-900") : "text-gray-400 italic"}`}>
-                              {item.value || (isRTL ? "غير مسند" : "Unassigned")}
+                {/* ── Dashboard Body ── */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    
+                    {/* Operational Alignment */}
+                    <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-4">
+                       {[
+                         { title: isRTL ? "الطيار (السائق)" : "PILOT", name: modalState.bus.driver?.name, icon: "👨‍✈️", color: "amber", sub: isRTL ? "المشغل الرئيسي" : "Main Operator" },
+                         { title: isRTL ? "المشرفة" : "SAFETY", name: modalState.bus.supervisor?.name, icon: "🛡️", color: "violet", sub: isRTL ? "سلامة الركاب" : "Passenger Safety" },
+                         { title: isRTL ? "الموقع (المسار)" : "LOCATION", name: modalState.bus.school?.name, icon: "🏫", color: "emerald", sub: modalState.bus.route?.name || (isRTL ? "في وضع الانتظار" : "Standby Route") }
+                       ].map(card => (
+                         <div key={card.title} className={`p-4 rounded-[2rem] border transition-all ${isDark ? "bg-gray-800/40 border-gray-800 hover:bg-gray-800" : "bg-white border-gray-100 hover:shadow-lg shadow-sm"}`}>
+                            <p className={`text-[9px] font-black mb-3 uppercase tracking-widest ${card.color === "amber" ? "text-amber-500" : card.color === "violet" ? "text-violet-500" : "text-emerald-500"}`}>{card.title}</p>
+                            <div className="flex items-center gap-4">
+                               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${isDark ? "bg-gray-700/50" : card.color === "amber" ? "bg-amber-50" : card.color === "violet" ? "bg-violet-50" : "bg-emerald-50"}`}>
+                                 {card.icon}
+                               </div>
+                               <div>
+                                  <p className={`text-sm font-black ${isDark ? "text-white" : "text-gray-900"}`}>{card.name || (isRTL ? "غير مسند" : "UNASSIGNED")}</p>
+                                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight mt-0.5">{card.sub}</p>
+                               </div>
                             </div>
-                          </div>
-                        </div>
-                      ))}
+                         </div>
+                       ))}
+                    </div>
+
+                    {/* Media Gallery */}
+                    <div className="lg:col-span-12 space-y-8 mt-4">
+                       <div className="flex items-center gap-3">
+                          <span className="w-1.5 h-6 bg-brand-yellow rounded-full"></span>
+                          <h3 className={`text-xs font-black uppercase tracking-widest ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                            {isRTL ? "الأصول والمستندات الرقمية" : "Digital Assets & Media"}
+                          </h3>
+                       </div>
+
+                       {modalState.bus.documents?.length ? (
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                            {modalState.bus.documents.filter(d => d.type === "registration").length > 0 && (
+                              <div className="space-y-3">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">📄 OFFICIAL DOCUMENTS</p>
+                                <BusMediaGallery documents={modalState.bus.documents.filter(d => d.type === "registration")} isDark={isDark} />
+                              </div>
+                            )}
+                            {modalState.bus.documents.filter(d => d.type === "photo").length > 0 && (
+                              <div className="space-y-3">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">📸 VEHICLE PHOTOS</p>
+                                <BusMediaGallery documents={modalState.bus.documents.filter(d => d.type === "photo")} isDark={isDark} />
+                              </div>
+                            )}
+                         </div>
+                       ) : (
+                         <div className={`p-10 rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center gap-4 ${isDark ? "bg-gray-900/40 border-gray-800 text-gray-600" : "bg-gray-50/50 border-gray-100 text-gray-400"}`}>
+                            <div className="text-4xl opacity-20">📁</div>
+                            <p className="text-[10px] font-black uppercase tracking-widest">No assets digitized yet</p>
+                         </div>
+                       )}
                     </div>
                   </div>
-
-                  {/* School & Route */}
-                  <div>
-                    <h3 className={`text-xs font-bold uppercase tracking-widest mb-3 pb-2 border-b ${isDark ? "text-gray-400 border-gray-700" : "text-gray-400 border-gray-100"} ${isRTL ? "text-right" : ""}`}>
-                      {isRTL ? "التشغيل" : "ASSIGNMENT"}
-                    </h3>
-                    <div className={`grid grid-cols-2 gap-3 ${isRTL ? "rtl" : ""}`}>
-                      <div className={`flex items-center gap-3 p-3 rounded-xl border ${isDark ? "bg-blue-900/10 border-blue-900/20" : "bg-blue-50 border-blue-100"} ${isRTL ? "flex-row-reverse" : ""}`}>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${isDark ? "bg-blue-900/30" : "bg-blue-100"}`}>🏫</div>
-                        <div className={isRTL ? "text-right" : ""}>
-                          <div className={`text-[10px] font-bold uppercase ${isDark ? "text-blue-400" : "text-blue-600"}`}>{isRTL ? "المدرسة" : "School"}</div>
-                          <div className={`text-sm font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
-                            {modalState.bus.school?.name || (isRTL ? "المقر الرئيسي" : "Central Pool")}
-                          </div>
-                        </div>
-                      </div>
-                      <div className={`flex items-center gap-3 p-3 rounded-xl border ${isDark ? "bg-green-900/10 border-green-900/20" : "bg-green-50 border-green-100"} ${isRTL ? "flex-row-reverse" : ""}`}>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${isDark ? "bg-green-900/30" : "bg-green-100"}`}>🛣️</div>
-                        <div className={isRTL ? "text-right" : ""}>
-                          <div className={`text-[10px] font-bold uppercase ${isDark ? "text-green-400" : "text-green-600"}`}>{isRTL ? "المسار" : "Route"}</div>
-                          <div className={`text-sm font-bold ${modalState.bus.route ? (isDark ? "text-white" : "text-gray-900") : "text-gray-400 italic"}`}>
-                            {modalState.bus.route?.name || (isRTL ? "بدون مسار" : "No Route")}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Documents */}
-                  {modalState.bus.documents && modalState.bus.documents.length > 0 && (
-                    <div>
-                      <h3 className={`text-xs font-bold uppercase tracking-widest mb-3 pb-2 border-b ${isDark ? "text-gray-400 border-gray-700" : "text-gray-400 border-gray-100"} ${isRTL ? "text-right" : ""}`}>
-                        {isRTL ? "الوثائق" : "DOCUMENTS"}
-                      </h3>
-                      <BusMediaGallery documents={modalState.bus.documents} />
-                    </div>
-                  )}
                 </div>
 
                 {/* Footer */}
-                <div className={`px-6 py-4 border-t flex ${isRTL ? "justify-start" : "justify-end"} ${isDark ? "bg-gray-900/50 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
-                  <SecondaryButton onClick={closeModal}>
-                    {isRTL ? "إغلاق" : "Close"}
-                  </SecondaryButton>
+                <div className={`px-8 py-5 border-t flex items-center justify-between ${isDark ? "bg-[#0f172a] border-gray-800" : "bg-gray-50 border-gray-100"} flex-shrink-0`}>
+                  <div className={`text-xs font-bold ${
+                    isDark ? "text-gray-500" : "text-gray-400"
+                  }`}>
+                    ID: <span className="font-mono">{modalState.bus.id}</span>
+                  </div>
+                  <div className={`flex gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
+                    <button
+                      onClick={() => { closeModal(); openModal("edit", modalState.bus!); }}
+                      className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                        isDark ? "bg-brand-yellow/10 text-brand-yellow hover:bg-brand-yellow/20" : "bg-brand-dark/5 text-brand-dark hover:bg-brand-dark/10"
+                      }`}
+                    >
+                      {isRTL ? "✏️ تعديل" : "✏️ Edit"}
+                    </button>
+                    <button
+                      onClick={closeModal}
+                      className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                        isDark
+                          ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      {isRTL ? "إغلاق" : "Close"}
+                    </button>
+                  </div>
                 </div>
+
               </div>
             </Modal>
           )}
 
-          {/* Add/Edit Modal */}
-          <Modal
-            show={modalState.type === "add" || modalState.type === "edit"}
-            onClose={closeModal}
-            maxWidth="3xl"
-          >
-            <div className={`flex flex-col max-h-[90vh] ${isDark ? "bg-gray-800" : "bg-white"}`}>
-              {/* Header */}
-              <div className={`p-6 border-b sticky top-0 z-10 rounded-t-lg ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-                <div className={`flex justify-between items-center ${isRTL ? "flex-row-reverse" : ""}`}>
-                  <h2 className={`text-xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
-                    {modalState.type === "edit"
-                      ? isRTL ? "تحديث بيانات المركبة" : "Update Vehicle"
-                      : isRTL ? "تسجيل مركبة جديدة" : "Register New Vehicle"}
-                  </h2>
-                  {modalState.type === "edit" && (
-                    <span className="text-xs font-bold text-brand-navy bg-brand-yellow/20 px-2 py-1 rounded">
-                      {modalState.bus?.bus_number}
-                    </span>
-                  )}
+          {/* Add/Edit Modal — Premium Professional Layout */}
+          <Modal show={modalState.type === "add" || modalState.type === "edit"} onClose={closeModal} maxWidth="5xl">
+            <div className={`flex flex-col h-[90vh] ${isDark ? "bg-[#111827]" : "bg-white"} overflow-hidden shadow-2xl rounded-2xl`}>
+
+              {/* ── Header ── */}
+              <div className={`px-8 py-5 border-b flex items-center justify-between flex-shrink-0 ${isDark ? "border-gray-800 bg-[#0f172a]" : "border-gray-100 bg-gray-50/50"} ${isRTL ? "flex-row-reverse" : ""}`}>
+                <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
+                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${isDark ? "bg-brand-yellow/10" : "bg-brand-dark/5"}`}>
+                    <BusIcon className={`w-6 h-6 ${isDark ? "text-brand-yellow" : "text-brand-dark"}`} />
+                  </div>
+                  <div className={isRTL ? "text-right" : ""}>
+                    <h2 className={`text-lg font-black uppercase tracking-tight ${isDark ? "text-white" : "text-gray-900"}`}>
+                      {modalState.type === "edit" ? (isRTL ? "تحديث بيانات الأسطول" : "Update Fleet Asset") : (isRTL ? "تسجيل أصل جديد" : "Register New Asset")}
+                    </h2>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+                      {modalState.type === "edit" ? (isRTL ? "تعديل مواصفات الحافلة وتعيينات الطاقم" : "Modify vehicle specs and crew assignments") : (isRTL ? "إضافة حافلة جديدة لمنظومة النقل" : "Introduce a new vehicle to the transport system")}
+                    </p>
+                  </div>
                 </div>
+                <button type="button" onClick={closeModal} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isDark ? "hover:bg-gray-800 text-gray-500 hover:text-white" : "hover:bg-gray-100 text-gray-400 hover:text-gray-900"}`}>
+                  <LucideX className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Content */}
-              <div className="p-6 overflow-y-auto flex-1">
-                <form id="bus-form" onSubmit={submitBusForm} className="space-y-6">
-                  {/* Core Fields */}
-                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}>
-                    <div className={isRTL ? "text-right" : ""}>
-                      <InputLabel value={isRTL ? "رقم اللوحة" : "Plate Number"} />
-                      <TextInput value={busForm.data.plate_number} onChange={(e) => busForm.setData("plate_number", e.target.value)} className="w-full mt-1 font-mono uppercase" placeholder="ABC 1234" />
-                      <InputError message={busForm.errors.plate_number} />
-                    </div>
-                    <div className={isRTL ? "text-right" : ""}>
-                      <InputLabel value={isRTL ? "السعة" : "Capacity"} />
-                      <TextInput type="number" value={busForm.data.capacity} onChange={(e) => busForm.setData("capacity", Number(e.target.value))} className="w-full mt-1" />
-                      <InputError message={busForm.errors.capacity} />
-                    </div>
-                    <div className={isRTL ? "text-right" : ""}>
-                      <InputLabel value={isRTL ? "الموديل" : "Model"} />
-                      <TextInput value={busForm.data.model} onChange={(e) => busForm.setData("model", e.target.value)} className="w-full mt-1" />
-                      <InputError message={busForm.errors.model} />
-                    </div>
-                    <div className={isRTL ? "text-right" : ""}>
-                      <InputLabel value={isRTL ? "سنة الصنع" : "Year"} />
-                      <TextInput type="number" value={busForm.data.year} onChange={(e) => busForm.setData("year", Number(e.target.value))} className="w-full mt-1" />
-                      <InputError message={busForm.errors.year} />
-                    </div>
-                  </div>
+              {/* ── Body ── */}
+              <div className="overflow-y-auto flex-1 custom-scrollbar">
+                <form id="bus-form" onSubmit={submitBusForm} className="p-8 space-y-12">
+                  
+                  {/* Grid Container */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-10">
+                    
+                    {/* Column 1: Core Specs */}
+                    <div className="space-y-8">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-1.5 h-6 bg-brand-yellow rounded-full"></span>
+                        <h3 className={`text-xs font-black uppercase tracking-widest ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                          {isRTL ? "المواصفات الجوهرية" : "Core Specifications"}
+                        </h3>
+                      </div>
 
-                  {/* Crew Assignment */}
-                  <div className={`p-4 rounded-xl border ${isDark ? "bg-blue-900/10 border-blue-900/30" : "bg-blue-50/50 border-blue-100"}`}>
-                    <h3 className={`text-xs font-bold uppercase mb-3 flex items-center gap-2 ${isDark ? "text-blue-400" : "text-blue-800"} ${isRTL ? "flex-row-reverse" : ""}`}>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                      </svg>
-                      {isRTL ? "تعيين الطاقم التشغيلي" : "Crew Assignment"}
-                    </h3>
-                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}>
+                      <div className="grid grid-cols-2 gap-5">
+                         <div className={isRTL ? "text-right" : ""}>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "رقم الحافلة" : "Bus ID"}</label>
+                          <input type="text" value={busForm.data.bus_number} disabled className={`w-full px-4 py-3 rounded-xl border text-sm font-bold ${isDark ? "bg-gray-800 border-gray-700 text-gray-500" : "bg-gray-50 border-gray-100 text-gray-400"}`} />
+                        </div>
+                        <div className={isRTL ? "text-right" : ""}>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "رقم اللوحة" : "License Plate"}</label>
+                          <input type="text" value={busForm.data.plate_number} onChange={(e) => busForm.setData("plate_number", e.target.value.toUpperCase())} className={`w-full px-4 py-3 rounded-xl border text-sm font-mono font-black tracking-widest outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`} />
+                          {busForm.errors.plate_number && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase">{busForm.errors.plate_number}</p>}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-5">
+                        <div className={isRTL ? "text-right" : ""}>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "الموديل" : "Manufacturer / Model"}</label>
+                          <input type="text" value={busForm.data.model} onChange={(e) => busForm.setData("model", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`} />
+                        </div>
+                        <div className={isRTL ? "text-right" : ""}>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المقاعد" : "Capacity (Seats)"}</label>
+                          <input type="number" value={busForm.data.capacity} onChange={(e) => busForm.setData("capacity", Number(e.target.value))} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`} />
+                        </div>
+                      </div>
+
                       <div className={isRTL ? "text-right" : ""}>
-                        <InputLabel value={isRTL ? "السائق" : "Driver"} />
-                        <select className={`w-full rounded-lg mt-1 text-sm focus:ring-brand-yellow ${isDark ? "bg-gray-700 border-gray-600 text-white" : "border-gray-300"}`} value={busForm.data.driver_id} onChange={(e) => busForm.setData("driver_id", e.target.value)}>
-                          <option value="">{isRTL ? "-- غير مسند --" : "-- Unassigned --"}</option>
-                          {(modalState.type === "edit" ? editDriverOptions : availableDrivers).map((d) => (
-                            <option key={d.id} value={d.id}>
-                              {d.name}{modalState.bus?.driver_id === d.id ? (isRTL ? " (الحالي)" : " (current)") : ""}
-                            </option>
+                        <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "الحالة التشغيلية" : "Operational Status"}</label>
+                        <div className={`grid grid-cols-2 gap-3 ${isRTL ? "rtl" : ""}`}>
+                          {[
+                            { val: "active", label: isRTL ? "نشط" : "Active", color: "bg-green-500" },
+                            { val: "maintenance", label: isRTL ? "صيانة" : "Service", color: "bg-amber-500" },
+                            { val: "inactive", label: isRTL ? "غير نشط" : "Idle", color: "bg-gray-400" },
+                            { val: "out_of_service", label: isRTL ? "خارج الخدمة" : "Decommissioned", color: "bg-red-500" },
+                          ].map(opt => (
+                            <button key={opt.val} type="button" onClick={() => busForm.setData("status", opt.val as any)} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${busForm.data.status === opt.val ? "border-brand-yellow bg-brand-yellow/5" : "border-transparent bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                              <span className={`w-2.5 h-2.5 rounded-full ${opt.color}`}></span>
+                              <span className={`text-[11px] font-black uppercase ${busForm.data.status === opt.val ? "text-brand-yellow" : "text-gray-500 dark:text-gray-400"}`}>{opt.label}</span>
+                            </button>
                           ))}
-                        </select>
-                      </div>
-                      <div className={isRTL ? "text-right" : ""}>
-                        <InputLabel value={isRTL ? "المشرف" : "Supervisor"} />
-                        <select className={`w-full rounded-lg mt-1 text-sm focus:ring-brand-yellow ${isDark ? "bg-gray-700 border-gray-600 text-white" : "border-gray-300"}`} value={busForm.data.supervisor_id} onChange={(e) => busForm.setData("supervisor_id", e.target.value)}>
-                          <option value="">{isRTL ? "-- غير مسند --" : "-- Unassigned --"}</option>
-                          {(modalState.type === "edit" ? editSupervisorOptions : availableSupervisors).map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}{modalState.bus?.supervisor_id === s.id ? (isRTL ? " (الحالي)" : " (current)") : ""}
-                            </option>
-                          ))}
-                        </select>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* School & Route Assignment */}
-                  <div className={`p-4 rounded-xl border ${isDark ? "bg-green-900/10 border-green-900/30" : "bg-green-50/50 border-green-100"}`}>
-                    <h3 className={`text-xs font-bold uppercase mb-3 flex items-center gap-2 ${isDark ? "text-green-400" : "text-green-800"} ${isRTL ? "flex-row-reverse" : ""}`}>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                      </svg>
-                      {isRTL ? "تعيين المدرسة والمسار" : "School & Route Assignment"}
-                    </h3>
-                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}>
-                      <div className={isRTL ? "text-right" : ""}>
-                        <InputLabel value={isRTL ? "المدرسة (اختياري)" : "School (optional)"} />
-                        <select className={`w-full rounded-lg mt-1 text-sm focus:ring-green-500 ${isDark ? "bg-gray-700 border-gray-600 text-white" : "border-gray-300"}`} value={busForm.data.school_id} onChange={(e) => busForm.setData("school_id", e.target.value)}>
-                          <option value="">{isRTL ? "-- المقر الرئيسي --" : "-- Central Pool (No School) --"}</option>
-                          {schools.map((s) => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
+                    {/* Column 2: Assignment & Operations */}
+                    <div className="space-y-8">
+                       <div className="flex items-center gap-2 mb-2">
+                        <span className="w-1.5 h-6 bg-brand-navy rounded-full"></span>
+                        <h3 className={`text-xs font-black uppercase tracking-widest ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                          {isRTL ? "تعيينات التشغيل" : "Operational Assignments"}
+                        </h3>
                       </div>
-                      <div className={isRTL ? "text-right" : ""}>
-                        <InputLabel value={isRTL ? "المسار (اختياري)" : "Route (optional)"} />
-                        <select className={`w-full rounded-lg mt-1 text-sm focus:ring-green-500 ${isDark ? "bg-gray-700 border-gray-600 text-white" : "border-gray-300"}`} value={busForm.data.route_id} onChange={(e) => busForm.setData("route_id", e.target.value)}>
-                          <option value="">{isRTL ? "-- بدون مسار --" : "-- No Route --"}</option>
-                          {routes.map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {r.name} ({r.code}){r.school ? ` - ${r.school.name}` : ""}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Documents */}
-                  <div className={`border-t pt-4 ${isDark ? "border-gray-700" : "border-gray-200"}`}>
-                    <h3 className={`text-xs font-bold uppercase mb-3 ${isDark ? "text-gray-400" : "text-gray-500"} ${isRTL ? "text-right" : ""}`}>
-                      {isRTL ? "وثائق المركبة" : "Vehicle Documents"}
-                    </h3>
-
-                    {modalState.type === "edit" && modalState.bus?.documents && modalState.bus.documents.length > 0 && (
-                      <div className={`mb-4 p-4 rounded-xl border ${isDark ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-100"}`}>
-                        <p className={`text-xs font-medium mb-2 ${isDark ? "text-gray-300" : "text-gray-700"} ${isRTL ? "text-right" : ""}`}>
-                          {isRTL ? "الوسائط الحالية:" : "Current Media:"}
-                        </p>
-                        <BusMediaGallery
-                          documents={modalState.bus.documents}
-                          editable={true}
-                          onDelete={(docId) => {
-                            if (confirm(isRTL ? "هل أنت متأكد من حذف هذا المستند؟" : "Are you sure you want to delete this document?")) {
-                              router.delete(route("admin.buses.documents.destroy", docId), {
-                                preserveScroll: true,
-                                onSuccess: () => {
-                                  if (modalState.bus) {
-                                    const updatedDocs = modalState.bus.documents?.filter((d) => d.id !== docId);
-                                    setModalState({ ...modalState, bus: { ...modalState.bus, documents: updatedDocs } });
-                                  }
-                                },
-                              });
-                            }
-                          }}
-                        />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className={isRTL ? "text-right" : ""}>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المدرسة" : "Educational Institution"}</label>
+                          <select value={busForm.data.school_id} onChange={(e) => busForm.setData("school_id", Number(e.target.value))} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
+                            <option value="">{isRTL ? "— بدون مدرسة —" : "— Unassigned —"}</option>
+                            {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                          </select>
+                        </div>
+                        <div className={isRTL ? "text-right" : ""}>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المسار" : "Strategic Route"}</label>
+                          <select value={busForm.data.route_id || ""} onChange={(e) => busForm.setData("route_id", e.target.value ? Number(e.target.value) : null)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
+                            <option value="">{isRTL ? "— بدون مسار —" : "— Tactical Reserve —"}</option>
+                            {routes.map(r => <option key={r.id} value={r.id}>{r.name} ({r.code})</option>)}
+                          </select>
+                        </div>
                       </div>
-                    )}
 
-                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}>
-                      <div className={isRTL ? "text-right" : ""}>
-                        <InputLabel value={isRTL ? "إضافة صور" : "Add Photos"} />
-                        <input type="file" multiple accept="image/*" onChange={(e) => busForm.setData("photos", Array.from(e.target.files || []))} className={`block w-full text-sm mt-1 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold transition ${isDark ? "text-gray-400 file:bg-gray-700 file:text-gray-300 hover:file:bg-gray-600" : "text-gray-500 file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"}`} />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className={isRTL ? "text-right" : ""}>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "السائق المعتمد" : "Certified Pilot (Driver)"}</label>
+                          <select value={busForm.data.driver_id || ""} onChange={(e) => busForm.setData("driver_id", e.target.value ? Number(e.target.value) : null)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
+                            <option value="">{isRTL ? "— بدون سائق —" : "— Standby Mode —"}</option>
+                            {(modalState.type === "edit" ? editDriverOptions : availableDrivers).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                          </select>
+                        </div>
+                        <div className={isRTL ? "text-right" : ""}>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المشرف الميداني" : "Field Supervisor"}</label>
+                           <select value={busForm.data.supervisor_id || ""} onChange={(e) => busForm.setData("supervisor_id", e.target.value ? Number(e.target.value) : null)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
+                            <option value="">{isRTL ? "— بدون مشرف —" : "— No Supervision —"}</option>
+                            {(modalState.type === "edit" ? editSupervisorOptions : availableSupervisors).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                          </select>
+                        </div>
                       </div>
-                      <div className={isRTL ? "text-right" : ""}>
-                        <InputLabel value={isRTL ? "ملف الاستمارة (PDF/صورة)" : "Registration File"} />
-                        <input type="file" accept=".pdf,image/*" onChange={(e) => busForm.setData("registration_file", e.target.files?.[0] || null)} className={`block w-full text-sm mt-1 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold transition ${isDark ? "text-gray-400 file:bg-gray-700 file:text-gray-300 hover:file:bg-gray-600" : "text-gray-500 file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"}`} />
+
+                      <div className="pt-6">
+                        <InputLabel value={isRTL ? "المستندات والصور المرفقة" : "Documentation & Visual Assets"} />
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                          <label className={`flex flex-col items-center justify-center gap-2 p-6 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${isDark ? "border-gray-700 bg-gray-800/20 hover:bg-gray-800/50" : "border-gray-200 bg-gray-50/50 hover:bg-gray-100"}`}>
+                            <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => handlePhotoSelect(e.target.files)} />
+                            <PhotoIcon className={`w-6 h-6 ${isDark ? "text-gray-600" : "text-gray-300"}`} />
+                            <span className="text-[10px] font-black uppercase tracking-tighter text-gray-500">{isRTL ? "صور الحافلة" : "Vehicle Photos"}</span>
+                          </label>
+                           <label className={`flex flex-col items-center justify-center gap-2 p-6 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${isDark ? "border-gray-700 bg-gray-800/20 hover:bg-gray-800/50" : "border-gray-200 bg-gray-50/50 hover:bg-gray-100"}`}>
+                            <input type="file" accept=".pdf,image/*" className="hidden" onChange={(e) => handleRegFileSelect(e.target.files?.[0] || null)} />
+                            <FolderUp className={`w-6 h-6 ${isDark ? "text-gray-600" : "text-gray-300"}`} />
+                            <span className="text-[10px] font-black uppercase tracking-tighter text-gray-500">{isRTL ? "الاستمارة / PDF" : "Registry / PDF"}</span>
+                          </label>
+                        </div>
                       </div>
                     </div>
+
                   </div>
 
-                  {/* Status */}
-                  <div className={`p-4 rounded-xl border ${isDark ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-100"}`}>
-                    <InputLabel value={isRTL ? "الحالة التشغيلية" : "Operational Status"} className={isRTL ? "text-right" : ""} />
-                    <select className={`w-full rounded-lg mt-1 text-sm focus:ring-brand-yellow font-bold ${isDark ? "bg-gray-800 border-gray-600 text-white" : "border-gray-300"}`} value={busForm.data.status} onChange={(e) => busForm.setData("status", e.target.value as any)}>
-                      <option value="active">{isRTL ? "🟢 نشط" : "🟢 Active"}</option>
-                      <option value="maintenance">{isRTL ? "🟡 صيانة" : "🟡 Maintenance"}</option>
-                      <option value="inactive">{isRTL ? "⚪ غير نشط" : "⚪ Inactive"}</option>
-                      <option value="out_of_service">{isRTL ? "🔴 خارج الخدمة" : "🔴 Out of Service"}</option>
-                    </select>
-                    <InputError message={busForm.errors.status} className="mt-2" />
-                  </div>
+                  {/* Attachment Preview Section */}
+                  {(photoPreviews.length > 0 || regPreview) && (
+                    <div className={`mt-8 p-6 rounded-3xl ${isDark ? "bg-gray-800/30" : "bg-gray-50/50"} border border-transparent`}>
+                       <h4 className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "معاينة الملفات المختارة" : "Attachment Inventory"}</h4>
+                       <div className="flex flex-wrap gap-4">
+                          {regPreview && (
+                            <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-brand-yellow shadow-lg group">
+                              {regPreview.url ? <img src={regPreview.url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-[10px] font-bold">PDF</div>}
+                              <button type="button" onClick={() => handleRegFileSelect(null)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><LucideX className="w-3 h-3" /></button>
+                              <div className="absolute bottom-0 left-0 right-0 py-1 bg-brand-yellow text-brand-dark text-[8px] font-black text-center uppercase">Registry</div>
+                            </div>
+                          )}
+                          {photoPreviews.map((p, idx) => (
+                            <div key={idx} className="relative w-24 h-24 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 group">
+                              <img src={p.url} className="w-full h-full object-cover" alt="" />
+                              <button type="button" onClick={() => removePhotoPreview(idx)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><LucideX className="w-3 h-3" /></button>
+                            </div>
+                          ))}
+                       </div>
+                    </div>
+                  )}
+
                 </form>
               </div>
 
-              {/* Footer */}
-              <div className={`p-6 border-t flex gap-3 sticky bottom-0 z-10 rounded-b-lg ${isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200"} ${isRTL ? "flex-row-reverse" : "justify-end"}`}>
-                <SecondaryButton onClick={closeModal}>
-                  {isRTL ? "إلغاء" : "Cancel"}
-                </SecondaryButton>
-                <PrimaryButton type="submit" form="bus-form" disabled={busForm.processing} className="bg-brand-dark">
-                  {modalState.type === "edit" ? (isRTL ? "تحديث البيانات" : "Update Details") : (isRTL ? "تسجيل المركبة" : "Register Vehicle")}
-                </PrimaryButton>
+              {/* ── Footer ── */}
+              <div className={`px-8 py-6 border-t flex items-center justify-between flex-shrink-0 ${isDark ? "border-gray-800 bg-[#0f172a]" : "border-gray-100 bg-gray-50"} ${isRTL ? "flex-row-reverse" : ""}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-2.5 h-2.5 rounded-full ${busForm.processing ? "bg-brand-yellow animate-pulse" : "bg-green-500"}`}></div>
+                  <span className={`text-[11px] font-black uppercase tracking-[0.1em] ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+                    {busForm.processing ? (isRTL ? "جارِ مزامنة البيانات..." : "Syncing with Command Center") : (isRTL ? "جميع الأنظمة جاهزة" : "All Systems Nominal")}
+                  </span>
+                </div>
+                <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
+                  <button type="button" onClick={closeModal} className={`px-6 py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${isDark ? "text-gray-500 hover:text-white" : "text-gray-400 hover:text-gray-900"}`}>
+                    {isRTL ? "تجاهل" : "Dismiss"}
+                  </button>
+                  <button type="submit" form="bus-form" disabled={busForm.processing} className={`px-10 py-3 rounded-xl text-sm font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 disabled:opacity-50 ${isDark ? "bg-brand-yellow text-brand-dark hover:shadow-yellow-500/10" : "bg-brand-dark text-white hover:bg-brand-navy shadow-brand-dark/20"}`}>
+                    {busForm.processing ? (isRTL ? "جارِ الحفظ..." : "Processing...") : (modalState.type === "edit" ? (isRTL ? "تحديث السجل" : "Commit Records") : (isRTL ? "تشغيل الحافلة" : "Deploy Asset"))}
+                  </button>
+                </div>
               </div>
             </div>
           </Modal>
+
+
+
 
           {/* Archive Modal */}
           <Modal show={modalState.type === "archive"} onClose={closeModal}>
             <div className={`p-6 ${isDark ? "bg-gray-800" : "bg-white"}`}>
               <div className="text-center mb-6">
-                <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
+                  <AlertTriangle className="w-8 h-8" />
                 </div>
                 <h2 className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
                   {isRTL ? "أرشفة المركبة" : "Archive Vehicle"}
@@ -820,8 +951,89 @@ export default function Index({
               </form>
             </div>
           </Modal>
-        </div>
+        </motion.div>
       </div>
     </AuthenticatedLayout>
+  );
+}
+
+// ─── BusStatCard ──────────────────────────────────────────────────
+
+const statColorMap = {
+  blue: {
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    icon: "text-blue-500",
+    value: "text-blue-700 dark:text-blue-300",
+    border: "border-blue-100 dark:border-blue-900/30",
+  },
+  green: {
+    bg: "bg-emerald-50 dark:bg-emerald-900/20",
+    icon: "text-emerald-500",
+    value: "text-emerald-700 dark:text-emerald-300",
+    border: "border-emerald-100 dark:border-emerald-900/30",
+  },
+  yellow: {
+    bg: "bg-amber-50 dark:bg-amber-900/20",
+    icon: "text-amber-500",
+    value: "text-amber-700 dark:text-amber-300",
+    border: "border-amber-100 dark:border-amber-900/30",
+  },
+  red: {
+    bg: "bg-rose-50 dark:bg-rose-900/20",
+    icon: "text-rose-500",
+    value: "text-rose-700 dark:text-rose-300",
+    border: "border-rose-100 dark:border-rose-900/30",
+  },
+};
+
+function BusStatCard({
+  label,
+  value,
+  icon,
+  color,
+  isDark,
+  isRTL,
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  color: keyof typeof statColorMap;
+  isDark: boolean;
+  isRTL: boolean;
+}) {
+  const scheme = statColorMap[color];
+  return (
+    <motion.div
+      whileHover={{ y: -2 }}
+      className={`relative flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+        isDark
+          ? `bg-gray-800/80 border-gray-700 hover:bg-gray-800`
+          : `bg-white ${scheme.border} hover:shadow-md shadow-sm`
+      } ${isRTL ? "flex-row-reverse" : ""}`}
+    >
+      <div
+        className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
+          isDark ? "bg-gray-700" : scheme.bg
+        }`}
+      >
+        <span className={scheme.icon}>{icon}</span>
+      </div>
+      <div className={isRTL ? "text-right" : "text-left"}>
+        <p
+          className={`text-[11px] font-bold uppercase tracking-wide ${
+            isDark ? "text-gray-500" : "text-gray-400"
+          }`}
+        >
+          {label}
+        </p>
+        <p
+          className={`text-2xl font-black mt-0.5 ${
+            isDark ? "text-white" : "text-gray-900"
+          }`}
+        >
+          {value}
+        </p>
+      </div>
+    </motion.div>
   );
 }

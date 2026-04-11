@@ -5,6 +5,14 @@ import Modal from "@/Components/Modal";
 import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import { useTheme } from "@/Contexts/ThemeContext";
+import BaseDataTable, {
+  ActionButton,
+  StatusBadge,
+  type FilterTab,
+} from "@/Components/BaseDataTable";
+import { createColumnHelper } from "@tanstack/react-table";
+import { motion } from "framer-motion";
+import { Users, CheckCircle2, XCircle, MapPin } from "lucide-react";
 
 interface FieldSupervisor {
   id: number;
@@ -169,91 +177,159 @@ export default function FieldSupervisorsIndex({ supervisors }: { supervisors: Fi
         : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
     }`;
 
-  const statusLabel = (isActive: boolean) => (isActive ? (isRTL ? "نشط" : "Active") : (isRTL ? "غير نشط" : "Inactive"));
+  const statusLabel = (isActive: boolean) =>
+    isActive
+      ? isRTL ? "نشط" : "Active"
+      : isRTL ? "غير نشط" : "Inactive";
+
+  // ── Columns for BaseDataTable ──
+  const columnHelper = createColumnHelper<FieldSupervisor>();
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("name", {
+        header: isRTL ? "المشرف الميداني" : "Field Supervisor",
+        cell: (info) => {
+          const sup = info.row.original;
+          return (
+            <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
+              <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm overflow-hidden ring-2 ring-offset-1 ring-brand-dark/10">
+                {sup.image
+                  ? <img src={`/storage/${sup.image}`} alt={sup.name} className="w-full h-full object-cover" />
+                  : sup.name.charAt(0)}
+              </div>
+              <div className={isRTL ? "text-right" : "text-left"}>
+                <div className={`text-sm font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>{sup.name}</div>
+                {sup.name_en && <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{sup.name_en}</div>}
+              </div>
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("national_id", {
+        header: isRTL ? "الهوية / الكود" : "ID / Code",
+        cell: (info) => {
+          const sup = info.row.original;
+          return (
+            <div className={isRTL ? "text-right" : "text-left"}>
+              <div className={`text-sm font-mono font-medium ${isDark ? "text-gray-300" : "text-gray-800"}`}>{sup.national_id || "—"}</div>
+              <div className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>{sup.user_code}</div>
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("phone", {
+        header: isRTL ? "بيانات الاتصال" : "Contact",
+        cell: (info) => {
+          const sup = info.row.original;
+          return (
+            <div className={isRTL ? "text-right" : "text-left"}>
+              <div className={`text-sm font-mono ${isDark ? "text-gray-300" : "text-gray-800"}`}>{sup.phone}</div>
+              <div className={`text-xs truncate max-w-[160px] ${isDark ? "text-gray-500" : "text-gray-400"}`}>{sup.email}</div>
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("is_active", {
+        header: isRTL ? "الحالة" : "Status",
+        cell: (info) => {
+          const isActive = info.getValue();
+          return (
+            <StatusBadge
+              label={statusLabel(isActive)}
+              variant={isActive ? "green" : "red"}
+            />
+          );
+        },
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: isRTL ? "الإجراءات" : "Actions",
+        cell: (info) => {
+          const sup = info.row.original;
+          return (
+            <div className={`flex gap-2 ${isRTL ? "justify-start" : "justify-end"}`}>
+              <ActionButton label={isRTL ? "تعديل" : "Edit"} onClick={() => openEditModal(sup)} color="indigo" />
+              <ActionButton label={isRTL ? "حذف" : "Delete"} onClick={() => deleteSupervisor(sup.id)} color="red" />
+            </div>
+          );
+        },
+      }),
+    ],
+    [isRTL, isDark]
+  );
+
+  const filterTabs: FilterTab[] = [
+    { key: "all", label: isRTL ? "الكل" : "All", count: counts.all },
+    { key: "active", label: isRTL ? "نشط" : "Active", count: counts.active, dotColor: "bg-emerald-400" },
+    { key: "inactive", label: isRTL ? "غير نشط" : "Inactive", count: counts.inactive, dotColor: "bg-rose-400" },
+  ];
+
 
   return (
-    <AuthenticatedLayout header={<h2 className={`font-bold text-xl ${isDark ? "text-gray-200" : "text-gray-800"}`}>{isRTL ? "إدارة المشرفين الميدانيين" : "Field Supervisors Management"}</h2>}>
+    <AuthenticatedLayout
+      header={<h2 className={`font-bold text-xl ${isDark ? "text-gray-200" : "text-gray-800"}`}>{isRTL ? "إدارة المشرفين الميدانيين" : "Field Supervisors Management"}</h2>}
+    >
       <Head title={isRTL ? "المشرفين الميدانيين" : "Field Supervisors"} />
-      <div className={`py-6 dir-${isRTL ? "rtl" : "ltr"}`}>
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-5">
-          {/* Header */}
-          <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${isRTL ? "md:flex-row-reverse" : ""}`}>
-            <div className={isRTL ? "text-right" : ""}>
-              <h1 className={`text-2xl font-bold ${isDark ? "text-white" : "text-brand-dark"}`}>{isRTL ? "المشرفون الميدانيون" : "Field Supervisors"}</h1>
-              <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>{isRTL ? `${counts.all} مشرف — ${counts.active} نشط — ${counts.inactive} غير نشط` : `${counts.all} total — ${counts.active} active — ${counts.inactive} inactive`}</p>
-            </div>
-            <PrimaryButton onClick={openAddModal} className="bg-brand-yellow text-brand-dark hover:bg-yellow-500">
-              {isRTL ? "+ إضافة مشرف ميداني" : "+ Add Field Supervisor"}
-            </PrimaryButton>
-          </div>
 
-          {/* Controls */}
-          <div className={`flex flex-col sm:flex-row gap-3 ${isRTL ? "sm:flex-row-reverse" : ""}`}>
-            <div className="flex gap-2">
-              <button className={filterBtnClass("all")} onClick={() => setFilter("all")}>{isRTL ? "الكل" : "All"} ({counts.all})</button>
-              <button className={filterBtnClass("active")} onClick={() => setFilter("active")}><span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1" />{isRTL ? "نشط" : "Active"} ({counts.active})</button>
-              <button className={filterBtnClass("inactive")} onClick={() => setFilter("inactive")}><span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1" />{isRTL ? "غير نشط" : "Inactive"} ({counts.inactive})</button>
-            </div>
-            <div className="relative flex-1 max-w-sm">
-              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={isRTL ? "بحث بالاسم، الهوية، الهاتف..." : "Search name, ID, phone..."} className={`w-full ${isRTL ? "pr-9 pl-4" : "pl-9 pr-4"} py-2 text-sm rounded-lg border focus:ring-2 focus:ring-brand-dark focus:border-transparent transition ${isDark ? "bg-gray-800 border-gray-700 text-white placeholder-gray-500" : "bg-white border-gray-200"}`} />
-            </div>
-          </div>
+      <div className={`pb-8 space-y-6 dir-${isRTL ? "rtl" : "ltr"}`}>
 
-          {/* Table */}
-          <div className={`${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"} overflow-hidden shadow-sm sm:rounded-2xl border`}>
-            <div className="overflow-x-auto">
-              <table className={`min-w-full divide-y ${isDark ? "divide-gray-700" : "divide-gray-200"}`}>
-                <thead className={isDark ? "bg-gray-900/50" : "bg-gray-50"}>
-                  <tr>
-                    {[isRTL ? "المشرف الميداني" : "Field Supervisor", isRTL ? "الهوية / الكود" : "ID / Code", isRTL ? "الاتصال" : "Contact", isRTL ? "الحالة" : "Status", isRTL ? "الإجراءات" : "Actions"].map((h, i) => (
-                      <th key={i} className={`px-4 py-3 text-xs font-bold ${isDark ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider ${isRTL ? "text-right" : "text-left"}`}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className={`${isDark ? "bg-gray-800 divide-gray-700" : "bg-white divide-gray-200"} divide-y`}>
-                  {filtered.length === 0 ? (
-                    <tr><td colSpan={5} className={`px-6 py-10 text-center ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "لا يوجد مشرفين ميدانيين." : "No field supervisors found."}</td></tr>
-                  ) : (
-                    filtered.map((sup) => (
-                      <tr key={sup.id} className={`${isDark ? "hover:bg-gray-700/50" : "hover:bg-gray-50"} transition`}>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
-                            <div className="flex-shrink-0 h-10 w-10 bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm rounded-full overflow-hidden">
-                              {sup.image ? <img src={`/storage/${sup.image}`} alt={sup.name} className="w-full h-full object-cover" /> : sup.name.charAt(0)}
-                            </div>
-                            <div className={isRTL ? "text-right" : ""}>
-                              <div className={`text-sm font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>{sup.name}</div>
-                              {sup.name_en && <div className="text-xs text-gray-400">{sup.name_en}</div>}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className={`text-sm font-mono font-medium ${isDark ? "text-gray-300" : "text-gray-800"}`}>{sup.national_id || "—"}</div>
-                          <div className="text-xs text-gray-400">{sup.user_code}</div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className={`text-sm ${isDark ? "text-gray-300" : "text-gray-800"}`}>{sup.phone}</div>
-                          <div className="text-xs text-gray-400 max-w-[160px] truncate">{sup.email}</div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className={`px-2 py-0.5 inline-flex text-xs font-semibold rounded-full ${sup.is_active ? isDark ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-800" : isDark ? "bg-red-900/30 text-red-400" : "bg-red-100 text-red-800"}`}>
-                            {statusLabel(sup.is_active)}
-                          </span>
-                        </td>
-                        <td className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${isRTL ? "text-left" : "text-right"}`}>
-                          <div className={`flex gap-2 ${isRTL ? "justify-start" : "justify-end"}`}>
-                            <button onClick={() => openEditModal(sup)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${isDark ? "bg-indigo-900/30 text-indigo-400 hover:bg-indigo-900/60" : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"}`}>{isRTL ? "تعديل" : "Edit"}</button>
-                            <button onClick={() => deleteSupervisor(sup.id)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${isDark ? "bg-red-900/30 text-red-400 hover:bg-red-900/60" : "bg-red-50 text-red-700 hover:bg-red-100"}`}>{isRTL ? "حذف" : "Delete"}</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        {/* Stats Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="grid grid-cols-3 gap-4"
+        >
+          {[
+            { label: isRTL ? "إجمالي" : "Total", value: counts.all, icon: <Users className="w-5 h-5" />, color: "blue" as const },
+            { label: isRTL ? "نشط" : "Active", value: counts.active, icon: <CheckCircle2 className="w-5 h-5" />, color: "green" as const },
+            { label: isRTL ? "غير نشط" : "Inactive", value: counts.inactive, icon: <XCircle className="w-5 h-5" />, color: "red" as const },
+          ].map((stat, i) => (
+            <FSStatCard key={i} {...stat} isDark={isDark} isRTL={isRTL} />
+          ))}
+        </motion.div>
+
+        {/* Main Table */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+        >
+          <BaseDataTable<FieldSupervisor>
+            columns={columns}
+            data={filtered}
+            title={isRTL ? "المشرفون الميدانيون" : "Field Supervisors"}
+/*             subtitle={
+              isRTL
+                ? `${counts.all} مشرف — ${counts.active} نشط — ${counts.inactive} غير نشط`
+                : `${counts.all} total — ${counts.active} active — ${counts.inactive} inactive`
+            } */
+            headerAction={
+              <PrimaryButton onClick={openAddModal} className="bg-brand-yellow text-brand-dark hover:bg-yellow-500">
+                {isRTL ? "+ إضافة مشرف ميداني" : "+ Add Field Supervisor"}
+              </PrimaryButton>
+            }
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder={isRTL ? "بحث بالاسم، الهوية، الجوال..." : "Search name, ID, phone..."}
+            filterTabs={filterTabs}
+            activeFilter={filter}
+            onFilterChange={(key) => setFilter(key as FilterType)}
+            emptyMessage={isRTL ? "لا يوجد مشرفون ميدانيون" : "No Field Supervisors Yet"}
+            emptyDescription={
+              isRTL
+                ? "لم يتم تسجيل أي مشرف ميداني بعد."
+                : "No field supervisors registered yet."
+            }
+            emptyIcon={<MapPin className="w-10 h-10" />}
+            emptyAction={
+              filter === "all"
+                ? { label: isRTL ? "+ إضافة مشرف" : "+ Add Supervisor", onClick: openAddModal }
+                : undefined
+            }
+          />
+        </motion.div>
       </div>
 
       <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
@@ -320,7 +396,7 @@ export default function FieldSupervisorsIndex({ supervisors }: { supervisors: Fi
                   </div>
 
                   <div>
-                     <h4 className={`text-sm font-bold border-b pb-2 mb-4 ${isDark ? "border-gray-700 text-gray-300" : "border-gray-200 text-gray-600"} ${isRTL ? "text-right" : "text-left"}`}>{isRTL ? "الاسم بناءً على الهوية (إنجليزي)" : "Name as per ID (English)"}</h4>
+                    <h4 className={`text-sm font-bold border-b pb-2 mb-4 ${isDark ? "border-gray-700 text-gray-300" : "border-gray-200 text-gray-600"} ${isRTL ? "text-right" : "text-left"}`}>{isRTL ? "الاسم بناءً على الهوية (إنجليزي)" : "Name as per ID (English)"}</h4>
                     <div className={`grid grid-cols-2 lg:grid-cols-4 gap-4 ${isRTL ? "rtl" : "ltr"}`}>
                       {[
                         { key: 'first_name_en', label: isRTL ? 'الاسم الأول' : 'First Name' },
@@ -349,21 +425,18 @@ export default function FieldSupervisorsIndex({ supervisors }: { supervisors: Fi
                         className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all font-mono ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"}`} />
                       <InputError message={errors.national_id} className="mt-1" />
                     </div>
-
                     <div>
                       <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "رقم الجوال" : "Phone Number"}</label>
                       <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} dir="ltr" placeholder="5X XXX XXXX" required
                         className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all font-mono ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"}`} />
                       <InputError message={errors.phone} className="mt-1" />
                     </div>
-
                     <div>
                       <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "البريد الإلكتروني" : "Email Address"}</label>
                       <input type="email" value={data.email} onChange={e => setData("email", e.target.value)} dir="ltr" required
                         className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"}`} />
                       <InputError message={errors.email} className="mt-1" />
                     </div>
-
                     <div>
                       <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "الحالة" : "Status"}</label>
                       <select value={data.status} onChange={e => setData("status", e.target.value)} required
@@ -373,12 +446,11 @@ export default function FieldSupervisorsIndex({ supervisors }: { supervisors: Fi
                       </select>
                       <InputError message={errors.status} className="mt-1" />
                     </div>
-
                     <div className="md:col-span-2">
-                       <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "العنوان" : "Address"}</label>
-                       <input type="text" value={data.address} onChange={e => setData("address", e.target.value)}
-                         className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"}`} />
-                       <InputError message={errors.address} className="mt-1" />
+                      <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "العنوان" : "Address"}</label>
+                      <input type="text" value={data.address} onChange={e => setData("address", e.target.value)}
+                        className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"}`} />
+                      <InputError message={errors.address} className="mt-1" />
                     </div>
                   </div>
                 </div>
@@ -391,7 +463,6 @@ export default function FieldSupervisorsIndex({ supervisors }: { supervisors: Fi
               ) : (
                 <button type="button" onClick={() => setCurrentStep(1)} className={`text-sm font-semibold transition-colors ${isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-800"}`}>{isRTL ? "السابق" : "Previous"}</button>
               )}
-              
               <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
                 {currentStep === 1 ? (
                   <button type="button" onClick={(e) => { e.preventDefault(); setCurrentStep(2); }} className={`px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-opacity ${isDark ? "bg-brand-navy text-white hover:opacity-90" : "bg-brand-navy text-white hover:opacity-90"}`}>
@@ -408,5 +479,40 @@ export default function FieldSupervisorsIndex({ supervisors }: { supervisors: Fi
         </div>
       </Modal>
     </AuthenticatedLayout>
+  );
+}
+
+// ─── FSStatCard ───────────────────────────────────────
+
+const fsStatColors = {
+  blue: { bg: "bg-blue-50 dark:bg-blue-900/20", icon: "text-blue-500", border: "border-blue-100 dark:border-blue-900/30" },
+  green: { bg: "bg-emerald-50 dark:bg-emerald-900/20", icon: "text-emerald-500", border: "border-emerald-100 dark:border-emerald-900/30" },
+  red: { bg: "bg-rose-50 dark:bg-rose-900/20", icon: "text-rose-500", border: "border-rose-100 dark:border-rose-900/30" },
+};
+
+function FSStatCard({ label, value, icon, color, isDark, isRTL }: {
+  label: string; value: number; icon: React.ReactNode;
+  color: keyof typeof fsStatColors; isDark: boolean; isRTL: boolean;
+}) {
+  const scheme = fsStatColors[color];
+  return (
+    <motion.div
+      whileHover={{ y: -2 }}
+      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+        isDark ? "bg-gray-800/80 border-gray-700 hover:bg-gray-800" : `bg-white ${scheme.border} hover:shadow-md shadow-sm`
+      } ${isRTL ? "flex-row-reverse" : ""}`}
+    >
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
+        isDark ? "bg-gray-700" : scheme.bg
+      }`}><span className={scheme.icon}>{icon}</span></div>
+      <div className={isRTL ? "text-right" : "text-left"}>
+        <p className={`text-[11px] font-bold uppercase tracking-wide ${
+          isDark ? "text-gray-500" : "text-gray-400"
+        }`}>{label}</p>
+        <p className={`text-2xl font-black mt-0.5 ${
+          isDark ? "text-white" : "text-gray-900"
+        }`}>{value}</p>
+      </div>
+    </motion.div>
   );
 }

@@ -17,11 +17,16 @@ class StoreSchoolUserRequest extends FormRequest
     // هنا تضع القوانين التي كانت في الكنترولر
     public function rules(): array
     {
+        $userId = $this->route('user') ? $this->route('user')->id : null;
+        
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:' . User::class],
-            'phone' => ['required', 'string', 'max:20', 'unique:' . User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $userId],
+            'phone' => ['required', 'string', 'max:20', 'unique:users,phone,' . $userId],
+            'national_id' => ['required', 'string', 'max:255', 'unique:users,national_id,' . $userId],
+            'address' => ['nullable', 'string', 'max:500'],
+            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+            'password' => [$userId ? 'nullable' : 'required', 'confirmed', Rules\Password::defaults()],
         ];
     }
 }

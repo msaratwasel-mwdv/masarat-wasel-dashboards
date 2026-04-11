@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Validation\Rule;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Illuminate\Support\Facades\Http;
 
 class BusController extends Controller
 {
@@ -23,7 +24,14 @@ class BusController extends Controller
         $statusFilter = $request->input('status', 'all');
 
         // 1. Base query for buses
-        $query = Bus::with(['drivers.user', 'fieldSupervisor', 'school', 'route']);
+        $query = Bus::with([
+            'drivers.user:id,first_name_ar,last_name_ar,image',
+            'assistant:id,first_name_ar,last_name_ar,image',
+            'fieldSupervisor:id,first_name_ar,last_name_ar,image',
+            'school:id,name',
+            'route:id,name,code',
+            'documents',
+        ]);
 
         // Filter by archive or status
         if ($statusFilter === 'archived') {
@@ -184,14 +192,35 @@ class BusController extends Controller
             // Map driver model directly
             if ($request->driver_id) {
                 \App\Models\Driver::where('user_id', $request->driver_id)
-                    ->update(['bus_id' => $bus->id, 'school_id' => null]);
+                    ->update(['bus_id' => $bus->id, 'school_id' => $bus->school_id]);
             }
 
-            $qrData = "ID: $bus->id\nNumber: $busNumber\nPlate: $request->plate_number\nEmergency: 999";
-            $qrFileName = 'qrcodes/' . $busNumber . '.svg';
+            $qrData = route('admin.buses.index') . "?bus=" . $bus->id;
+            $qrFileName = 'qrcodes/' . $busNumber . '.png';
             Storage::disk('public')->makeDirectory('qrcodes');
-            Storage::disk('public')->put($qrFileName, QrCode::format('svg')->size(300)->generate($qrData));
-            $bus->update(['front_qr' => $qrFileName]);
+
+            try {
+                // We use an external API because SimpleQRCode requires 'imagick' extension for PNG, which might be missing on some servers.
+                $qrApiUrl = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=" . urlencode($qrData) . "&margin=10&format=png";
+                $response = Http::timeout(5)->get($qrApiUrl);
+                
+                if ($response->successful()) {
+                    Storage::disk('public')->put($qrFileName, $response->body());
+                    $bus->update(['front_qr' => $qrFileName]);
+                } else {
+                    // Fallback to SVG if API fails (and log it, though we don't have easy access to logs here)
+                    $qrFileNameSvg = 'qrcodes/' . $busNumber . '.svg';
+                    $qrImage = QrCode::format('svg')->size(400)->margin(2)->generate($qrData);
+                    Storage::disk('public')->put($qrFileNameSvg, $qrImage);
+                    $bus->update(['front_qr' => $qrFileNameSvg]);
+                }
+            } catch (\Exception $e) {
+                // Catch network timeout or other issues and fallback to local SVG
+                $qrFileNameSvg = 'qrcodes/' . $busNumber . '.svg';
+                $qrImage = QrCode::format('svg')->size(400)->margin(2)->generate($qrData);
+                Storage::disk('public')->put($qrFileNameSvg, $qrImage);
+                $bus->update(['front_qr' => $qrFileNameSvg]);
+            }
 
             $this->uploadFiles($request, $bus);
         });
@@ -322,9 +351,9 @@ class BusController extends Controller
 
             // NOTE: school_id does NOT exist on the users table.
             // Driver/supervisor school association lives in drivers.school_id / field_supervisors.school_id.
-            // Update those extension records when driver/supervisor assignment changes.
-            if ($oldDriverId !== $newDriverId) {
-                if ($oldDriverId) {
+            // Update those extension records when driver/supervisor assignment OR bus school changes.
+            if ($oldDriverId !== $newDriverId || $bus->wasChanged('school_id')) {
+                if ($oldDriverId && $oldDriverId != $newDriverId) {
                     \App\Models\Driver::where('user_id', $oldDriverId)->update(['bus_id' => null, 'school_id' => null]);
                 }
                 if ($newDriverId) {
@@ -332,14 +361,17 @@ class BusController extends Controller
                 }
             }
 
-            if ($oldSupervisorId !== $newSupervisorId) {
-                if ($oldSupervisorId) {
+            if ($oldSupervisorId !== $newSupervisorId || $bus->wasChanged('school_id')) {
+                if ($oldSupervisorId && $oldSupervisorId != $newSupervisorId) {
                     \App\Models\FieldSupervisor::where('user_id', $oldSupervisorId)->update(['school_id' => null]);
                 }
                 if ($newSupervisorId) {
                     \App\Models\FieldSupervisor::where('user_id', $newSupervisorId)->update(['school_id' => $bus->school_id]);
                 }
             }
+
+            // Upload new files if provided
+            $this->uploadFiles(request(), $bus);
         });
 
         return redirect()->route('admin.buses.index')

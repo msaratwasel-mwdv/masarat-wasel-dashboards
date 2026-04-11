@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class SchoolUserController extends Controller
@@ -27,7 +28,9 @@ class SchoolUserController extends Controller
     {
         DB::transaction(function () use ($request, $school) {
             $ar = \App\Models\User::parseFullName($request->name);
-            $en = \App\Models\User::parseFullName($request->name_en);
+            // Fallback for name_en if not provided
+            $enName = $request->name_en ?: $request->name;
+            $en = \App\Models\User::parseFullName($enName);
 
             $user = User::create([
                 'first_name_ar' => $ar[0],
@@ -37,77 +40,70 @@ class SchoolUserController extends Controller
                 'first_name_en' => $en[0],
                 'second_name_en' => $en[1],
                 'third_name_en' => $en[2],
-                'last_name_en' => $en[3],
+                'last_name_en' => $en[3] ?: $en[0],
                 'email' => $request->email,
                 'phone' => $request->phone,
-                'national_id' => $request->national_id ?? '0000000000',
+                'national_id' => $request->national_id,
+                'address' => $request->address,
                 'password' => Hash::make($request->password),
+                'image' => $request->hasFile('image') ? $request->file('image')->store('users/images', 'public') : null,
             ]);
 
-            // Attach role via user_roles pivot
+            // Attach role safely
             $role = \App\Models\Role::firstOrCreate(['name' => 'school_admin']);
-            $user->roles()->attach($role->id);
+            $user->roles()->syncWithoutDetaching([$role->id]);
 
-            // Create SchoolAdmin extension record (links user to school)
-            \App\Models\SchoolAdmin::create([
-                'user_id' => $user->id,
-                'school_id' => $school->id,
-            ]);
+            // Create SchoolAdmin link
+            \App\Models\SchoolAdmin::updateOrCreate(
+                ['user_id' => $user->id],
+                ['school_id' => $school->id]
+            );
         });
 
-        return redirect()->route('admin.schools.show', $school->id)
-            ->with('message', 'تم تعيين مدير للمدرسة بنجاح');
-    }
-
-    // عرض صفحة تعديل مدير المدرسة
-    public function edit(School $school, User $user)
-    {
-        // التأكد من أن المستخدم تابع لهذه المدرسة
-        if ($user->getSchoolId() !== $school->id) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        return Inertia::render('Admin/SchoolUsers/Edit', [
-            'school' => $school,
-            'user' => $user
-        ]);
+        return back()->with('message', 'تم تعيين مدير للمدرسة بنجاح');
     }
 
     // تحديث بيانات مدير المدرسة
-    public function update(Request $request, School $school, User $user)
+    public function update(StoreSchoolUserRequest $request, School $school, User $user)
     {
         // التأكد من أن المستخدم تابع لهذه المدرسة
         if ($user->getSchoolId() !== $school->id) {
             abort(403, 'Unauthorized action.');
         }
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'phone' => 'required|string|max:20',
-            'password' => 'nullable|min:8',
-        ]);
-
-        $ar = \App\Models\User::parseFullName($validated['name']);
+        $ar = \App\Models\User::parseFullName($request->name);
+        $enName = $request->name_en ?: $request->name;
+        $en = \App\Models\User::parseFullName($enName);
         
         $updateData = [
             'first_name_ar' => $ar[0],
             'second_name_ar' => $ar[1],
             'third_name_ar' => $ar[2],
             'last_name_ar' => $ar[3] ?: $ar[0],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'],
+            'first_name_en' => $en[0],
+            'second_name_en' => $en[1],
+            'third_name_en' => $en[2],
+            'last_name_en' => $en[3] ?: $en[0],
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'national_id' => $request->national_id,
+            'address' => $request->address,
         ];
 
-        // تحديث كلمة المرور فقط إذا تم إدخالها
-        if (!empty($validated['password'])) {
-            $updateData['password'] = Hash::make($validated['password']);
+        if ($request->hasFile('image')) {
+            if ($user->image) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->image);
+            }
+            $updateData['image'] = $request->file('image')->store('users/images', 'public');
+        }
+
+        if ($request->filled('password')) {
+            $updateData['password'] = Hash::make($request->password);
         }
 
         $user->update($updateData);
 
-        return redirect()->route('admin.schools.show', $school->id)
-            ->with('message', 'تم تحديث بيانات المدير بنجاح');
+        return back()->with('message', 'تم تحديث بيانات المدير بنجاح');
     }
 
     // حذف مدير المدرسة

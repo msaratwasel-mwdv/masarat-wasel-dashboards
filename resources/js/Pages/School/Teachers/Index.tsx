@@ -13,9 +13,8 @@ interface Teacher {
   phone: string;
   is_active: boolean;
   image?: string | null;
-  teacher?: {
-    classroom_id: number | null;
-  };
+  classroom_id?: number | null;
+  classroom_name?: string | null;
 }
 
 interface Classroom {
@@ -77,7 +76,7 @@ export default function TeachersIndex({ auth, teachers, classrooms, filters }: P
       role: "teacher",
       is_active: teacher.is_active,
       image: null,
-      classroom_id: teacher.teacher?.classroom_id || "",
+      classroom_id: teacher.classroom_id || "",
     });
     clearErrors();
     setIsModalOpen(true);
@@ -232,6 +231,9 @@ export default function TeachersIndex({ auth, teachers, classrooms, filters }: P
                     <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
                       {t("Phone Number")}
                     </th>
+                    <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
+                      {t("Classroom")}
+                    </th>
                     <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">
                       {t("Actions")}
                     </th>
@@ -278,6 +280,19 @@ export default function TeachersIndex({ auth, teachers, classrooms, filters }: P
                           className={`px-6 py-4 text-gray-600 dark:text-gray-300 text-start`}
                         >
                           {teacher.phone}
+                        </td>
+                        <td
+                          className={`px-6 py-4 text-start`}
+                        >
+                          {teacher.classroom_name ? (
+                            <span className="px-3 py-1 bg-cyan-50 dark:bg-cyan-900/30 text-[#0e7490] dark:text-cyan-400 rounded-full text-xs font-bold border border-cyan-100 dark:border-cyan-800">
+                                {teacher.classroom_name}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 dark:text-gray-600 text-xs italic">
+                                {t("Unassigned")}
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center gap-4">
@@ -511,7 +526,7 @@ export default function TeachersIndex({ auth, teachers, classrooms, filters }: P
                     onChange={(e) => setData("classroom_id", e.target.value)}
                     className={`w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[20px] py-3 text-sm text-gray-800 dark:text-white focus:ring-[#0e7490] focus:border-transparent transition-all border`} 
                   >
-                    <option value="">{t("Select Classroom")}</option>
+                    <option value="">{isRtl ? "بدون فصل (غير معين)" : "No Classroom (Unassigned)"}</option>
                     {classrooms.map((cls) => (
                       <option key={cls.id} value={cls.id}>
                         {cls.name}

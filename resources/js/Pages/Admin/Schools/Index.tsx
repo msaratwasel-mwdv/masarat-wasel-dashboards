@@ -1,797 +1,725 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, useForm, router } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Modal from "@/Components/Modal";
 import InputLabel from "@/Components/InputLabel";
 import TextInput from "@/Components/TextInput";
 import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  School as SchoolIcon,
+  CheckCircle2,
+  XCircle,
+  MapPin,
+  Plus,
+  ExternalLink,
+  Pencil,
+  Trash2,
+  UserPlus,
+  Bus as BusIcon,
+  ClipboardList,
+  Check,
+  X,
+  Camera,
+  UserCog,
+  ShieldCheck,
+  Mail,
+  Phone,
+  Lock,
+  Search,
+  Fingerprint,
+} from "lucide-react";
 
-// 1. تعريف شكل البيانات القادمة من الـ DB
+// 1. Data Shape
 interface School {
   id: number;
   name: string;
-  location: string;
-  status: string; // Active or Inactive
-  has_transport: number; // يأتي 0 أو 1 من قاعدة البيانات
+  address: string;
+  status: string;
+  has_transport: number;
   has_attendance: number;
+  logo?: string;
 }
 
-// 2. استقبال البيانات عبر الـ Props
-export default function SchoolsIndex({ schools }: { schools: School[] }) {
+interface Props {
+  schools: School[];
+}
+
+export default function SchoolsIndex({ schools }: Props) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
 
+  const counts = useMemo(() => ({
+    all: schools.length,
+    active: schools.filter(s => s.status === "Active").length,
+    inactive: schools.filter(s => s.status !== "Active").length,
+  }), [schools]);
+
   // --- State Management ---
-  const [modalState, setModalState] = useState<{
-    type: "add" | "edit" | null;
-    school: School | null;
-  }>({ type: null, school: null });
+  const [modalType, setModalType] = useState<"add" | "edit" | null>(null);
+  const [currentSchool, setCurrentSchool] = useState<School | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [previewLogo, setPreviewLogo] = useState<string | null>(null);
 
   // --- Form Handling ---
-  const { data, setData, post, put, processing, errors, reset, clearErrors } =
-    useForm({
-      name: "",
-      location: "",
-      status: "Active",
-      has_transport: true,
-      has_attendance: true,
-    });
+  const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
+    _method: "post",
+    name: "",
+    address: "",
+    status: "Active",
+    has_transport: true,
+    has_attendance: true,
+    logo: null as File | null,
+    
+    // Step 2: Admin Info
+    create_admin: false,
+    admin_name: "",
+    admin_email: "",
+    admin_phone: "",
+    admin_national_id: "",
+    admin_address: "",
+    admin_image: null as File | null,
+    admin_password: "",
+    admin_password_confirmation: "",
+  });
 
   // --- Handlers ---
-  const openModal = (type: "add" | "edit", school: School | null = null) => {
-    setModalState({ type, school });
+  const openAddModal = () => {
+    setModalType("add");
+    setCurrentSchool(null);
+    setCurrentStep(1);
+    setPreviewLogo(null);
     clearErrors();
-    if (type === "edit" && school) {
-      setData({
-        name: school.name,
-        location: school.location,
-        status: school.status,
-        has_transport: school.has_transport === 1,
-        has_attendance: school.has_attendance === 1,
-      });
-    } else {
-      reset();
-    }
+    reset();
+    setData("_method", "post");
+  };
+
+  const openEditModal = (school: School) => {
+    setModalType("edit");
+    setCurrentSchool(school);
+    setCurrentStep(1);
+    setPreviewLogo(school.logo ? `/storage/${school.logo}` : null);
+    clearErrors();
+    setData({
+      _method: "post", // Using post with _method=put for file updates
+      name: school.name,
+      address: school.address || "",
+      status: school.status,
+      has_transport: school.has_transport === 1 || school.has_transport === true,
+      has_attendance: school.has_attendance === 1 || school.has_attendance === true,
+      logo: null,
+      create_admin: false,
+      admin_name: "",
+      admin_email: "",
+      admin_phone: "",
+      admin_national_id: "",
+      admin_address: "",
+      admin_image: null,
+      admin_password: "",
+      admin_password_confirmation: "",
+    });
   };
 
   const closeModal = () => {
-    setModalState({ type: null, school: null });
+    setModalType(null);
+    setCurrentStep(1);
+    setPreviewLogo(null);
     reset();
   };
 
   const submitForm = (e: React.FormEvent) => {
     e.preventDefault();
-    if (modalState.type === "add") {
-      post(route("admin.schools.store"), { onSuccess: closeModal });
-    } else if (modalState.type === "edit" && modalState.school) {
-      put(route("admin.schools.update", modalState.school.id), {
-        onSuccess: closeModal,
+    if (modalType === "add") {
+      post(route("admin.schools.store"), {
+        forceFormData: true,
+        onSuccess: () => closeModal(),
+      });
+    } else if (modalType === "edit" && currentSchool) {
+      // In Laravel, file uploads with PUT/PATCH must be sent via POST with _method spoofing
+      // Adding _method directly to the request data to avoid state update delays
+      router.post(route("admin.schools.update", currentSchool.id), {
+        ...data,
+        _method: 'PUT'
+      }, {
+        forceFormData: true,
+        onSuccess: () => closeModal(),
       });
     }
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setData("logo", file);
+      setPreviewLogo(URL.createObjectURL(file));
+    }
+  };
+
+  const removeLogo = () => {
+    setData("logo", null);
+    setPreviewLogo(null);
   };
 
   return (
     <AuthenticatedLayout
       header={
-        <h2
-          className={`font-semibold text-xl ${
-            isDark ? "text-gray-200" : "text-gray-800"
-          } leading-tight`}
-        >
-          {isRTL ? "إدارة المدارس" : "Manage Schools"}
-        </h2>
+        <div className={`flex justify-between items-center w-full ${isRTL ? "flex-row" : "flex-row"}`}>
+          <h2 className={`font-bold text-xl ${isDark ? "text-gray-200" : "text-gray-800"}`}>
+            {isRTL ? "إدارة المدارس" : "Schools Management"}
+          </h2>
+          <PrimaryButton 
+            onClick={openAddModal}
+            className="bg-brand-yellow text-brand-dark hover:bg-yellow-500 shadow-lg px-6 py-2 rounded-xl font-bold border-none"
+          >
+            <Plus className={`w-4 h-4 ${isRTL ? "ml-2" : "mr-2"}`} />
+            {isRTL ? "إضافة مدرسة" : "Add School"}
+          </PrimaryButton>
+        </div>
       }
     >
-      <Head title={isRTL ? "إدارة المدارس" : "Manage Schools"} />
+      <Head title={isRTL ? "المدارس" : "Schools"} />
 
-      {/* --- Page Header --- */}
-      <div
-        className={`flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 ${
-          isRTL ? "flex-row-reverse" : ""
-        }`}
-      >
-        <div className={isRTL ? "text-right" : "text-left"}>
-          <h1
-            className={`text-3xl font-bold ${
-              isDark ? "text-white" : "text-brand-dark"
-            } mb-1`}
-          >
-            {isRTL ? "إدارة المدارس" : "Manage Schools"}
-          </h1>
-          <p
-            className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}
-          >
-            {isRTL
-              ? "نظرة عامة على جميع المدارس المسجلة"
-              : "Overview of all registered partners"}
-          </p>
+      <div className={`space-y-6 dir-${isRTL ? "rtl" : "ltr"}`}>
+        
+        {/* Stats Header */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { label: isRTL ? "إجمالي المدارس" : "Total Schools", value: counts.all, icon: <SchoolIcon className="w-5 h-5" />, color: "blue" as const },
+            { label: isRTL ? "مدارس نشطة" : "Active Schools", value: counts.active, icon: <CheckCircle2 className="w-5 h-5" />, color: "green" as const },
+            { label: isRTL ? "غير نشطة" : "Inactive Schools", value: counts.inactive, icon: <XCircle className="w-5 h-5" />, color: "orange" as const },
+          ].map((stat, i) => (
+            <SchoolStatCard key={i} {...stat} isDark={isDark} isRTL={isRTL} />
+          ))}
         </div>
 
-        <PrimaryButton
-          onClick={() => openModal("add")}
-          className={`flex items-center px-6 py-3 bg-brand-yellow text-brand-dark font-bold rounded-full shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 ${
-            isRTL ? "flex-row-reverse" : ""
-          }`}
-        >
-          <svg
-            className={`w-5 h-5 ${isRTL ? "ml-2" : "mr-2"}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          {isRTL ? "تسجيل مدرسة جديدة" : "Register New School"}
-        </PrimaryButton>
-      </div>
+        {/* Card Grid Section */}
 
-      {/* --- Schools Grid --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {/* 3. التأكد من وجود مدارس قبل العرض */}
+
+        {/* Existing Grid or Empty State */}
         {schools.length === 0 ? (
-          <div
-            className={`col-span-3 text-center py-10 ${
-              isDark
-                ? "text-gray-400 bg-gray-800 border-gray-700"
-                : "text-gray-500 bg-white border-gray-100"
-            } rounded-lg shadow-sm border`}
-          >
-            <p className="text-lg mb-2">
-              {isRTL
-                ? "لا توجد مدارس مسجلة حتى الآن."
-                : "No schools registered yet."}
-            </p>
-            <p className="text-sm">
-              {isRTL
-                ? "ابدأ بإضافة مدرسة جديدة عبر الزر في الأعلى."
-                : "Start by adding a new school via the button above."}
-            </p>
-          </div>
-        ) : (
-          schools.map((school) => (
-            <div
-              key={school.id}
-              className={`rounded-2xl shadow-sm border hover:shadow-md transition-shadow duration-300 p-6 flex flex-col ${
-                isDark
-                  ? "bg-gray-800 border-gray-700 hover:border-gray-600"
-                  : "bg-white border-gray-100 hover:border-gray-200"
-              }`}
-            >
-              {/* Card Header */}
-              <div
-                className={`flex justify-between items-start mb-4 ${
-                  isRTL ? "flex-row-reverse" : ""
-                }`}
-              >
-                <div className={isRTL ? "text-right" : "text-left"}>
-                  <h3
-                    className={`text-lg font-bold leading-tight mb-1 ${
-                      isDark ? "text-white" : "text-gray-900"
-                    }`}
-                  >
-                    {school.name}
-                  </h3>
-                  <div
-                    className={`flex items-center text-sm ${
-                      isRTL ? "flex-row-reverse" : ""
-                    } ${isDark ? "text-gray-400" : "text-gray-500"}`}
-                  >
-                    <svg
-                      className={`w-4 h-4 ${isRTL ? "ml-1" : "mr-1"}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                    {school.location || (isRTL ? "غير محدد" : "Undefined")}
-                  </div>
+            <div className={`p-12 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center ${isDark ? "bg-gray-800/50 border-gray-700" : "bg-white border-gray-100"}`}>
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 ${isDark ? "bg-gray-700" : "bg-gray-50"}`}>
+                    <SchoolIcon className={`w-10 h-10 ${isDark ? "text-gray-500" : "text-gray-300"}`} />
                 </div>
-                <Link
-                  href={route("admin.schools.toggle", school.id)}
-                  method="post"
-                  as="button"
-                  preserveScroll
-                  className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border transition-all hover:opacity-80 ${
-                    school.status === "Active"
-                      ? isDark
-                        ? "bg-green-900/30 text-green-400 border-green-800 hover:bg-red-900/30 hover:text-red-400 hover:border-red-800"
-                        : "bg-green-50 text-green-600 border-green-100 hover:bg-red-50 hover:text-red-600 hover:border-red-100"
-                      : isDark
-                      ? "bg-red-900/30 text-red-400 border-red-800 hover:bg-green-900/30 hover:text-green-400 hover:border-green-800"
-                      : "bg-red-50 text-red-500 border-red-100 hover:bg-green-50 hover:text-green-600 hover:border-green-100"
-                  }`}
-                >
-                  <span
-                    className={`flex items-center gap-1 ${
-                      isRTL ? "flex-row-reverse" : ""
-                    }`}
-                  >
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        school.status === "Active"
-                          ? isDark
-                            ? "bg-green-500"
-                            : "bg-green-500"
-                          : isDark
-                          ? "bg-red-500"
-                          : "bg-red-500"
-                      }`}
-                    ></span>
-                    {isRTL
-                      ? school.status === "Active"
-                        ? "نشط"
-                        : "غير نشط"
-                      : school.status}
-                  </span>
-                </Link>
-              </div>
-
-              {/* Subscription Plan Section */}
-              <div className="mb-6">
-                <p
-                  className={`text-xs font-bold uppercase tracking-wider mb-3 ${
-                    isDark ? "text-gray-500" : "text-gray-300"
-                  }`}
-                >
-                  {isRTL ? "الاشتراك" : "Subscription Plan"}
+                <h4 className={`text-lg font-bold ${isDark ? "text-white" : "text-brand-navy"}`}>
+                    {isRTL ? "لا يوجد مدارس مسجلة" : "No Schools Registered"}
+                </h4>
+                <p className={`text-sm mt-2 mb-6 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                    {isRTL ? "ابدأ بإضافة أول مدرسة للنظام الآن" : "Start by adding the first school to the system"}
                 </p>
-                <div className="space-y-2">
-                  {/* Transport Logic */}
-                  <div
-                    className={`flex items-center justify-between p-3 rounded-lg border ${
-                      isRTL ? "flex-row-reverse" : ""
-                    } ${
-                      Boolean(school.has_transport)
-                        ? isDark
-                          ? "bg-blue-900/20 border-blue-800"
-                          : "bg-blue-50/50 border-blue-100"
-                        : isDark
-                        ? "bg-gray-800 border-gray-700 opacity-70"
-                        : "bg-gray-50 border-gray-100 opacity-60"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-center ${
-                        isRTL ? "flex-row-reverse" : ""
-                      }`}
-                    >
-                      <svg
-                        className={`w-5 h-5 ${isRTL ? "ml-3" : "mr-3"} ${
-                          Boolean(school.has_transport)
-                            ? isDark
-                              ? "text-blue-400"
-                              : "text-brand-dark"
-                            : isDark
-                            ? "text-gray-500"
-                            : "text-gray-400"
-                        }`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                        />
-                      </svg>
-                      <span
-                        className={`text-sm font-bold ${
-                          Boolean(school.has_transport)
-                            ? isDark
-                              ? "text-blue-400"
-                              : "text-brand-dark"
-                            : isDark
-                            ? "text-gray-500"
-                            : "text-gray-400"
-                        }`}
-                      >
-                        {isRTL ? "النقل والتتبع" : "TRANSPORT & TRACKING"}
-                      </span>
-                    </div>
-                    {Boolean(school.has_transport) ? (
-                      <div
-                        className={`w-5 h-5 rounded-full ${
-                          isDark ? "bg-blue-500" : "bg-brand-dark"
-                        } text-white flex items-center justify-center`}
-                      >
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={3}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      </div>
-                    ) : (
-                      <div
-                        className={`w-5 h-5 rounded-full border-2 ${
-                          isDark
-                            ? "border-gray-600 text-gray-600"
-                            : "border-gray-300 text-gray-300"
-                        } flex items-center justify-center`}
-                      >
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={3}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Attendance Logic */}
-                  <div
-                    className={`flex items-center justify-between p-3 rounded-lg border ${
-                      isRTL ? "flex-row-reverse" : ""
-                    } ${
-                      Boolean(school.has_attendance)
-                        ? isDark
-                          ? "bg-green-900/20 border-green-800"
-                          : "bg-green-50/50 border-green-100"
-                        : isDark
-                        ? "bg-gray-800 border-gray-700 opacity-70"
-                        : "bg-gray-50 border-gray-100 opacity-60"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-center ${
-                        isRTL ? "flex-row-reverse" : ""
-                      }`}
-                    >
-                      <svg
-                        className={`w-5 h-5 ${isRTL ? "ml-3" : "mr-3"} ${
-                          Boolean(school.has_attendance)
-                            ? isDark
-                              ? "text-green-400"
-                              : "text-green-600"
-                            : isDark
-                            ? "text-gray-500"
-                            : "text-gray-400"
-                        }`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                        />
-                      </svg>
-                      <span
-                        className={`text-sm font-bold ${
-                          Boolean(school.has_attendance)
-                            ? isDark
-                              ? "text-green-400"
-                              : "text-green-600"
-                            : isDark
-                            ? "text-gray-500"
-                            : "text-gray-400"
-                        }`}
-                      >
-                        {isRTL ? "نظام الحضور" : "ATTENDANCE SYSTEM"}
-                      </span>
-                    </div>
-                    {Boolean(school.has_attendance) ? (
-                      <div className="w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center">
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={3}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      </div>
-                    ) : (
-                      <div
-                        className={`w-5 h-5 rounded-full border-2 ${
-                          isDark
-                            ? "border-gray-600 text-gray-600"
-                            : "border-gray-300 text-gray-300"
-                        } flex items-center justify-center`}
-                      >
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={3}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer Actions */}
-              <div
-                className={`mt-auto pt-6 ${
-                  isDark ? "border-gray-700" : "border-gray-100"
-                } border-t grid grid-cols-4 gap-2`}
-              >
-                {/* Details Button */}
-                <Link
-                  href={route("admin.schools.show", school.id)}
-                  className="flex flex-col items-center justify-center text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
-                >
-                  <div
-                    className={`p-2 rounded-lg mb-1 transition-colors ${
-                      isDark
-                        ? "group-hover:bg-blue-900/20"
-                        : "group-hover:bg-blue-50"
-                    }`}
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                      />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wide">
-                    {isRTL ? "تفاصيل" : "Details"}
-                  </span>
-                </Link>
-
-                {/* Edit Button */}
-                <button
-                  onClick={() => openModal("edit", school)}
-                  className="flex flex-col items-center justify-center text-gray-400 hover:text-brand-yellow transition-colors group"
-                >
-                  <div
-                    className={`p-2 rounded-lg mb-1 transition-colors ${
-                      isDark
-                        ? "group-hover:bg-yellow-900/20"
-                        : "group-hover:bg-yellow-50"
-                    }`}
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                      />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wide">
-                    {isRTL ? "تعديل" : "Edit"}
-                  </span>
-                </button>
-
-                {/* Delete Button */}
-                <button
-                  onClick={() => {
-                    if (
-                      confirm(
-                        isRTL
-                          ? "هل أنت متأكد من حذف هذه المدرسة؟ لا يمكن التراجع عن هذا الإجراء."
-                          : "Are you sure you want to delete this school? This action cannot be undone."
-                      )
-                    ) {
-                      router.delete(route("admin.schools.destroy", school.id));
-                    }
-                  }}
-                  className="flex flex-col items-center justify-center text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors group"
-                >
-                  <div
-                    className={`p-2 rounded-lg mb-1 transition-colors ${
-                      isDark
-                        ? "group-hover:bg-red-900/20"
-                        : "group-hover:bg-red-50"
-                    }`}
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wide">
-                    {isRTL ? "حذف" : "Delete"}
-                  </span>
-                </button>
-
-                {/* Add Admin Button */}
-                <Link
-                  href={route("admin.schools.users.create", school.id)}
-                  className="flex flex-col items-center justify-center text-gray-400 hover:text-brand-dark dark:hover:text-gray-200 transition-colors group"
-                >
-                  <div
-                    className={`p-2 rounded-lg mb-1 transition-colors ${
-                      isDark
-                        ? "group-hover:bg-gray-700"
-                        : "group-hover:bg-gray-100"
-                    }`}
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-                      />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wide">
-                    {isRTL ? "إضافة مدير" : "Add Admin"}
-                  </span>
-                </Link>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* --- Add/Edit Modal --- */}
-      <Modal
-        show={modalState.type !== null}
-        onClose={closeModal}
-        maxWidth="2xl"
-      >
-        <div className={`flex flex-col ${isDark ? "bg-gray-800" : "bg-white"}`}>
-          {/* Header */}
-          <div
-            className={`p-6 border-b ${
-              isDark
-                ? "border-gray-700 bg-gray-900/50"
-                : "bg-gray-50 border-gray-200"
-            }`}
-          >
-            <div
-              className={`flex justify-between items-center ${
-                isRTL ? "flex-row-reverse" : ""
-              }`}
-            >
-              <h2
-                className={`text-xl font-black tracking-tight ${
-                  isDark ? "text-white" : "text-gray-900"
-                }`}
-              >
-                {modalState.type === "edit"
-                  ? isRTL
-                    ? "تحديث بيانات المدرسة"
-                    : "Update School Details"
-                  : isRTL
-                  ? "تسجيل مدرسة جديدة"
-                  : "Register New School"}
-              </h2>
-              {modalState.type === "edit" && (
-                <span className="text-xs font-bold px-2 py-1 rounded bg-brand-yellow/20 text-brand-navy border border-brand-yellow/50">
-                  ID: {modalState.school?.id}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Form Content */}
-          <div className="p-6">
-            <form onSubmit={submitForm} className="space-y-6">
-              {/* Name & Location */}
-              <div
-                className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${
-                  isRTL ? "rtl" : ""
-                }`}
-              >
-                <div className={isRTL ? "text-right" : ""}>
-                  <InputLabel value={isRTL ? "اسم المدرسة" : "School Name"} />
-                  <TextInput
-                    value={data.name}
-                    onChange={(e) => setData("name", e.target.value)}
-                    className="w-full mt-1"
-                    placeholder={
-                      isRTL
-                        ? "مثال: مدرسة الأفق الدولية"
-                        : "e.g. Horizon Academy"
-                    }
-                  />
-                  <InputError message={errors.name} className="mt-1" />
-                </div>
-                <div className={isRTL ? "text-right" : ""}>
-                  <InputLabel
-                    value={isRTL ? "الموقع / المدينة" : "Location / City"}
-                  />
-                  <TextInput
-                    value={data.location}
-                    onChange={(e) => setData("location", e.target.value)}
-                    className="w-full mt-1"
-                    placeholder={isRTL ? "مثال: دبي" : "e.g. Dubai"}
-                  />
-                  <InputError message={errors.location} className="mt-1" />
-                </div>
-              </div>
-
-              {/* Status */}
-              <div className={isRTL ? "text-right" : ""}>
-                <InputLabel value={isRTL ? "حالة المدرسة" : "School Status"} />
-                <select
-                  value={data.status}
-                  onChange={(e) => setData("status", e.target.value)}
-                  className={`w-full rounded-lg mt-1 border-gray-300 focus:border-brand-yellow focus:ring-brand-yellow shadow-sm ${
-                    isDark
-                      ? "bg-gray-700 border-gray-600 text-white"
-                      : "bg-white border-gray-300"
-                  }`}
-                >
-                  <option value="Active">{isRTL ? "نشط" : "Active"}</option>
-                  <option value="Inactive">
-                    {isRTL ? "غير نشط" : "Inactive"}
-                  </option>
-                </select>
-              </div>
-
-              {/* Services Section */}
-              <div
-                className={`p-4 rounded-xl border ${
-                  isDark
-                    ? "bg-gray-700/30 border-gray-600"
-                    : "bg-gray-50 border-gray-200"
-                }`}
-              >
-                <h3
-                  className={`text-xs font-bold uppercase tracking-widest mb-4 ${
-                    isDark ? "text-gray-400" : "text-gray-500"
-                  } ${isRTL ? "text-right" : ""}`}
-                >
-                  {isRTL ? "الخدمات المفعلة" : "Enabled Services"}
-                </h3>
-                <div className="space-y-3">
-                  <label
-                    className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition border ${
-                      data.has_transport
-                        ? isDark
-                          ? "bg-blue-900/20 border-blue-800"
-                          : "bg-blue-50 border-blue-200"
-                        : "border-transparent hover:bg-gray-100 dark:hover:bg-gray-700"
-                    } ${isRTL ? "flex-row-reverse space-x-reverse" : ""}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={data.has_transport}
-                      onChange={(e) =>
-                        setData("has_transport", e.target.checked)
-                      }
-                      className="rounded text-brand-yellow focus:ring-brand-yellow w-5 h-5 border-gray-300"
-                    />
-                    <span
-                      className={`font-bold ${
-                        isDark ? "text-gray-200" : "text-gray-800"
-                      }`}
-                    >
-                      {isRTL
-                        ? "نظام النقل والتتبع"
-                        : "Transport & Tracking System"}
-                    </span>
-                  </label>
-
-                  <label
-                    className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition border ${
-                      data.has_attendance
-                        ? isDark
-                          ? "bg-green-900/20 border-green-800"
-                          : "bg-green-50 border-green-200"
-                        : "border-transparent hover:bg-gray-100 dark:hover:bg-gray-700"
-                    } ${isRTL ? "flex-row-reverse space-x-reverse" : ""}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={data.has_attendance}
-                      onChange={(e) =>
-                        setData("has_attendance", e.target.checked)
-                      }
-                      className="rounded text-green-500 focus:ring-green-500 w-5 h-5 border-gray-300"
-                    />
-                    <span
-                      className={`font-bold ${
-                        isDark ? "text-gray-200" : "text-gray-800"
-                      }`}
-                    >
-                      {isRTL ? "نظام الحضور والغياب" : "Attendance System"}
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div
-                className={`flex gap-3 pt-4 border-t ${
-                  isDark ? "border-gray-700" : "border-gray-100"
-                } ${isRTL ? "flex-row-reverse" : "justify-end"}`}
-              >
-                <SecondaryButton onClick={closeModal}>
-                  {isRTL ? "إلغاء" : "Cancel"}
-                </SecondaryButton>
-                <PrimaryButton
-                  disabled={processing}
-                  className="bg-brand-dark px-8"
-                >
-                  {processing
-                    ? isRTL
-                      ? "جاري الحفظ..."
-                      : "Saving..."
-                    : isRTL
-                    ? "حفظ البيانات"
-                    : "Save School"}
+                <PrimaryButton onClick={openAddModal} className="bg-brand-navy text-white px-8">
+                    {isRTL ? "إضافة مدرسة" : "Add School"}
                 </PrimaryButton>
-              </div>
-            </form>
-          </div>
-        </div>
-      </Modal>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {schools.map((school) => (
+                    <SchoolCard 
+                        key={school.id} 
+                        school={school} 
+                        isDark={isDark} 
+                        isRTL={isRTL} 
+                        onEdit={() => openEditModal(school)}
+                    />
+                ))}
+            </div>
+        )}
+
+        {/* ENHANCED 2-STEP MODAL */}
+        <Modal show={modalType !== null} onClose={closeModal} maxWidth="2xl">
+            <div className={`relative ${isDark ? "bg-gray-900 border border-gray-700" : "bg-white"} rounded-2xl overflow-hidden shadow-2xl transition-all duration-300`}>
+                
+                {/* Close Button */}
+                <button 
+                    onClick={closeModal}
+                    className={`absolute top-6 ${isRTL ? 'left-6' : 'right-6'} p-2 rounded-full hover:bg-gray-100 ${isDark ? 'hover:bg-gray-800 text-gray-400' : 'text-gray-400'} z-50`}
+                >
+                    <X className="w-5 h-5" />
+                </button>
+
+                {/* Modal Header */}
+                <div className={`p-8 border-b ${isDark ? "border-gray-800 bg-gray-900/50" : "border-gray-100 bg-gray-50/50"}`}>
+                    <h2 className={`text-2xl font-bold ${isDark ? "text-white" : "text-brand-navy"}`}>
+                        {modalType === 'edit' ? (isRTL ? "تعديل بيانات المدرسة" : "Edit School") : (isRTL ? "تسجيل مدرسة جديدة" : "Register New School")}
+                    </h2>
+                    
+                    {/* Stepper UI (Only for Add) */}
+                    {modalType === 'add' && (
+                        <div className="mt-8 relative px-12">
+                            <div className="absolute left-12 right-12 top-1/2 -translate-y-1/2 h-1 bg-gray-200 dark:bg-gray-800 rounded-full"></div>
+                            <div className="absolute left-12 top-1/2 -translate-y-1/2 h-1 bg-brand-yellow rounded-full transition-all duration-500" style={{ width: currentStep === 1 ? '0%' : '100%' }}></div>
+                            
+                            <div className="flex justify-between relative z-10">
+                                <StepBubble num={1} active={currentStep >= 1} label={isRTL ? "المدرسة" : "School"} isRTL={isRTL} isDark={isDark} />
+                                <StepBubble num={2} active={currentStep >= 2} label={isRTL ? "المدير" : "Manager"} isRTL={isRTL} isDark={isDark} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <form onSubmit={submitForm}>
+                    <div className="p-8">
+                        <AnimatePresence mode="wait">
+                            {currentStep === 1 ? (
+                                <motion.div 
+                                    key="step1"
+                                    initial={{ opacity: 0, x: isRTL ? 20 : -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: isRTL ? -20 : 20 }}
+                                    className="space-y-6"
+                                >
+                                    {/* Logo Upload */}
+                                    <div className={`flex items-center gap-6 ${isRTL ? "flex-row-reverse" : ""}`}>
+                                        <div className="group relative w-24 h-24">
+                                            <div className={`w-full h-full rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800 transition-colors ${isDark ? "border-gray-700" : "border-gray-200"}`}>
+                                                {previewLogo ? (
+                                                    <img src={previewLogo} className="w-full h-full object-cover" alt="Logo" />
+                                                ) : (
+                                                    <Camera className="w-8 h-8 text-gray-300" />
+                                                )}
+                                            </div>
+                                            {previewLogo && (
+                                                <button 
+                                                    type="button" 
+                                                    onClick={removeLogo}
+                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:scale-110 transition-transform"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className={isRTL ? "text-right" : "text-left"}>
+                                            <h4 className={`font-bold text-sm ${isDark ? "text-white" : "text-gray-700"}`}>
+                                                {isRTL ? "شعار المدرسة" : "School Logo"}
+                                            </h4>
+                                            <p className="text-xs text-gray-400 mb-3">{isRTL ? "PNG, JPG حتى 2MB" : "PNG, JPG up to 2MB"}</p>
+                                            <label className="cursor-pointer bg-brand-navy text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:opacity-90 transition-opacity">
+                                                {isRTL ? "رفع صورة" : "Upload Picture"}
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleLogoChange} />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Basic Info */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className={isRTL ? "text-right" : ""}>
+                                            <InputLabel value={isRTL ? "اسم المدرسة" : "School Name"} />
+                                            <TextInput 
+                                                value={data.name} 
+                                                onChange={e => setData("name", e.target.value)} 
+                                                className="w-full mt-1.5" 
+                                                required 
+                                            />
+                                            <InputError message={errors.name} />
+                                        </div>
+                                        <div className={isRTL ? "text-right" : ""}>
+                                            <InputLabel value={isRTL ? "العنوان/الموقع" : "Address/Location"} />
+                                            <TextInput 
+                                                value={data.address} 
+                                                onChange={e => setData("address", e.target.value)} 
+                                                className="w-full mt-1.5" 
+                                            />
+                                            <InputError message={errors.address} />
+                                        </div>
+                                    </div>
+
+                                    {/* Status & Services */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                                        <div className={isRTL ? "text-right" : ""}>
+                                            <InputLabel value={isRTL ? "حالة المدرسة" : "Status"} />
+                                            <select 
+                                                value={data.status} 
+                                                onChange={e => setData('status', e.target.value)}
+                                                className={`w-full rounded-xl mt-1.5 border-none h-[42px] px-4 text-sm font-semibold transition-all ${isDark ? "bg-gray-800 text-white ring-1 ring-gray-700 focus:ring-brand-yellow" : "bg-gray-50 text-gray-800 ring-1 ring-gray-200 focus:ring-brand-navy"}`}
+                                            >
+                                                <option value="Active">{isRTL ? "نشطة" : "Active"}</option>
+                                                <option value="Inactive">{isRTL ? "غير نشطة" : "Inactive"}</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div className="flex flex-col justify-end">
+                                            <label className={`flex items-center gap-3 cursor-pointer group ${isRTL ? "flex-row-reverse" : ""}`}>
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${data.has_transport ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "bg-gray-100 dark:bg-gray-800 text-gray-400"}`}>
+                                                    <BusIcon className="w-5 h-5" />
+                                                </div>
+                                                <div className={isRTL ? "text-right" : ""}>
+                                                    <input type="checkbox" checked={data.has_transport} onChange={e => setData("has_transport", e.target.checked)} className="hidden" />
+                                                    <p className={`text-xs font-bold ${data.has_transport ? 'text-blue-600' : 'text-gray-400'}`}>{isRTL ? "نظام النقل" : "Transport"}</p>
+                                                    <p className="text-[10px] text-gray-400">{data.has_transport ? (isRTL ? "مفعل" : "Enabled") : (isRTL ? "معطل" : "Disabled")}</p>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        <div className="flex flex-col justify-end">
+                                            <label className={`flex items-center gap-3 cursor-pointer group ${isRTL ? "flex-row-reverse" : ""}`}>
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${data.has_attendance ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" : "bg-gray-100 dark:bg-gray-800 text-gray-400"}`}>
+                                                    <ClipboardList className="w-5 h-5" />
+                                                </div>
+                                                <div className={isRTL ? "text-right" : ""}>
+                                                    <input type="checkbox" checked={data.has_attendance} onChange={e => setData("has_attendance", e.target.checked)} className="hidden" />
+                                                    <p className={`text-xs font-bold ${data.has_attendance ? 'text-emerald-600' : 'text-gray-400'}`}>{isRTL ? "الحضور" : "Attendance"}</p>
+                                                    <p className="text-[10px] text-gray-400">{data.has_attendance ? (isRTL ? "مفعل" : "Enabled") : (isRTL ? "معطل" : "Disabled")}</p>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ) : (
+                                <motion.div 
+                                    key="step2"
+                                    initial={{ opacity: 0, x: isRTL ? -20 : 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: isRTL ? 20 : -20 }}
+                                    className="space-y-6"
+                                >
+                                    <div className={`p-4 rounded-2xl border bg-brand-navy dark:bg-indigo-900 shadow-xl flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
+                                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white">
+                                            <ShieldCheck className="w-6 h-6" />
+                                        </div>
+                                        <div className={isRTL ? "text-right" : ""}>
+                                            <h4 className="text-white font-bold">{isRTL ? "تعيين مدير للمدرسة" : "Assign School Admin"}</h4>
+                                            <p className="text-white/60 text-xs">{isRTL ? "هذا الحساب سيمتلك كامل الصلاحيات لإدارة المدرسة" : "This account will have full access to manage the school"}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col items-center gap-4 mb-4">
+                                        <div className="relative group">
+                                            <div className={`w-24 h-24 rounded-full border-4 border-dashed flex items-center justify-center overflow-hidden transition-all ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'} group-hover:border-brand-yellow`}>
+                                                {data.admin_image ? (
+                                                    <img src={URL.createObjectURL(data.admin_image)} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Camera className="w-8 h-8 text-gray-300" />
+                                                )}
+                                                <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-[10px] font-bold">
+                                                    {isRTL ? "تغيير الصورة" : "Change Image"}
+                                                    <input type="file" className="hidden" accept="image/*" onChange={e => setData('admin_image', e.target.files?.[0] || null)} />
+                                                </label>
+                                            </div>
+                                            {data.admin_image && (
+                                                <button onClick={() => setData('admin_image', null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-lg hover:scale-110 transition-transform">
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="text-center">
+                                            <p className={`text-xs font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{isRTL ? "الصورة الشخصية" : "Profile Picture"}</p>
+                                            <p className="text-[10px] text-gray-500">{isRTL ? "اختياري" : "Optional"}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-5">
+                                        <div className={isRTL ? "text-right" : ""}>
+                                            <InputLabel value={isRTL ? "اسم المدير الرباعي" : "Manager Full Name"} />
+                                            <div className="relative">
+                                                <UserCog className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} w-4 h-4 text-gray-400`} />
+                                                <TextInput 
+                                                    value={data.admin_name} 
+                                                    onChange={e => setData("admin_name", e.target.value)} 
+                                                    className={`w-full mt-1.5 ${isRTL ? 'pr-11' : 'pl-11'}`}
+                                                    placeholder={isRTL ? "أدخل الاسم الكامل" : "Enter full name"}
+                                                />
+                                            </div>
+                                            <InputError message={errors.admin_name} />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            <div className={isRTL ? "text-right" : ""}>
+                                                <InputLabel value={isRTL ? "رقم الهوية" : "National ID"} />
+                                                <div className="relative">
+                                                    <Fingerprint className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} w-4 h-4 text-gray-400`} />
+                                                    <TextInput 
+                                                        value={data.admin_national_id} 
+                                                        onChange={e => setData("admin_national_id", e.target.value)} 
+                                                        className={`w-full mt-1.5 ${isRTL ? 'pr-11' : 'pl-11'}`}
+                                                        placeholder="1XXXXXXXXX"
+                                                        required={data.create_admin}
+                                                    />
+                                                </div>
+                                                <InputError message={errors.admin_national_id} />
+                                            </div>
+                                            <div className={isRTL ? "text-right" : ""}>
+                                                <InputLabel value={isRTL ? "العنوان الشخصي" : "Personal Address"} />
+                                                <div className="relative">
+                                                    <MapPin className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} w-4 h-4 text-gray-400`} />
+                                                    <TextInput 
+                                                        value={data.admin_address} 
+                                                        onChange={e => setData("admin_address", e.target.value)} 
+                                                        className={`w-full mt-1.5 ${isRTL ? 'pr-11' : 'pl-11'}`}
+                                                        placeholder={isRTL ? "أدخل العنوان بالتفصيل" : "Enter personal address"}
+                                                    />
+                                                </div>
+                                                <InputError message={errors.admin_address} />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            <div className={isRTL ? "text-right" : ""}>
+                                                <InputLabel value={isRTL ? "البريد الإلكتروني" : "Email Address"} />
+                                                <div className="relative">
+                                                    <Mail className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} w-4 h-4 text-gray-400`} />
+                                                    <TextInput 
+                                                        type="email"
+                                                        value={data.admin_email} 
+                                                        onChange={e => setData("admin_email", e.target.value)} 
+                                                        className={`w-full mt-1.5 ${isRTL ? 'pr-11' : 'pl-11'}`}
+                                                        placeholder="admin@example.com"
+                                                    />
+                                                </div>
+                                                <InputError message={errors.admin_email} />
+                                            </div>
+                                            <div className={isRTL ? "text-right" : ""}>
+                                                <InputLabel value={isRTL ? "رقم الجوال" : "Phone Number"} />
+                                                <div className="relative">
+                                                    <Phone className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} w-4 h-4 text-gray-400`} />
+                                                    <TextInput 
+                                                        value={data.admin_phone} 
+                                                        onChange={e => setData("admin_phone", e.target.value)} 
+                                                        className={`w-full mt-1.5 ${isRTL ? 'pr-11' : 'pl-11'}`}
+                                                        placeholder="50XXXXXXX"
+                                                    />
+                                                </div>
+                                                <InputError message={errors.admin_phone} />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            <div className={isRTL ? "text-right" : ""}>
+                                                <InputLabel value={isRTL ? "كلمة المرور" : "Password"} />
+                                                <div className="relative">
+                                                    <Lock className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} w-4 h-4 text-gray-400`} />
+                                                    <TextInput 
+                                                        type="password"
+                                                        value={data.admin_password} 
+                                                        onChange={e => setData("admin_password", e.target.value)} 
+                                                        className={`w-full mt-1.5 ${isRTL ? 'pr-11' : 'pl-11'}`}
+                                                    />
+                                                </div>
+                                                <InputError message={errors.admin_password} />
+                                            </div>
+                                            <div className={isRTL ? "text-right" : ""}>
+                                                <InputLabel value={isRTL ? "تأكيد كلمة المرور" : "Confirm Password"} />
+                                                <div className="relative">
+                                                    <Lock className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} w-4 h-4 text-gray-400`} />
+                                                    <TextInput 
+                                                        type="password"
+                                                        value={data.admin_password_confirmation} 
+                                                        onChange={e => setData("admin_password_confirmation", e.target.value)} 
+                                                        className={`w-full mt-1.5 ${isRTL ? 'pr-11' : 'pl-11'}`}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className={`px-8 py-5 border-t flex justify-between items-center ${isDark ? "bg-gray-800/50 border-gray-800" : "bg-gray-50 border-gray-100"} ${isRTL ? "flex-row-reverse" : ""}`}>
+                        {currentStep === 1 ? (
+                            <button type="button" onClick={closeModal} className={`text-sm font-bold ${isDark ? "text-gray-500 hover:text-white" : "text-gray-400 hover:text-gray-800"}`}>
+                                {isRTL ? "إلغاء النافذة" : "Cancel Wizard"}
+                            </button>
+                        ) : (
+                            <button type="button" onClick={() => setCurrentStep(1)} className={`text-sm font-bold ${isDark ? "text-gray-500 hover:text-white" : "text-gray-400 hover:text-gray-800"}`}>
+                                {isRTL ? "العودة للبيانات" : "Previous Step"}
+                            </button>
+                        )}
+
+                        <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
+                            {modalType === 'add' && currentStep === 1 && (
+                                <button 
+                                    type="button" 
+                                    onClick={() => { setData('create_admin', true); setCurrentStep(2); }}
+                                    className="bg-brand-navy text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
+                                >
+                                    {isRTL ? "التالي (إضافة مدير)" : "Next (Add Manager)"}
+                                </button>
+                            )}
+                            
+                            {(modalType === 'edit' || currentStep === 2) && (
+                                <PrimaryButton 
+                                    type="submit" 
+                                    disabled={processing}
+                                    className="bg-brand-yellow text-brand-dark px-8 py-2.5 rounded-xl border-none font-black"
+                                >
+                                    {processing ? (isRTL ? "جاري الحفظ..." : "Saving...") : (isRTL ? "إتمام وتطبيق" : "Complete & Save")}
+                                </PrimaryButton>
+                            )}
+
+                            {modalType === 'add' && currentStep === 1 && (
+                                <button 
+                                    type="submit" 
+                                    disabled={processing}
+                                    onClick={() => setData('create_admin', false)}
+                                    className={`px-6 py-2.5 rounded-xl text-sm font-bold border transition-all ${isDark ? "border-gray-700 text-gray-300 hover:bg-gray-800" : "border-gray-200 text-gray-600 hover:bg-white shadow-sm"}`}
+                                >
+                                    {isRTL ? "حفظ بدون مدير" : "Save Without Manager"}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </form>
+
+            </div>
+        </Modal>
+
+      </div>
     </AuthenticatedLayout>
   );
 }
+
+// ─── COMPONENTS ───────────────────────────────────────
+
+function SchoolCard({ school, isDark, isRTL, onEdit }: { school: School; isDark: boolean; isRTL: boolean; onEdit: () => void }) {
+    const { post } = useForm();
+    const [localStatus, setLocalStatus] = useState(school.status);
+    
+    // Sync local state when prop changes (after server response)
+    useEffect(() => {
+        setLocalStatus(school.status);
+    }, [school.status]);
+
+    const toggleStatus = () => {
+        const nextStatus = localStatus === 'Active' ? 'Inactive' : 'Active';
+        setLocalStatus(nextStatus); // Optimistic update
+        
+        router.post(route('admin.schools.toggle', school.id), {}, {
+            preserveScroll: true,
+            onError: () => setLocalStatus(school.status) // Rollback on error
+        });
+    };
+
+    return (
+        <motion.div 
+            whileHover={{ y: -5 }}
+            className={`rounded-3xl border overflow-hidden transition-all duration-300 ${isDark ? "bg-gray-800/40 border-gray-700 hover:bg-gray-800 shadow-2xl" : "bg-white border-gray-100 shadow-sm hover:shadow-xl"}`}
+        >
+            <div className={`h-24 bg-gradient-to-r ${localStatus === 'Active' ? 'from-[#4F46E5] via-[#3730A3] to-[#1E1B4B]' : 'from-gray-500 to-gray-700'} relative`}>
+                <div className={`absolute -bottom-10 ${isRTL ? 'right-6' : 'left-6'} w-20 h-20 rounded-2xl border-4 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-white'} shadow-xl overflow-hidden flex items-center justify-center p-2`}>
+                    {school.logo ? (
+                        <img src={`/storage/${school.logo}`} className="w-full h-full object-contain" alt={school.name} />
+                    ) : (
+                        <SchoolIcon className={`w-10 h-10 ${isDark ? 'text-gray-600' : 'text-gray-200'}`} />
+                    )}
+                </div>
+            </div>
+
+            <div className="pt-12 px-6 pb-6">
+                <div className={`flex justify-between items-start ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <div className={isRTL ? 'text-right' : ''}>
+                        <h4 className={`text-lg font-black ${isDark ? "text-white" : "text-brand-navy"}`}>{school.name}</h4>
+                        <p className={`text-xs flex items-center gap-1 mt-1 ${isDark ? "text-gray-400" : "text-gray-500"} ${isRTL ? 'flex-row-reverse' : ''}`}>
+                            <MapPin className="w-3.5 h-3.5" />
+                            {school.address || (isRTL ? "موقع غير محدد" : "No location")}
+                        </p>
+                    </div>
+                </div>
+
+                <div className={`flex gap-2 mt-6 ${isRTL ? 'flex-row-reverse' : ''} items-center justify-between`}>
+                    <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                        <ServiceBadge icon={<BusIcon size={12}/>} active={school.has_transport === 1 || school.has_transport === true} label={isRTL ? "نقل" : "Bus"} isDark={isDark} />
+                        <ServiceBadge icon={<ClipboardList size={12}/>} active={school.has_attendance === 1 || school.has_attendance === true} label={isRTL ? "حضور" : "Attendance"} isDark={isDark} />
+                    </div>
+                    
+                    <button 
+                        onClick={toggleStatus}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            localStatus === 'Active' ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'
+                        }`}
+                    >
+                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            localStatus === 'Active' ? (isRTL ? '-translate-x-4' : 'translate-x-4') : 'translate-x-0'
+                        }`} />
+                    </button>
+                </div>
+
+                <div className={`mt-8 grid grid-cols-2 gap-3 border-t pt-5 ${isDark ? 'border-gray-700/50' : 'border-gray-100'}`}>
+                    <Link 
+                        href={route('admin.schools.show', school.id)}
+                        className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
+                    >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        {isRTL ? "التفاصيل" : "Details"}
+                    </Link>
+                    <button 
+                        onClick={onEdit}
+                        className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${isDark ? 'bg-brand-yellow/10 text-brand-yellow hover:bg-brand-yellow/20' : 'bg-brand-yellow/10 text-brand-dark hover:bg-brand-yellow/20'}`}
+                    >
+                        <Pencil className="w-3.5 h-3.5" />
+                        {isRTL ? "تعديل" : "Edit"}
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    );
+}
+
+function ServiceBadge({ icon, active, label, isDark }: { icon: any, active: boolean, label: string, isDark: boolean }) {
+    return (
+        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
+            active 
+            ? (isDark ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-blue-50 border-blue-100 text-blue-600')
+            : (isDark ? 'bg-gray-800 border-gray-700 text-gray-600 grayscale' : 'bg-gray-50 border-gray-100 text-gray-400 grayscale')
+        }`}>
+            {icon}
+            {label}
+        </div>
+    );
+}
+
+// ─── HELPERS ───────────────────────────────────────────
+
+function SchoolStatCard({ label, value, icon, color, isDark, isRTL }: { 
+    label: string; value: number; icon: React.ReactNode; 
+    color: 'blue' | 'green' | 'orange'; isDark: boolean; isRTL: boolean;
+}) {
+  const colorMap = {
+    blue: isDark ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-600 border-blue-100",
+    green: isDark ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border-emerald-100",
+    orange: isDark ? "bg-orange-500/10 text-orange-400 border-orange-500/20" : "bg-orange-50 text-orange-600 border-orange-100",
+  };
+
+  return (
+    <motion.div 
+      whileHover={{ y: -4 }}
+      className={`p-6 rounded-3xl border flex items-center gap-5 transition-all ${
+        isDark ? "bg-gray-800/50 border-gray-700 shadow-2xl" : "bg-white border-gray-100 shadow-sm hover:shadow-xl"
+      } ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
+    >
+      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border ${colorMap[color]}`}>
+        {icon}
+      </div>
+      <div>
+        <p className={`text-[10px] font-black uppercase tracking-widest ${
+          isDark ? "text-gray-500" : "text-gray-400"
+        }`}>{label}</p>
+        <p className={`text-2xl font-black mt-0.5 ${
+          isDark ? "text-white" : "text-gray-900"
+        }`}>{value}</p>
+      </div>
+    </motion.div>
+  );
+}
+
+function StepBubble({ num, active, label, isRTL, isDark }: { num: number, active: boolean, label: string, isRTL: boolean, isDark: boolean }) {
+    return (
+        <div className="flex flex-col items-center gap-2">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-500 ${
+                active 
+                ? "bg-brand-yellow text-brand-dark scale-110 shadow-lg shadow-brand-yellow/20" 
+                : (isDark ? "bg-gray-800 text-gray-600" : "bg-gray-100 text-gray-400")
+            }`}>
+                {active && num < 2 ? <Check className="w-5 h-5" /> : num}
+            </div>
+            <span className={`text-[10px] font-black uppercase tracking-widest ${active ? (isDark ? 'text-white' : 'text-brand-navy') : 'text-gray-400'}`}>
+                {label}
+            </span>
+        </div>
+    );
+}
+

@@ -10,6 +10,16 @@ import {
 import { useState, Fragment } from "react";
 import { useTheme } from "@/Contexts/ThemeContext";
 import Pagination from "@/Components/Pagination";
+import {
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  FileX2,
+  FileDown,
+  FileText,
+  Search,
+  Plus,
+} from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -35,6 +45,9 @@ export interface BaseDataTableProps<T> {
   data: T[];
   pagination?: PaginationMeta;
 
+  // Loading
+  isLoading?: boolean;
+
   // Search
   searchValue?: string;
   onSearchChange?: (value: string) => void;
@@ -47,25 +60,125 @@ export interface BaseDataTableProps<T> {
 
   // Customization
   emptyMessage?: string;
+  emptyDescription?: string;
   emptyIcon?: React.ReactNode;
+  emptyAction?: { label: string; onClick: () => void };
 
   // Header
   title?: string;
   subtitle?: string;
-  headerAction?: React.ReactNode; // e.g. "+ Add" button
-  exportEnabled?: boolean; // Enable CSV/PDF export buttons
+  headerAction?: React.ReactNode;
+  exportEnabled?: boolean;
 
   // Inline Expansion
   renderExpandedRow?: (data: T) => React.ReactNode;
   expandedRowId?: string | number | null;
 }
 
-// ─── Component ───────────────────────────────────────────────────
+// ─── Skeleton Row ────────────────────────────────────────────────
+
+function SkeletonRow({ cols }: { cols: number }) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  return (
+    <tr className="animate-pulse">
+      {Array.from({ length: cols }).map((_, i) => (
+        <td key={i} className="px-4 py-3.5">
+          <div
+            className={`h-4 rounded-lg ${
+              isDark ? "bg-gray-700" : "bg-gray-100"
+            } ${i === 0 ? "w-3/4" : i % 2 === 0 ? "w-1/2" : "w-2/3"}`}
+          />
+          {i === 0 && (
+            <div
+              className={`h-3 rounded-lg mt-2 w-1/2 ${
+                isDark ? "bg-gray-800" : "bg-gray-100/80"
+              }`}
+            />
+          )}
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+// ─── Empty State ─────────────────────────────────────────────────
+
+function EmptyState({
+  icon,
+  message,
+  description,
+  action,
+  isDark,
+  isRTL,
+}: {
+  icon?: React.ReactNode;
+  message?: string;
+  description?: string;
+  action?: { label: string; onClick: () => void };
+  isDark: boolean;
+  isRTL: boolean;
+}) {
+  return (
+    <tr>
+      <td colSpan={100} className="px-6 py-20 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 max-w-sm mx-auto">
+          {/* Icon container */}
+          <div
+            className={`w-20 h-20 rounded-3xl flex items-center justify-center ${
+              isDark
+                ? "bg-gray-800 text-gray-600"
+                : "bg-gray-50 text-gray-300"
+            }`}
+          >
+            {icon || (
+              <FileX2 className="w-10 h-10" />
+            )}
+          </div>
+
+          {/* Text */}
+          <div className={isRTL ? "text-right" : "text-center"}>
+            <p
+              className={`text-base font-bold ${
+                isDark ? "text-gray-300" : "text-gray-700"
+              }`}
+            >
+              {message || (isRTL ? "لا توجد بيانات" : "No data found")}
+            </p>
+            {description && (
+              <p
+                className={`text-sm mt-1 ${
+                  isDark ? "text-gray-500" : "text-gray-400"
+                }`}
+              >
+                {description}
+              </p>
+            )}
+          </div>
+
+          {/* CTA Button */}
+          {action && (
+            <button
+              onClick={action.onClick}
+              className="mt-2 inline-flex items-center gap-2 px-5 py-2.5 bg-brand-dark text-white text-sm font-bold rounded-xl hover:bg-brand-dark/90 transition-all shadow-sm hover:shadow-md active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              {action.label}
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────
 
 export default function BaseDataTable<T extends { id?: number | string }>({
   columns,
   data,
   pagination,
+  isLoading = false,
   searchValue,
   onSearchChange,
   searchPlaceholder,
@@ -73,7 +186,9 @@ export default function BaseDataTable<T extends { id?: number | string }>({
   activeFilter,
   onFilterChange,
   emptyMessage,
+  emptyDescription,
   emptyIcon,
+  emptyAction,
   title,
   subtitle,
   headerAction,
@@ -95,39 +210,30 @@ export default function BaseDataTable<T extends { id?: number | string }>({
     getSortedRowModel: getSortedRowModel(),
   });
 
-  // ── Handlers ──
   const getExportUrl = (format: "csv" | "pdf") => {
-    // Retain current query string (search, sorting, active tabs) and append export=format
     const url = new URL(window.location.href);
     url.searchParams.set("export", format);
     return url.toString();
   };
 
-  // ── Filter pill styling ──
-  const filterBtnClass = (key: string) =>
-    `px-3 py-1.5 text-xs font-bold rounded-full border transition-all cursor-pointer ${
-      activeFilter === key
-        ? isDark
-          ? "bg-brand-dark text-brand-yellow border-brand-dark shadow-md"
-          : "bg-brand-dark text-white border-brand-dark shadow-md"
-        : isDark
-        ? "bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700"
-        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-    }`;
+  const rows = table.getRowModel().rows;
+  const colCount = columns.length;
 
   return (
     <div className="space-y-5">
-      {/* ── Header ── */}
+
+      {/* ── Top Header: Title + Actions ── */}
       {(title || headerAction || exportEnabled) && (
         <div
-          className={`flex flex-wrap gap-4 justify-between items-center ${
+          className={`flex flex-wrap gap-4 justify-between items-start ${
             isRTL ? "flex-row-reverse" : ""
           }`}
         >
+          {/* Title block */}
           {title && (
             <div className={isRTL ? "text-right" : ""}>
               <h1
-                className={`text-2xl font-bold ${
+                className={`text-2xl font-bold tracking-tight ${
                   isDark ? "text-white" : "text-brand-dark"
                 }`}
               >
@@ -144,29 +250,35 @@ export default function BaseDataTable<T extends { id?: number | string }>({
               )}
             </div>
           )}
-          <div className={`flex gap-3 items-center ${isRTL ? "flex-row-reverse" : ""}`}>
+
+          {/* Actions: export + primary CTA */}
+          <div
+            className={`flex flex-wrap gap-2 items-center ${
+              isRTL ? "flex-row-reverse" : ""
+            }`}
+          >
             {exportEnabled && (
               <div className="flex gap-2">
                 <a
                   href={getExportUrl("csv")}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
                     isDark
-                      ? "bg-emerald-900/30 text-emerald-400 border-emerald-900 hover:bg-emerald-900/60"
+                      ? "bg-emerald-900/20 text-emerald-400 border-emerald-900/50 hover:bg-emerald-900/40"
                       : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                  Excel (CSV)
+                  <FileDown className="w-3.5 h-3.5" />
+                  {isRTL ? "إكسل" : "Excel"}
                 </a>
                 <a
                   href={getExportUrl("pdf")}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
                     isDark
-                      ? "bg-red-900/30 text-red-400 border-red-900 hover:bg-red-900/60"
-                      : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                      ? "bg-rose-900/20 text-rose-400 border-rose-900/50 hover:bg-rose-900/40"
+                      : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                  <FileText className="w-3.5 h-3.5" />
                   PDF
                 </a>
               </div>
@@ -176,62 +288,80 @@ export default function BaseDataTable<T extends { id?: number | string }>({
         </div>
       )}
 
-      {/* ── Controls: Filters + Search ── */}
+      {/* ── Controls: Filter Tabs + Search ── */}
       {(filterTabs || onSearchChange) && (
         <div
           className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 ${
             isRTL ? "sm:flex-row-reverse" : ""
           }`}
         >
+          {/* Filter Pills */}
           {filterTabs && onFilterChange && (
             <div className="flex gap-2 flex-wrap">
-              {filterTabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  className={filterBtnClass(tab.key)}
-                  onClick={() => onFilterChange(tab.key)}
-                >
-                  {tab.dotColor && (
-                    <span
-                      className={`inline-block w-2 h-2 rounded-full ${tab.dotColor} ${
-                        isRTL ? "ml-1" : "mr-1"
-                      }`}
-                    />
-                  )}
-                  {tab.label}
-                  {tab.count !== undefined && ` (${tab.count})`}
-                </button>
-              ))}
+              {filterTabs.map((tab) => {
+                const isActive = activeFilter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => onFilterChange(tab.key)}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${
+                      isActive
+                        ? isDark
+                          ? "bg-brand-dark text-brand-yellow border-brand-dark shadow-md shadow-brand-dark/20"
+                          : "bg-brand-dark text-white border-brand-dark shadow-md"
+                        : isDark
+                        ? "bg-gray-800/80 text-gray-400 border-gray-700 hover:bg-gray-700 hover:text-gray-200"
+                        : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-700"
+                    }`}
+                  >
+                    {tab.dotColor && (
+                      <span
+                        className={`inline-block w-1.5 h-1.5 rounded-full ${tab.dotColor}`}
+                      />
+                    )}
+                    {tab.label}
+                    {tab.count !== undefined && (
+                      <span
+                        className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-black leading-none ${
+                          isActive
+                            ? isDark
+                              ? "bg-brand-yellow/20 text-brand-yellow"
+                              : "bg-white/20 text-white"
+                            : isDark
+                            ? "bg-gray-700 text-gray-400"
+                            : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
+
+          {/* Search Input */}
           {onSearchChange && (
-            <div className="relative flex-1 max-w-sm">
-              <svg
-                className={`w-4 h-4 absolute top-2.5 ${
+            <div className="relative w-full sm:w-auto sm:min-w-[260px]">
+              <Search
+                className={`w-4 h-4 absolute top-1/2 -translate-y-1/2 ${
                   isRTL ? "right-3" : "left-3"
-                } text-gray-400`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+                } ${isDark ? "text-gray-500" : "text-gray-400"}`}
+              />
               <input
                 type="text"
                 value={searchValue || ""}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={searchPlaceholder || (isRTL ? "بحث..." : "Search...")}
+                placeholder={
+                  searchPlaceholder || (isRTL ? "بحث..." : "Search...")
+                }
                 className={`w-full ${
                   isRTL ? "pr-9 pl-4" : "pl-9 pr-4"
-                } py-2 text-sm rounded-lg border focus:ring-2 focus:ring-brand-dark focus:border-transparent transition ${
+                } py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark/50 transition-all ${
                   isDark
                     ? "bg-gray-800 border-gray-700 text-white placeholder-gray-500"
-                    : "bg-white border-gray-200"
+                    : "bg-white border-gray-200 placeholder-gray-400"
                 }`}
               />
             </div>
@@ -239,21 +369,31 @@ export default function BaseDataTable<T extends { id?: number | string }>({
         </div>
       )}
 
-      {/* ── Table ── */}
+      {/* ── Table Card ── */}
       <div
-        className={`${
-          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"
-        } overflow-hidden shadow-sm sm:rounded-2xl border`}
+        className={`overflow-hidden rounded-2xl border shadow-sm ${
+          isDark
+            ? "bg-gray-800/80 border-gray-700 shadow-black/30"
+            : "bg-white border-gray-100 shadow-gray-100"
+        }`}
       >
         <div className="overflow-x-auto">
-          <table
-            className={`min-w-full divide-y ${
-              isDark ? "divide-gray-700" : "divide-gray-200"
-            }`}
-          >
-            <thead className={isDark ? "bg-gray-900/50" : "bg-gray-50"}>
+          <table className="min-w-full">
+            {/* Sticky Header */}
+            <thead
+              className={`sticky top-0 z-10 ${
+                isDark
+                  ? "bg-gray-900/90 backdrop-blur-sm"
+                  : "bg-gray-50/95 backdrop-blur-sm"
+              }`}
+            >
               {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
+                <tr
+                  key={headerGroup.id}
+                  className={`border-b ${
+                    isDark ? "border-gray-700/80" : "border-gray-200"
+                  }`}
+                >
                   {headerGroup.headers.map((header) => {
                     const canSort = header.column.getCanSort();
                     const sorted = header.column.getIsSorted();
@@ -265,14 +405,16 @@ export default function BaseDataTable<T extends { id?: number | string }>({
                             ? header.column.getToggleSortingHandler()
                             : undefined
                         }
-                        className={`px-4 py-3 text-xs font-bold uppercase tracking-wider ${
-                          isDark ? "text-gray-400" : "text-gray-500"
+                        className={`px-4 py-3 text-[11px] font-extrabold uppercase tracking-widest whitespace-nowrap transition-colors ${
+                          isDark ? "text-gray-400" : "text-gray-400"
                         } ${isRTL ? "text-right" : "text-left"} ${
-                          canSort ? "cursor-pointer select-none hover:text-brand-dark" : ""
+                          canSort
+                            ? "cursor-pointer select-none hover:text-brand-dark dark:hover:text-white"
+                            : ""
                         }`}
                       >
                         <div
-                          className={`flex items-center gap-1 ${
+                          className={`flex items-center gap-1.5 ${
                             isRTL ? "flex-row-reverse" : ""
                           }`}
                         >
@@ -283,12 +425,14 @@ export default function BaseDataTable<T extends { id?: number | string }>({
                                 header.getContext()
                               )}
                           {canSort && (
-                            <span className="text-[10px]">
-                              {sorted === "asc"
-                                ? "▲"
-                                : sorted === "desc"
-                                ? "▼"
-                                : "⇅"}
+                            <span className="opacity-50 flex-shrink-0">
+                              {sorted === "asc" ? (
+                                <ChevronUp className="w-3 h-3" />
+                              ) : sorted === "desc" ? (
+                                <ChevronDown className="w-3 h-3" />
+                              ) : (
+                                <ChevronsUpDown className="w-3 h-3" />
+                              )}
                             </span>
                           )}
                         </div>
@@ -298,57 +442,59 @@ export default function BaseDataTable<T extends { id?: number | string }>({
                 </tr>
               ))}
             </thead>
+
+            {/* Table Body */}
             <tbody
-              className={`${
+              className={`divide-y ${
                 isDark
-                  ? "bg-gray-800 divide-gray-700"
-                  : "bg-white divide-gray-200"
-              } divide-y`}
+                  ? "divide-gray-700/60 text-gray-300"
+                  : "divide-gray-100 text-gray-800"
+              }`}
             >
-              {table.getRowModel().rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="px-6 py-12 text-center"
-                  >
-                    <div className="flex flex-col items-center justify-center text-gray-400">
-                      {emptyIcon || (
-                        <svg
-                          className="w-12 h-12 mb-3 opacity-50"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1}
-                            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                      )}
-                      <p className="text-sm font-medium">
-                        {emptyMessage || (isRTL ? "لا توجد بيانات." : "No data found.")}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                table.getRowModel().rows.map((row) => (
+              {/* Skeleton State */}
+              {isLoading &&
+                Array.from({ length: 6 }).map((_, i) => (
+                  <SkeletonRow key={i} cols={colCount} />
+                ))}
+
+              {/* Empty State */}
+              {!isLoading && rows.length === 0 && (
+                <EmptyState
+                  icon={emptyIcon}
+                  message={emptyMessage}
+                  description={emptyDescription}
+                  action={emptyAction}
+                  isDark={isDark}
+                  isRTL={isRTL}
+                />
+              )}
+
+              {/* Data Rows */}
+              {!isLoading &&
+                rows.map((row, rowIndex) => (
                   <Fragment key={row.id}>
                     <tr
-                      className={`${
-                        isDark
-                          ? "hover:bg-gray-700/50"
-                          : "hover:bg-blue-50/30"
-                      } transition-colors duration-200 ${
-                        expandedRowId === row.original.id ? (isDark ? "bg-gray-700/30" : "bg-blue-50/50") : ""
-                      }`}
+                      className={`
+                        transition-colors duration-150
+                        ${
+                          expandedRowId === row.original.id
+                            ? isDark
+                              ? "bg-brand-dark/20"
+                              : "bg-brand-yellow/5"
+                            : rowIndex % 2 === 0
+                            ? isDark
+                              ? "bg-transparent hover:bg-gray-700/40"
+                              : "bg-white hover:bg-slate-50"
+                            : isDark
+                            ? "bg-gray-700/20 hover:bg-gray-700/40"
+                            : "bg-gray-50/60 hover:bg-slate-50"
+                        }
+                      `}
                     >
                       {row.getVisibleCells().map((cell) => (
                         <td
                           key={cell.id}
-                          className={`px-4 py-3 whitespace-nowrap ${
+                          className={`px-4 py-3.5 whitespace-nowrap text-sm ${
                             isRTL ? "text-right" : "text-left"
                           }`}
                         >
@@ -359,38 +505,53 @@ export default function BaseDataTable<T extends { id?: number | string }>({
                         </td>
                       ))}
                     </tr>
-                    {expandedRowId === row.original.id && renderExpandedRow && (
-                      <tr className={isDark ? "bg-gray-800/80" : "bg-gray-50/50"}>
-                        <td colSpan={columns.length} className="px-4 py-0 border-none">
-                          <div className="overflow-hidden animate-in slide-in-from-top-2 duration-300">
-                            {renderExpandedRow(row.original)}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
+
+                    {/* Expanded Row */}
+                    {expandedRowId === row.original.id &&
+                      renderExpandedRow && (
+                        <tr
+                          className={
+                            isDark ? "bg-gray-800/80" : "bg-gray-50/50"
+                          }
+                        >
+                          <td
+                            colSpan={columns.length}
+                            className="px-4 py-0 border-none"
+                          >
+                            <div className="overflow-hidden animate-in slide-in-from-top-2 duration-300">
+                              {renderExpandedRow(row.original)}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                   </Fragment>
-                ))
-              )}
+                ))}
             </tbody>
           </table>
         </div>
 
-        {/* ── Pagination + Info ── */}
+        {/* ── Pagination Footer ── */}
         {pagination && pagination.last_page > 1 && (
           <div
-            className={`px-4 py-3 border-t ${
-              isDark ? "border-gray-700 bg-gray-900/30" : "border-gray-100 bg-gray-50/50"
+            className={`px-5 py-3.5 border-t ${
+              isDark
+                ? "border-gray-700 bg-gray-900/30"
+                : "border-gray-100 bg-gray-50/80"
             }`}
           >
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div
+              className={`flex flex-col sm:flex-row items-center justify-between gap-3 ${
+                isRTL ? "sm:flex-row-reverse" : ""
+              }`}
+            >
               <p
-                className={`text-xs ${
+                className={`text-xs font-medium ${
                   isDark ? "text-gray-500" : "text-gray-400"
                 }`}
               >
                 {isRTL
-                  ? `عرض ${pagination.from || 0} إلى ${pagination.to || 0} من ${pagination.total}`
-                  : `Showing ${pagination.from || 0} to ${pagination.to || 0} of ${pagination.total}`}
+                  ? `عرض ${pagination.from ?? 0}–${pagination.to ?? 0} من ${pagination.total} سجل`
+                  : `Showing ${pagination.from ?? 0}–${pagination.to ?? 0} of ${pagination.total} records`}
               </p>
               <Pagination links={pagination.links} />
             </div>
@@ -401,38 +562,44 @@ export default function BaseDataTable<T extends { id?: number | string }>({
   );
 }
 
-// ─── Helper: Action Button ───────────────────────────────────────
+// ─── Helper: Action Button ─────────────────────────────────────────
 
 interface ActionButtonProps {
   label: string;
   onClick: () => void;
   color?: "blue" | "indigo" | "red" | "green" | "yellow";
+  icon?: React.ReactNode;
 }
 
 const colorMap = {
   blue: {
-    light: "bg-blue-50 text-blue-700 hover:bg-blue-100",
-    dark: "bg-blue-900/30 text-blue-400 hover:bg-blue-900/60",
+    light: "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-100",
+    dark: "bg-blue-900/20 text-blue-400 hover:bg-blue-900/40 border-blue-900/30",
   },
   indigo: {
-    light: "bg-indigo-50 text-indigo-700 hover:bg-indigo-100",
-    dark: "bg-indigo-900/30 text-indigo-400 hover:bg-indigo-900/60",
+    light: "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-100",
+    dark: "bg-indigo-900/20 text-indigo-400 hover:bg-indigo-900/40 border-indigo-900/30",
   },
   red: {
-    light: "bg-red-50 text-red-700 hover:bg-red-100",
-    dark: "bg-red-900/30 text-red-400 hover:bg-red-900/60",
+    light: "bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-100",
+    dark: "bg-rose-900/20 text-rose-400 hover:bg-rose-900/40 border-rose-900/30",
   },
   green: {
-    light: "bg-green-50 text-green-700 hover:bg-green-100",
-    dark: "bg-green-900/30 text-green-400 hover:bg-green-900/60",
+    light: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-100",
+    dark: "bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40 border-emerald-900/30",
   },
   yellow: {
-    light: "bg-yellow-50 text-yellow-700 hover:bg-yellow-100",
-    dark: "bg-yellow-900/30 text-yellow-400 hover:bg-yellow-900/60",
+    light: "bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-100",
+    dark: "bg-amber-900/20 text-amber-400 hover:bg-amber-900/40 border-amber-900/30",
   },
 };
 
-export function ActionButton({ label, onClick, color = "indigo" }: ActionButtonProps) {
+export function ActionButton({
+  label,
+  onClick,
+  color = "indigo",
+  icon,
+}: ActionButtonProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const scheme = colorMap[color] || colorMap.indigo;
@@ -440,57 +607,79 @@ export function ActionButton({ label, onClick, color = "indigo" }: ActionButtonP
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all duration-200 active:scale-95 ${
         isDark ? scheme.dark : scheme.light
       }`}
     >
+      {icon && <span className="w-3.5 h-3.5">{icon}</span>}
       {label}
     </button>
   );
 }
 
-// ─── Helper: Status Badge ────────────────────────────────────────
+// ─── Helper: Status Badge ──────────────────────────────────────────
 
 interface StatusBadgeProps {
   label: string;
-  variant?: "green" | "yellow" | "red" | "gray" | "blue";
+  variant?: "green" | "yellow" | "red" | "gray" | "blue" | "orange";
+  dot?: boolean;
   className?: string;
 }
 
 const badgeMap = {
   green: {
-    light: "bg-green-100 text-green-800 border-green-200",
-    dark: "bg-green-900/30 text-green-400 border-green-800",
+    light: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    dark: "bg-emerald-900/20 text-emerald-400 border-emerald-800/40",
+    dot: "bg-emerald-500",
   },
   yellow: {
-    light: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    dark: "bg-yellow-900/30 text-yellow-400 border-yellow-800",
+    light: "bg-amber-50 text-amber-700 border-amber-200",
+    dark: "bg-amber-900/20 text-amber-400 border-amber-800/40",
+    dot: "bg-amber-400",
   },
   red: {
-    light: "bg-red-100 text-red-800 border-red-200",
-    dark: "bg-red-900/30 text-red-400 border-red-800",
+    light: "bg-rose-50 text-rose-700 border-rose-200",
+    dark: "bg-rose-900/20 text-rose-400 border-rose-800/40",
+    dot: "bg-rose-500",
   },
   gray: {
     light: "bg-gray-100 text-gray-600 border-gray-200",
-    dark: "bg-gray-700 text-gray-400 border-gray-600",
+    dark: "bg-gray-700/60 text-gray-400 border-gray-600",
+    dot: "bg-gray-400",
   },
   blue: {
-    light: "bg-blue-100 text-blue-800 border-blue-200",
-    dark: "bg-blue-900/30 text-blue-400 border-blue-800",
+    light: "bg-blue-50 text-blue-700 border-blue-200",
+    dark: "bg-blue-900/20 text-blue-400 border-blue-800/40",
+    dot: "bg-blue-500",
+  },
+  orange: {
+    light: "bg-orange-50 text-orange-700 border-orange-200",
+    dark: "bg-orange-900/20 text-orange-400 border-orange-800/40",
+    dot: "bg-orange-500",
   },
 };
 
-export function StatusBadge({ label, variant = "gray", className = "" }: StatusBadgeProps) {
+export function StatusBadge({
+  label,
+  variant = "gray",
+  dot = true,
+  className = "",
+}: StatusBadgeProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const scheme = badgeMap[variant] || badgeMap.gray;
 
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
         isDark ? scheme.dark : scheme.light
       } ${className}`}
     >
+      {dot && (
+        <span
+          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${scheme.dot}`}
+        />
+      )}
       {label}
     </span>
   );

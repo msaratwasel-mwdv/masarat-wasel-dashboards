@@ -20,6 +20,15 @@ class ClassroomController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'grade_level']);
 
+        $classrooms->each(function($c) {
+            if ($c->teacher) {
+                return [
+                    'user_id' => $c->teacher->user_id,
+                    'name' => $c->teacher->name,
+                ];
+            }
+        });
+
         return response()->json($classrooms);
     }
 
@@ -34,18 +43,41 @@ class ClassroomController extends Controller
 
         $classrooms = Classroom::where('school_id', $schoolId)
             ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('grade_level', 'like', "%{$search}%");
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('grade_level', 'like', "%{$search}%");
+                });
             })
             ->latest()
-            ->with('teachers.user') // Eager load teachers with their user details
-            ->get();
+            ->with(['teachers.user']) 
+            ->get()
+            ->map(function($c) {
+                return [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'grade_level' => $c->grade_level,
+                    'school_id' => $c->school_id,
+                    'teachers' => $c->teachers->map(function($t) {
+                        return [
+                            'user_id' => $t->user_id,
+                            'name' => $t->name, // Uses the model name accessor once here
+                        ];
+                    })
+                ];
+            });
 
-        // Fetch teachers to populate the dropdown
-        $teachers = User::atSchool($schoolId)
+        // Fetch teachers to populate the dropdown - Using map to break any ties to the model appends
+        $teachers = User::whereHas('teacher', fn($q) => $q->where('school_id', $schoolId))
             ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
             ->orderBy('first_name_ar')
-            ->get(['id', 'first_name_ar', 'last_name_ar', 'email']);
+            ->get()
+            ->map(function($u) {
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name, // Calculate name string once
+                    'email' => $u->email,
+                ];
+            });
 
         return Inertia::render('School/Classrooms/Index', [
             'classrooms' => $classrooms,
@@ -64,15 +96,32 @@ class ClassroomController extends Controller
             abort(403);
         }
 
-        $teachers = User::query()
-            ->atSchool($user->getSchoolId())
-            ->whereHas('roles', fn($q) => $q->where('name', 'teacher')) // Show teachers
+        $teachers = User::whereHas('teacher', fn($q) => $q->where('school_id', $user->getSchoolId()))
+            ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
             ->where('is_active', true)
             ->orderBy('first_name_ar')
-            ->get(['id', 'first_name_ar', 'last_name_ar', 'email']);
+            ->get()
+            ->map(function($u) {
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'email' => $u->email,
+                ];
+            });
 
         return Inertia::render('School/Classrooms/Edit', [
-            'classroom' => $classroom->load('teacher.user'),
+            'classroom' => [
+                'id' => $classroom->id,
+                'name' => $classroom->name,
+                'grade_level' => $classroom->grade_level,
+                'school_id' => $classroom->school_id,
+                'teachers' => $classroom->teachers->map(function($t) {
+                    return [
+                        'user_id' => $t->user_id,
+                        'name' => $t->name,
+                    ];
+                })
+            ],
             'teachers' => $teachers,
         ]);
     }
@@ -102,7 +151,7 @@ class ClassroomController extends Controller
         // ربط المعلم
         // أولاً: تصفير أي معلم مرتبط بهذا الفصل حالياً
         \App\Models\Teacher::where('classroom_id', $classroom->id)->update(['classroom_id' => null]);
-        
+
         // ثانياً: جمع كل المعرفات المطلوب ربطها
         $teacherIds = [];
         if (!empty($validated['teacher_id'])) {

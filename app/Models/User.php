@@ -94,27 +94,27 @@ class User extends Authenticatable
 
     public function getIsActiveAttribute(): bool
     {
-        // For roles with extension tables, check their status enum
-        if ($this->hasRole('driver')) {
+        // For roles with extension tables, check their status enum ONLY if loaded to avoid recursion
+        if ($this->hasRole('driver') && $this->relationLoaded('driver')) {
             return ($this->driver?->status ?? 'inactive') === 'active';
         }
-        if ($this->hasRole('supervisor') || $this->hasRole('assistant')) {
+        if (($this->hasRole('supervisor') || $this->hasRole('assistant')) && $this->relationLoaded('assistant')) {
             return ($this->assistant?->status ?? 'inactive') === 'active';
         }
-        if ($this->hasRole('field_supervisor')) {
+        if ($this->hasRole('field_supervisor') && $this->relationLoaded('fieldSupervisor')) {
             return ($this->fieldSupervisor?->status ?? 'inactive') === 'active';
         }
-        if ($this->hasRole('teacher')) {
+        if ($this->hasRole('teacher') && $this->relationLoaded('teacher')) {
             return ($this->teacher?->status ?? 'inactive') === 'active';
         }
-        if ($this->hasRole('parent')) {
+        if ($this->hasRole('parent') && $this->relationLoaded('guardian')) {
             return ($this->guardian?->status ?? 'inactive') === 'active';
         }
-        if ($this->hasRole('school_admin')) {
+        if ($this->hasRole('school_admin') && $this->relationLoaded('schoolAdmin')) {
             return ($this->schoolAdmin?->status ?? 'inactive') === 'active';
         }
 
-        // For other roles (like administrators), assume true
+        // Default or for other roles (like administrators/unloaded relations), assume true to prevent hang
         return true;
     }
 

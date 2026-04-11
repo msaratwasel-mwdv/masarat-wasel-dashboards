@@ -53,9 +53,15 @@ const getMenuItems = (isRTL: boolean) => [
     route: "admin.buses.index",
     icon: "bus",
   },
+  // طلبات الحافلات - مخفية مؤقتاً
+  // {
+  //   label: isRTL ? "طلبات الحافلات" : "Bus Requests",
+  //   route: "admin.bus-requests.index",
+  //   icon: "clipboard",
+  // },
   {
-    label: isRTL ? "طلبات الحافلات" : "Bus Requests",
-    route: "admin.bus-requests.index",
+    label: isRTL ? "الرحلات الميدانية" : "Field Trips",
+    route: "admin.field-trips.index",
     icon: "clipboard",
   },
   {
@@ -92,10 +98,11 @@ const getMenuItems = (isRTL: boolean) => [
         label: isRTL ? "إدارة بنود الفحص" : "Checklist Manager",
         route: "admin.inspection-items.index",
       },
-      {
-        label: isRTL ? "سجل التعيينات" : "Assignment History",
-        route: "admin.assignmentHistory",
-      },
+      // سجل التعيينات - مخفي مؤقتاً
+      // {
+      //   label: isRTL ? "سجل التعيينات" : "Assignment History",
+      //   route: "admin.assignmentHistory",
+      // },
     ],
   },
   {

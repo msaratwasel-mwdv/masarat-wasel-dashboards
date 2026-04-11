@@ -23,18 +23,32 @@ class TeacherController extends Controller
         $user = Auth::user();
         $search = $request->input('search');
 
-        $teachers = User::query()
-            ->atSchool($user->getSchoolId())
+        $teachers = User::whereHas('teacher', fn($q) => $q->where('school_id', $user->getSchoolId()))
             ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
+            ->with(['teacher.classroom']) // Eager load classroom
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
+                    $q->where('first_name_ar', 'like', "%{$search}%")
+                        ->orWhere('last_name_ar', 'like', "%{$search}%")
                         ->orWhere('national_id', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             })
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function($u) {
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'first_name_ar' => $u->first_name_ar,
+                    'last_name_ar' => $u->last_name_ar,
+                    'national_id' => $u->national_id,
+                    'email' => $u->email,
+                    'phone' => $u->phone,
+                    'classroom_id' => $u->teacher?->classroom_id,
+                    'classroom_name' => $u->teacher?->classroom?->name,
+                ];
+            });
 
         $classrooms = Classroom::where('school_id', $user->getSchoolId())->get(['id', 'name']);
 
@@ -127,7 +141,14 @@ class TeacherController extends Controller
         $classrooms = Classroom::where('school_id', $user->getSchoolId())->get(['id', 'name']);
 
         return Inertia::render('School/Teachers/Edit', [
-            'teacher' => $teacher->load('teacher'),
+            'teacher' => [
+                'id' => $teacher->id,
+                'name' => $teacher->name,
+                'national_id' => $teacher->national_id,
+                'email' => $teacher->email,
+                'phone' => $teacher->phone,
+                'classroom_id' => $teacher->teacher?->classroom_id,
+            ],
             'classrooms' => $classrooms,
         ]);
     }
