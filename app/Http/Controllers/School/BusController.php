@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Bus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class BusController extends Controller
@@ -65,45 +66,9 @@ class BusController extends Controller
         ]);
     }
 
-    /**
-     * Store a newly created bus.
-     */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'bus_number' => 'required|string|unique:buses',
-            'plate_number' => 'required|string|unique:buses',
-            'capacity' => 'required|integer|min:1',
-            'type' => 'required|in:permanent,temporary',
-            'status' => 'required|in:active,maintenance,inactive',
-            'driver_id' => 'nullable|exists:users,id',
-            'assistant_id' => 'nullable|exists:users,id',
-            'field_supervisor_id' => 'nullable|exists:users,id',
-            'model' => 'nullable|string',
-            'year' => 'nullable|integer|min:1990|max:' . (date('Y') + 1),
-            'color' => 'nullable|string',
-            'route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', Auth::user()->getSchoolId())],
-        ]);
-
-        $validated['school_id'] = Auth::user()->getSchoolId();
-
-        // field_supervisor_id and assistant_id already have correct keys for mass assignment
-        $driverId = $validated['driver_id'] ?? null;
-        if (array_key_exists('driver_id', $validated)) {
-            unset($validated['driver_id']);
-        }
-
-        $bus = Bus::create($validated);
-        
-        if ($driverId) {
-            \App\Models\Driver::where('user_id', $driverId)->update(['bus_id' => $bus->id]);
-        }
-
-        return back()->with('success', 'تم إضافة الحافلة بنجاح');
-    }
 
     /**
-     * Update the specified bus.
+     * Update the bus route assignment.
      */
     public function update(Request $request, Bus $bus)
     {
@@ -112,76 +77,20 @@ class BusController extends Controller
         }
 
         $validated = $request->validate([
-            'bus_number' => 'required|string|unique:buses,bus_number,' . $bus->id,
-            'plate_number' => 'required|string|unique:buses,plate_number,' . $bus->id,
-            'capacity' => 'required|integer|min:1',
-            'type' => 'required|in:permanent,temporary',
-            'status' => 'required|in:active,maintenance,inactive',
-            'driver_id' => 'nullable|exists:users,id',
-            'assistant_id' => 'nullable|exists:users,id',
-            'field_supervisor_id' => 'nullable|exists:users,id',
-            'model' => 'nullable|string',
-            'year' => 'nullable|integer',
-            'color' => 'nullable|string',
-            'route_id' => ['nullable', 'integer', Rule::exists('routes', 'id')->where('school_id', Auth::user()->getSchoolId())],
+            'route_id' => [
+                'nullable', 
+                'integer', 
+                Rule::exists('routes', 'id')->where('school_id', Auth::user()->getSchoolId())
+            ],
         ]);
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($bus, $validated) {
-            $oldDriverId = $bus->driver?->user_id;
-            $newDriverId = $validated['driver_id'] ?? null;
-            
-            // field_supervisor_id and assistant_id already have correct keys for mass assignment
-            if (array_key_exists('driver_id', $validated)) {
-                unset($validated['driver_id']);
-            }
-
-            $bus->update($validated);
-
-            if ($oldDriverId !== $newDriverId) {
-                if ($oldDriverId) {
-                    \App\Models\Driver::where('user_id', $oldDriverId)->update(['bus_id' => null]);
-                }
-                if ($newDriverId) {
-                    \App\Models\Driver::where('user_id', $newDriverId)->update(['bus_id' => $bus->id]);
-                }
-            }
-        });
-
-        return back()->with('success', 'تم تحديث بيانات الحافلة بنجاح');
-    }
-
-    /**
-     * Remove the specified bus.
-     */
-    public function destroy(Bus $bus)
-    {
-        if ($bus->school_id !== Auth::user()->getSchoolId()) {
-            abort(403);
-        }
-
-        $bus->delete();
-
-        return back()->with('success', 'تم حذف الحافلة بنجاح');
-    }
-
-    /**
-     * Bulk delete buses.
-     */
-    public function bulkDestroy(Request $request)
-    {
-        $validated = $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'exists:buses,id',
+        $bus->update([
+            'route_id' => $validated['route_id']
         ]);
 
-        $schoolId = Auth::user()->getSchoolId();
-
-        Bus::whereIn('id', $validated['ids'])
-            ->where('school_id', $schoolId)
-            ->delete();
-
-        return back()->with('success', 'تم حذف الحافلات المحددة بنجاح');
+        return back()->with('success', 'تم تحديث مسار الحافلة بنجاح');
     }
+
 
     /**
      * Show the standalone live tracking page.

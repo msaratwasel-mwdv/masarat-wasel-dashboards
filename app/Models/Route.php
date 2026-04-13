@@ -38,17 +38,17 @@ class Route extends Model
     /**
      * Get the students assigned to this route as their morning route.
      */
-    public function morningStudents(): HasMany
+    public function morningStudents(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
-        return $this->hasMany(Student::class, 'forth_route_id');
+        return $this->hasManyThrough(Student::class, Bus::class, 'route_id', 'forth_bus_id');
     }
 
     /**
      * Get the students assigned to this route as their afternoon route.
      */
-    public function afternoonStudents(): HasMany
+    public function afternoonStudents(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
-        return $this->hasMany(Student::class, 'back_route_id');
+        return $this->hasManyThrough(Student::class, Bus::class, 'route_id', 'back_bus_id');
     }
 }
 

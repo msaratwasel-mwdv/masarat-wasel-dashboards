@@ -10,6 +10,7 @@ interface DashboardProps {
         classes: number;
         buses: number;
         active_buses: number;
+        routes: number;
         attendance_percentage: number;
         attendance_today_count: number;
     };
@@ -60,6 +61,15 @@ export default function SchoolDashboard({ auth, stats, recent_students, system_s
             link: route('school.buses.index')
         },
         {
+            title: t('Routes'),
+            value: stats.routes,
+            sub: t('Assigned Paths'),
+            icon: '📍',
+            iconBg: 'bg-indigo-500',
+            textColor: 'text-indigo-600',
+            link: route('school.routes.index')
+        },
+        {
             title: t('Attendance'),
             value: `${stats.attendance_percentage}%`,
             sub: `${stats.attendance_today_count} ${t('Today\'s Presence')}`,
@@ -104,7 +114,7 @@ export default function SchoolDashboard({ auth, stats, recent_students, system_s
                 </div>
 
                 {/* 2. STATS GRID */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                     {statCards.map((stat, idx) => (
                         <Link
                             key={idx}

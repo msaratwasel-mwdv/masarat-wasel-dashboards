@@ -22,6 +22,7 @@ class BusSeeder extends Seeder
 
         foreach ($supervisors as $index => $supervisor) {
             $route = Route::firstOrCreate([
+                'school_id' => $school->id,
                 'name' => "المسار رقم " . ($index + 1),
                 'code' => "R-" . ($index + 1),
             ]);

@@ -18,7 +18,7 @@ class AbsenceRequestController extends Controller
         $schoolId = Auth::user()->getSchoolId();
 
         $requests = AbsenceRequest::whereHas('student', function($query) use ($schoolId) {
-            $query->where('school_id', $schoolId);
+            $query->inSchool($schoolId);
         })
         ->with(['student:id,first_name_ar,last_name_ar', 'guardian:id,first_name_ar,last_name_ar'])
         ->latest()
@@ -37,7 +37,8 @@ class AbsenceRequestController extends Controller
         $schoolId = Auth::user()->getSchoolId();
 
         // التأكد أن الطالب يتبع لمدرسة المستخدم الحالي
-        if ($absenceRequest->student->school_id !== $schoolId) {
+        $studentSchoolId = $absenceRequest->student->enrollments()->latest()->first()?->classroom?->school_id;
+        if ($studentSchoolId !== $schoolId) {
             abort(403);
         }
 

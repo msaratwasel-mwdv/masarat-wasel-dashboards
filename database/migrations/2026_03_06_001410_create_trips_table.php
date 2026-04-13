@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('bus_id')->constrained();
             $table->date('trip_date')->index();
-            $table->string('type'); // forth, back, field_trip
+            $table->string('type'); // forth, back
             $table->string('video_check')->default(false); // video path
             $table->dateTime('departure_time')->nullable();
             $table->dateTime('arrival_time')->nullable();

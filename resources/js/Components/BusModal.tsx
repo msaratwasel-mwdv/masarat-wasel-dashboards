@@ -98,13 +98,13 @@ export default function BusModal({ show, onClose, bus, drivers = [], assistants 
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-[15px] flex items-center justify-center">
-                                <span className="text-3xl">🚌</span>
+                                <span className="text-3xl">🛣️</span>
                             </div>
                             <div>
                                 <h3 className="text-2xl font-bold">
-                                    {isEditing ? t('Edit Bus') : t('Add New Bus')}
+                                    {t('Assign Route')}
                                 </h3>
-                                <p className="text-blue-100 text-sm">{t('Fill in the bus details below')}</p>
+                                <p className="text-blue-100 text-sm">{bus?.bus_number} - {bus?.plate_number}</p>
                             </div>
                         </div>
                         <button
@@ -119,227 +119,67 @@ export default function BusModal({ show, onClose, bus, drivers = [], assistants 
                 </div>
 
                 {/* Form */}
-                <form onSubmit={submit} className="p-8 space-y-6 overflow-y-auto max-h-[calc(90vh-140px)] hide-scrollbar">
-                    {/* Bus Number & Plate Number */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                                {t('Bus Number')} <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={data.bus_number}
-                                onChange={e => setData('bus_number', e.target.value)}
-                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
-                                placeholder="BUS-001"
-                                required
-                            />
-                            {errors.bus_number && <p className="mt-2 ml-2 text-sm text-red-600">{errors.bus_number}</p>}
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                                {t('Plate Number')} <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={data.plate_number}
-                                onChange={e => setData('plate_number', e.target.value)}
-                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
-                                placeholder="ABC-1234"
-                                required
-                            />
-                            {errors.plate_number && <p className="mt-2 ml-2 text-sm text-red-600">{errors.plate_number}</p>}
-                        </div>
-                    </div>
-
-                    {/* Capacity, Type, Status */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                                {t('Capacity')} <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="number"
-                                min="1"
-                                value={data.capacity}
-                                onChange={e => setData('capacity', parseInt(e.target.value))}
-                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
-                                required
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                                {t('Type')} <span className="text-red-500">*</span>
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={data.type}
-                                    onChange={e => setData('type', e.target.value as any)}
-                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] appearance-none transition-all"
-                                    required
-                                >
-                                    <option value="permanent">{t('Permanent')}</option>
-                                    <option value="temporary">{t('Temporary')}</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                                {t('Status')} <span className="text-red-500">*</span>
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={data.status}
-                                    onChange={e => setData('status', e.target.value as any)}
-                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] appearance-none transition-all"
-                                    required
-                                >
-                                    <option value="active">{t('Active')}</option>
-                                    <option value="maintenance">{t('Maintenance')}</option>
-                                    <option value="inactive">{t('Inactive')}</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Model, Year, Color */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                                {t('Model')}
-                            </label>
-                            <input
-                                type="text"
-                                value={data.model}
-                                onChange={e => setData('model', e.target.value)}
-                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
-                                placeholder="Mercedes Sprinter"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                                {t('Year')}
-                            </label>
-                            <input
-                                type="number"
-                                min="1990"
-                                max={new Date().getFullYear() + 1}
-                                value={data.year}
-                                onChange={e => setData('year', parseInt(e.target.value))}
-                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                                {t('Color')}
-                            </label>
-                            <input
-                                type="text"
-                                value={data.color}
-                                onChange={e => setData('color', e.target.value)}
-                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
-                                placeholder={t('White')}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Driver & Supervisor */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                                {t('Driver')}
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={data.driver_id || ''}
-                                    onChange={e => setData('driver_id', e.target.value ? parseInt(e.target.value) : undefined)}
-                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] appearance-none transition-all"
-                                >
-                                    <option value="">{t('No Driver')}</option>
-                                    {drivers.map(driver => (
-                                        <option key={driver.id} value={driver.id}>{driver.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                                {t('Assistant')}
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={data.assistant_id || ''}
-                                    onChange={e => setData('assistant_id', e.target.value ? parseInt(e.target.value) : undefined)}
-                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] appearance-none transition-all"
-                                >
-                                    <option value="">{t('No Assistant')}</option>
-                                    {assistants.map(assistant => (
-                                        <option key={assistant.id} value={assistant.id}>{assistant.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                                {t('Field Supervisor')}
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={data.field_supervisor_id || ''}
-                                    onChange={e => setData('field_supervisor_id', e.target.value ? parseInt(e.target.value) : undefined)}
-                                    className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] appearance-none transition-all"
-                                >
-                                    <option value="">{t('No Field Supervisor')}</option>
-                                    {field_supervisors.map(sv => (
-                                        <option key={sv.id} value={sv.id}>{sv.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Route Selection */}
+                <form onSubmit={submit} className="p-8 space-y-6">
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                            {t('Assigned Route')}
+                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 ml-1">
+                            {t('Select Route for this Bus')}
                         </label>
-                        <div className="relative">
-                            <select
-                                value={data.route_id || ''}
-                                onChange={e => setData('route_id', e.target.value ? parseInt(e.target.value) : null)}
-                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] appearance-none transition-all"
+                        <div className="grid grid-cols-1 gap-4">
+                            {routes.map(route => (
+                                <button
+                                    key={route.id}
+                                    type="button"
+                                    onClick={() => setData('route_id', route.id)}
+                                    className={`flex items-center justify-between p-5 rounded-[25px] border-2 transition-all ${
+                                        data.route_id === route.id
+                                            ? 'border-[#0e7490] bg-cyan-50 dark:bg-cyan-900/20 ring-4 ring-cyan-100 dark:ring-cyan-900/10'
+                                            : 'border-gray-100 dark:border-gray-700 hover:border-gray-200'
+                                    }`}
+                                >
+                                    <div className="flex flex-col items-start">
+                                        <span className={`font-black tracking-tight ${data.route_id === route.id ? 'text-[#0e7490]' : 'text-gray-700 dark:text-white'}`}>
+                                            {route.name}
+                                        </span>
+                                        <span className="text-xs text-gray-400 font-bold uppercase">{route.code || '---'}</span>
+                                    </div>
+                                    {data.route_id === route.id && (
+                                        <div className="w-8 h-8 bg-[#0e7490] rounded-full flex items-center justify-center text-white shadow-lg">
+                                            ✓
+                                        </div>
+                                    )}
+                                </button>
+                            ))}
+                            
+                            <button
+                                type="button"
+                                onClick={() => setData('route_id', null)}
+                                className={`p-4 rounded-[25px] border-2 border-dashed transition-all text-sm font-bold ${
+                                    data.route_id === null
+                                        ? 'border-gray-400 bg-gray-50 text-gray-600'
+                                        : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                                }`}
                             >
-                                <option value="">{t('No Route Assigned')}</option>
-                                {routes.map(route => (
-                                    <option key={route.id} value={route.id}>{route.name}</option>
-                                ))}
-                            </select>
+                                {t('Unassign Route')}
+                            </button>
                         </div>
-                        {errors.route_id && <p className="mt-2 ml-2 text-sm text-red-600">{errors.route_id}</p>}
+                        {errors.route_id && <p className="mt-4 text-sm text-red-600 text-center font-bold">{errors.route_id}</p>}
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-4 pt-8 border-t border-gray-100 dark:border-gray-700">
+                    <div className="flex gap-4 pt-6">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 px-8 py-3.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-[35px] hover:bg-gray-50 dark:hover:bg-gray-700 transition-all font-bold"
+                            className="flex-1 px-8 py-3.5 text-gray-500 font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all rounded-[25px]"
                         >
                             {t('Cancel')}
                         </button>
                         <button
                             type="submit"
                             disabled={processing}
-                            className="flex-1 px-8 py-3.5 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                            className="flex-1 px-8 py-3.5 bg-[#0e7490] text-white font-bold rounded-[35px] shadow-xl shadow-cyan-900/20 hover:bg-[#155e75] transition-all disabled:opacity-50"
                         >
-                            {processing ? t('Saving...') : (isEditing ? t('Update') : t('Add Bus'))}
+                            {processing ? t('Saving...') : t('Save Assignment')}
                         </button>
                     </div>
                 </form>

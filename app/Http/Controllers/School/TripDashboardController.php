@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Trip;
 use App\Models\FieldTrip;
 use App\Models\Bus;
+use App\Models\Route;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -18,47 +19,55 @@ class TripDashboardController extends Controller
         $schoolId = Auth::user()->getSchoolId();
         $today = Carbon::today()->toDateString();
         $date = $request->input('date', $today);
+        $routeId = $request->input('route_id');
 
-        // Fetch today's regular trips via Bus relationship (Normalization compliant)
-        $dailyTrips = Trip::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        // Fetch today's trips
+        $query = Trip::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
             ->whereDate('trip_date', $date)
-            ->with(['bus.driver', 'bus.assistant', 'route'])
-            ->withCount('attendances')
-            ->get();
+            ->with(['bus.driver.user', 'bus.assistant', 'bus.route'])
+            ->withCount('attendances');
+
+        if ($routeId) {
+            $query->whereHas('bus', fn($q) => $q->where('route_id', $routeId));
+        }
+
+        $dailyTrips = $query->get();
 
         // Fetch active field trips
         $activeFieldTrips = FieldTrip::where('school_id', $schoolId)
-            ->whereIn('status', ['approved', 'started'])
-            ->with(['bus.driver', 'bus.assistant'])
+            ->whereIn('status', ['approved', 'in_progress'])
+            ->with(['bus.driver.user', 'bus.assistant'])
             ->get();
 
-        // Fetch buses with location data for the map
+        // Fetch routes with details for the Routes tab
+        $routes = Route::where('school_id', $schoolId)
+            ->with(['buses.driver', 'buses.assistant'])
+            ->withCount(['morningStudents', 'afternoonStudents'])
+            ->get();
+
         $buses = Bus::where('school_id', $schoolId)
-            ->with(['driver', 'assistant'])
-            ->get()
-            ->map(function ($bus) use ($dailyTrips) {
-                $currentTrip = $dailyTrips->where('bus_id', $bus->id)->first();
-                $bus->trip_status = $currentTrip ? $currentTrip->status : null;
-                return $bus;
-            });
+            ->with(['driver', 'assistant', 'route'])
+            ->get();
 
         // Stats
         $stats = [
             'total_trips' => $dailyTrips->count(),
-            'completed' => $dailyTrips->where('status', 'completed')->count(),
-            'on_route' => $dailyTrips->where('status', 'on_route')->count() + $activeFieldTrips->where('status', 'started')->count(),
-            'total_buses' => $buses->count(),
+            'finished' => $dailyTrips->where('status', 'finished')->count(),
+            'in_progress' => $dailyTrips->where('status', 'in_progress')->count() + $activeFieldTrips->where('status', 'in_progress')->count(),
+            'total_routes' => $routes->count(),
             'active_buses' => $buses->where('status', 'active')->count(),
-            'pending_field_trips' => FieldTrip::where('school_id', $schoolId)->where('status', 'pending')->count(),
+            'pending_field_trips' => $activeFieldTrips->where('status', 'approved')->count(),
         ];
 
         return Inertia::render('School/Trips/Dashboard', [
             'dailyTrips' => $dailyTrips,
             'fieldTrips' => $activeFieldTrips,
             'buses' => $buses,
+            'routes' => $routes,
             'stats' => $stats,
             'filters' => [
                 'date' => $date,
+                'route_id' => $routeId,
             ],
         ]);
     }
@@ -70,7 +79,7 @@ class TripDashboardController extends Controller
             abort(403);
         }
 
-        $trip->load(['bus.driver', 'bus.assistant', 'route', 'attendances.student']);
+        $trip->load(['bus.driver.user', 'bus.assistant', 'route', 'attendances.student']);
 
         return Inertia::render('School/Trips/TripDetails', [
             'trip' => $trip

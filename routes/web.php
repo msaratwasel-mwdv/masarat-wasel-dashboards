@@ -343,9 +343,6 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::get('trips-dashboard', [\App\Http\Controllers\School\TripDashboardController::class, 'index'])->name('trips.dashboard');
         Route::get('trips/{trip}', [\App\Http\Controllers\School\TripDashboardController::class, 'show'])->name('trips.show');
 
-        // Trip Reports
-        Route::get('trip-reports', [\App\Http\Controllers\School\TripReportController::class, 'index'])->name('trip-reports.index');
-        Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');
     });
 
 // ⚪ ثالثاً: روابط الملف الشخصي

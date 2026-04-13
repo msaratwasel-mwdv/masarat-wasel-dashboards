@@ -44,12 +44,15 @@ class DashboardController extends Controller
             ->take(5)
             ->get(['id', 'first_name_ar', 'last_name_ar', 'created_at', 'image']);
 
+        $routesCount = \App\Models\Route::where('school_id', $schoolId)->count();
+
         return Inertia::render('School/Dashboard', [
             'stats' => [
                 'students' => $studentsCount,
                 'classes' => $classesCount,
                 'buses' => $totalBuses,
                 'active_buses' => $activeBuses,
+                'routes' => $routesCount,
                 'attendance_percentage' => $attendancePercentage,
                 'attendance_today_count' => $totalAttendanceRecords
             ],

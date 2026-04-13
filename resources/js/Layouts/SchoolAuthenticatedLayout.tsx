@@ -70,6 +70,11 @@ export default function SchoolAuthenticatedLayout({
       route: "school.buses.index",
       icon: "bus",
     },
+    {
+      label: isRtl ? "المسارات" : "Routes",
+      route: "school.routes.index",
+      icon: "map",
+    },
 
     {
       label: isRtl ? "التتبع المباشر" : "Live Tracking",
@@ -106,11 +111,6 @@ export default function SchoolAuthenticatedLayout({
       label: isRtl ? "طلبات الغياب" : "Absence Requests",
       route: "school.absence-requests.index",
       icon: "calendar",
-    },
-    {
-      label: isRtl ? "تقارير الرحلات" : "Trip Reports",
-      route: "school.trip-reports.index",
-      icon: "report",
     },
     {
       label: isRtl ? "الإعدادات" : "Settings",

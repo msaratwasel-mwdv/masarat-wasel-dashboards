@@ -13,9 +13,6 @@ class Trip extends Model
 
     protected $fillable = [
         'bus_id',
-        'route_id',
-        'driver_id',
-        'assistant_id',
         'trip_date',
         'type',
         'video_check',
@@ -47,35 +44,11 @@ class Trip extends Model
     }
 
     /**
-     * Get the route assigned to the trip.
-     */
-    public function route(): BelongsTo
-    {
-        return $this->belongsTo(Route::class);
-    }
-
-    /**
      * Get the bus assigned to the trip.
      */
     public function bus(): BelongsTo
     {
         return $this->belongsTo(Bus::class);
-    }
-
-    /**
-     * Get the driver assigned to the trip.
-     */
-    public function driver(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'driver_id');
-    }
-
-    /**
-     * Get the assistant/supervisor assigned to the trip.
-     */
-    public function assistant(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'assistant_id');
     }
 
     /**
@@ -92,6 +65,21 @@ class Trip extends Model
     public function students(): HasMany
     {
         return $this->hasMany(TripStudent::class);
+    }
+
+    /**
+     * Get the route for the trip via the assigned bus.
+     */
+    public function route(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
+    {
+        return $this->hasOneThrough(
+            Route::class,
+            Bus::class,
+            'id', // Foreign key on buses table (bus id)
+            'id', // Foreign key on routes table (route id)
+            'bus_id', // Local key on trips table
+            'route_id' // Local key on buses table
+        );
     }
 }
 

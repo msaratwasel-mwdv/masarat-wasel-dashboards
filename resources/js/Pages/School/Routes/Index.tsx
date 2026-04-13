@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
 import SchoolAuthenticatedLayout from '@/Layouts/SchoolAuthenticatedLayout';
 import useTranslation from '@/hooks/useTranslation';
+import LocationPicker from '@/Components/LocationPicker';
 
 interface RouteProps {
     id: number;
     name: string;
     code: string | null;
     description: string | null;
+    latitude: number | null;
+    longitude: number | null;
     morning_students_count: number;
     afternoon_students_count: number;
     buses_count: number;
@@ -28,6 +31,8 @@ export default function Index({ auth, routes }: IndexProps) {
         name: '',
         code: '',
         description: '',
+        latitude: null as number | null,
+        longitude: null as number | null,
     });
 
     const filteredRoutes = routes.filter(route =>
@@ -61,6 +66,8 @@ export default function Index({ auth, routes }: IndexProps) {
             name: route.name,
             code: route.code || '',
             description: route.description || '',
+            latitude: route.latitude ? Number(route.latitude) : null,
+            longitude: route.longitude ? Number(route.longitude) : null,
         });
         setShowCreateModal(true);
     };
@@ -225,8 +232,23 @@ export default function Index({ auth, routes }: IndexProps) {
                                     value={data.description}
                                     onChange={e => setData('description', e.target.value)}
                                     className="w-full px-5 py-3 border border-gray-200 rounded-[20px] focus:ring-2 focus:ring-[#0e7490]"
-                                    rows={3}
+                                    rows={2}
                                 />
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="block text-sm font-bold text-gray-700">{t('Route Location')}</label>
+                                <LocationPicker 
+                                    lat={data.latitude} 
+                                    lng={data.longitude} 
+                                    onChange={(lat, lng) => {
+                                        setData(prev => ({ ...prev, latitude: lat, longitude: lng }));
+                                    }}
+                                />
+                                <div className="flex gap-4 text-[10px] font-bold text-gray-400 px-2 uppercase tracking-tight">
+                                    <span>LAT: {data.latitude?.toFixed(6) || '---'}</span>
+                                    <span>LNG: {data.longitude?.toFixed(6) || '---'}</span>
+                                </div>
                             </div>
                             <div className="flex justify-end gap-3 pt-4">
                                 <button type="button" onClick={() => setShowCreateModal(false)} className="px-6 py-2.5 text-gray-500 font-bold hover:bg-gray-50 rounded-[20px]">

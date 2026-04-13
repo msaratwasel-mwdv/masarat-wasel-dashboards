@@ -34,7 +34,7 @@ interface Props {
   schoolLocation: { lat: number; lng: number };
 }
 
-type TabType = "inventory" | "tracking";
+type TabType = "inventory";
 
 export default function BusesManagement({
   auth,
@@ -209,27 +209,11 @@ export default function BusesManagement({
           </div>
         </div>
 
-        {/* Tabs Navigation */}
-        <div className="bg-white dark:bg-gray-800 rounded-[35px] shadow-sm p-3 inline-flex gap-2">
-          <button
-            onClick={() => setActiveTab("inventory")}
-            className={`px-8 py-3 rounded-[30px] font-bold transition-all ${activeTab === "inventory"
-                ? "bg-[#0e7490] text-white shadow-lg"
-                : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-              }`}
-          >
-            📋 {t("Bus Inventory")}
-          </button>
-          <button
-            onClick={() => setActiveTab("tracking")}
-            className={`px-8 py-3 rounded-[30px] font-bold transition-all ${activeTab === "tracking"
-                ? "bg-[#0e7490] text-white shadow-lg"
-                : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-              }`}
-          >
-            🗺️ {t("Live Tracking")}
-          </button>
-
+        {/* Section Header */}
+        <div className="flex items-center justify-between">
+           <h3 className="text-xl font-black text-gray-800 dark:text-white">
+              {t("Fleet Inventory")}
+           </h3>
         </div>
 
         {/* Tab Content */}
@@ -276,15 +260,6 @@ export default function BusesManagement({
                   </div>
                 </div>
 
-                {/* Info note - no CRUD actions */}
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-[20px] text-sm text-blue-700 dark:text-blue-400 font-medium">
-                  <span>ℹ️</span>
-                  <span>
-                    {t(
-                      "Buses are assigned by the main admin. Use Requests tab to request changes."
-                    )}
-                  </span>
-                </div>
               </div>
 
               {/* Table */}
@@ -308,7 +283,7 @@ export default function BusesManagement({
                         {t("Crew")}
                       </th>
                       <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">
-                        {t("Status")}
+                        {t("Actions")}
                       </th>
                     </tr>
                   </thead>
@@ -402,7 +377,15 @@ export default function BusesManagement({
                           </div>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          {getStatusBadge(bus.status)}
+                           <div className="flex items-center justify-center gap-3">
+                             {getStatusBadge(bus.status)}
+                             <button
+                               onClick={() => handleEditBus(bus)}
+                               className="px-6 py-2 bg-[#0e7490]/5 dark:bg-cyan-900/20 text-[#0e7490] dark:text-cyan-400 font-bold rounded-[15px] hover:bg-[#0e7490]/10 transition-all flex items-center gap-2 border border-[#0e7490]/10"
+                             >
+                               ✏️ {t("Assign Route")}
+                             </button>
+                           </div>
                         </td>
                       </tr>
                     ))}
@@ -425,16 +408,7 @@ export default function BusesManagement({
             </div>
           )}
 
-          {/* Tab 2: Live Tracking */}
-          {activeTab === "tracking" && (
-            <div className="h-[600px]">
-              <LiveTrackingMap
-                buses={buses}
-                centerLat={schoolLocation.lat}
-                centerLng={schoolLocation.lng}
-              />
-            </div>
-          )}
+          <div />
 
 
         </div>
