@@ -33,15 +33,13 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [] }: P
     const [memberForm, setMemberForm] = useState<TripMember>({ type: 'teacher', name: '' });
 
     const { data, setData, post, processing, reset, errors } = useForm({
-        trip_name: '',
+        name: '',
         description: '',
-        trip_date: '',
-        trip_time: '08:00',
-        destination: '',
-        destination_lat: null as number | null,
-        destination_lng: null as number | null,
-        duration_days: 1,
-        number_of_students: 1,
+        date: '',
+        departure_time: '08:00',
+        destination_address: '',
+        destination_latitude: null as number | null,
+        destination_longitude: null as number | null,
         teacher_names: [] as TripMember[],
     });
 
@@ -139,13 +137,13 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [] }: P
                                 </label>
                                 <input
                                     type="text"
-                                    value={data.trip_name}
-                                    onChange={e => setData('trip_name', e.target.value)}
+                                    value={data.name}
+                                    onChange={e => setData('name', e.target.value)}
                                     className="w-full px-5 py-3 border border-gray-100 dark:border-gray-700 rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] transition-all font-bold text-sm placeholder-gray-400"
                                     placeholder={t('Example: Science Museum')}
                                     required
                                 />
-                                {errors.trip_name && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold">{errors.trip_name}</p>}
+                                {errors.name && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold">{errors.name}</p>}
                             </div>
 
                             <div>
@@ -170,12 +168,12 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [] }: P
                                     </label>
                                     <input
                                         type="date"
-                                        value={data.trip_date}
-                                        onChange={e => setData('trip_date', e.target.value)}
+                                        value={data.date}
+                                        onChange={e => setData('date', e.target.value)}
                                         className="w-full px-5 py-3 border border-gray-100 dark:border-gray-700 rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] transition-all font-bold text-sm"
                                         required
                                     />
-                                    {errors.trip_date && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold">{errors.trip_date}</p>}
+                                    {errors.date && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold">{errors.date}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 ml-1">
@@ -183,26 +181,12 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [] }: P
                                     </label>
                                     <input
                                         type="time"
-                                        value={data.trip_time}
-                                        onChange={e => setData('trip_time', e.target.value)}
+                                        value={data.departure_time}
+                                        onChange={e => setData('departure_time', e.target.value)}
                                         className="w-full px-5 py-3 border border-gray-100 dark:border-gray-700 rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] transition-all font-bold text-sm"
                                         required
                                     />
-                                    {errors.trip_time && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold">{errors.trip_time}</p>}
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 ml-1">
-                                        {t('Duration (Days)')} <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={data.duration_days}
-                                        onChange={e => setData('duration_days', parseInt(e.target.value))}
-                                        className="w-full px-5 py-3 border border-gray-100 dark:border-gray-700 rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] transition-all font-bold text-sm"
-                                        required
-                                    />
-                                    {errors.duration_days && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold">{errors.duration_days}</p>}
+                                    {errors.departure_time && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold">{errors.departure_time}</p>}
                                 </div>
                             </div>
                         </div>
@@ -212,10 +196,10 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [] }: P
                         <div className="space-y-4 animate-fadeIn">
                             <div className="rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-inner relative z-10 transition-all">
                                 <LocationPicker
-                                    lat={data.destination_lat}
-                                    lng={data.destination_lng}
+                                    lat={data.destination_latitude}
+                                    lng={data.destination_longitude}
                                     onChange={(lat, lng) => {
-                                        setData(prev => ({ ...prev, destination_lat: lat, destination_lng: lng }));
+                                        setData(prev => ({ ...prev, destination_latitude: lat, destination_longitude: lng }));
                                     }}
                                 />
                             </div>
@@ -227,35 +211,16 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [] }: P
                                     </label>
                                     <input
                                         type="text"
-                                        value={data.destination}
-                                        onChange={e => setData('destination', e.target.value)}
+                                        value={data.destination_address}
+                                        onChange={e => setData('destination_address', e.target.value)}
                                         className="w-full px-5 py-3 border border-gray-100 dark:border-gray-700 rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] transition-all font-bold text-sm"
                                         placeholder={t('Location name...')}
                                         required
                                     />
-                                    {errors.destination && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold">{errors.destination}</p>}
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 ml-1">
-                                        {t('Student Count')} <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            value={data.number_of_students}
-                                            onChange={e => setData('number_of_students', parseInt(e.target.value))}
-                                            className="w-full px-5 py-3 border border-gray-100 dark:border-gray-700 rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] transition-all font-black text-base"
-                                            required
-                                        />
-                                        <span className={`absolute ${isRtl ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 uppercase tracking-widest`}>
-                                            {t('Seats')}
-                                        </span>
-                                    </div>
-                                    {errors.number_of_students && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold">{errors.number_of_students}</p>}
+                                    {errors.destination_address && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold">{errors.destination_address}</p>}
                                 </div>
                             </div>
-                            {(errors.destination_lat || errors.destination_lng) && (
+                            {(errors.destination_latitude || errors.destination_longitude) && (
                                 <p className="text-red-500 text-[10px] text-center font-bold bg-red-50 dark:bg-red-950/20 py-2 rounded-xl border border-red-100 dark:border-red-900/10">
                                     📍 {t('Please select a destination on the map')}
                                 </p>
@@ -315,26 +280,22 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [] }: P
 
                             {/* Review Grid */}
                             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
-                                <div className="p-4 grid grid-cols-2 gap-x-6 gap-y-4">
-                                    <div>
+                                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="col-span-1 md:col-span-2">
                                         <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{t('Trip Identity')}</p>
-                                        <p className="font-black text-gray-800 dark:text-white text-xs truncate">{data.trip_name || '---'}</p>
+                                        <p className="font-black text-gray-800 dark:text-white text-xs truncate">{data.name || '---'}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{t('Schedule')}</p>
-                                        <p className="font-black text-gray-800 dark:text-white text-xs">{data.trip_date || '---'} {data.trip_time}</p>
+                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{t('Date & Time')}</p>
+                                        <p className="font-black text-gray-800 dark:text-white text-xs">{data.date || '---'} | {data.departure_time}</p>
                                     </div>
-                                    <div className="col-span-2">
+                                    <div>
+                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{t('Teachers Selection')}</p>
+                                        <p className="font-black text-gray-800 dark:text-white text-xs">{data.teacher_names.length} {t('Selected')}</p>
+                                    </div>
+                                    <div className="col-span-1 md:col-span-2 pt-2 border-t border-gray-50 dark:border-gray-800">
                                         <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{t('Destination')}</p>
-                                        <p className="font-black text-gray-800 dark:text-white text-xs truncate">📍 {data.destination || '---'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{t('Seats')}</p>
-                                        <p className="font-black text-gray-800 dark:text-white text-xs">{data.number_of_students}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{t('Faculty')}</p>
-                                        <p className="font-black text-gray-800 dark:text-white text-xs">{data.teacher_names.length}</p>
+                                        <p className="font-black text-[#0e7490] dark:text-cyan-400 text-xs truncate">📍 {data.destination_address || '---'}</p>
                                     </div>
                                 </div>
                                 <div className="px-4 py-2 bg-orange-50 dark:bg-orange-950/20 flex gap-2 border-t border-orange-100 dark:border-orange-900/10">
@@ -374,8 +335,8 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [] }: P
                                 type="button"
                                 onClick={nextStep}
                                 disabled={
-                                    (currentStep === 1 && (!data.trip_name || !data.trip_date)) ||
-                                    (currentStep === 2 && (!data.destination || !data.destination_lat))
+                                    (currentStep === 1 && (!data.name || !data.date)) ||
+                                    (currentStep === 2 && (!data.destination_address || !data.destination_latitude))
                                 }
                                 className="px-8 py-2.5 bg-[#0e7490] text-white font-black rounded-xl hover:bg-[#155e75] shadow-lg transition-all uppercase tracking-widest text-[9px] disabled:opacity-50 disabled:cursor-not-allowed"
                             >

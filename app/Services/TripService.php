@@ -87,7 +87,6 @@ class TripService
         }
 
         $trip = Trip::create([
-            'school_id' => $bus->school_id,
             'bus_id' => $bus->id,
             'route_id' => $routeId,
             'driver_id' => $driverUserId,

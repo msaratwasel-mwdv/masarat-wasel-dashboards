@@ -16,9 +16,9 @@ class AdminDashboardController extends Controller
         $busTotal = Bus::count();
         $busMaintenance = Bus::where('status', 'maintenance')->count();
         // Booked/Assigned: Active and has a driver
-        $busBooked = Bus::where('status', 'active')->has('drivers')->count();
+        $busBooked = Bus::where('status', 'active')->has('driver')->count();
         // Available: Active (or just not maintenance) but no driver
-        $busAvailable = Bus::where('status', 'active')->doesntHave('drivers')->count();
+        $busAvailable = Bus::where('status', 'active')->doesntHave('driver')->count();
 
         // --- 2. Driver Stats ---
         $driverTotal = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))->count();
@@ -132,7 +132,7 @@ class AdminDashboardController extends Controller
 
         // أ. فحص الباصات النشطة بدون سائقين (Existing)
         $unassignedBuses = Bus::where('status', 'active')
-            ->doesntHave('drivers')
+            ->doesntHave('driver')
             ->get();
 
         foreach ($unassignedBuses as $bus) {

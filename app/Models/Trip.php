@@ -12,7 +12,6 @@ class Trip extends Model
     use HasFactory;
 
     protected $fillable = [
-        'school_id',
         'bus_id',
         'route_id',
         'driver_id',
@@ -33,11 +32,18 @@ class Trip extends Model
     ];
 
     /**
-     * Get the school that owns the trip.
+     * Get the school that owns the trip (via the bus).
      */
-    public function school(): BelongsTo
+    public function school(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
     {
-        return $this->belongsTo(School::class);
+        return $this->hasOneThrough(
+            School::class,
+            Bus::class,
+            'id', // Foreign key on items table (bus id)
+            'id', // Foreign key on schools table (school id)
+            'bus_id', // Local key on trips table
+            'school_id' // Local key on buses table
+        );
     }
 
     /**

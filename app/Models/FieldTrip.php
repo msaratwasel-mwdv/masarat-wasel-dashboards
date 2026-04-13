@@ -14,21 +14,18 @@ class FieldTrip extends Model
     protected $fillable = [
         'school_id',
         'bus_id',
-        'trip_name',
+        'name',
         'description',
-        'trip_date',
-        'trip_time',
-        'duration_days',
-        'destination',
-        'destination_lat',
-        'destination_lng',
-        'number_of_students',
+        'date',
+        'departure_time',
+        'arrival_time',
+        'destination_address',
+        'destination_latitude',
+        'destination_longitude',
         'teacher_names',
         'cost',
         'status',
         'rejection_reason',
-        'approved_by_school',
-        'approved_by_company',
     ];
 
     /**
@@ -40,15 +37,11 @@ class FieldTrip extends Model
     }
 
     protected $casts = [
-        'trip_date' => 'date',
-        'duration_days' => 'integer',
-        'number_of_students' => 'integer',
+        'date' => 'date',
         'teacher_names' => 'array',
-        'approved_by_school' => 'boolean',
-        'approved_by_company' => 'boolean',
         'cost' => 'decimal:2',
-        'destination_lat' => 'decimal:8',
-        'destination_lng' => 'decimal:8',
+        'destination_latitude' => 'decimal:8',
+        'destination_longitude' => 'decimal:8',
     ];
 
     /**

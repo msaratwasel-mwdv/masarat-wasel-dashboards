@@ -155,7 +155,7 @@ class User extends Authenticatable
             return ['', '', '', ''];
         }
         $parts = array_filter(explode(' ', trim($fullName)));
-        
+
         $first = count($parts) > 0 ? array_shift($parts) : '';
         $last = count($parts) > 0 ? array_pop($parts) : '';
         $second = count($parts) > 0 ? array_shift($parts) : '';
@@ -175,7 +175,7 @@ class User extends Authenticatable
             $this->third_name_en,
             $this->last_name_en
         ];
-        
+
         $namesEn = array_map(function($n) {
             return is_string($n) ? mb_convert_encoding($n, 'UTF-8', 'UTF-8') : null;
         }, $namesEn);
@@ -401,10 +401,10 @@ class User extends Authenticatable
     /**
      * Get the history of buses assigned to this driver.
      */
-    public function busHistory(): HasMany
+/*     public function busHistory(): HasMany
     {
         return $this->hasMany(BusDriverAssignment::class, 'driver_id');
-    }
+    } */
 
     /**
      * Scope a query to only include users belonging to a specific school.

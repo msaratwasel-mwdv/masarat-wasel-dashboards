@@ -52,13 +52,13 @@ export interface MockTripSchedule {
 
 export interface MockFieldTrip {
     id: number;
-    trip_name: string;
+    name: string;
     description: string;
-    trip_date: string;
-    trip_time: string;
-    destination: string;
-    destination_lat?: number;
-    destination_lng?: number;
+    date: string;
+    departure_time: string;
+    destination_address: string;
+    destination_latitude?: number;
+    destination_longitude?: number;
     duration_days?: number;
     cost?: number;
     bus?: any;
@@ -197,13 +197,13 @@ export const mockTripSchedules: MockTripSchedule[] = [
 export const mockFieldTrips: MockFieldTrip[] = [
     {
         id: 1,
-        trip_name: 'زيارة المتحف الوطني',
+        name: 'زيارة المتحف الوطني',
         description: 'رحلة تعليمية لطلاب الصف الخامس لزيارة المتحف الوطني والتعرف على تاريخ المملكة',
-        trip_date: '2026-01-15',
-        trip_time: '08:00',
-        destination: 'المتحف الوطني - الرياض',
-        destination_lat: 24.6476,
-        destination_lng: 46.7197,
+        date: '2026-01-15',
+        departure_time: '08:00',
+        destination_address: 'المتحف الوطني - الرياض',
+        destination_latitude: 24.6476,
+        destination_longitude: 46.7197,
         number_of_students: 120,
         status: 'approved',
         approved_by_school: true,
@@ -222,13 +222,13 @@ export const mockFieldTrips: MockFieldTrip[] = [
     },
     {
         id: 2,
-        trip_name: 'رحلة إلى حديقة الملك عبدالله',
-        description: 'رحلة ترفيهية لطلاب الصف الثالث',
-        trip_date: '2026-01-25',
-        trip_time: '09:00',
-        destination: 'حديقة الملك عبدالله - الرياض',
-        destination_lat: 24.6892,
-        destination_lng: 46.6693,
+        name: 'رحلة إلى حديقة الملك عبدالله',
+        description: 'رحلة ترفيهية לطلاب الصف الثالث',
+        date: '2026-01-25',
+        departure_time: '09:00',
+        destination_address: 'حديقة الملك عبدالله - الرياض',
+        destination_latitude: 24.6892,
+        destination_longitude: 46.6693,
         number_of_students: 80,
         status: 'planned',
         approved_by_school: true,
@@ -245,11 +245,11 @@ export const mockFieldTrips: MockFieldTrip[] = [
     },
     {
         id: 3,
-        trip_name: 'زيارة مركز الملك عبدالعزيز التاريخي',
+        name: 'زيارة مركز الملك عبدالعزيز التاريخي',
         description: 'رحلة تاريخية لطلاب الصف السادس',
-        trip_date: '2026-02-10',
-        trip_time: '08:30',
-        destination: 'مركز الملك عبدالعزيز التاريخي',
+        date: '2026-02-10',
+        departure_time: '08:30',
+        destination_address: 'مركز الملك عبدالعزيز التاريخي',
         number_of_students: 60,
         status: 'planned',
         approved_by_school: false,

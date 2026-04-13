@@ -19,8 +19,8 @@ class TripDashboardController extends Controller
         $today = Carbon::today()->toDateString();
         $date = $request->input('date', $today);
 
-        // Fetch today's regular trips
-        $dailyTrips = Trip::where('school_id', $schoolId)
+        // Fetch today's regular trips via Bus relationship (Normalization compliant)
+        $dailyTrips = Trip::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
             ->whereDate('trip_date', $date)
             ->with(['bus.driver', 'bus.assistant', 'route'])
             ->withCount('attendances')
@@ -66,7 +66,7 @@ class TripDashboardController extends Controller
     public function show(Trip $trip)
     {
         $schoolId = Auth::user()->getSchoolId();
-        if ($trip->school_id !== $schoolId) {
+        if (!$trip->bus || $trip->bus->school_id !== $schoolId) {
             abort(403);
         }
 

@@ -26,8 +26,8 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
 
     const filteredTrips = fieldTrips.filter(trip => {
         const matchesStatus = statusFilter === 'all' || trip.status === statusFilter;
-        const matchesSearch = trip.trip_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            trip.destination.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = trip.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            trip.destination_address.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesStatus && matchesSearch;
     });
 
@@ -162,7 +162,6 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-start">{t('Identity')}</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-start">{t('Dep. Schedule')}</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-start">{t('Target Hub')}</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Pax & Cost')}</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Status')}</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Operations')}</th>
                                     </tr>
@@ -172,16 +171,16 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
                                         filteredTrips.map((trip) => (
                                             <tr key={trip.id} className="group transition-all hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
                                                 <td className="px-8 py-6">
-                                                    <div className="font-black text-gray-800 dark:text-white mb-1 group-hover:text-[#0e7490] transition-colors">{trip.trip_name}</div>
+                                                    <div className="font-black text-gray-800 dark:text-white mb-1 group-hover:text-[#0e7490] transition-colors">{trip.name}</div>
                                                     <div className="text-[10px] font-bold text-gray-400 group-hover:text-gray-500 max-w-xs truncate">{trip.description}</div>
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <div className="flex flex-col gap-1.5">
                                                         <span className="flex items-center gap-2 text-xs font-black text-gray-700 dark:text-gray-300">
-                                                            <span className="opacity-40">📅</span> {trip.trip_date}
+                                                            <span className="opacity-40">📅</span> {trip.date}
                                                         </span>
                                                         <span className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
-                                                            <span className="opacity-40">🕐</span> {trip.trip_time}
+                                                            <span className="opacity-40">🕐</span> {trip.departure_time}
                                                         </span>
                                                         <span className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
                                                             <span className="opacity-40">⏳</span> {trip.duration_days || 1} {t('Days')}
@@ -190,22 +189,21 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <div className="text-xs font-black text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                                                        <span className="text-cyan-500">📍</span> {trip.destination}
+                                                        <span className="text-cyan-500">📍</span> {trip.destination_address}
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-center">
-                                                    <div className="inline-flex flex-col items-center">
-                                                        <span className="text-sm font-black text-gray-800 dark:text-white">{trip.number_of_students}</span>
-                                                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('Students')}</span>
+                                                    <div className="flex flex-wrap gap-1 justify-center max-w-[150px] mx-auto">
+                                                        {(trip.teachers && trip.teachers.length > 0) ? (
+                                                            trip.teachers.map((tea, idx) => (
+                                                                <span key={idx} className="text-[8px] font-bold text-[#0e7490] bg-cyan-50 dark:bg-cyan-950/20 px-1.5 py-0.5 rounded border border-cyan-100 dark:border-cyan-900/10 whitespace-nowrap">
+                                                                    {tea.name}
+                                                                </span>
+                                                            ))
+                                                        ) : (
+                                                            <span className="text-[8px] font-bold text-gray-300">---</span>
+                                                        )}
                                                     </div>
-                                                    <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 text-[10px] font-bold text-green-600 dark:text-green-500 mx-auto w-16">
-                                                        {trip.cost ? `${trip.cost} ${t('SAR')}` : <span className="text-gray-400">{t('TBD')}</span>}
-                                                    </div>
-                                                    {trip.bus && (
-                                                        <div className="mt-1 text-[9px] font-bold text-gray-500 break-words max-w-[80px]">
-                                                            🚌 {trip.bus.name || trip.bus.bus_number}
-                                                        </div>
-                                                    )}
                                                 </td>
                                                 <td className="px-8 py-6 text-center">
                                                     <div className="flex flex-col items-center gap-2">

@@ -19,11 +19,11 @@ return new class extends Migration
             $table->text('description');
             $table->date('date');
             $table->time('departure_time');
-            $table->time('arrival_time');
-            $table->integer('duration_days')->default(1);
+            $table->time('arrival_time')->nullable();
             $table->string('destination_address')->nullable();
             $table->decimal('destination_latitude', 10, 7)->nullable();
             $table->decimal('destination_longitude', 10, 7)->nullable();
+            $table->jsonb('teacher_names')->nullable();
             $table->decimal('cost', 10, 2)->unsigned()->nullable();
             $table->enum('status', ['pending', 'approved', 'started', 'in_progress', 'completed', 'cancelled'])->default('pending');
             $table->text('rejection_reason')->nullable();

@@ -21,7 +21,7 @@ class FieldTripController extends Controller
 
         $fieldTrips = FieldTrip::where('school_id', $schoolId)
             ->with(['bus.driver', 'bus.assistant'])
-            ->latest('trip_date')
+            ->latest('date')
             ->get()
             ->map(function ($trip) {
                 // Compatibility mapping for frontend
@@ -39,19 +39,19 @@ class FieldTripController extends Controller
         // Fetch Assistants
         $assistants = User::atSchool($schoolId)
             ->whereHas('roles', fn($q) => $q->where('name', 'assistant'))
-            ->select('id', 'name')
+            ->select('id', 'first_name_ar', 'last_name_ar', 'second_name_ar', 'third_name_ar')
             ->get();
 
         // Fetch Drivers (for future use or if needed now)
         $drivers = User::atSchool($schoolId)
             ->whereHas('roles', fn($q) => $q->where('name', 'driver'))
-            ->select('id', 'name')
+            ->select('id', 'first_name_ar', 'last_name_ar', 'second_name_ar', 'third_name_ar')
             ->get();
 
         // Fetch Teachers for the Field Trip Members Selection
         $teachers = User::atSchool($schoolId)
             ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
-            ->select('id', 'name', 'phone')
+            ->select('id', 'first_name_ar', 'last_name_ar', 'second_name_ar', 'third_name_ar', 'phone')
             ->get();
 
         return Inertia::render('School/FieldTrips/Index', [
@@ -76,15 +76,13 @@ class FieldTripController extends Controller
 
         try {
             $validated = $request->validate([
-                'trip_name' => 'required|string|max:255',
+                'name' => 'required|string|max:255',
                 'description' => 'required|string|max:1000',
-                'trip_date' => 'required|date',
-                'trip_time' => 'required',
-                'duration_days' => 'required|integer|min:1',
-                'destination' => 'required|string|max:255',
-                'destination_lat' => 'required|numeric',
-                'destination_lng' => 'required|numeric',
-                'number_of_students' => 'required|integer|min:1',
+                'date' => 'required|date',
+                'departure_time' => 'required',
+                'destination_address' => 'required|string|max:255',
+                'destination_latitude' => 'required|numeric',
+                'destination_longitude' => 'required|numeric',
                 'teacher_names' => 'nullable|array',
                 'teacher_names.*.type' => 'required|in:teacher,external',
                 'teacher_names.*.id' => 'required_if:teacher_names.*.type,teacher',
@@ -105,19 +103,16 @@ class FieldTripController extends Controller
         try {
             $data = [
                 'school_id' => Auth::user()->getSchoolId(),
-                'trip_name' => $validated['trip_name'],
+                'name' => $validated['name'],
                 'description' => $validated['description'],
-                'trip_date' => $validated['trip_date'],
-                'trip_time' => $validated['trip_time'],
-                'duration_days' => $validated['duration_days'],
-                'destination' => $validated['destination'],
-                'destination_lat' => $validated['destination_lat'],
-                'destination_lng' => $validated['destination_lng'],
-                'number_of_students' => $validated['number_of_students'],
-                'status' => 'planned',
-                'approved_by_school' => true,
-                'approved_by_company' => false,
+                'date' => $validated['date'],
+                'departure_time' => $validated['departure_time'],
+                'arrival_time' => null,
+                'destination_address' => $validated['destination_address'],
+                'destination_latitude' => $validated['destination_latitude'],
+                'destination_longitude' => $validated['destination_longitude'],
                 'teacher_names' => $validated['teacher_names'] ?? [],
+                'status' => 'pending',
             ];
             
             \Illuminate\Support\Facades\Log::info('Attempting FieldTrip::create', $data);
@@ -135,7 +130,7 @@ class FieldTripController extends Controller
                 $notificationService->notifyCompanyAdmins(
                     'field_trip_request',
                     '🆕 طلب رحلة ميدانية جديد',
-                    'قامت مدرسة ' . Auth::user()->school->name . ' بتقديم طلب لرحلة: ' . $fieldTrip->trip_name,
+                    'قامت مدرسة ' . Auth::user()->school->name . ' بتقديم طلب لرحلة: ' . $fieldTrip->name,
                     ['trip_id' => $fieldTrip->id]
                 );
                 \Illuminate\Support\Facades\Log::info('Notification sent to admins');
