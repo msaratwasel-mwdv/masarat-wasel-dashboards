@@ -4,9 +4,10 @@ namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
 use App\Models\FieldTrip;
-use App\Models\FieldTripParticipant;
 use App\Models\Bus;
 use App\Models\User;
+use App\Models\Classroom;
+use App\Models\Student;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,44 +22,32 @@ class FieldTripController extends Controller
 
         $fieldTrips = FieldTrip::where('school_id', $schoolId)
             ->with(['bus.driver', 'bus.assistant'])
+            ->withCount(['students', 'internalTeachers'])
             ->latest('date')
-            ->get()
-            ->map(function ($trip) {
-                // Compatibility mapping for frontend
-                $trip->buses = $trip->bus ? [$trip->bus] : [];
-                $trip->teachers = $trip->teacher_names ?? [];
-                
-                return $trip;
-            });
+            ->get();
 
         $buses = Bus::where('school_id', $schoolId)
             ->where('status', 'active')
             ->with(['driver', 'assistant'])
             ->get();
 
-        // Fetch Assistants
-        $assistants = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->where('name', 'assistant'))
-            ->select('id', 'first_name_ar', 'last_name_ar', 'second_name_ar', 'third_name_ar')
+        // Fetch Classrooms with Students for selection
+        $classrooms = Classroom::where('school_id', $schoolId)
+            ->with(['students' => function ($q) {
+                $q->select('students.id', 'first_name_ar', 'last_name_ar', 'student_code');
+            }])
             ->get();
 
-        // Fetch Drivers (for future use or if needed now)
-        $drivers = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->where('name', 'driver'))
-            ->select('id', 'first_name_ar', 'last_name_ar', 'second_name_ar', 'third_name_ar')
-            ->get();
-
-        // Fetch Teachers for the Field Trip Members Selection
+        // Fetch Teachers for selection
         $teachers = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
-            ->select('id', 'first_name_ar', 'last_name_ar', 'second_name_ar', 'third_name_ar', 'phone')
+            ->whereHas('roles', fn($q) => $q->where('roles.name', 'teacher'))
+            ->select('id', 'first_name_ar', 'last_name_ar', 'phone')
             ->get();
 
         return Inertia::render('School/FieldTrips/Index', [
             'fieldTrips' => $fieldTrips,
             'buses' => $buses,
-            'assistants' => $assistants,
-            'drivers' => $drivers,
+            'classrooms' => $classrooms,
             'teachers' => $teachers,
         ]);
     }
@@ -80,15 +69,18 @@ class FieldTripController extends Controller
                 'description' => 'required|string|max:1000',
                 'date' => 'required|date',
                 'departure_time' => 'required',
+                'arrival_time' => 'nullable|after:departure_time',
                 'destination_address' => 'required|string|max:255',
                 'destination_latitude' => 'required|numeric',
                 'destination_longitude' => 'required|numeric',
-                'teacher_names' => 'nullable|array',
-                'teacher_names.*.type' => 'required|in:teacher,external',
-                'teacher_names.*.id' => 'required_if:teacher_names.*.type,teacher',
-                'teacher_names.*.name' => 'required|string|max:255',
-                'teacher_names.*.phone' => 'required_if:teacher_names.*.type,external|nullable|string|max:20',
-                'teacher_names.*.national_id' => 'required_if:teacher_names.*.type,external|nullable|string|max:50',
+                'student_ids' => 'required|array|min:1',
+                'student_ids.*' => 'exists:students,id',
+                'teacher_ids' => 'nullable|array',
+                'teacher_ids.*' => 'exists:users,id',
+                'external_members' => 'nullable|array',
+                'external_members.*.name' => 'required|string|max:255',
+                'external_members.*.phone' => 'nullable|string|max:20',
+                'external_members.*.national_id' => 'nullable|string|max:50',
             ]);
             \Illuminate\Support\Facades\Log::info('FieldTrip Validation PASSED', $validated);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -107,17 +99,23 @@ class FieldTripController extends Controller
                 'description' => $validated['description'],
                 'date' => $validated['date'],
                 'departure_time' => $validated['departure_time'],
-                'arrival_time' => null,
+                'arrival_time' => $validated['arrival_time'] ?? null,
                 'destination_address' => $validated['destination_address'],
                 'destination_latitude' => $validated['destination_latitude'],
                 'destination_longitude' => $validated['destination_longitude'],
-                'teacher_names' => $validated['teacher_names'] ?? [],
+                'external_members' => $validated['external_members'] ?? [],
                 'status' => 'pending',
             ];
-            
+
             \Illuminate\Support\Facades\Log::info('Attempting FieldTrip::create', $data);
-            
+
             $fieldTrip = FieldTrip::create($data);
+
+            // Save Students and Internal Teachers
+            $fieldTrip->students()->sync($validated['student_ids']);
+            if (!empty($validated['teacher_ids'])) {
+                $fieldTrip->internalTeachers()->sync($validated['teacher_ids']);
+            }
 
             \Illuminate\Support\Facades\Log::info('FieldTrip created SUCCESS', ['id' => $fieldTrip->id]);
 
@@ -155,6 +153,25 @@ class FieldTripController extends Controller
     }
 
     /**
+     * Display the specified field trip (AJAX).
+     */
+    public function show(FieldTrip $fieldTrip)
+    {
+        if ($fieldTrip->school_id !== Auth::user()->getSchoolId()) {
+            abort(403);
+        }
+
+        return response()->json([
+            'trip' => $fieldTrip->load([
+                'students.currentEnrollment.classroom',
+                'internalTeachers',
+                'bus.driver',
+                'bus.assistant'
+            ])
+        ]);
+    }
+
+    /**
      * Update field trip status or details.
      */
     public function update(Request $request, FieldTrip $fieldTrip)
@@ -166,33 +183,9 @@ class FieldTripController extends Controller
 
         $validated = $request->validate([
             'status' => 'sometimes|in:planned,approved,in_progress,completed,cancelled',
-            'approved_by_school' => 'sometimes|boolean',
         ]);
 
         $fieldTrip->update($validated);
-
-        // Send notifications if approved
-        if (isset($validated['approved_by_school']) && $validated['approved_by_school']) {
-            $notificationService = app(NotificationService::class);
-            $schoolName = Auth::user()->school->name ?? 'المدرسة';
-            
-            // Notify participants
-            $driverIds = $fieldTrip->participants()->where('participant_type', 'driver')->pluck('participant_id')->toArray();
-            $assistantIds = $fieldTrip->participants()->where('participant_type', 'assistant')->pluck('participant_id')->toArray();
-            
-            $allParticipants = array_merge($driverIds, $assistantIds);
-            
-            if (!empty($allParticipants)) {
-                $notificationService->sendToUsers(
-                    $allParticipants,
-                    'field_trip_approved',
-                    'تمت الموافقة على الرحلة',
-                    "وافقت المدرسة على الرحلة الميدانية: {$fieldTrip->trip_name}",
-                    ['trip_id' => $fieldTrip->id],
-                    $schoolName
-                );
-            }
-        }
 
         return redirect()->back()
             ->with('success', 'تم تحديث بيانات الرحلة بنجاح');
@@ -220,6 +213,3 @@ class FieldTripController extends Controller
             ->with('success', 'تم حذف الرحلة بنجاح');
     }
 }
-
-
-

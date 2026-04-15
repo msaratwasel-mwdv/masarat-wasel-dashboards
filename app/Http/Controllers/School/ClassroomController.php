@@ -16,17 +16,23 @@ class ClassroomController extends Controller
     {
         $schoolId = Auth::user()->getSchoolId();
         $classrooms = Classroom::where('school_id', $schoolId)
-            ->with(['teacher.user']) // load teacher user
+            ->with(['teachers.user'])
             ->orderBy('name')
             ->get(['id', 'name', 'grade_level']);
 
-        $classrooms->each(function($c) {
-            if ($c->teacher) {
+        $classrooms->transform(function($c) {
+            $mappedTeachers = $c->teachers->map(function($t) {
                 return [
-                    'user_id' => $c->teacher->user_id,
-                    'name' => $c->teacher->name,
+                    'id' => $t->user_id,
+                    'name' => $t->name,
+                    'national_id' => $t->user ? $t->user->national_id : null,
                 ];
-            }
+            });
+            
+            $c->setRelation('teachers', $mappedTeachers);
+            $c->supervisor = $mappedTeachers->first();
+            
+            return $c;
         });
 
         return response()->json($classrooms);
@@ -67,8 +73,8 @@ class ClassroomController extends Controller
             });
 
         // Fetch teachers to populate the dropdown - Using map to break any ties to the model appends
-        $teachers = User::whereHas('teacher', fn($q) => $q->where('school_id', $schoolId))
-            ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
+        $teachers = User::whereHas('teacher', fn($q) => $q->where('teachers.school_id', $schoolId))
+            ->whereHas('roles', fn($q) => $q->where('roles.name', 'teacher'))
             ->orderBy('first_name_ar')
             ->get()
             ->map(function($u) {
@@ -96,8 +102,8 @@ class ClassroomController extends Controller
             abort(403);
         }
 
-        $teachers = User::whereHas('teacher', fn($q) => $q->where('school_id', $user->getSchoolId()))
-            ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
+        $teachers = User::whereHas('teacher', fn($q) => $q->where('teachers.school_id', $user->getSchoolId()))
+            ->whereHas('roles', fn($q) => $q->where('roles.name', 'teacher'))
             ->where('is_active', true)
             ->orderBy('first_name_ar')
             ->get()

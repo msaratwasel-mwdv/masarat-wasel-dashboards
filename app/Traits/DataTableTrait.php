@@ -45,6 +45,14 @@ trait DataTableTrait
                         $q->{$i === 0 ? 'whereHas' : 'orWhereHas'}($relation, function ($rq) use ($field, $search) {
                             $rq->where($field, 'like', "%{$search}%");
                         });
+                    } elseif ($column === 'name') {
+                        // Special case for 'name' which is often a virtual field or split in DB
+                        $q->{$method}(function($sq) use ($search) {
+                            $sq->where('first_name_ar', 'like', "%{$search}%")
+                               ->orWhere('last_name_ar', 'like', "%{$search}%")
+                               ->orWhere('first_name_en', 'like', "%{$search}%")
+                               ->orWhere('last_name_en', 'like', "%{$search}%");
+                        });
                     } else {
                         $q->{$method}($column, 'like', "%{$search}%");
                     }

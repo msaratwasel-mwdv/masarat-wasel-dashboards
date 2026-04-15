@@ -116,9 +116,19 @@ class Student extends Model
     }
 
     // ⬅️ أضف هذه العلاقة
-    public function school(): BelongsTo
+    /**
+     * Get the school the student is currently enrolled in.
+     */
+    public function school(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
     {
-        return $this->belongsTo(School::class);
+        return $this->hasOneThrough(
+            School::class,
+            StudentSchoolEnrollment::class,
+            'student_id', // Foreign key on enrollment table
+            'id',         // Foreign key on schools table
+            'id',         // Local key on students table
+            'school_id'   // Local key on enrollment table
+        )->where('student_school_enrollments.is_active', true);
     }
 
 

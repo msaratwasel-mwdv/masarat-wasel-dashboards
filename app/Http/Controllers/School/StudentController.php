@@ -38,6 +38,24 @@ class StudentController extends Controller
         // Map data to include classroom_id at root level for frontend convenience
         $students->transform(function ($student) {
             $student->classroom_id = $student->currentEnrollment?->classroom_id;
+            $student->name = $student->full_name_ar ?? current(array_filter([$student->first_name_ar, $student->last_name_ar])) ?? 'Unknown';
+            $student->student_national_id = $student->national_id;
+            
+            $firstGuardian = $student->guardians->first();
+            if ($firstGuardian) {
+                // Ensure array shape matches UI `guardian?: { name: string, phone: string, national_id: string }`
+                $student->guardian = [
+                    'name' => $firstGuardian->name ?? $firstGuardian->first_name_ar,
+                    'phone' => $firstGuardian->phone,
+                    'national_id' => $firstGuardian->national_id,
+                ];
+            } else {
+                $student->guardian = null;
+            }
+
+            // Remove large collection to keep API response minimal
+            unset($student->guardians);
+
             return $student;
         });
 

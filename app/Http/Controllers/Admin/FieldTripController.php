@@ -15,7 +15,8 @@ class FieldTripController extends Controller
      */
     public function index()
     {
-        $fieldTrips = FieldTrip::with(['school', 'bus.driver']) 
+        $fieldTrips = FieldTrip::with(['school', 'bus.driver'])
+            ->withCount(['students', 'internalTeachers'])
             ->latest()
             ->get();
 
@@ -45,8 +46,10 @@ class FieldTripController extends Controller
             'bus_id' => $validated['bus_id'],
         ]);
 
-        $schoolAdmin = $fieldTrip->school->users()->whereHas('roles', fn($q) => $q->where('name', 'school_admin'))->first();
-        
+        $schoolAdmin = \App\Models\User::atSchool($fieldTrip->school_id)
+            ->whereHas('roles', fn($q) => $q->where('roles.name', 'school_admin'))
+            ->first();
+
         if ($schoolAdmin) {
             try {
                 $notificationService = app(NotificationService::class);
@@ -54,7 +57,7 @@ class FieldTripController extends Controller
                     $schoolAdmin->id,
                     'field_trip_approved',
                     'تمت الموافقة على الرحلة الميدانية ✅',
-                    "وافقت الشركة على رحلة: {$fieldTrip->trip_name}. التكلفة المقدرة: {$fieldTrip->cost}",
+                    "وافقت الشركة على رحلة: {$fieldTrip->name}. التكلفة المقدرة: {$fieldTrip->cost} ر.س",
                     ['trip_id' => $fieldTrip->id],
                     auth()->user()->name
                 );
@@ -63,8 +66,8 @@ class FieldTripController extends Controller
                 \Log::error('Failed to send approval notification: ' . $e->getMessage());
             }
         }
-        
-        return redirect()->back()->with('success', 'تم الموافقة على الرحلة وتحديد بكر بنجاح.');
+
+        return redirect()->back()->with('success', 'تم الموافقة على الرحلة وتحديد التكلفة والحافلة بنجاح.');
     }
 
     /**
@@ -82,18 +85,20 @@ class FieldTripController extends Controller
             'rejection_reason' => $validated['rejection_reason'] ?? null,
         ]);
 
-        $schoolAdmin = $fieldTrip->school->users()->whereHas('roles', fn($q) => $q->where('name', 'school_admin'))->first();
-        
+        $schoolAdmin = \App\Models\User::atSchool($fieldTrip->school_id)
+            ->whereHas('roles', fn($q) => $q->where('roles.name', 'school_admin'))
+            ->first();
+
         if ($schoolAdmin) {
             try {
                 $notificationService = app(NotificationService::class);
                 $messageAddon = ($fieldTrip->rejection_reason) ? " السبب: {$fieldTrip->rejection_reason}" : "";
-                
+
                 $notificationService->sendToUser(
                     $schoolAdmin->id,
                     'field_trip_rejected',
                     'تم رفض طلب الرحلة الميدانية ❌',
-                    "تم رفض طلب رحلة: {$fieldTrip->trip_name} من قبل الإدارة." . $messageAddon,
+                    "تم رفض طلب رحلة: {$fieldTrip->name} من قبل الإدارة." . $messageAddon,
                     ['trip_id' => $fieldTrip->id],
                     auth()->user()->name
                 );
@@ -104,6 +109,15 @@ class FieldTripController extends Controller
         }
 
         return redirect()->back()->with('success', 'تم إلغاء الرحلة بنجاح.');
+    }
+    /**
+     * Display the specified field trip (JSON for modal).
+     */
+    public function show(FieldTrip $fieldTrip)
+    {
+        return response()->json([
+            'trip' => $fieldTrip->load(['school', 'students.currentEnrollment.classroom', 'internalTeachers', 'bus.driver', 'bus.assistant'])
+        ]);
     }
 }
 

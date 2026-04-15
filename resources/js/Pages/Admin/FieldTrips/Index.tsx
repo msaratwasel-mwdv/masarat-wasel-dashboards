@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTheme } from '@/Contexts/ThemeContext';
+import useTranslation from '@/hooks/useTranslation';
+import AdminFieldTripDetailsModal from './Partials/AdminFieldTripDetailsModal';
 
 interface School {
     id: number;
@@ -10,26 +12,30 @@ interface School {
 
 interface Bus {
     id: number;
-    name: string;
+    bus_number: string;
+    plate_number: string;
     capacity: number;
     driver?: {
-        name: string;
+        id: number;
+        first_name_ar: string;
+        last_name_ar: string;
     };
 }
 
 interface FieldTrip {
     id: number;
-    trip_name: string;
+    name: string;
     description: string;
-    trip_date: string;
-    trip_time: string;
-    destination: string;
-    duration_days: number;
-    number_of_students: number;
+    date: string;
+    departure_time: string;
+    arrival_time: string | null;
+    destination_address: string;
     status: string;
-    cost: number | null;
+    cost: string | null;
     school: School;
     bus?: Bus;
+    students_count: number;
+    internal_teachers_count: number;
 }
 
 interface Props {
@@ -40,21 +46,31 @@ interface Props {
 
 export default function Index({ auth, fieldTrips, buses }: Props) {
     const { isRTL } = useTheme();
+    const { t } = useTranslation();
+    
+    // Detailed View Logic
+    const [viewTripId, setViewTripId] = useState<number | null>(null);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+
+    // Approval Logic
     const [selectedTrip, setSelectedTrip] = useState<FieldTrip | null>(null);
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
-
     const [cost, setCost] = useState('');
     const [selectedBus, setSelectedBus] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Reject Modal state
+    // Rejection Logic
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
-    const [tripToReject, setTripToReject] = useState<FieldTrip | null>(null);
+
+    const openDetails = (id: number) => {
+        setViewTripId(id);
+        setIsDetailsModalOpen(true);
+    };
 
     const openApproveModal = (trip: FieldTrip) => {
         setSelectedTrip(trip);
-        setCost(trip.cost?.toString() || '');
+        setCost(trip.cost || '');
         setSelectedBus(trip.bus?.id?.toString() || '');
         setIsApproveModalOpen(true);
     };
@@ -77,165 +93,198 @@ export default function Index({ auth, fieldTrips, buses }: Props) {
     };
 
     const openRejectModal = (trip: FieldTrip) => {
-        setTripToReject(trip);
+        setSelectedTrip(trip);
         setRejectionReason('');
         setIsRejectModalOpen(true);
     };
 
     const handleRejectSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!tripToReject) return;
+        if (!selectedTrip) return;
         setIsSubmitting(true);
-        router.post(route('admin.field-trips.reject', tripToReject.id), {
+        router.post(route('admin.field-trips.reject', selectedTrip.id), {
             rejection_reason: rejectionReason,
         }, {
             onSuccess: () => {
                 setIsRejectModalOpen(false);
-                setTripToReject(null);
+                setSelectedTrip(null);
             },
             onFinish: () => setIsSubmitting(false),
         });
     };
 
-    const getStatusBadge = (status: string) => {
-        const styles: Record<string, string> = {
-            planned: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200",
-            approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200",
-            started: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200",
-            in_progress: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border-indigo-200",
-            completed: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200",
-            cancelled: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200",
-            rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200",
-        };
-
-        const labels: Record<string, { ar: string, en: string }> = {
-            planned: { ar: 'مُخطط الطلب', en: 'Pending' },
-            approved: { ar: 'تمت الموافقة', en: 'Approved' },
-            started: { ar: 'بدأت', en: 'Started' },
-            in_progress: { ar: 'جاري التنفيذ', en: 'In Progress' },
-            completed: { ar: 'مكتملة', en: 'Completed' },
-            cancelled: { ar: 'ملغاة', en: 'Cancelled' },
-            rejected: { ar: 'مرفوضة', en: 'Rejected' },
-        };
-
-        const currentStyle = styles[status] || "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
-        const label = labels[status] ? (isRTL ? labels[status].ar : labels[status].en) : status;
-
-        return (
-            <span className={`px-3 py-1.5 text-xs font-black rounded-full border uppercase tracking-widest ${currentStyle}`}>
-                {label}
-            </span>
-        );
+    const getStatusStyles = (status: string) => {
+        switch (status) {
+            case 'pending':
+                return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200";
+            case 'approved':
+                return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200";
+            case 'cancelled':
+            case 'rejected':
+                return "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200";
+            default:
+                return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200";
+        }
     };
 
     return (
         <AuthenticatedLayout
             user={auth.user}
             header={
-                <h2 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight">
-                    {isRTL ? 'إدارة الرحلات الميدانية' : 'Field Trips Management'}
-                </h2>
-            }
-        >
-            <Head title={isRTL ? 'إدارة الرحلات الميدانية' : 'Field Trips Management'} />
-
-            <div className={`mt-6 ${isRTL ? 'rtl font-cairo' : 'ltr'}`}>
-                {/* Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                        <p className="text-sm font-bold text-gray-500 mb-1">{isRTL ? 'إجمالي الطلبات' : 'Total Requests'}</p>
-                        <p className="text-4xl font-black text-brand-dark dark:text-brand-yellow">{fieldTrips.length}</p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                        <p className="text-sm font-bold text-gray-500 mb-1">{isRTL ? 'بانتظار الموافقة' : 'Pending Approval'}</p>
-                        <p className="text-4xl font-black text-blue-600 dark:text-blue-400">{fieldTrips.filter(t => t.status === 'planned').length}</p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                        <p className="text-sm font-bold text-gray-500 mb-1">{isRTL ? 'الرحلات النشطة والمكتملة' : 'Active & Completed'}</p>
-                        <p className="text-4xl font-black text-green-600 dark:text-green-400">{fieldTrips.filter(t => ['approved', 'started', 'in_progress', 'completed'].includes(t.status)).length}</p>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight flex items-center gap-3">
+                            <span className="p-2 bg-brand-yellow/10 rounded-2xl animate-pulse">🚚</span>
+                            {t('Field Trips Logistics')}
+                        </h2>
+                        <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] mt-1 ml-1">
+                            {t('Fleet Management & Deployment Approval')}
+                        </p>
                     </div>
                 </div>
+            }
+        >
+            <Head title={t('Field Trips Management')} />
 
-                {/* Main Table Container */}
-                <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                    <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                        <h3 className="text-xl font-black text-gray-800 dark:text-white">
-                            {isRTL ? 'سجل الرحلات' : 'Trips Registry'}
+            <div className={`mt-8 ${isRTL ? 'rtl font-cairo' : 'ltr'}`}>
+                
+                {/* Statistics - Premium Design */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                    {[
+                        { label: t('Total Requests'), val: fieldTrips.length, icon: '📊', color: 'bg-white' },
+                        { label: t('Pending Review'), val: fieldTrips.filter(t => t.status === 'pending').length, icon: '⏳', color: 'bg-amber-50' },
+                        { label: t('Approved Fleet'), val: fieldTrips.filter(t => t.status === 'approved').length, icon: '✅', color: 'bg-emerald-50' },
+                        { label: t('Active/Past'), val: fieldTrips.filter(t => !['pending', 'approved'].includes(t.status)).length, icon: '🏁', color: 'bg-blue-50' },
+                    ].map((stat, i) => (
+                        <div key={i} className={`${stat.color} dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-gray-700 transition-all hover:shadow-xl hover:-translate-y-1 group`}>
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-3xl group-hover:scale-125 transition-transform duration-500">{stat.icon}</span>
+                                <div className="h-2 w-12 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                     <div className="h-full bg-brand-navy rounded-full w-2/3"></div>
+                                </div>
+                            </div>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
+                            <p className="text-4xl font-black text-gray-800 dark:text-white">{stat.val}</p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Table Section */}
+                <div className="bg-white dark:bg-gray-800 rounded-[3rem] shadow-2xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div className="p-8 border-b border-gray-50 dark:border-gray-700 flex justify-between items-center bg-gray-50/30 dark:bg-gray-900/30">
+                        <h3 className="text-xl font-black text-gray-800 dark:text-white flex items-center gap-3">
+                            <span className="w-2 h-8 bg-brand-yellow rounded-full"></span>
+                            {t('Logistics Pipeline')}
                         </h3>
+                        <div className="flex gap-2">
+                             <div className="px-4 py-2 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-black text-gray-400 uppercase tracking-widest shadow-inner">
+                                {t('Operational View')}
+                             </div>
+                        </div>
                     </div>
 
                     <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full text-start border-collapse">
                             <thead>
-                                <tr className="bg-gray-50 dark:bg-gray-900 border-y border-gray-100 dark:border-gray-700">
-                                    <th className={`px-6 py-5 text-xs font-black text-gray-500 uppercase tracking-widest ${isRTL ? 'text-right' : 'text-left'}`}>{isRTL ? 'المدرسة / الرحلة' : 'School / Trip'}</th>
-                                    <th className={`px-6 py-5 text-xs font-black text-gray-500 uppercase tracking-widest ${isRTL ? 'text-right' : 'text-left'}`}>{isRTL ? 'الموعد' : 'Schedule'}</th>
-                                    <th className="px-6 py-5 text-xs font-black text-gray-500 uppercase tracking-widest text-center">{isRTL ? 'الركاب والتكلفة' : 'Pax & Cost'}</th>
-                                    <th className="px-6 py-5 text-xs font-black text-gray-500 uppercase tracking-widest text-center">{isRTL ? 'الحالة' : 'Status'}</th>
-                                    <th className="px-6 py-5 text-xs font-black text-gray-500 uppercase tracking-widest text-center">{isRTL ? 'الإجراءات' : 'Actions'}</th>
+                                <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
+                                    <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-start">{t('Identity')}</th>
+                                    <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-start">{t('Schedule')}</th>
+                                    <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('Pax & Faculty')}</th>
+                                    <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('Assets & Quote')}</th>
+                                    <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('Status')}</th>
+                                    <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('Ops')}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                                 {fieldTrips.length > 0 ? fieldTrips.map((trip) => (
-                                    <tr key={trip.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                        <td className="px-6 py-5">
-                                            <div className="font-bold text-brand-dark dark:text-brand-yellow mb-1">{trip.school?.name}</div>
-                                            <div className="font-black text-gray-800 dark:text-white text-lg">{trip.trip_name}</div>
-                                            <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                                                <span className="text-cyan-500">📍</span> {trip.destination}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-5 align-top">
-                                            <div className="flex flex-col gap-1.5">
-                                                <div className="text-sm font-bold text-gray-800 dark:text-gray-200">
-                                                    📅 {trip.trip_date}
+                                    <tr key={trip.id} className="group hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition-all">
+                                        <td className="px-8 py-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-xl shadow-inner group-hover:bg-brand-navy group-hover:text-white transition-all transform group-hover:rotate-6">
+                                                     🏢
                                                 </div>
-                                                <div className="text-xs text-gray-500 font-bold">
-                                                    🕐 {trip.trip_time}
-                                                </div>
-                                                <div className="text-xs text-gray-500 font-bold">
-                                                    ⏳ {trip.duration_days || 1} {isRTL ? 'أيام' : 'Days'}
+                                                <div>
+                                                    <div className="font-black text-gray-800 dark:text-white text-base leading-tight">
+                                                        {trip.name}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-[10px] font-bold text-brand-navy dark:text-brand-yellow">{trip.school?.name}</span>
+                                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                                        <span className="text-[10px] text-gray-400 font-bold truncate max-w-[150px]">📍 {trip.destination_address}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 text-center align-top">
-                                            <div className="inline-flex flex-col items-center">
-                                                <span className="text-lg font-black text-gray-800 dark:text-white">{trip.number_of_students}</span>
-                                                <span className="text-[10px] text-gray-500 uppercase tracking-widest">{isRTL ? 'طالب' : 'Students'}</span>
+                                        <td className="px-8 py-6">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="text-sm font-black text-gray-800 dark:text-gray-200">
+                                                    📅 {(trip.date as any).split('T')[0]}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                    <span className="p-1 bg-gray-100 dark:bg-gray-900 rounded-md">🕐</span>
+                                                    {trip.departure_time} {trip.arrival_time ? `→ ${trip.arrival_time}` : ''}
+                                                </div>
                                             </div>
-                                            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-sm font-bold text-green-600 dark:text-green-400">
-                                                {trip.cost ? `${trip.cost} ${isRTL ? 'ريال' : 'SAR'}` : (isRTL ? '- قيد التحديد -' : '- TBD -')}
+                                        </td>
+                                        <td className="px-8 py-6 text-center">
+                                            <div className="inline-flex items-center gap-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-lg font-black text-gray-800 dark:text-white leading-none">{trip.students_count}</span>
+                                                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('Students')}</span>
+                                                </div>
+                                                <div className="w-px h-6 bg-gray-200 dark:bg-gray-700"></div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-lg font-black text-purple-600 dark:text-purple-400 leading-none">{trip.internal_teachers_count}</span>
+                                                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('Staff')}</span>
+                                                </div>
                                             </div>
-                                            {trip.bus && (
-                                                <div className="mt-1 text-xs text-gray-500 font-bold">
-                                                    🚌 {trip.bus.name}
+                                        </td>
+                                        <td className="px-8 py-6 text-center">
+                                            {trip.bus ? (
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <div className="px-3 py-1 bg-brand-navy text-white rounded-full text-[10px] font-black shadow-lg">
+                                                        🚌 {trip.bus.bus_number}
+                                                    </div>
+                                                    <div className="text-[11px] font-black text-emerald-600">
+                                                        {trip.cost} ر.س
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest animate-pulse">
+                                                    --- {t('Pending Logistics')} ---
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="px-6 py-5 text-center align-top">
-                                            {getStatusBadge(trip.status)}
+                                        <td className="px-8 py-6 text-center">
+                                            <span className={`px-4 py-1.5 text-[9px] font-black rounded-xl border uppercase tracking-widest ${getStatusStyles(trip.status)}`}>
+                                                {t(trip.status.charAt(0).toUpperCase() + trip.status.slice(1))}
+                                            </span>
                                         </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex flex-col items-center justify-center gap-2">
-                                                {trip.status === 'planned' && (
-                                                    <>
+                                        <td className="px-8 py-6">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => openDetails(trip.id)}
+                                                    className="p-3 bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 rounded-2xl hover:bg-brand-navy hover:text-white transition-all shadow-sm group-hover:shadow-lg"
+                                                    title={t('Inspect Request')}
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                </button>
+
+                                                {trip.status === 'pending' && (
+                                                    <div className="flex gap-2">
                                                         <button
                                                             onClick={() => openApproveModal(trip)}
-                                                            className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+                                                            className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black rounded-2xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
                                                         >
-                                                            {isRTL ? 'تحديد وتأكيد' : 'Approve & Assign'}
+                                                            {t('Quote & Assign')}
                                                         </button>
                                                         <button
                                                             onClick={() => openRejectModal(trip)}
-                                                            className="w-full px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-xl transition-colors"
+                                                            className="p-3 bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                                                            title={t('Decline Request')}
                                                         >
-                                                            {isRTL ? 'رفض الطلب' : 'Reject'}
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                                         </button>
-                                                    </>
-                                                )}
-                                                {trip.status !== 'planned' && (
-                                                    <div className="text-xs font-bold text-gray-400 dark:text-gray-600">
-                                                        {isRTL ? 'تم الرد' : 'Action Taken'}
                                                     </div>
                                                 )}
                                             </div>
@@ -243,8 +292,11 @@ export default function Index({ auth, fieldTrips, buses }: Props) {
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500 font-bold">
-                                            {isRTL ? 'لا توجد طلبات رحلات حالياً.' : 'No field trips requested yet.'}
+                                        <td colSpan={6} className="px-8 py-20 text-center">
+                                            <div className="flex flex-col items-center">
+                                                <div className="w-20 h-20 bg-gray-50 dark:bg-gray-900 rounded-[2rem] flex items-center justify-center text-4xl mb-4 grayscale opacity-50">📫</div>
+                                                <p className="text-sm font-black text-gray-300 dark:text-gray-600 uppercase tracking-widest">{t('Logistics pipeline is empty')}</p>
+                                            </div>
                                         </td>
                                     </tr>
                                 )}
@@ -254,77 +306,94 @@ export default function Index({ auth, fieldTrips, buses }: Props) {
                 </div>
             </div>
 
-            {/* Approval Modal */}
+            {/* Detailed Inspection Modal */}
+            <AdminFieldTripDetailsModal
+                show={isDetailsModalOpen}
+                onClose={() => setIsDetailsModalOpen(false)}
+                tripId={viewTripId}
+            />
+
+            {/* Premium Approval Modal */}
             {isApproveModalOpen && selectedTrip && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative" dir={isRTL ? 'rtl' : 'ltr'}>
-                        <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-                            <h3 className="text-xl font-black text-gray-800 dark:text-white">
-                                {isRTL ? 'الموافقة على الرحلة' : 'Approve Field Trip'}
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur-xl p-4 animate-fadeIn">
+                    <div className="bg-white dark:bg-gray-800 rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden transform animate-slideUp border border-gray-100 dark:border-gray-700" dir={isRTL ? 'rtl' : 'ltr'}>
+                        <div className="p-10 bg-gradient-to-br from-emerald-500 to-emerald-700 text-white relative">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+                            <h3 className="text-3xl font-black tracking-tight leading-none mb-2">
+                                {t('Finalize Logistics')}
                             </h3>
-                            <p className="text-sm text-gray-500 mt-1 font-bold">
-                                {selectedTrip.trip_name} - {selectedTrip.school?.name}
+                            <p className="text-emerald-100/60 text-xs font-bold uppercase tracking-widest">
+                                {selectedTrip.name} • {selectedTrip.school?.name}
                             </p>
                         </div>
 
-                        <form onSubmit={handleApprove} className="p-6">
-                            <div className="space-y-5">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                                        {isRTL ? 'التكلفة المقدرة (ريال)' : 'Estimated Cost (SAR)'}
+                        <form onSubmit={handleApprove} className="p-10 space-y-8">
+                            <div className="space-y-6">
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1 transition-colors group-focus-within:text-emerald-500">
+                                        {t('Service Quote (SAR)')}
                                     </label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        required
-                                        value={cost}
-                                        onChange={(e) => setCost(e.target.value)}
-                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-yellow focus:border-transparent text-gray-800 dark:text-white font-bold"
-                                        placeholder="0.00"
-                                    />
+                                    <div className="relative">
+                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 font-black">SAR</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            required
+                                            value={cost}
+                                            onChange={(e) => setCost(e.target.value)}
+                                            className="w-full bg-gray-50/50 dark:bg-gray-900/50 border-2 border-gray-100 dark:border-gray-800 rounded-[1.5rem] pl-16 pr-6 py-5 focus:border-emerald-500 focus:ring-0 text-lg font-black transition-all outline-none"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                                        {isRTL ? 'تعيين حافلة' : 'Assign Bus'}
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1 transition-colors group-focus-within:text-emerald-500">
+                                        {t('Asset Deployment')}
                                     </label>
                                     <select
                                         required
                                         value={selectedBus}
                                         onChange={(e) => setSelectedBus(e.target.value)}
-                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-yellow focus:border-transparent text-gray-800 dark:text-white font-bold"
+                                        className="w-full bg-gray-50/50 dark:bg-gray-900/50 border-2 border-gray-100 dark:border-gray-800 rounded-[1.5rem] px-6 py-5 focus:border-emerald-500 focus:ring-0 text-sm font-black transition-all outline-none appearance-none cursor-pointer"
                                     >
-                                        <option value="" disabled>{isRTL ? '--- اختر حافلة ---' : '--- Select Bus ---'}</option>
+                                        <option value="" disabled>{t('--- Select Heavy Asset ---')}</option>
                                         {buses.map(bus => (
                                             <option key={bus.id} value={bus.id}>
-                                                {bus.name} ({bus.capacity} {isRTL ? 'مقعد' : 'seats'}) {bus.driver ? `- ${bus.driver.name}` : ''}
+                                                {bus.bus_number} 📡 {bus.plate_number} ({bus.capacity} {t('seats')})
                                             </option>
                                         ))}
                                     </select>
-                                    <p className="mt-2 text-xs text-gray-500">
-                                        {isRTL ? `المطلوب: ${selectedTrip.number_of_students} مقعد لطلاب الرحلة` : `Required: ${selectedTrip.number_of_students} seats for this trip`}
-                                    </p>
+                                    <div className="mt-3 flex items-center gap-2 px-1">
+                                         <span className="p-1 bg-gray-100 dark:bg-gray-700 rounded text-[8px]">⚠️</span>
+                                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                                            {t('Operational limit:')} {selectedTrip.students_count} {t('requested seats')}
+                                         </p>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="mt-8 flex gap-3">
+                            <div className="flex gap-4 pt-4">
                                 <button
                                     type="button"
                                     onClick={() => setIsApproveModalOpen(false)}
-                                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-bold rounded-xl transition-colors"
+                                    className="flex-1 py-5 bg-gray-50 dark:bg-gray-900 text-gray-400 font-black rounded-[1.5rem] hover:bg-gray-100 transition-all uppercase tracking-widest text-[10px]"
                                 >
-                                    {isRTL ? 'إلغاء' : 'Cancel'}
+                                    {t('Abort')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="flex-1 px-4 py-3 bg-brand-yellow hover:bg-yellow-500 text-brand-dark font-black rounded-xl transition-colors flex justify-center items-center gap-2 shadow-lg shadow-brand-yellow/30 disabled:opacity-50"
+                                    className="flex-[2] py-5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-[1.5rem] transition-all flex justify-center items-center gap-3 shadow-2xl shadow-emerald-500/30 disabled:opacity-50 uppercase tracking-widest text-[10px]"
                                 >
                                     {isSubmitting ? (
-                                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                     ) : (
-                                        isRTL ? 'تأكيد الموافقة' : 'Confirm Approval'
+                                        <>
+                                            <span>{t('Confirm Deployment')}</span>
+                                            <span className="text-lg leading-none">🚀</span>
+                                        </>
                                     )}
                                 </button>
                             </div>
@@ -333,53 +402,50 @@ export default function Index({ auth, fieldTrips, buses }: Props) {
                 </div>
             )}
 
-            {/* Reject Modal */}
-            {isRejectModalOpen && tripToReject && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative" dir={isRTL ? 'rtl' : 'ltr'}>
-                        <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-                            <h3 className="text-xl font-black text-gray-800 dark:text-white">
-                                {isRTL ? 'رفض الرحلة الميدانية' : 'Reject Field Trip'}
-                            </h3>
-                            <p className="text-sm text-gray-500 mt-1 font-bold">
-                                {tripToReject.trip_name} - {tripToReject.school?.name}
-                            </p>
+            {/* Premium Rejection Modal */}
+            {isRejectModalOpen && selectedTrip && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur-xl p-4 animate-fadeIn">
+                    <div className="bg-white dark:bg-gray-800 rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden transform animate-slideUp border border-gray-100 dark:border-gray-700" dir={isRTL ? 'rtl' : 'ltr'}>
+                        <div className="p-8 border-b border-gray-50 dark:border-gray-700 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-xl font-black text-gray-800 dark:text-white leading-none mb-1">
+                                    {t('Decline Requisition')}
+                                </h3>
+                                <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest italic">
+                                    {selectedTrip.name}
+                                </p>
+                            </div>
+                            <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center text-lg">🚫</div>
                         </div>
 
-                        <form onSubmit={handleRejectSubmit} className="p-6">
-                            <div className="space-y-5">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                                        {isRTL ? 'سبب الرفض (اختياري)' : 'Rejection Reason (Optional)'}
-                                    </label>
-                                    <textarea
-                                        rows={3}
-                                        value={rejectionReason}
-                                        onChange={(e) => setRejectionReason(e.target.value)}
-                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-800 dark:text-white font-bold resize-none"
-                                        placeholder={isRTL ? 'اكتب سبب الرفض هنا...' : 'Type rejection reason here...'}
-                                    />
-                                </div>
+                        <form onSubmit={handleRejectSubmit} className="p-8">
+                            <div className="mb-8">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">
+                                    {t('Official Reason (Optional)')}
+                                </label>
+                                <textarea
+                                    rows={4}
+                                    value={rejectionReason}
+                                    onChange={(e) => setRejectionReason(e.target.value)}
+                                    className="w-full bg-gray-50/50 dark:bg-gray-900/50 border-2 border-gray-100 dark:border-gray-800 rounded-2xl px-5 py-4 focus:border-rose-500 focus:ring-0 text-sm font-bold transition-all resize-none outline-none"
+                                    placeholder={t('Detail why this request cannot be fulfilled...')}
+                                />
                             </div>
 
-                            <div className="mt-8 flex gap-3">
+                            <div className="flex gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setIsRejectModalOpen(false)}
-                                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-bold rounded-xl transition-colors"
+                                    className="flex-1 py-4 bg-gray-50 dark:bg-gray-900 text-gray-400 font-black rounded-2xl text-[10px] uppercase tracking-widest"
                                 >
-                                    {isRTL ? 'إلغاء' : 'Cancel'}
+                                    {t('Back')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl transition-colors flex justify-center items-center gap-2 shadow-lg shadow-red-600/30 disabled:opacity-50"
+                                    className="flex-[2] py-4 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-rose-600/20 disabled:opacity-50 text-[10px] uppercase tracking-widest"
                                 >
-                                    {isSubmitting ? (
-                                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                    ) : (
-                                        isRTL ? 'تأكيد الرفض' : 'Confirm Rejection'
-                                    )}
+                                    {isSubmitting ? t('Processing...') : t('Final Rejection')}
                                 </button>
                             </div>
                         </form>

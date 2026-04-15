@@ -42,10 +42,15 @@ class School extends Model
      * @deprecated school_id does not exist on users table.
      * Use schoolAdmins() or hasManyThrough(User, SchoolAdmin) instead.
      */
-    // public function users(): HasMany
-    // {
-    //     return $this->hasMany(User::class);
-    // }
+    /**
+     * Get all users directly associated with this school.
+     * Since school_id is not on the users table, we look through our extensions.
+     */
+    public function users(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        // This is a custom relationship to simulate a direct link for convenience
+        return $this->belongsToMany(User::class, 'school_admins', 'school_id', 'user_id');
+    }
 
     public function classrooms(): HasMany
     {

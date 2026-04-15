@@ -23,8 +23,8 @@ class TeacherController extends Controller
         $user = Auth::user();
         $search = $request->input('search');
 
-        $teachers = User::whereHas('teacher', fn($q) => $q->where('school_id', $user->getSchoolId()))
-            ->whereHas('roles', fn($q) => $q->where('name', 'teacher'))
+        $teachers = User::whereHas('teacher', fn($q) => $q->where('teachers.school_id', $user->getSchoolId()))
+            ->whereHas('roles', fn($q) => $q->where('roles.name', 'teacher'))
             ->with(['teacher.classroom']) // Eager load classroom
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {

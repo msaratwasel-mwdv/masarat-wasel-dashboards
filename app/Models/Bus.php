@@ -26,20 +26,20 @@ class Bus extends Model
         'field_supervisor_id',
         'assistant_id',
         'status',
-        'qr_code_path',
+        'front_qr',
+        'back_qr',
         'color',
-        'current_latitude',
-        'current_longitude',
+        'latitude',
+        'longitude',
         'last_location_update',
-        'trip_status',
         'route_id',
     ];
 
     protected $casts = [
         'capacity' => 'integer',
         'year' => 'integer',
-        'current_latitude' => 'decimal:7',
-        'current_longitude' => 'decimal:7',
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
         'last_location_update' => 'datetime',
     ];
 
@@ -56,7 +56,7 @@ class Bus extends Model
      */
     public function driver(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
-        return $this->hasOne(Driver::class, 'bus_id', 'id');
+        return $this->hasOne(Driver::class, 'bus_id');
     }
 
     /**
@@ -115,6 +115,37 @@ class Bus extends Model
     public function latestTrip(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(Trip::class)->latestOfMany();
+    }
+
+    /**
+     * Get the active trip (in progress) for the bus.
+     */
+    public function activeTrip(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Trip::class)->where('status', 'in_progress')->latestOfMany();
+    }
+
+    /**
+     * Derive trip_status from active relationship for normalization.
+     */
+    public function getTripStatusAttribute(): string
+    {
+        $trip = $this->relationLoaded('activeTrip') ? $this->activeTrip : $this->activeTrip()->first();
+
+        if (!$trip) {
+            $lastTrip = $this->relationLoaded('latestTrip') ? $this->latestTrip : $this->latestTrip()->first();
+            
+            if ($lastTrip && $lastTrip->status === 'finished' && $lastTrip->type === 'forth' && $lastTrip->trip_date->isToday()) {
+                return 'at_school';
+            }
+            return 'idle';
+        }
+
+        return match ($trip->type) {
+            'forth' => 'to_school',
+            'back' => 'to_home',
+            default => 'in_progress',
+        };
     }
     public function documents()
     {
@@ -216,6 +247,9 @@ class Bus extends Model
         return $this->forthStudents();
     }
 
+    /**
+     * Get the display name for the bus.
+     */
     /**
      * Get the display name for the bus.
      */
