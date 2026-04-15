@@ -3,25 +3,23 @@ import { Head, router } from '@inertiajs/react';
 import SchoolAuthenticatedLayout from '@/Layouts/SchoolAuthenticatedLayout';
 import useTranslation from '@/hooks/useTranslation';
 import CreateFieldTripModal from './Partials/CreateFieldTripModal';
-import { mockFieldTrips, MockFieldTrip } from '@/Data/MockBusData';
+import ViewFieldTripModal from './Partials/ViewFieldTripModal';
 
 interface FieldTripsProps {
     auth: any;
-    fieldTrips: MockFieldTrip[];
+    fieldTrips: any[];
     buses: any[];
-    assistants?: any[];
-    drivers?: any[];
-    teachers?: any[];
+    classrooms: any[];
+    teachers: any[];
 }
 
-export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: FieldTripsProps) {
+export default function Index({ auth, fieldTrips = [], classrooms = [], teachers = [] }: FieldTripsProps) {
     const { t, isRtl } = useTranslation();
 
-    // Use server data if provided, otherwise fallback to mock data for demonstration
-    const fieldTrips = serverTrips ? serverTrips : mockFieldTrips;
-
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [statusFilter, setStatusFilter] = useState<'all' | 'planned' | 'approved' | 'in_progress' | 'completed'>('all');
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
+    const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'in_progress' | 'completed'>('all');
     const [searchQuery, setSearchQuery] = useState('');
 
     const filteredTrips = fieldTrips.filter(trip => {
@@ -31,18 +29,15 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
         return matchesStatus && matchesSearch;
     });
 
-    const handleApprove = (id: number) => {
-        if (confirm(t('Are you sure you want to approve this trip?'))) {
-            router.put(route('school.field-trips.update', id), {
-                approved_by_school: true,
-                status: 'approved'
-            });
-        }
+    const handleView = (id: number) => {
+        setSelectedTripId(id);
+        setShowViewModal(true);
     };
+
 
     const getStatusBadge = (status: string) => {
         const styles = {
-            planned: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800",
+            pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800",
             approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800",
             in_progress: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800",
             completed: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800",
@@ -53,7 +48,7 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
         const label = t(status === 'cancelled' ? 'Rejected/Cancelled' : status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' '));
 
         return (
-            <span className={`px-4 py-1.5 text-xs font-black rounded-full border shadow-sm uppercase tracking-widest ${currentStyle}`}>
+            <span className={`px-4 py-1.5 text-[9px] font-black rounded-full border shadow-sm uppercase tracking-widest ${currentStyle}`}>
                 {label}
             </span>
         );
@@ -71,11 +66,11 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
             <Head title={t('Field Trips')} />
 
             <div className={`space-y-8 pb-10 ${isRtl ? 'rtl' : 'ltr'}`}>
-                {/* Stats Cards - Sleek Design */}
+                {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     {[
                         { label: 'Total Trips', value: fieldTrips.length, icon: '📊', color: 'bg-cyan-600' },
-                        { label: 'Upcoming', value: fieldTrips.filter(t => t.status === 'planned' || t.status === 'approved').length, icon: '📅', color: 'bg-emerald-600' },
+                        { label: 'Pending Requests', value: fieldTrips.filter(t => t.status === 'pending').length, icon: '⏳', color: 'bg-yellow-500' },
                         { label: 'Active Now', value: fieldTrips.filter(t => t.status === 'in_progress').length, icon: '🚀', color: 'bg-orange-500' },
                         { label: 'Finalized', value: fieldTrips.filter(t => t.status === 'completed').length, icon: '✅', color: 'bg-purple-600' },
                     ].map((stat, idx) => (
@@ -132,7 +127,7 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
                                         className="w-full lg:w-48 appearance-none pl-12 pr-10 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-transparent rounded-full text-xs font-black uppercase tracking-widest text-[#0e7490] dark:text-cyan-400 focus:bg-white dark:focus:bg-gray-900 focus:border-[#0e7490] transition-all cursor-pointer shadow-inner shadow-cyan-500/5 hover:bg-gray-100 transition-colors"
                                     >
                                         <option value="all">{t('Live All Status')}</option>
-                                        <option value="planned">{t('Planned Only')}</option>
+                                        <option value="pending">{t('Pending Verification')}</option>
                                         <option value="approved">{t('Admin Approved')}</option>
                                         <option value="in_progress">{t('Trips In Progress')}</option>
                                         <option value="completed">{t('Past Trips')}</option>
@@ -162,6 +157,7 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-start">{t('Identity')}</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-start">{t('Dep. Schedule')}</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-start">{t('Target Hub')}</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Participants')}</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Status')}</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Operations')}</th>
                                     </tr>
@@ -182,9 +178,6 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
                                                         <span className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
                                                             <span className="opacity-40">🕐</span> {trip.departure_time}
                                                         </span>
-                                                        <span className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
-                                                            <span className="opacity-40">⏳</span> {trip.duration_days || 1} {t('Days')}
-                                                        </span>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6">
@@ -193,16 +186,17 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-center">
-                                                    <div className="flex flex-wrap gap-1 justify-center max-w-[150px] mx-auto">
-                                                        {(trip.teachers && trip.teachers.length > 0) ? (
-                                                            trip.teachers.map((tea, idx) => (
-                                                                <span key={idx} className="text-[8px] font-bold text-[#0e7490] bg-cyan-50 dark:bg-cyan-950/20 px-1.5 py-0.5 rounded border border-cyan-100 dark:border-cyan-900/10 whitespace-nowrap">
-                                                                    {tea.name}
-                                                                </span>
-                                                            ))
-                                                        ) : (
-                                                            <span className="text-[8px] font-bold text-gray-300">---</span>
-                                                        )}
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-black text-[#0e7490] dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/30 px-2 py-0.5 rounded-md min-w-[50px] text-center">
+                                                                {trip.students_count || 0} {t('St')}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/10 px-2 py-0.5 rounded-md min-w-[50px] text-center">
+                                                                {trip.internal_teachers_count || 0} {t('Tch')}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-center">
@@ -213,27 +207,17 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
                                                                 <span className="font-bold">{t('Reason')}:</span> {trip.rejection_reason}
                                                             </div>
                                                         )}
-                                                        {trip.approved_by_school && trip.status !== 'cancelled' && (
-                                                            <div className="flex items-center justify-center gap-1.5 text-[8px] text-green-500 font-black uppercase tracking-widest bg-green-50 dark:bg-green-950/20 px-2 py-1 rounded-md">
-                                                                <span className="scale-75">✓</span> {t('Verified By School')}
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-center">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        {!trip.approved_by_school && trip.status === 'planned' ? (
-                                                            <button
-                                                                onClick={() => handleApprove(trip.id)}
-                                                                className="px-6 py-2.5 bg-cyan-600/10 text-cyan-600 dark:text-cyan-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-cyan-600 hover:text-white transition-all shadow-sm border border-cyan-600/20"
-                                                            >
-                                                                {t('Verify Now')}
-                                                            </button>
-                                                        ) : (
-                                                            <button className="p-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-400 hover:text-[#0e7490] dark:hover:text-cyan-400 hover:shadow-md rounded-2xl transition-all">
-                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                                            </button>
-                                                        )}
+                                                        <button 
+                                                            onClick={() => handleView(trip.id)}
+                                                            className="p-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-400 hover:text-[#0e7490] dark:hover:text-cyan-400 hover:shadow-md rounded-2xl transition-all"
+                                                        >
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7" /></svg>
+                                                        </button>
+                                                        {/* Verification button removed - Admin only task */}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -254,11 +238,19 @@ export default function Index({ auth, fieldTrips: serverTrips, teachers = [] }: 
                     </div>
                 </div>
 
-                {/* Create Modal - High Professional Standalone */}
+                {/* Create Modal */}
                 <CreateFieldTripModal
                     show={showCreateModal}
                     onClose={() => setShowCreateModal(false)}
                     teachers={teachers}
+                    classrooms={classrooms}
+                />
+
+                {/* View Modal */}
+                <ViewFieldTripModal
+                    show={showViewModal}
+                    onClose={() => setShowViewModal(false)}
+                    tripId={selectedTripId}
                 />
             </div>
         </SchoolAuthenticatedLayout>

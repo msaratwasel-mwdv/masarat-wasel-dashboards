@@ -52,15 +52,16 @@ class SearchController extends Controller
 
         // 2. البحث في الأولياء (الآن من جدول users بشرط role = parent)
         $guardians = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->where('name', 'parent'))
+            ->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))
             ->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
+                $q->where('first_name_ar', 'like', "%{$query}%")
+                    ->orWhere('last_name_ar', 'like', "%{$query}%")
                     ->orWhere('national_id', 'like', "%{$query}%")
                     ->orWhere('phone', 'like', "%{$query}%")
                     ->orWhere('email', 'like', "%{$query}%");
             })
             ->limit(5)
-            ->get(['id', 'name', 'national_id', 'phone', 'email']);
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'national_id', 'phone', 'email']);
 
         foreach ($guardians as $guardian) {
             $results[] = [
@@ -71,14 +72,15 @@ class SearchController extends Controller
 
         // 3. البحث في المساعدين
         $assistants = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->whereIn('name', ['assistant', 'teacher', 'school_admin']))
+            ->whereHas('roles', fn($q) => $q->whereIn('roles.name', ['assistant', 'teacher', 'school_admin']))
             ->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
+                $q->where('first_name_ar', 'like', "%{$query}%")
+                    ->orWhere('last_name_ar', 'like', "%{$query}%")
                     ->orWhere('email', 'like', "%{$query}%")
                     ->orWhere('phone', 'like', "%{$query}%");
             })
             ->limit(5)
-            ->get(['id', 'name', 'email', 'phone', 'role']);
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'email', 'phone']);
 
         foreach ($assistants as $assistant) {
             $results[] = [

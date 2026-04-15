@@ -22,7 +22,7 @@ class FieldTrip extends Model
         'destination_address',
         'destination_latitude',
         'destination_longitude',
-        'teacher_names',
+        'external_members',
         'cost',
         'status',
         'rejection_reason',
@@ -38,10 +38,11 @@ class FieldTrip extends Model
 
     protected $casts = [
         'date' => 'date',
-        'teacher_names' => 'array',
+        'external_members' => 'array',
         'cost' => 'decimal:2',
         'destination_latitude' => 'decimal:8',
         'destination_longitude' => 'decimal:8',
+        'arrival_time' => 'datetime', // Optional: if we want to treat it as carbon
     ];
 
     /**
@@ -53,11 +54,19 @@ class FieldTrip extends Model
     }
 
     /**
-     * Get the participants for this trip.
+     * Get the students participating in this trip.
      */
-    public function participants(): HasMany
+    public function students()
     {
-        return $this->hasMany(FieldTripParticipant::class);
+        return $this->belongsToMany(Student::class, 'field_trip_students');
+    }
+
+    /**
+     * Get the internal teachers participating in this trip.
+     */
+    public function internalTeachers()
+    {
+        return $this->belongsToMany(User::class, 'field_trip_teachers');
     }
 
     /**

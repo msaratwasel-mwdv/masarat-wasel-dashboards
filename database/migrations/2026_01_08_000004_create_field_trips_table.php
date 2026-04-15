@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('destination_address')->nullable();
             $table->decimal('destination_latitude', 10, 7)->nullable();
             $table->decimal('destination_longitude', 10, 7)->nullable();
-            $table->jsonb('teacher_names')->nullable();
+            $table->jsonb('external_members')->nullable();
             $table->decimal('cost', 10, 2)->unsigned()->nullable();
             $table->enum('status', ['pending', 'approved', 'started', 'in_progress', 'completed', 'cancelled'])->default('pending');
             $table->text('rejection_reason')->nullable();

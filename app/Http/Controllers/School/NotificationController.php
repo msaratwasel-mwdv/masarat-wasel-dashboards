@@ -52,8 +52,8 @@ class NotificationController extends Controller
 
         // Parents — الآن من جدول users مباشرة
         $parents = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->where('name', 'parent'))
-            ->get(['id', 'name', 'email'])
+            ->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))
+            ->get(['id', 'first_name_ar', 'second_name_ar', 'third_name_ar', 'last_name_ar', 'email'])
             ->map(function ($user) {
                 return [
                     'id' => $user->id,
@@ -84,7 +84,7 @@ class NotificationController extends Controller
         $classrooms = Classroom::where('school_id', $schoolId)->get();
         $buses = Bus::where('school_id', $schoolId)->get();
         // تم إضافة guardians هنا لأن الواجهة Create.tsx تتوقعها في الـ Props
-        $guardians = User::atSchool($schoolId)->whereHas('roles', fn($q) => $q->where('name', 'parent'))->get();
+        $guardians = User::atSchool($schoolId)->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))->get();
 
         return Inertia::render('School/Notifications/Create', [
             'templates' => $templates,
@@ -231,14 +231,14 @@ class NotificationController extends Controller
     {
         switch ($recipientType) {
             case 'all_parents':
-                return User::atSchool($schoolId)->whereHas('roles', fn($q) => $q->where('name', 'parent'))->get();
+                return User::atSchool($schoolId)->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))->get();
 
             case 'by_classroom': // تم تحديث المسمى ليطابق Create.tsx
             case 'class_students':
                 $classroomIds = $filter['classroom_ids'] ?? [];
                 // أولياء الأمور الذين لديهم طلاب في هذه الفصول
                 return User::atSchool($schoolId)
-                    ->whereHas('roles', fn($q) => $q->where('name', 'parent'))
+                    ->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))
                     ->whereHas('students', function ($q) use ($classroomIds) {
                         $q->whereHas('currentEnrollment', function ($eq) use ($classroomIds) {
                             $eq->whereIn('classroom_id', $classroomIds);
@@ -249,7 +249,7 @@ class NotificationController extends Controller
             case 'bus_students':
                 $busIds = $filter['bus_ids'] ?? [];
                 return User::atSchool($schoolId)
-                    ->whereHas('roles', fn($q) => $q->where('name', 'parent'))
+                    ->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))
                     ->whereHas('students', function ($q) use ($busIds) {
                         $q->whereIn('forth_bus_id', $busIds)
                           ->orWhereIn('back_bus_id', $busIds);
@@ -258,7 +258,7 @@ class NotificationController extends Controller
             case 'specific_parent': // تم تحديث المسمى ليطابق Create.tsx
             case 'specific_guardian':
                 $guardianId = $filter['guardian_id'] ?? null;
-                return User::where('id', $guardianId)->whereHas('roles', fn($q) => $q->where('name', 'parent'))->get();
+                return User::where('id', $guardianId)->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))->get();
 
             default:
                 return collect();
