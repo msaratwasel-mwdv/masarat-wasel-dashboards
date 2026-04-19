@@ -52,7 +52,7 @@ class SearchController extends Controller
 
         // 2. البحث في الأولياء (الآن من جدول users بشرط role = parent)
         $guardians = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))
+            ->withRole('parent')
             ->where(function ($q) use ($query) {
                 $q->where('first_name_ar', 'like', "%{$query}%")
                     ->orWhere('last_name_ar', 'like', "%{$query}%")

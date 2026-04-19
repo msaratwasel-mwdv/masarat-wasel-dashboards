@@ -34,7 +34,7 @@ class StudentStatusUpdated implements ShouldBroadcastNow
     ) {
         $this->studentId = $studentId ?? ($student instanceof \App\Models\Student ? $student->id : (is_numeric($student) ? (int)$student : 0));
         $this->studentName = $studentName ?? ($student instanceof \App\Models\Student ? $student->full_name : 'جميع الطلاب');
-        $this->guardianId = $guardianId ?? ($student instanceof \App\Models\Student ? $student->guardian_id : 0);
+        $this->guardianId = $guardianId ?? ($student instanceof \App\Models\Student ? ($student->guardian->first()?->id ?? 0) : 0);
         $this->busNumber = $busNumber ?? ($bus instanceof \App\Models\Bus ? $bus->bus_number : ($bus ? (string)$bus : 'Unknown'));
     }
 

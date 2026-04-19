@@ -22,7 +22,6 @@ class FieldTrip extends Model
         'destination_address',
         'destination_latitude',
         'destination_longitude',
-        'external_members',
         'cost',
         'status',
         'rejection_reason',
@@ -38,7 +37,6 @@ class FieldTrip extends Model
 
     protected $casts = [
         'date' => 'date',
-        'external_members' => 'array',
         'cost' => 'decimal:2',
         'destination_latitude' => 'decimal:8',
         'destination_longitude' => 'decimal:8',
@@ -58,7 +56,9 @@ class FieldTrip extends Model
      */
     public function students()
     {
-        return $this->belongsToMany(Student::class, 'field_trip_students');
+        return $this->belongsToMany(Student::class, 'field_trip_participants', 'field_trip_id', 'national_id', 'id', 'national_id')
+            ->wherePivot('type', 'student')
+            ->withTimestamps();
     }
 
     /**
@@ -66,7 +66,25 @@ class FieldTrip extends Model
      */
     public function internalTeachers()
     {
-        return $this->belongsToMany(User::class, 'field_trip_teachers');
+        return $this->belongsToMany(User::class, 'field_trip_participants', 'field_trip_id', 'national_id', 'id', 'national_id')
+            ->wherePivot('type', 'user')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the external participants in this trip.
+     */
+    public function externalParticipants()
+    {
+        return $this->hasMany(FieldTripParticipant::class)->where('type', 'external');
+    }
+
+    /**
+     * Get all participants.
+     */
+    public function participants()
+    {
+        return $this->hasMany(FieldTripParticipant::class);
     }
 
     /**

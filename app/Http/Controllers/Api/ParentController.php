@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Student;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\NotificationService;
 use Illuminate\Support\Facades\Storage;
 
 class ParentController extends Controller
 {
+    public function __construct(protected NotificationService $notificationService) {}
     /**
      * GET /api/parent/profile
      * يعيد بيانات الملف الشخصي لولي الأمر
@@ -106,11 +108,12 @@ class ParentController extends Controller
                 'tripAttendances',
                 'forthBus.route', 
                 'backBus.route',
-                'forthBus.driver:id,first_name_ar,last_name_ar,phone',
-                'backBus.driver:id,first_name_ar,last_name_ar,phone',
-                'school:id,name,latitude,longitude',
+                'forthBus.driver.user',
+                'backBus.driver.user',
+                'forthBus.assistant',
+                'backBus.assistant',
                 'lastBusLog',
-                'currentEnrollment.classroom'
+                'currentEnrollment.classroom.school'
             ])
             ->get();
 
@@ -170,25 +173,25 @@ class ParentController extends Controller
                 'trip_count'             => $student->trips_count ?? 0,
                 'attendance_percentage'  => $attendancePercentage,
                 'image_url'              => $imageUrl,
-                'home_lat'               => $user->home_latitude,
-                'home_lng'               => $user->home_longitude,
-                'school'      => $student->school ? [
-                    'id'      => $student->school->id,
-                    'name'    => $student->school->name,
-                    'location' => $student->school->location,
+                'home_lat'               => $user->latitude,
+                'home_lng'               => $user->longitude,
+                'school'      => $student->currentEnrollment?->classroom?->school ? [
+                    'id'      => $student->currentEnrollment->classroom->school->id,
+                    'name'    => $student->currentEnrollment->classroom->school->name,
+                    'location' => $student->currentEnrollment->classroom->school->address,
                 ] : null,
                 'bus' => $activeBus ? [
                     'id'           => $activeBus->id,
                     'bus_number'   => $activeBus->bus_number,
                     'plate_number' => $activeBus->plate_number,
                     'trip_status'  => $activeBus->trip_status,
-                    'driver' => $activeBus->driver ? [
-                        'id'    => $activeBus->driver->id,
-                        'name'  => $activeBus->driver->name,
-                        'phone' => $activeBus->driver->phone,
-                        'image_url' => $activeBus->driver->image ? (str_starts_with($activeBus->driver->image, 'http') ? $activeBus->driver->image : url(Storage::url($activeBus->driver->image))) : null,
+                    'driver' => $activeBus->driver && $activeBus->driver->user ? [
+                        'id'    => $activeBus->driver->user->id,
+                        'name'  => $activeBus->driver->user->name,
+                        'phone' => $activeBus->driver->user->phone,
+                        'image_url' => $activeBus->driver->user->image ? (str_starts_with($activeBus->driver->user->image, 'http') ? $activeBus->driver->user->image : url(Storage::url($activeBus->driver->user->image))) : null,
                     ] : null,
-                    'assistant' => $activeBus->assistant ? [
+                    'supervisor' => $activeBus->assistant ? [
                         'id'    => $activeBus->assistant->id,
                         'name'  => $activeBus->assistant->name,
                         'phone' => $activeBus->assistant->phone,
@@ -310,9 +313,64 @@ class ParentController extends Controller
             'status'      => 'pending',
         ]);
 
+        // ── إرسال إشعار فوري وتفصيلي (إدارة + طاقم) ──
+        try {
+            $student->load(['school', 'forthBus.driver', 'forthBus.assistant', 'backBus.driver', 'backBus.assistant']);
+            $staffUserIds = [];
+
+            // 1. جلب مديري المدرسة (School Admins)
+            $schoolAdmins = \App\Models\User::withRole('school_admin')
+                ->whereHas('schoolAdmin', function($q) use ($student) {
+                    $q->where('school_id', $student->school_id);
+                })->pluck('id')->toArray();
+            
+            $staffUserIds = array_merge($staffUserIds, $schoolAdmins);
+
+            // 2. جلب طاقم الحافلة (سائق ومساعدة) حسب نوع الرحلة
+            if ($request->type === 'full_day' || $request->type === 'morning') {
+                if ($student->forthBus) {
+                    if ($student->forthBus->driver) $staffUserIds[] = $student->forthBus->driver->user_id;
+                    if ($student->forthBus->assistant) $staffUserIds[] = $student->forthBus->assistant->id;
+                }
+            }
+
+            if ($request->type === 'full_day' || $request->type === 'afternoon') {
+                if ($student->backBus) {
+                    if ($student->backBus->driver) $staffUserIds[] = $student->backBus->driver->user_id;
+                    if ($student->backBus->assistant) $staffUserIds[] = $student->backBus->assistant->id;
+                }
+            }
+
+            $staffUserIds = array_unique(array_filter($staffUserIds));
+
+            $typeName = [
+                'morning'   => 'ذهاب فقط',
+                'afternoon' => 'عودة فقط',
+                'full_day'  => 'يوم كامل',
+            ][$request->type] ?? 'يوم كامل';
+
+            foreach ($staffUserIds as $userId) {
+                $this->notificationService->sendToUser(
+                    userId: $userId,
+                    type: 'student_absence',
+                    title: "تنبيه غياب ($typeName): {$student->full_name}",
+                    message: "أفاد ولي الأمر بغياب الطالب ($typeName) يوم ({$request->date}). يرجى عدم المرور بالمنزل.",
+                    data: [
+                        'student_id'   => (string) $student->id,
+                        'student_name' => $student->full_name,
+                        'absence_type' => $request->type,
+                        'date'         => $request->date,
+                    ],
+                    immediate: true
+                );
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[Absence Notification] Detail Error: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال طلب الغياب بنجاح، وهو قيد المراجعة.',
+            'message' => 'تم إرسال طلب الغياب بنجاح، وتم إبلاغ السائق فورياً.',
             'data'    => $absenceRequest,
         ], 201);
     }
@@ -326,15 +384,26 @@ class ParentController extends Controller
         $user = $request->user();
 
         $requests = \App\Models\AbsenceRequest::where('guardian_id', $user->id)
-            ->with(['student' => function($q) {
-                $q->select('id', 'first_name_ar', 'last_name_ar');
-            }])
+            ->with('student')
             ->orderByDesc('date')
             ->get();
 
+        $data = $requests->map(function ($r) {
+            return [
+                'id' => (string) $r->id,
+                'student_id' => (string) $r->student_id,
+                'student_name' => $r->student?->full_name,
+                'date' => $r->date->format('Y-m-d'),
+                'type' => $r->type,
+                'reason' => $r->reason,
+                'status' => $r->status,
+                'rejection_reason' => $r->rejection_reason,
+            ];
+        });
+
         return response()->json([
             'success' => true,
-            'data'    => $requests,
+            'data'    => $data,
         ]);
     }
 }

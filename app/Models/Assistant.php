@@ -18,6 +18,13 @@ class Assistant extends Model
         'emergency_contact_phone',
     ];
 
+    protected $appends = ['name'];
+
+    public function getNameAttribute(): ?string
+    {
+        return $this->user?->name;
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

@@ -51,6 +51,8 @@ class StaffController extends Controller
                     'inactive' => 'غير نشط',
                     default => $driver->driver?->status ?? 'نشط',
                 },
+                'license_front_image' => $driver->driver?->license_front_image,
+                'license_back_image' => $driver->driver?->license_back_image,
             ];
         });
 
@@ -92,6 +94,8 @@ class StaffController extends Controller
             'license_number' => 'required|unique:drivers,license_number',
             'license_expiry_date' => 'required|date|after:today',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'license_front_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'license_back_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'address' => 'nullable|string|max:500',
         ]);
 
@@ -121,6 +125,8 @@ class StaffController extends Controller
             $user->driver()->create([
                 'license_number' => $request->license_number,
                 'license_expiry_date' => $request->license_expiry_date,
+                'license_front_image' => $request->hasFile('license_front_image') ? $request->file('license_front_image')->store('drivers/licenses', 'public') : null,
+                'license_back_image' => $request->hasFile('license_back_image') ? $request->file('license_back_image')->store('drivers/licenses', 'public') : null,
                 'status' => 'active',
             ]);
         });
@@ -147,6 +153,8 @@ class StaffController extends Controller
             'license_number' => ['required', Rule::unique('drivers', 'license_number')->ignore($driver->id, 'user_id')],
             'license_expiry_date' => 'required|date',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'license_front_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'license_back_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'address' => 'nullable|string|max:500',
         ]);
 
@@ -176,14 +184,29 @@ class StaffController extends Controller
             $driver->update($updateData);
 
             // Update extension record in drivers table
-            $driver->driver()->updateOrCreate(
-                ['user_id' => $driver->id],
-                [
-                    'license_number' => $request->license_number,
-                    'license_expiry_date' => $request->license_expiry_date,
-                    'status' => strtolower($request->status ?? 'active'),
-                ]
-            );
+            $driver_ext = $driver->driver()->firstOrCreate(['user_id' => $driver->id]);
+            
+            $driverExtData = [
+                'license_number' => $request->license_number,
+                'license_expiry_date' => $request->license_expiry_date,
+                'status' => strtolower($request->status ?? 'active'),
+            ];
+
+            if ($request->hasFile('license_front_image')) {
+                if ($driver_ext->license_front_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_front_image);
+                }
+                $driverExtData['license_front_image'] = $request->file('license_front_image')->store('drivers/licenses', 'public');
+            }
+
+            if ($request->hasFile('license_back_image')) {
+                if ($driver_ext->license_back_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_back_image);
+                }
+                $driverExtData['license_back_image'] = $request->file('license_back_image')->store('drivers/licenses', 'public');
+            }
+
+            $driver_ext->update($driverExtData);
         });
 
         return redirect()->back()->with('success', 'Driver information updated successfully');

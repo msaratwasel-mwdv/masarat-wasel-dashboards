@@ -149,7 +149,7 @@ class Student extends Model
 
     public function trips(): BelongsToMany
     {
-        return $this->belongsToMany(Trip::class, 'trip_students', 'student_id', 'trip_id')->withTimestamps();
+        return $this->belongsToMany(Trip::class, 'trip_attendances', 'student_id', 'trip_id')->withTimestamps();
     }
 
     /**
@@ -158,6 +158,11 @@ class Student extends Model
     public function boardingLogs(): HasMany
     {
         return $this->hasMany(BusBoardingLog::class);
+    }
+
+    public function absenceRequests(): HasMany
+    {
+        return $this->hasMany(AbsenceRequest::class);
     }
 
     /**

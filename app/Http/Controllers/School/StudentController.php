@@ -117,12 +117,8 @@ class StudentController extends Controller
         $classrooms = Classroom::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']);
 
         // جلب المشرفين المتاحين في نفس المدرسة
-        $supervisors = User::whereHas('roles', fn($q) => $q->whereIn('name', ['assistant', 'teacher', 'school_admin']))
-            ->where(fn($q) => $q
-                ->whereHas('schoolAdmin', fn($q2) => $q2->where('school_id', $schoolId))
-                ->orWhereHas('fieldSupervisor', fn($q2) => $q2->where('school_id', $schoolId))
-                ->orWhereHas('teacher')
-            )
+        $supervisors = User::atSchool($schoolId)
+            ->whereHas('roles', fn($q) => $q->whereIn('name', ['assistant', 'teacher', 'school_admin']))
             ->orderBy('first_name_ar')
             ->get(['id', 'first_name_ar', 'last_name_ar', 'email']);
 
@@ -193,16 +189,19 @@ class StudentController extends Controller
             $validated['name'] = $validated['name_en'];
         }
 
-        DB::transaction(function () use ($validated, $schoolId, $request) {
+        DB::transaction(function () use ($validated, $request) {
+            $nameParts = User::parseFullName($validated['name'] ?? '');
+            $enNameParts = User::parseFullName($validated['name_en'] ?? '');
+
             $guardianData = [
-                'first_name_ar'  => $validated['name'] ?? '',
-                'second_name_ar' => '',
-                'third_name_ar'  => '',
-                'last_name_ar'   => '',
-                'first_name_en'  => $validated['name_en'] ?? '',
-                'second_name_en' => '',
-                'third_name_en'  => '',
-                'last_name_en'   => '',
+                'first_name_ar'  => $nameParts[0],
+                'second_name_ar' => $nameParts[1],
+                'third_name_ar'  => $nameParts[2],
+                'last_name_ar'   => $nameParts[3],
+                'first_name_en'  => $enNameParts[0],
+                'second_name_en' => $enNameParts[1],
+                'third_name_en'  => $enNameParts[2],
+                'last_name_en'   => $enNameParts[3],
                 'national_id'    => $validated['national_id'],
                 'phone'          => $validated['phone'],
                 'email'          => $validated['email'] ?? null,

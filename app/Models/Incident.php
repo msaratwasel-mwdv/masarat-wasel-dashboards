@@ -21,14 +21,44 @@ class Incident extends Model
         'location_lng',
         'status',
         'resolved_by',
+        'student_ids',
         'photos',
     ];
 
     protected $casts = [
         'photos' => 'array',
+        'student_ids' => 'array',
         'location_lat' => 'decimal:8',
         'location_lng' => 'decimal:8',
     ];
+
+    protected $appends = ['photo_urls', 'student_names'];
+
+    /**
+     * جلب أسماء الطلاب المرتبطين بالبلاغ
+     */
+    public function getStudentNamesAttribute()
+    {
+        if (empty($this->student_ids) || !is_array($this->student_ids)) {
+            return [];
+        }
+
+        return Student::whereIn('id', $this->student_ids)
+            ->get()
+            ->pluck('full_name')
+            ->toArray();
+    }
+
+    public function getPhotoUrlsAttribute()
+    {
+        $urls = [];
+        if (is_array($this->photos)) {
+            foreach ($this->photos as $photo) {
+                $urls[] = asset('storage/' . $photo);
+            }
+        }
+        return $urls;
+    }
 
     public function reporter()
     {

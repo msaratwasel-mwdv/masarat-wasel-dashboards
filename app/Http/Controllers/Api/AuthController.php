@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -80,7 +81,9 @@ class AuthController extends Controller
 
         // حفظ التوكن الخاص بـ Firebase إن وجد
         if ($request->has('fcm_token') && !empty($request->fcm_token)) {
-            $user->updateFcmToken($request->fcm_token);
+            $user->update([
+                'fcm_token' => $request->fcm_token,
+            ]);
         }
 
         // حذف التوكنات القديمة لنفس الجهاز لتجنب التراكم
@@ -106,8 +109,10 @@ class AuthController extends Controller
             'phone'       => $user->phone,
             'role'        => $user->role,
             'image_url'   => $imageUrl,
-            'school_id'   => $user->getSchoolId(),
+            'school_id'   => $user->school_id,
+            'school_name' => $user->school ? $user->school->name : null,
             'bus_id'      => $this->getBusId($user),
+            'bus'         => $this->getBusDetails($user),
         ];
 
         return response()->json([
@@ -126,10 +131,16 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
-        /** @var \Laravel\Sanctum\PersonalAccessToken $token */
-        $token = $request->user()->currentAccessToken();
-        if ($token) {
-            $token->delete();
+        $user = $request->user();
+        if ($user) {
+            // مسح توكن الإشعارات
+            $user->update(['fcm_token' => null]);
+
+            /** @var \Laravel\Sanctum\PersonalAccessToken $token */
+            $token = $user->currentAccessToken();
+            if ($token) {
+                $token->delete();
+            }
         }
 
         return response()->json([
@@ -162,8 +173,10 @@ class AuthController extends Controller
             'phone'       => $user->phone,
             'role'        => $user->role,
             'image_url'   => $imageUrl,
-            'school_id'   => $user->getSchoolId(),
+            'school_id'   => $user->school_id,
+            'school_name' => $user->school ? $user->school->name : null,
             'bus_id'      => $this->getBusId($user),
+            'bus'         => $this->getBusDetails($user),
         ];
 
         return response()->json([
@@ -234,7 +247,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'phone' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:191|unique:users,email,' . $request->user()->id,
+            'email' => ['nullable', 'email', 'max:191', Rule::unique('users', 'email')->ignore($request->user()->id)],
         ]);
 
         $request->user()->update($request->only(['phone', 'email']));
@@ -279,16 +292,50 @@ class AuthController extends Controller
      */
     private function getBusId(User $user): ?int
     {
+        $bus = $this->getBusForUser($user);
+        return $bus ? $bus->id : null;
+    }
+
+    private function getBusDetails(User $user): ?array
+    {
+        $bus = $this->getBusForUser($user);
+        if ($bus) {
+            return [
+                'id' => $bus->id,
+                'bus_number' => $bus->bus_number,
+                'plate_number' => $bus->plate_number,
+                'capacity' => $bus->capacity,
+            ];
+        }
+        return null;
+    }
+
+    private function getBusForUser(User $user): ?Bus
+    {
         if ($user->hasRole('driver')) {
-            return $user->assignedBus?->id;
-        } 
-        
-        if ($user->hasRole('assistant')) {
-            return $user->assignedBusAsAssistant?->id;
+            return $user->assignedBus;
+        } elseif ($user->hasRole('assistant')) {
+            return $user->assignedBusAsAssistant;
+        } elseif ($user->hasRole('field_supervisor')) {
+            return $user->assignedBusAsFieldSupervisor;
+        }
+        return null;
+    }
+
+    /**
+     * Helper to get school name, checking classrooms if direct school is missing
+     */
+    private function getSchoolName(User $user): ?string
+    {
+        if ($user->school) {
+            return $user->school->name;
         }
 
-        if ($user->hasRole('field_supervisor')) {
-            return $user->assignedBusAsFieldSupervisor?->id;
+        if ($user->role === 'teacher') {
+            $classroom = $user->classroom()->with('school')->first();
+            if ($classroom && $classroom->school) {
+                return $classroom->school->name;
+            }
         }
 
         return null;

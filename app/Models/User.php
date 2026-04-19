@@ -398,6 +398,16 @@ class User extends Authenticatable
         return $schoolId ? \App\Models\School::find($schoolId) : null;
     }
 
+    public function getSchoolIdAttribute(): ?int
+    {
+        return $this->getSchoolId();
+    }
+
+    public function scopeWithRole($query, string $role)
+    {
+        return $query->whereHas('roles', fn($q) => $q->where('name', $role));
+    }
+
     /**
      * Get the history of buses assigned to this driver.
      */
@@ -414,6 +424,9 @@ class User extends Authenticatable
         return $query->where(function($q) use ($schoolId) {
             $q->whereHas('schoolAdmin', fn($sq) => $sq->where('school_id', $schoolId))
               ->orWhereHas('teacher', fn($sq) => $sq->where('school_id', $schoolId))
+              ->orWhereHas('assignedBus', fn($sq) => $sq->where('school_id', $schoolId))
+              ->orWhereHas('assignedBusAsAssistant', fn($sq) => $sq->where('school_id', $schoolId))
+              ->orWhereHas('assignedBusAsFieldSupervisor', fn($sq) => $sq->where('school_id', $schoolId))
               ->orWhereHas('students.enrollments.classroom', fn($sq) => $sq->where('school_id', $schoolId));
         });
     }

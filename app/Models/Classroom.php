@@ -14,7 +14,7 @@ class Classroom extends Model
 
     protected $fillable = [
         'name',
-        'grade_level',
+        'grade_id',
         'school_id',
     ];
 
@@ -23,22 +23,34 @@ class Classroom extends Model
         return $this->belongsTo(School::class);
     }
 
-    // ✅ العلاقة الجديدة لجلب قائمة المعلمين (Extension records)
-    public function teachers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function grade(): BelongsTo
     {
-        return $this->hasMany(Teacher::class, 'classroom_id');
+        return $this->belongsTo(Grade::class);
     }
 
-    // ✅ العلاقة الصحيحة (1:1 direct to user)
+    // ✅ المعلمين المرتبطين بالمرحلة التي ينتمي إليها هذا الفصل
+    public function teachers(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Teacher::class,
+            Grade::class,
+            'id',       // Foreign key on grades table
+            'grade_id', // Foreign key on teachers table
+            'grade_id', // Local key on classrooms table
+            'id'        // Local key on grades table
+        );
+    }
+
+    // ✅ المعلم المسؤول عن المرحلة
     public function teacher(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
     {
         return $this->hasOneThrough(
             User::class,
             Teacher::class,
-            'classroom_id', // Foreign key on teachers table
-            'id',           // Foreign key on users table
-            'id',           // Local key on classrooms table
-            'user_id'       // Local key on teachers table
+            'grade_id', // Foreign key on teachers table
+            'id',       // Foreign key on users table
+            'grade_id', // Local key on classrooms table
+            'user_id'   // Local key on teachers table
         );
     }
 

@@ -36,9 +36,14 @@ class ConversationResource extends JsonResource
             'type'         => $this->type,
             'title'        => $this->title,
             'participants' => $otherParticipants->map(fn($p) => [
-                'id'   => $p->id,
-                'name' => $p->name,
-                'role' => $p->role,
+                'id'     => $p->id,
+                'name'   => $p->name,
+                'role'   => $p->role,
+                'avatar' => $p->image
+                    ? (str_starts_with($p->image, 'http')
+                        ? $p->image
+                        : asset('storage/' . ltrim($p->image, '/')))
+                    : null,
             ])->values(),
             'last_message' => $this->whenLoaded('lastMessage', function () {
                 return [
@@ -53,5 +58,3 @@ class ConversationResource extends JsonResource
         ];
     }
 }
-
-

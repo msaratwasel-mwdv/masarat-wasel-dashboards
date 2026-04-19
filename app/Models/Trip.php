@@ -62,9 +62,9 @@ class Trip extends Model
     /**
      * Get the participants (students) signed up for this trip (for field trips).
      */
-    public function students(): HasMany
+    public function students(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->hasMany(TripStudent::class);
+        return $this->belongsToMany(Student::class, 'trip_attendances', 'trip_id', 'student_id')->withTimestamps();
     }
 
     /**

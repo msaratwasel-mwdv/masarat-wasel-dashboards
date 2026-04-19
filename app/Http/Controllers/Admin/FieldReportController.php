@@ -16,7 +16,7 @@ class FieldReportController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Violation::with(['fieldSupervisor:id,name', 'bus:id,bus_number']);
+        $query = Violation::with(['fieldSupervisor', 'bus:id,bus_number']);
 
         // Search by bus code/number or supervisor name
         if ($request->filled('search')) {

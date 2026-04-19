@@ -36,7 +36,8 @@ class NotificationService
         string $title,
         string $message,
         ?array $data = null,
-        ?string $fromUserName = null
+        ?string $fromUserName = null,
+        bool $immediate = false
     ): Notification {
         // 1. حفظ الإشعار في قاعدة البيانات
         $notification = Notification::create([
@@ -300,7 +301,7 @@ class NotificationService
         string $message,
         ?array $data = null
     ): ?Notification {
-        $student = \App\Models\Student::with('guardians.user')->find($studentId);
+        $student = \App\Models\Student::with('guardians')->find($studentId);
 
         if (! $student || $student->guardians->isEmpty()) {
             \Illuminate\Support\Facades\Log::warning("[Notification] Student {$studentId} has no guardian, skipping notification.");
@@ -309,7 +310,7 @@ class NotificationService
 
         // Notify the first guardian as fallback or adapt to multiple
         return $this->sendToUser(
-            userId: $student->guardians->first()->user_id,
+            userId: $student->guardians->first()->id,
             type: $type,
             title: $title,
             message: $message,
@@ -330,13 +331,12 @@ class NotificationService
     ): Collection {
         $guardianUserIds = \Illuminate\Support\Facades\DB::table('students')
             ->join('guardian_student', 'students.id', '=', 'guardian_student.student_id')
-            ->join('guardians', 'guardian_student.guardian_id', '=', 'guardians.id')
+            ->join('users', 'guardian_student.guardian_id', '=', 'users.id')
             ->where(function($q) use ($busId) {
                 $q->where('students.forth_bus_id', $busId)
                   ->orWhere('students.back_bus_id', $busId);
             })
-            ->whereNotNull('guardians.user_id')
-            ->pluck('guardians.user_id')
+            ->pluck('users.id')
             ->unique()
             ->toArray();
 

@@ -52,18 +52,22 @@ class BusBoardingController extends Controller
         // ③ التحقق من تخصيص الطالب لهذا الباص في هذا الاتجاه
         // ══════════════════════════════════════════════════════════
         $tripType = $direction === 'to_school' ? 'morning' : 'afternoon';
-        $isAssigned = $bus->students()
-            ->where('student_id', $student->id)
-            ->wherePivot('is_active', true)
-            ->wherePivotIn('trip_type', [$tripType, 'both'])
-            ->exists();
+        $isAssigned = false;
+        if ((bool)$student->is_active) {
+            if ($tripType === 'morning' && $student->forth_bus_id === $bus->id) {
+                $isAssigned = true;
+            } elseif ($tripType === 'afternoon' && $student->back_bus_id === $bus->id) {
+                $isAssigned = true;
+            }
+        }
 
         if (!$isAssigned) {
             Log::warning('board: Student not assigned for this trip type', [
                 'bus_id' => $bus->id, 'student_id' => $student->id, 'trip_type' => $tripType,
             ]);
+            $tripLabel = $tripType === 'morning' ? 'الذهاب' : 'العودة';
             return response()->json([
-                'message' => "الطالب غير مخصص لهذا الباص في رحلة {$tripType}.",
+                'message' => "الطالب غير مخصص لهذا الباص في رحلة {$tripLabel}.",
                 'error_code' => 'not_assigned',
             ], 422);
         }
@@ -131,7 +135,7 @@ class BusBoardingController extends Controller
             $this->notificationService->notifyStudentGuardian(
                 studentId: $student->id,
                 type: 'bus_boarding_morning',
-                title: "طالبك {$student->full_name} ركب باص المدرسة (صباحاً)",
+                title: "طالبك {$student->full_name} ركب باص الذهاب",
                 message: "لقد ركب الطالب {$student->full_name} الحافلة الآن متوجهاً إلى المدرسة بسلام.",
                 data: [
                     'notification_type' => 'bus_boarding_morning',
@@ -196,15 +200,19 @@ class BusBoardingController extends Controller
 
         // ③ التحقق من التخصيص
         $tripType = $direction === 'to_school' ? 'morning' : 'afternoon';
-        $isAssigned = $bus->students()
-            ->where('student_id', $student->id)
-            ->wherePivot('is_active', true)
-            ->wherePivotIn('trip_type', [$tripType, 'both'])
-            ->exists();
+        $isAssigned = false;
+        if ((bool)$student->is_active) {
+            if ($tripType === 'morning' && $student->forth_bus_id === $bus->id) {
+                $isAssigned = true;
+            } elseif ($tripType === 'afternoon' && $student->back_bus_id === $bus->id) {
+                $isAssigned = true;
+            }
+        }
 
         if (!$isAssigned) {
+            $tripLabel = $tripType === 'morning' ? 'الذهاب' : 'العودة';
             return response()->json([
-                'message' => "الطالب غير مخصص لهذا الباص في رحلة {$tripType}.",
+                'message' => "الطالب غير مخصص لهذا الباص في رحلة {$tripLabel}.",
                 'error_code' => 'not_assigned',
             ], 422);
         }
@@ -396,20 +404,46 @@ class BusBoardingController extends Controller
         // السماح بطلب نوع رحلة محدد عبر Query Param
         $filterTripType = $request->query('trip_type', $suggestedTripType);
 
-        $query = $bus->students()->wherePivot('is_active', true)
-            ->with(['lastBusLog', 'guardian:id,name,phone']);
+        $query = \App\Models\Student::where('is_active', true)
+            ->with(['lastBusLog', 'guardian', 'absenceRequests' => function($q) {
+                $q->whereDate('date', today())->where('status', '!=', 'rejected');
+            }]);
 
         // فلترة الطلاب حسب نوع الرحلة (صباحي/مسائي/كلاهما)
         if ($filterTripType === 'morning') {
-            $query->wherePivotIn('trip_type', ['morning', 'both']);
+            $query->where('forth_bus_id', $bus->id);
         } elseif ($filterTripType === 'afternoon') {
-            $query->wherePivotIn('trip_type', ['afternoon', 'both']);
+            $query->where('back_bus_id', $bus->id);
+        } else {
+            $query->where(function($q) use ($bus) {
+                $q->where('forth_bus_id', $bus->id)
+                  ->orWhere('back_bus_id', $bus->id);
+            });
         }
 
-        $students = $query->get()->map(function ($student) {
-            $lastLog = $student->lastBusLog; // Assuming lastBusLog is a relationship or accessor on Student model
+        $students = $query->get()->map(function ($student) use ($filterTripType) {
+            $lastLog = $student->lastBusLog;
             $studentStatus = 'atHome'; // Default
-            if ($lastLog) {
+
+            // ① التحقق من طلبات الغياب أولاً
+            $todayAbsence = $student->absenceRequests->first();
+            if ($todayAbsence) {
+                $isAbsent = false;
+                if ($todayAbsence->type === 'full_day') {
+                    $isAbsent = true;
+                } elseif ($filterTripType === 'morning' && $todayAbsence->type === 'morning') {
+                    $isAbsent = true;
+                } elseif ($filterTripType === 'afternoon' && $todayAbsence->type === 'afternoon') {
+                    $isAbsent = true;
+                }
+
+                if ($isAbsent) {
+                    $studentStatus = 'absent';
+                }
+            }
+
+            // ② إذا لم يكن غائباً، نحدد حالته من سجل الحافلة
+            if ($studentStatus !== 'absent' && $lastLog) {
                 if ($lastLog->type === 'boarding') {
                     $studentStatus = 'onBus';
                 } elseif ($lastLog->type === 'alighting') {
@@ -423,12 +457,13 @@ class BusBoardingController extends Controller
                 'name' => $student->full_name ?? $student->name,
                 'grade' => $student->grade ?? 'متوسط',
                 'schoolId' => (string) $student->school_id,
-                'parentName' => $student->guardian?->name ?? 'غير محدد',
-                'parentPhone' => $student->guardian?->phone ?? 'غير محدد',
-                'parentUserId' => (string) $student->guardian_id,
+                'parentName' => $student->guardian->first()?->name ?? 'غير محدد',
+                'parentPhone' => $student->guardian->first()?->phone ?? 'غير محدد',
+                'parentUserId' => (string) $student->guardian->first()?->id,
                 'photoUrl' => $student->image ? (str_starts_with($student->image, 'http') ? $student->image : url(\Illuminate\Support\Facades\Storage::url($student->image))) : null,
                 'status' => $studentStatus, // atHome, onBus, atSchool, absent
                 'isOnBus' => ($studentStatus === 'onBus'),
+                'isAbsent' => ($studentStatus === 'absent'),
                 'behavioralNote' => null, // Placeholder for now
                 'lastEvent' => $lastLog ? [
                     'type' => $lastLog->type,
@@ -470,19 +505,44 @@ class BusBoardingController extends Controller
             $direction = (now()->hour < 11) ? 'to_school' : 'to_home';
         }
 
+        $tripType = ($direction === 'to_school') ? 'forth' : 'back';
+
         Log::info('startTrip: Application attempting to start trip', [
             'bus_id' => $bus->id,
             'driver_id' => $user->id,
-            'direction' => $direction
+            'direction' => $direction,
+            'trip_type' => $tripType
         ]);
 
-        $bus->update(['trip_status' => $direction]);
+        $trip = \App\Models\Trip::where('bus_id', $bus->id)
+            ->where('type', $tripType)
+            ->whereDate('trip_date', today())
+            ->where('status', 'pending')
+            ->first();
 
-        Log::info('startTrip: Trip started successfully', ['bus_id' => $bus->id]);
+        if ($trip) {
+            $trip->update([
+                'status' => 'in_progress',
+                'departure_time' => now()
+            ]);
+        } else {
+            $trip = \App\Models\Trip::create([
+                'bus_id' => $bus->id,
+                'driver_id' => $user->id,
+                'assistant_id' => $bus->assistant_id,
+                'route_id' => $bus->route_id,
+                'trip_date' => today(),
+                'type' => $tripType,
+                'status' => 'in_progress',
+                'departure_time' => now()
+            ]);
+        }
+
+        Log::info('startTrip: Trip started successfully', ['bus_id' => $bus->id, 'trip_id' => $trip->id]);
 
         return response()->json([
             'message' => 'تم بدء الرحلة بنجاح.',
-            'trip_status' => $direction,
+            'trip_status' => $bus->trip_status,
         ]);
     }
 

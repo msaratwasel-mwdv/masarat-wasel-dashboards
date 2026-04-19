@@ -53,9 +53,9 @@ return new class extends Migration
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
             $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
 
-            $table->foreignId('classroom_id')
+            $table->foreignId('grade_id')
                   ->nullable()
-                  ->constrained('classrooms')
+                  ->constrained('grades')
                   ->nullOnDelete();
             $table->string('fcm_token')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
@@ -82,6 +82,8 @@ return new class extends Migration
             $table->string('fcm_token')->nullable();
             $table->string('license_number')->unique();
             $table->date('license_expiry_date');
+            $table->string('license_front_image')->nullable();
+            $table->string('license_back_image')->nullable();
 
             $table->enum('status', ['active', 'inactive'])->default('active');
 

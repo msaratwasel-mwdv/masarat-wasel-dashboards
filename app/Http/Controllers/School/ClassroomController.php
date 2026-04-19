@@ -4,6 +4,7 @@ namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
 use App\Models\Classroom;
+use App\Models\Grade;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,9 +17,9 @@ class ClassroomController extends Controller
     {
         $schoolId = Auth::user()->getSchoolId();
         $classrooms = Classroom::where('school_id', $schoolId)
-            ->with(['teachers.user'])
+            ->with(['grade', 'teachers.user'])
             ->orderBy('name')
-            ->get(['id', 'name', 'grade_level']);
+            ->get(['id', 'name', 'grade_id']);
 
         $classrooms->transform(function($c) {
             $mappedTeachers = $c->teachers->map(function($t) {
@@ -50,44 +51,58 @@ class ClassroomController extends Controller
         $classrooms = Classroom::where('school_id', $schoolId)
             ->when($search, function ($query, $search) {
                 $query->where(function($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('grade_level', 'like', "%{$search}%");
+                    $q->where('name', 'like', "%{$search}%");
                 });
             })
             ->latest()
-            ->with(['teachers.user']) 
+            ->with(['grade', 'teachers.user']) 
             ->get()
             ->map(function($c) {
                 return [
                     'id' => $c->id,
                     'name' => $c->name,
-                    'grade_level' => $c->grade_level,
+                    'grade_id' => $c->grade_id,
+                    'grade_name' => $c->grade?->name,
                     'school_id' => $c->school_id,
                     'teachers' => $c->teachers->map(function($t) {
                         return [
                             'user_id' => $t->user_id,
-                            'name' => $t->name, // Uses the model name accessor once here
+                            'name' => $t->name,
                         ];
                     })
                 ];
             });
 
-        // Fetch teachers to populate the dropdown - Using map to break any ties to the model appends
-        $teachers = User::whereHas('teacher', fn($q) => $q->where('teachers.school_id', $schoolId))
-            ->whereHas('roles', fn($q) => $q->where('roles.name', 'teacher'))
+        $grades = Grade::where('school_id', $schoolId)
+            ->with(['teacher.user'])
+            ->orderBy('name')
+            ->get()
+            ->map(function($g) {
+                return [
+                    'id' => $g->id,
+                    'name' => $g->name,
+                    'teacher_id' => $g->teacher?->user_id,
+                    'teacher_name' => $g->teacher?->name,
+                ];
+            });
+
+        // Fetch teachers to populate the dropdown
+        $availableTeachers = User::atSchool($schoolId)
+            ->withRole('teacher')
             ->orderBy('first_name_ar')
             ->get()
             ->map(function($u) {
                 return [
                     'id' => $u->id,
-                    'name' => $u->name, // Calculate name string once
+                    'name' => $u->name,
                     'email' => $u->email,
                 ];
             });
 
         return Inertia::render('School/Classrooms/Index', [
             'classrooms' => $classrooms,
-            'teachers' => $teachers,
+            'grades' => $grades,
+            'teachers' => $availableTeachers,
             'filters' => $request->only(['search']),
         ]);
     }
@@ -102,8 +117,8 @@ class ClassroomController extends Controller
             abort(403);
         }
 
-        $teachers = User::whereHas('teacher', fn($q) => $q->where('teachers.school_id', $user->getSchoolId()))
-            ->whereHas('roles', fn($q) => $q->where('roles.name', 'teacher'))
+        $teachers = User::atSchool($user->getSchoolId())
+            ->withRole('teacher')
             ->where('is_active', true)
             ->orderBy('first_name_ar')
             ->get()
@@ -132,7 +147,7 @@ class ClassroomController extends Controller
         ]);
     }
 
-    // تحديث بيانات الفصل وربط المعلمين
+    // تحديث بيانات الفصل
     public function update(Request $request, Classroom $classroom)
     {
         /** @var \App\Models\User $user */
@@ -143,74 +158,103 @@ class ClassroomController extends Controller
         }
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'grade_level' => 'nullable|string|max:255',
-            'teacher_id' => 'nullable|integer|exists:users,id',
-            'teacher_ids' => 'nullable|array',
-            'teacher_ids.*' => 'exists:users,id',
+            'grade_id' => 'required|exists:grades,id',
         ]);
 
-        $classroom->update([
-            'name' => $validated['name'],
-            'grade_level' => $validated['grade_level'] ?? $classroom->grade_level,
-        ]);
+        $classroom->update($validated);
 
-        // ربط المعلم
-        // أولاً: تصفير أي معلم مرتبط بهذا الفصل حالياً
-        \App\Models\Teacher::where('classroom_id', $classroom->id)->update(['classroom_id' => null]);
-
-        // ثانياً: جمع كل المعرفات المطلوب ربطها
-        $teacherIds = [];
-        if (!empty($validated['teacher_id'])) {
-            $teacherIds[] = $validated['teacher_id'];
-        }
-        if (!empty($validated['teacher_ids'])) {
-            $teacherIds = array_merge($teacherIds, $validated['teacher_ids']);
-        }
-        $teacherIds = array_unique($teacherIds);
-
-        foreach ($teacherIds as $id) {
-            \App\Models\Teacher::updateOrCreate(
-                ['user_id' => $id],
-                [
-                    'classroom_id' => $classroom->id,
-                    'school_id' => $user->getSchoolId()
-                ]
-            );
-        }
-
-        return redirect()->route('school.classrooms.index')->with('success', 'Class updated successfully');
+        return redirect()->back()->with('success', 'Class updated successfully');
     }
 
     // حفظ فصل جديد
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'grade_level' => 'nullable|string|max:255',
-            'teacher_id' => 'nullable|exists:users,id', // Added validation
+            'grade_id' => 'required|exists:grades,id',
         ]);
 
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        $classroom = Classroom::create([
-            'name' => $request->name,
-            'grade_level' => $request->grade_level,
-            'school_id' => $user->getSchoolId(), // ✅ استخدام المتغير المعرف
+        Classroom::create([
+            'name' => $validated['name'],
+            'grade_id' => $validated['grade_id'],
+            'school_id' => $user->getSchoolId(),
         ]);
 
-        // Attach teacher if selected
-        if ($request->teacher_id) {
+        return redirect()->back()->with('success', 'Class created successfully');
+    }
+
+    // --- Grade CRUD ---
+
+    public function storeGrade(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'teacher_id' => 'nullable|exists:users,id',
+        ]);
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $schoolId = $user->getSchoolId();
+
+        $grade = Grade::create([
+            'name' => $validated['name'],
+            'school_id' => $schoolId,
+        ]);
+
+        if (!empty($validated['teacher_id'])) {
+            // Because it's 1:1, we must ensure the teacher is not assigned to another grade
+            // and the grade doesn't have another teacher (handled by Grade creation here)
             \App\Models\Teacher::updateOrCreate(
-                ['user_id' => $request->teacher_id],
-                [
-                    'classroom_id' => $classroom->id,
-                    'school_id' => $user->getSchoolId()
-                ]
+                ['user_id' => $validated['teacher_id']],
+                ['grade_id' => $grade->id, 'school_id' => $schoolId]
             );
         }
 
-        return redirect()->back()->with('success', 'Class created successfully');
+        return redirect()->back()->with('success', 'Grade created successfully');
+    }
+
+    public function updateGrade(Request $request, Grade $grade)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $schoolId = $user->getSchoolId();
+
+        if ($grade->school_id !== $schoolId) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'teacher_id' => 'nullable|exists:users,id',
+        ]);
+
+        $grade->update(['name' => $validated['name']]);
+
+        // Reset existing teacher for this grade
+        \App\Models\Teacher::where('grade_id', $grade->id)->update(['grade_id' => null]);
+
+        if (!empty($validated['teacher_id'])) {
+            \App\Models\Teacher::updateOrCreate(
+                ['user_id' => $validated['teacher_id']],
+                ['grade_id' => $grade->id, 'school_id' => $schoolId]
+            );
+        }
+
+        return redirect()->back()->with('success', 'Grade updated successfully');
+    }
+
+    public function destroyGrade(Grade $grade)
+    {
+        if ($grade->school_id !== Auth::user()->getSchoolId()) {
+            abort(403);
+        }
+
+        $grade->delete();
+
+        return redirect()->back()->with('success', 'Grade deleted successfully');
     }
 
     // حذف فصل

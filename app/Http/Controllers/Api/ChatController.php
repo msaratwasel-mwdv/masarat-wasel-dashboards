@@ -49,9 +49,9 @@ class ChatController extends Controller
 
                     foreach ($buses as $bus) {
                         // 1. السائق
-                        $driver = $bus->driver;
-                        if ($driver) {
-                            $driverContact = clone $driver;
+                        $driverUser = $bus->driver?->user;
+                        if ($driverUser) {
+                            $driverContact = clone $driverUser;
                             $driverContact->chat_description = "سائق الحافلة ({$bus->bus_number}) - الطالب: " . $studentsNames;
                             $contacts->push($driverContact);
                         }
@@ -75,7 +75,7 @@ class ChatController extends Controller
 
             case 'driver':
                 // السائق يرى أولياء أمور الطلاب في حافلته
-                $bus = \App\Models\Bus::whereHas('drivers', fn($q) => $q->where('user_id', $user->id))->first();
+                $bus = \App\Models\Bus::whereHas('driver', fn($q) => $q->where('user_id', $user->id))->first();
                 if ($bus) {
                     $contacts = $contacts->merge($this->getGuardianUsersForBus($bus));
                 }
@@ -133,19 +133,14 @@ class ChatController extends Controller
 
     private function getGuardianUsersForBus(Bus $bus): \Illuminate\Support\Collection
     {
-        // 1. Students via legacy/override pivot
-        $studentsViaPivot = $bus->students()->wherePivot('is_active', true)->with('guardian')->get();
+        // 1. Students directly assigned to this bus (morning or afternoon)
+        $studentsViaBus = \App\Models\Student::where('is_active', true)
+            ->where(function ($q) use ($bus) {
+                $q->where('forth_bus_id', $bus->id)
+                  ->orWhere('back_bus_id', $bus->id);
+            })->with('guardian')->get();
 
-        // 2. Students via groups
-        $groupIds = $bus->groups()->pluck('id')->toArray();
-        $studentsViaGroups = \App\Models\Student::where(function ($q) use ($groupIds) {
-            $q->whereIn('morning_group_id', $groupIds)
-                ->orWhereIn('afternoon_group_id', $groupIds);
-        })->where('is_active', true)->with('guardian')->get();
-
-        $allStudents = $studentsViaPivot->merge($studentsViaGroups)->unique('id');
-
-        return $this->processStudentsToContacts($allStudents);
+        return $this->processStudentsToContacts($studentsViaBus);
     }
 
     private function processStudentsToContacts(\Illuminate\Support\Collection $students): \Illuminate\Support\Collection
@@ -153,7 +148,7 @@ class ChatController extends Controller
         $usersMap = [];
 
         foreach ($students as $student) {
-            $guardianUser = $student->guardian; // هذا الآن User مباشرة
+            $guardianUser = $student->guardian->first(); // استخراج ولي الأمر الأول من الحزمة 
             if ($guardianUser) {
                 $userId = $guardianUser->id;
                 if (!isset($usersMap[$userId])) {

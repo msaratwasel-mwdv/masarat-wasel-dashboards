@@ -21,9 +21,17 @@ class NotificationController extends Controller
      */
     public function index(Request $request)
     {
-        $schoolId = Auth::user()->getSchoolId();
+        $schoolId = Auth::user()->school_id;
+        $userId = Auth::id();
 
-        $query = Notification::where('sender_id', Auth::id())
+        // Get notification IDs received via notification_recipients table
+        $receivedNotificationIds = \App\Models\NotificationRecipient::where('user_id', $userId)
+            ->pluck('notification_id');
+
+        $query = Notification::where(function ($q) use ($userId, $receivedNotificationIds) {
+                $q->where('sender_id', $userId)
+                  ->orWhereIn('id', $receivedNotificationIds);
+            })
             ->with('sender')
             ->latest();
 
@@ -33,16 +41,51 @@ class NotificationController extends Controller
         }
 
         if ($request->filled('type')) {
-            $query->where('template_type', $request->type);
+            $query->where(function ($q) use ($request) {
+                $q->where('template_type', $request->type)
+                  ->orWhere('type', $request->type);
+            });
         }
 
         $notifications = $query->paginate(20);
 
-        // Stats
+        // Load incident details for received/incident notifications
+        $notifications->getCollection()->transform(function ($notif) {
+            $incidentId = $notif->data['incident_id'] ?? null;
+            if ($notif->type === 'incident' && $incidentId) {
+                $incident = \App\Models\Incident::with([
+                    'bus.driver',
+                    'bus.fieldSupervisor',
+                    'bus',
+                    'reporter' // This might need to be resolved if relationship is missing
+                ])->find($incidentId);
+
+                if ($incident && !empty($incident->student_ids)) {
+                    $incident->students_list = \App\Models\Student::whereIn('id', $incident->student_ids)
+                        ->get()
+                        ->map(function($s) {
+                            return [
+                                'id' => $s->id,
+                                'name' => $s->full_name,
+                                'student_code' => $s->student_code ?? null,
+                            ];
+                        });
+                }
+
+                $notif->incident = $incident;
+            }
+            return $notif;
+        });
+
+        // Stats (include both sent and received)
+        $totalQuery = Notification::where(function ($q) use ($userId, $receivedNotificationIds) {
+            $q->where('sender_id', $userId)->orWhereIn('id', $receivedNotificationIds);
+        });
+
         $stats = [
-            'total' => Notification::where('sender_id', Auth::id())->count(),
-            'sent_today' => Notification::where('sender_id', Auth::id())->whereDate('created_at', today())->count(),
-            'pending' => Notification::where('sender_id', Auth::id())->where('status', 'pending')->count(),
+            'total' => (clone $totalQuery)->count(),
+            'sent_today' => (clone $totalQuery)->whereDate('created_at', today())->count(),
+            'pending' => (clone $totalQuery)->whereIn('status', ['pending', 'sent'])->count(),
         ];
 
         // Data for Modal
@@ -50,10 +93,10 @@ class NotificationController extends Controller
         $classrooms = Classroom::where('school_id', $schoolId)->get();
         $buses = Bus::where('school_id', $schoolId)->get();
 
-        // Parents — الآن من جدول users مباشرة
+        // Parents — باستخدام الـ Scopes للتعامل مع الهيكلية الجديدة
         $parents = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))
-            ->get(['id', 'first_name_ar', 'second_name_ar', 'third_name_ar', 'last_name_ar', 'email'])
+            ->withRole('parent')
+            ->get()
             ->map(function ($user) {
                 return [
                     'id' => $user->id,
@@ -78,13 +121,13 @@ class NotificationController extends Controller
      */
     public function create()
     {
-        $schoolId = Auth::user()->getSchoolId();
+        $schoolId = Auth::user()->school_id;
 
         $templates = NotificationTemplate::active()->get();
         $classrooms = Classroom::where('school_id', $schoolId)->get();
         $buses = Bus::where('school_id', $schoolId)->get();
         // تم إضافة guardians هنا لأن الواجهة Create.tsx تتوقعها في الـ Props
-        $guardians = User::atSchool($schoolId)->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))->get();
+        $guardians = User::atSchool($schoolId)->withRole('parent')->get();
 
         return Inertia::render('School/Notifications/Create', [
             'templates' => $templates,
@@ -96,7 +139,7 @@ class NotificationController extends Controller
 
     public function preview(Request $request)
     {
-        $schoolId = Auth::user()->getSchoolId();
+        $schoolId = Auth::user()->school_id;
 
         $recipientType = $request->recipient_type;
         $filter = $request->recipient_filter ?? [];
@@ -132,7 +175,7 @@ class NotificationController extends Controller
             'template_id' => 'nullable|exists:notification_templates,id',
         ]);
 
-        $schoolId = Auth::user()->getSchoolId();
+        $schoolId = Auth::user()->school_id;
         $recipients = $this->getRecipients($schoolId, $validated['recipient_type'], $validated['recipient_filter'] ?? []);
 
         DB::beginTransaction();
@@ -231,14 +274,14 @@ class NotificationController extends Controller
     {
         switch ($recipientType) {
             case 'all_parents':
-                return User::atSchool($schoolId)->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))->get();
+                return User::atSchool($schoolId)->withRole('parent')->get();
 
             case 'by_classroom': // تم تحديث المسمى ليطابق Create.tsx
             case 'class_students':
                 $classroomIds = $filter['classroom_ids'] ?? [];
                 // أولياء الأمور الذين لديهم طلاب في هذه الفصول
                 return User::atSchool($schoolId)
-                    ->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))
+                    ->withRole('parent')
                     ->whereHas('students', function ($q) use ($classroomIds) {
                         $q->whereHas('currentEnrollment', function ($eq) use ($classroomIds) {
                             $eq->whereIn('classroom_id', $classroomIds);
@@ -249,22 +292,18 @@ class NotificationController extends Controller
             case 'bus_students':
                 $busIds = $filter['bus_ids'] ?? [];
                 return User::atSchool($schoolId)
-                    ->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))
-                    ->whereHas('students', function ($q) use ($busIds) {
-                        $q->whereIn('forth_bus_id', $busIds)
-                          ->orWhereIn('back_bus_id', $busIds);
+                    ->withRole('parent')
+                    ->whereHas('students.buses', function ($q) use ($busIds) {
+                        $q->whereIn('buses.id', $busIds);
                     })->get();
 
             case 'specific_parent': // تم تحديث المسمى ليطابق Create.tsx
             case 'specific_guardian':
                 $guardianId = $filter['guardian_id'] ?? null;
-                return User::where('id', $guardianId)->whereHas('roles', fn($q) => $q->where('roles.name', 'parent'))->get();
+                return User::where('id', $guardianId)->withRole('parent')->get();
 
             default:
                 return collect();
         }
     }
 }
-
-
-

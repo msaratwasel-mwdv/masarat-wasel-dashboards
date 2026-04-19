@@ -4,11 +4,10 @@ namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Classroom;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -21,11 +20,12 @@ class TeacherController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
+        $schoolId = $user->school_id;
         $search = $request->input('search');
 
-        $teachers = User::whereHas('teacher', fn($q) => $q->where('teachers.school_id', $user->getSchoolId()))
-            ->whereHas('roles', fn($q) => $q->where('roles.name', 'teacher'))
-            ->with(['teacher.classroom']) // Eager load classroom
+        $teachers = User::query()
+            ->atSchool($schoolId)
+            ->withRole('teacher')
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('first_name_ar', 'like', "%{$search}%")
@@ -34,41 +34,31 @@ class TeacherController extends Controller
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             })
+            ->with(['teacher.grade']) 
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function($u) {
-                return [
-                    'id' => $u->id,
-                    'name' => $u->name,
-                    'first_name_ar' => $u->first_name_ar,
-                    'last_name_ar' => $u->last_name_ar,
-                    'national_id' => $u->national_id,
-                    'email' => $u->email,
-                    'phone' => $u->phone,
-                    'classroom_id' => $u->teacher?->classroom_id,
-                    'classroom_name' => $u->teacher?->classroom?->name,
-                ];
+            ->map(function ($u) {
+                $u->grade_id = $u->teacher?->grade_id;
+                $u->grade_name = $u->teacher?->grade?->name;
+                return $u;
             });
 
-        $classrooms = Classroom::where('school_id', $user->getSchoolId())->get(['id', 'name']);
+        $counts = [
+            'all' => $teachers->count(),
+            'active' => $teachers->where('is_active', true)->count(),
+            'inactive' => $teachers->where('is_active', false)->count(),
+        ];
 
         return Inertia::render('School/Teachers/Index', [
             'teachers' => $teachers,
-            'classrooms' => $classrooms,
+            'counts' => $counts,
             'filters' => $request->only(['search']),
+            'grades' => \App\Models\Grade::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
     /**
-     * Fallback for show route to avoid GET method errors
-     */
-    public function show()
-    {
-        return redirect()->route('school.teachers.index');
-    }
-
-    /**
-     * إنشاء مشرف جديد
+     * إنشاء معلم جديد
      */
     public function store(Request $request)
     {
@@ -76,85 +66,72 @@ class TeacherController extends Controller
         $user = Auth::user();
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'first_name_ar' => 'required|string|max:255',
+            'second_name_ar' => 'nullable|string|max:255',
+            'third_name_ar' => 'nullable|string|max:255',
+            'last_name_ar' => 'required|string|max:255',
+            'first_name_en' => 'nullable|string|max:255',
+            'second_name_en' => 'nullable|string|max:255',
+            'third_name_en' => 'nullable|string|max:255',
+            'last_name_en' => 'nullable|string|max:255',
             'national_id' => ['required', 'string', 'max:20', Rule::unique('users', 'national_id')],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')],
             'phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')],
             'password' => 'nullable|string|min:6',
-            'classroom_id' => 'nullable|exists:classrooms,id',
+            'is_active' => 'required|boolean',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+            'grade_id' => [
+                'nullable',
+                'exists:grades,id',
+                Rule::unique('teachers', 'grade_id'),
+            ],
         ]);
 
-        DB::transaction(function() use ($validated, $user) {
-            [$first, $second, $third, $last] = User::parseFullName($validated['name']);
-            
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('teachers', 'public');
+        }
+
+        \DB::transaction(function() use ($validated, $user, $imagePath) {
             $teacherUser = User::create([
-                'first_name_ar'  => $first,
-                'second_name_ar' => $second,
-                'third_name_ar'  => $third,
-                'last_name_ar'   => $last,
-                'first_name_en'  => '',
-                'second_name_en' => '',
-                'third_name_en'  => '',
-                'last_name_en'   => '',
+                'first_name_ar' => $validated['first_name_ar'],
+                'second_name_ar' => $validated['second_name_ar'] ?? '',
+                'third_name_ar' => $validated['third_name_ar'] ?? '',
+                'last_name_ar' => $validated['last_name_ar'],
+                'first_name_en' => $validated['first_name_en'] ?? '',
+                'second_name_en' => $validated['second_name_en'] ?? '',
+                'third_name_en' => $validated['third_name_en'] ?? '',
+                'last_name_en' => $validated['last_name_en'] ?? '',
                 'national_id' => $validated['national_id'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'] ?? null,
                 'password' => Hash::make(
                     $validated['password'] ?? $validated['phone']
                 ),
+                'is_active' => $validated['is_active'],
+                'image' => $imagePath,
             ]);
 
-            // Assign role
-            $teacherRole = \App\Models\Role::firstOrCreate(['name' => 'teacher']);
-            $teacherUser->roles()->attach($teacherRole->id);
+            // Attach role
+            $role = \App\Models\Role::firstOrCreate(['name' => 'teacher']);
+            $teacherUser->roles()->attach($role->id);
 
-            // Create Teacher extension record
+            // Create teacher record
             \App\Models\Teacher::create([
                 'user_id' => $teacherUser->id,
-                'school_id' => $user->getSchoolId(),
-                'classroom_id' => $validated['classroom_id'] ?? null,
+                'school_id' => $user->school_id,
+                'grade_id' => $validated['grade_id'] ?? null,
                 'status' => 'active',
             ]);
         });
 
         return redirect()
-            ->back()
+            ->route('school.teachers.index')
             ->with('success', 'Teacher created successfully.');
     }
 
     /**
-     * عرض صفحة تعديل مشرف
-     */
-    public function edit(User $teacher)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        // 🔐 حماية: لا تعدّل مشرف من مدرسة ثانية
-        if (
-            $teacher->getSchoolId() !== $user->getSchoolId() ||
-            !$teacher->hasRole('teacher')
-        ) {
-            abort(403);
-        }
-
-        $classrooms = Classroom::where('school_id', $user->getSchoolId())->get(['id', 'name']);
-
-        return Inertia::render('School/Teachers/Edit', [
-            'teacher' => [
-                'id' => $teacher->id,
-                'name' => $teacher->name,
-                'national_id' => $teacher->national_id,
-                'email' => $teacher->email,
-                'phone' => $teacher->phone,
-                'classroom_id' => $teacher->teacher?->classroom_id,
-            ],
-            'classrooms' => $classrooms,
-        ]);
-    }
-
-    /**
-     * تحديث بيانات مشرف
+     * تحديث بيانات معلم
      */
     public function update(Request $request, User $teacher)
     {
@@ -162,14 +139,21 @@ class TeacherController extends Controller
         $user = Auth::user();
 
         if (
-            $teacher->getSchoolId() !== $user->getSchoolId() ||
+            $teacher->school_id !== $user->school_id ||
             !$teacher->hasRole('teacher')
         ) {
             abort(403);
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'first_name_ar' => 'required|string|max:255',
+            'second_name_ar' => 'nullable|string|max:255',
+            'third_name_ar' => 'nullable|string|max:255',
+            'last_name_ar' => 'required|string|max:255',
+            'first_name_en' => 'nullable|string|max:255',
+            'second_name_en' => 'nullable|string|max:255',
+            'third_name_en' => 'nullable|string|max:255',
+            'last_name_en' => 'nullable|string|max:255',
             'national_id' => [
                 'required',
                 'string',
@@ -183,38 +167,50 @@ class TeacherController extends Controller
                 Rule::unique('users', 'email')->ignore($teacher->id),
             ],
             'phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($teacher->id)],
+            'is_active' => 'required|boolean',
             'password' => 'nullable|string|min:6',
-            'classroom_id' => 'nullable|exists:classrooms,id',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+            'grade_id' => [
+                'nullable',
+                'exists:grades,id',
+                Rule::unique('teachers', 'grade_id')->ignore($teacher->id, 'user_id'),
+            ],
         ]);
 
-        [$first, $second, $third, $last] = User::parseFullName($validated['name']);
+        $updateData = [
+            'first_name_ar' => $validated['first_name_ar'],
+            'second_name_ar' => $validated['second_name_ar'] ?? '',
+            'third_name_ar' => $validated['third_name_ar'] ?? '',
+            'last_name_ar' => $validated['last_name_ar'],
+            'first_name_en' => $validated['first_name_en'] ?? '',
+            'second_name_en' => $validated['second_name_en'] ?? '',
+            'third_name_en' => $validated['third_name_en'] ?? '',
+            'last_name_en' => $validated['last_name_en'] ?? '',
+            'national_id'    => $validated['national_id'],
+            'email'          => $validated['email'] ?? null,
+            'phone'          => $validated['phone'],
+            'is_active'      => $validated['is_active'],
+        ];
 
-        $teacher->update([
-            'first_name_ar'  => $first,
-            'second_name_ar' => $second,
-            'third_name_ar'  => $third,
-            'last_name_ar'   => $last,
-            'national_id' => $validated['national_id'],
-            'email'       => $validated['email'] ?? null,
-            'phone'       => $validated['phone'],
-        ]);
+        // معالجة رفع الصورة
+        if ($request->hasFile('image')) {
+            if ($teacher->image) {
+                Storage::disk('public')->delete($teacher->image);
+            }
+            $updateData['image'] = $request->file('image')->store('teachers', 'public');
+        }
+
+        $teacher->update($updateData);
 
         // تحديث كلمة المرور إذا أُدخلت
         if (!empty($validated['password'])) {
             $teacher->update(['password' => Hash::make($validated['password'])]);
         }
 
-        // تحديث الفصل والمدرسة
+        // تحديث المرحلة في بروفايل المعلم
         if ($teacher->teacher) {
             $teacher->teacher->update([
-                'classroom_id' => $validated['classroom_id'] ?? null,
-                'school_id' => $user->getSchoolId()
-            ]);
-        } else {
-            \App\Models\Teacher::create([
-                'user_id' => $teacher->id,
-                'school_id' => $user->getSchoolId(),
-                'classroom_id' => $validated['classroom_id'] ?? null,
+                'grade_id' => $validated['grade_id'] ?? null,
             ]);
         }
 
@@ -232,7 +228,7 @@ class TeacherController extends Controller
         $user = Auth::user();
 
         if (
-            $teacher->getSchoolId() !== $user->getSchoolId() ||
+            $teacher->school_id !== $user->school_id ||
             !$teacher->hasRole('teacher')
         ) {
             abort(403);
@@ -245,6 +241,3 @@ class TeacherController extends Controller
             ->with('success', 'Teacher deleted successfully.');
     }
 }
-
-
-

@@ -8,6 +8,7 @@ use App\Models\Student;
 use App\Models\Bus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class RouteController extends Controller
@@ -49,7 +50,7 @@ class RouteController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'nullable|string|max:50|unique:routes,code,' . $route->id,
+            'code' => ['nullable', 'string', 'max:50', Rule::unique('routes', 'code')->ignore($route->id)],
             'description' => 'nullable|string|max:1000',
         ]);
 

@@ -69,8 +69,7 @@ class Conversation extends Model
         return static::where('type', 'private')
             ->whereHas('participants', fn($q) => $q->where('users.id', $userA))
             ->whereHas('participants', fn($q) => $q->where('users.id', $userB))
-            ->withCount('participants')
-            ->having('participants_count', 2)
+            ->has('participants', '=', 2)
             ->first();
     }
 }

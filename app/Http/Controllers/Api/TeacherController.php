@@ -22,9 +22,12 @@ class TeacherController extends Controller
      */
     public function getClasses(Request $request)
     {
-        $teacher = $request->user();
+        $teacher = $request->user()->teacher;
+        if (!$teacher || !$teacher->grade_id) {
+            return response()->json([]);
+        }
         
-        $classes = $teacher->classrooms()->withCount('students')->get();
+        $classes = Classroom::where('grade_id', $teacher->grade_id)->withCount('students')->get();
         
         $result = $classes->map(function ($cls) use ($teacher) {
             return [
@@ -58,16 +61,21 @@ class TeacherController extends Controller
             $photoUrl = null;
             if ($student->image) {
                 $photoUrl = url('storage/' . ltrim($student->image, '/'));
-            } elseif ($student->guardian && $student->guardian->image) {
-                $photoUrl = url('storage/' . ltrim($student->guardian->image, '/'));
+            } 
+            
+            $parentPhotoUrl = null;
+            $guardian = $student->guardian instanceof \Illuminate\Database\Eloquent\Collection ? $student->guardian->first() : $student->guardian;
+            if ($guardian && $guardian->image) {
+                $parentPhotoUrl = url('storage/' . ltrim($guardian->image, '/'));
             }
 
             return [
                 'id' => (string) $student->id,
                 'name' => $student->full_name ?? ($student->full_name_en ?? 'غير معروف'),
-                'parentName' => $student->guardian ? $student->guardian->name : 'غير محدد',
-                'parentPhone' => $student->guardian ? $student->guardian->phone : 'غير محدد',
+                'parentName' => $guardian ? $guardian->name : 'غير محدد',
+                'parentPhone' => $guardian ? $guardian->phone : 'غير محدد',
                 'photoUrl' => $photoUrl,
+                'parentPhotoUrl' => $parentPhotoUrl,
                 'status' => $attendance ? $attendance->status : 'unknown',
             ];
         });
@@ -179,20 +187,24 @@ class TeacherController extends Controller
                 $student = $record->student;
                 
                 $photoUrl = null;
+                $parentPhotoUrl = null;
                 if ($student) {
                     if ($student->image) {
                         $photoUrl = url('storage/' . ltrim($student->image, '/'));
-                    } elseif ($student->guardian && $student->guardian->image) {
-                        $photoUrl = url('storage/' . ltrim($student->guardian->image, '/'));
+                    } 
+                    $guardian = $student->guardian instanceof \Illuminate\Database\Eloquent\Collection ? $student->guardian->first() : $student->guardian;
+                    if ($guardian && $guardian->image) {
+                        $parentPhotoUrl = url('storage/' . ltrim($guardian->image, '/'));
                     }
                 }
 
                 return [
                     'id' => (string) $record->student_id,
                     'name' => $student ? ($student->full_name ?? ($student->full_name_en ?? 'غير معروف')) : 'غير معروف',
-                    'parentName' => $student && $student->guardian ? $student->guardian->name : 'غير محدد',
-                    'parentPhone' => $student && $student->guardian ? $student->guardian->phone : 'غير محدد',
+                    'parentName' => $guardian ? $guardian->name : 'غير محدد',
+                    'parentPhone' => $guardian ? $guardian->phone : 'غير محدد',
                     'photoUrl' => $photoUrl,
+                    'parentPhotoUrl' => $parentPhotoUrl,
                     'status' => $record->status,
                 ];
             })->values()->all();
@@ -218,16 +230,15 @@ class TeacherController extends Controller
      */
     public function getTeacherAttendanceHistory(Request $request)
     {
-        $teacher = $request->user();
-        $year = now()->year;
-        $month = now()->format('m');
-
-        if ($request->has('year') && $request->has('month')) {
-            $year = $request->year;
-            $month = str_pad($request->month, 2, '0', STR_PAD_LEFT);
+        $teacher = $request->user()->teacher;
+        if (!$teacher || !$teacher->grade_id) {
+            return response()->json([]);
         }
 
-        $classes = $teacher->classrooms()->with('students.guardian')->get();
+        $year  = $request->input('year', now()->year);
+        $month = $request->input('month', now()->month);
+
+        $classes = Classroom::where('grade_id', $teacher->grade_id)->with('students.guardian')->get();
         $result = [];
 
         foreach ($classes as $classroom) {
@@ -254,20 +265,24 @@ class TeacherController extends Controller
                     $student = $record->student;
                     
                     $photoUrl = null;
+                    $parentPhotoUrl = null;
                     if ($student) {
                         if ($student->image) {
                             $photoUrl = url('storage/' . ltrim($student->image, '/'));
-                        } elseif ($student->guardian && $student->guardian->image) {
-                            $photoUrl = url('storage/' . ltrim($student->guardian->image, '/'));
+                        } 
+                        $guardian = $student->guardian instanceof \Illuminate\Database\Eloquent\Collection ? $student->guardian->first() : $student->guardian;
+                        if ($guardian && $guardian->image) {
+                            $parentPhotoUrl = url('storage/' . ltrim($guardian->image, '/'));
                         }
                     }
 
                     return [
                         'id' => (string) $record->student_id,
                         'name' => $student ? ($student->full_name ?? ($student->full_name_en ?? 'غير معروف')) : 'غير معروف',
-                        'parentName' => $student && $student->guardian ? $student->guardian->name : 'غير محدد',
-                        'parentPhone' => $student && $student->guardian ? $student->guardian->phone : 'غير محدد',
+                        'parentName' => $guardian ? $guardian->name : 'غير محدد',
+                        'parentPhone' => $guardian ? $guardian->phone : 'غير محدد',
                         'photoUrl' => $photoUrl,
+                        'parentPhotoUrl' => $parentPhotoUrl,
                         'status' => $record->status,
                     ];
                 })->values()->all();
@@ -290,6 +305,86 @@ class TeacherController extends Controller
 
         return response()->json($result);
     }
+
+    /**
+     * Get attendance reporting stats for the teacher.
+     */
+    public function getAttendanceStats(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher || !$teacher->grade_id) {
+            return response()->json([
+                'totalStudents' => 0,
+                'presentToday' => 0,
+                'absentToday' => 0,
+                'unmarkedToday' => 0,
+                'averageAttendance' => 0,
+                'weeklyTrend' => [],
+                'studentReports' => [],
+            ]);
+        }
+        $classes = Classroom::where('grade_id', $teacher->grade_id)->with('students')->get();
+        
+        $totalStudents = 0;
+        $presentToday = 0;
+        $absentToday = 0;
+        $unmarkedToday = 0;
+        
+        $studentReports = [];
+
+        foreach ($classes as $classroom) {
+            $classroomStudents = $classroom->students;
+            $totalStudents += $classroomStudents->count();
+
+            foreach ($classroomStudents as $student) {
+                // Today's attendance
+                $attendance = Attendance::where('student_id', $student->id)
+                    ->whereDate('date', today())
+                    ->first();
+
+                if ($attendance) {
+                    if (in_array($attendance->status, ['present', 'late'])) {
+                        $presentToday++;
+                    } else {
+                        $absentToday++;
+                    }
+                } else {
+                    $unmarkedToday++;
+                }
+
+                // Overall counts for this student
+                $pCount = Attendance::where('student_id', $student->id)
+                    ->whereIn('status', ['present', 'late'])
+                    ->count();
+                $aCount = Attendance::where('student_id', $student->id)
+                    ->whereIn('status', ['absent', 'excused'])
+                    ->count();
+
+                $photoUrl = null;
+                if ($student->image) {
+                    $photoUrl = url('storage/' . ltrim($student->image, '/'));
+                }
+
+                $studentReports[] = [
+                    'name' => $student->full_name ?? ($student->full_name_en ?? 'غير معروف'),
+                    'civilId' => $student->national_id ?? $student->student_code,
+                    'presentCount' => $pCount,
+                    'absentCount' => $aCount,
+                    'photoUrl' => $photoUrl,
+                ];
+            }
+        }
+
+        $avg = $totalStudents > 0 ? ($presentToday / $totalStudents) * 100 : 0;
+
+        return response()->json([
+            'totalStudents' => $totalStudents,
+            'presentToday' => $presentToday,
+            'absentToday' => $absentToday,
+            'unmarkedToday' => $unmarkedToday,
+            'averageAttendance' => $avg,
+            'weeklyTrend' => [], // Can be implemented if needed
+            'studentReports' => $studentReports,
+        ]);
+    }
 }
-
-

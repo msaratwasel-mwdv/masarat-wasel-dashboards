@@ -36,8 +36,8 @@ class BusLocationController extends Controller
         }
 
         $bus->update([
-            'current_latitude' => $request->latitude,
-            'current_longitude' => $request->longitude,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
             'last_location_update' => now(),
         ]);
 
@@ -62,8 +62,8 @@ class BusLocationController extends Controller
         return response()->json([
             'message' => 'تم تحديث الموقع.',
             'location' => [
-                'latitude' => $bus->current_latitude,
-                'longitude' => $bus->current_longitude,
+                'latitude' => $bus->latitude,
+                'longitude' => $bus->longitude,
                 'updated_at' => $bus->last_location_update,
             ],
         ]);
@@ -131,8 +131,8 @@ class BusLocationController extends Controller
 
         return response()->json([
             'bus_id' => $bus->id,
-            'latitude' => (double) $bus->current_latitude,
-            'longitude' => (double) $bus->current_longitude,
+            'latitude' => (double) $bus->latitude,
+            'longitude' => (double) $bus->longitude,
             'trip_status' => $bus->trip_status,
             'last_update' => $bus->last_location_update ? $bus->last_location_update->toIso8601String() : null,
             'bus_number' => $bus->bus_number,

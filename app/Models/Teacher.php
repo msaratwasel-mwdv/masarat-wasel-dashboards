@@ -15,11 +15,11 @@ class Teacher extends Model
     protected $fillable = [
         'user_id',
         'school_id',
-        'classroom_id',
+        'grade_id',
         'fcm_token',
     ];
 
-    protected $appends = ['name'];
+    // protected $appends = ['name'];
 
     public function getNameAttribute()
     {
@@ -36,9 +36,9 @@ class Teacher extends Model
         return $this->belongsTo(School::class);
     }
 
-    public function classroom(): BelongsTo
+    public function grade(): BelongsTo
     {
-        return $this->belongsTo(Classroom::class);
+        return $this->belongsTo(Grade::class);
     }
 }
 

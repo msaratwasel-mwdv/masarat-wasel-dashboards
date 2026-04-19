@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Route;
 use App\Models\School;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class RouteController extends Controller
@@ -43,7 +44,7 @@ class RouteController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:routes,code,' . $route->id,
+            'code' => ['required', 'string', 'max:50', Rule::unique('routes', 'code')->ignore($route->id)],
             'description' => 'nullable|string',
             'school_id' => 'required|exists:schools,id',
         ]);

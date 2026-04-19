@@ -103,7 +103,6 @@ class FieldTripController extends Controller
                 'destination_address' => $validated['destination_address'],
                 'destination_latitude' => $validated['destination_latitude'],
                 'destination_longitude' => $validated['destination_longitude'],
-                'external_members' => $validated['external_members'] ?? [],
                 'status' => 'pending',
             ];
 
@@ -111,10 +110,34 @@ class FieldTripController extends Controller
 
             $fieldTrip = FieldTrip::create($data);
 
-            // Save Students and Internal Teachers
-            $fieldTrip->students()->sync($validated['student_ids']);
+            // Resolve National IDs for Students
+            $studentNationalIds = Student::whereIn('id', $validated['student_ids'])
+                ->pluck('national_id')
+                ->filter()
+                ->toArray();
+            
+            $fieldTrip->students()->sync($studentNationalIds);
+
+            // Resolve National IDs for Internal Teachers
             if (!empty($validated['teacher_ids'])) {
-                $fieldTrip->internalTeachers()->sync($validated['teacher_ids']);
+                $teacherNationalIds = User::whereIn('id', $validated['teacher_ids'])
+                    ->pluck('national_id')
+                    ->filter()
+                    ->toArray();
+                    
+                $fieldTrip->internalTeachers()->sync($teacherNationalIds);
+            }
+
+            // Save External Members to the participants table (ignoring name/phone as they are removed from migration)
+            if (!empty($validated['external_members'])) {
+                foreach ($validated['external_members'] as $external) {
+                    if (!empty($external['national_id'])) {
+                        $fieldTrip->participants()->create([
+                            'national_id' => $external['national_id'],
+                            'type' => 'external',
+                        ]);
+                    }
+                }
             }
 
             \Illuminate\Support\Facades\Log::info('FieldTrip created SUCCESS', ['id' => $fieldTrip->id]);
@@ -165,6 +188,7 @@ class FieldTripController extends Controller
             'trip' => $fieldTrip->load([
                 'students.currentEnrollment.classroom',
                 'internalTeachers',
+                'externalParticipants',
                 'bus.driver',
                 'bus.assistant'
             ])

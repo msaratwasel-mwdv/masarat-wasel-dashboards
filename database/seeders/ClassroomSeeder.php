@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Classroom;
 use App\Models\School;
 use App\Models\Teacher;
+use App\Models\Grade;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -23,15 +24,28 @@ class ClassroomSeeder extends Seeder
             ->get();
 
         foreach ($gradesAr as $index => $gradeName) {
-            $classroom = Classroom::updateOrCreate(
+            // 1. Create Grade
+            $grade = Grade::updateOrCreate(
                 ['school_id' => $school->id, 'name' => $gradeName]
             );
 
+            // 2. Assign Teacher to Grade (1:1)
             if (isset($teachers[$index])) {
                 $teacherExtension = Teacher::where('user_id', $teachers[$index]->id)->first();
                 if ($teacherExtension) {
-                    $teacherExtension->update(['classroom_id' => $classroom->id]);
+                    $teacherExtension->update(['grade_id' => $grade->id]);
                 }
+            }
+
+            // 3. Create a couple of classrooms for this grade
+            for ($c = 1; $c <= 2; $c++) {
+                Classroom::updateOrCreate(
+                    [
+                        'school_id' => $school->id, 
+                        'grade_id' => $grade->id,
+                        'name' => "فصل " . $gradeName . " ($c)"
+                    ]
+                );
             }
         }
     }

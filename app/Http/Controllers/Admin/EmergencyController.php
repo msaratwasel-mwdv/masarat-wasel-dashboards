@@ -14,9 +14,9 @@ class EmergencyController extends Controller
      */
     public function index()
     {
-        // Get active and in_progress incidents
-        $activeIncidents = Incident::with(['reporter', 'bus.driver', 'bus.supervisor'])
-            ->whereIn('status', ['active', 'in_progress'])
+        // Get active, pending, and in_progress incidents
+        $activeIncidents = Incident::with(['reporter', 'bus.driver', 'bus.fieldSupervisor'])
+            ->whereIn('status', ['active', 'pending', 'in_progress'])
             ->latest()
             ->get();
 
@@ -39,7 +39,7 @@ class EmergencyController extends Controller
     public function updateStatus(Request $request, Incident $incident)
     {
         $validated = $request->validate([
-            'status' => 'required|in:active,in_progress,resolved',
+            'status' => 'required|in:active,pending,in_progress,resolved',
         ]);
 
         $updateData = ['status' => $validated['status']];
@@ -53,5 +53,3 @@ class EmergencyController extends Controller
         return redirect()->back()->with('success', 'تم تحديث حالة البلاغ بنجاح');
     }
 }
-
-

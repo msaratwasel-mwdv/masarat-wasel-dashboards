@@ -106,8 +106,10 @@ class SchoolController extends Controller
                 ->where('status', 'maintenance')
                 ->count(),
 
-            // عدد السائقين المخصصين لهذه المدرسة
-            'drivers_count' => \App\Models\Driver::where('school_id', $school->id)->count(),
+            // عدد السائقين المخصصين لهذه المدرسة (المعينين على باصات تابعة للمدرسة)
+            'drivers_count' => \App\Models\Driver::whereHas('bus', function($q) use ($school) {
+                $q->where('school_id', $school->id);
+            })->count(),
 
             // عدد المساعدين المخصصين لباصات هذه المدرسة
             'assistants_count' => \App\Models\Bus::where('school_id', $school->id)
