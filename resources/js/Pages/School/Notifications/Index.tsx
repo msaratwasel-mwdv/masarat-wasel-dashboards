@@ -14,6 +14,8 @@ interface Notification {
     sent_count: number;
     failed_count: number;
     created_at: string;
+    sender_id: number;
+    incident?: any;
 }
 
 interface NotificationTemplate {
@@ -63,10 +65,12 @@ interface Props {
 }
 
 export default function Index({ notifications, stats, templates, classrooms, buses, parents, auth }: Props) {
-    const { t } = useTranslation();
+    const { t, lang } = useTranslation();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [filterType, setFilterType] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeTab, setActiveTab] = useState<'sent' | 'received'>('received');
+    const [selectedIncident, setSelectedIncident] = useState<any>(null);
 
     const getSuccessRate = (notification: Notification) => {
         if (notification.total_recipients === 0) return 0;
@@ -94,12 +98,29 @@ export default function Index({ notifications, stats, templates, classrooms, bus
     };
 
     const filteredNotifications = notifications.data.filter(notif => {
+        const matchesTab = activeTab === 'sent' ? notif.sender_id === auth.user.id : notif.sender_id !== auth.user.id;
         const matchesType = filterType === 'all' || notif.type === filterType;
         const matchesSearch = 
             notif.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
             notif.message.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesType && matchesSearch;
+        return matchesTab && matchesType && matchesSearch;
     });
+
+    const [initialNotificationData, setInitialNotificationData] = useState<any>(null);
+
+    const handleForwardIncident = (incident: any) => {
+        setInitialNotificationData({
+            type: "bus_notification",
+            title_ar: "إشعار طارئ بخصوص حافلة " + (incident.bus?.bus_code || ''),
+            title_en: "Emergency Notification for Bus " + (incident.bus?.bus_code || ''),
+            body_ar: "نود إعلامكم بالآتي:\n\n" + incident.description,
+            body_en: "We would like to inform you about the following:\n\n" + incident.description,
+            recipient_type: "by_bus",
+            recipient_filter: incident.bus_id ? { bus_id: String(incident.bus_id) } : {},
+        });
+        setSelectedIncident(null);
+        setIsModalOpen(true);
+    };
 
     return (
         <SchoolAuthenticatedLayout
@@ -154,45 +175,77 @@ export default function Index({ notifications, stats, templates, classrooms, bus
 
                 {/* Main Content Area */}
                 <div className="bg-white dark:bg-gray-800 rounded-[30px] border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-                    {/* Toolbar */}
-                    <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex flex-col xl:flex-row gap-6 items-center justify-between bg-gray-50/50 dark:bg-gray-900/50">
-                        <div className="flex items-center gap-4 w-full xl:w-auto overflow-x-auto pb-2 xl:pb-0 hide-scrollbar">
-                            {['all', 'school_announcement', 'bus_notification', 'emergency', 'general'].map(type => (
-                                <button
-                                    key={type}
-                                    onClick={() => setFilterType(type)}
-                                    className={`px-5 py-2.5 rounded-[20px] font-bold text-sm whitespace-nowrap transition-all border ${
-                                        filterType === type
-                                            ? 'bg-[#0e7490] text-white border-[#0e7490] shadow-md'
-                                            : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                                    }`}
-                                >
-                                    {t(type === 'all' ? 'All Types' : type)}
-                                </button>
-                            ))}
-                        </div>
+                    {/* Top Tabs */}
+                    <div className="flex border-b border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/50">
+                        <button
+                            onClick={() => setActiveTab('received')}
+                            className={`flex-1 py-4 font-bold text-lg transition-all border-b-2 ${
+                                activeTab === 'received' 
+                                ? 'text-[#0e7490] border-[#0e7490] bg-white dark:bg-gray-800' 
+                                : 'text-gray-500 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700'
+                            }`}
+                        >
+                            الإشعارات المستلمة (طوارئ وبلاغات)
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('sent')}
+                            className={`flex-1 py-4 font-bold text-lg transition-all border-b-2 ${
+                                activeTab === 'sent' 
+                                ? 'text-[#0e7490] border-[#0e7490] bg-white dark:bg-gray-800' 
+                                : 'text-gray-500 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700'
+                            }`}
+                        >
+                            الإشعارات المرسلة
+                        </button>
+                    </div>
 
-                        <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto">
-                            <div className="relative flex-grow sm:flex-grow-0 min-w-[300px]">
+                    {/* Toolbar */}
+                    <div className={`p-6 border-b border-gray-100 dark:border-gray-700 flex flex-wrap gap-4 items-center ${activeTab === 'sent' ? 'justify-between' : 'justify-end'} bg-gray-50/50 dark:bg-gray-900/50`}>
+                        {activeTab === 'sent' && (
+                            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                                {['all', 'school_announcement', 'bus_notification', 'emergency', 'general'].map(type => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setFilterType(type)}
+                                        className={`px-4 py-2 rounded-[20px] font-bold text-sm whitespace-nowrap transition-all border flex-grow sm:flex-grow-0 text-center ${
+                                            filterType === type
+                                                ? 'bg-[#0e7490] text-white border-[#0e7490] shadow-md'
+                                                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                                        }`}
+                                    >
+                                        {t(type === 'all' ? 'All Types' : type)}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                            <div className="relative w-full sm:w-auto sm:min-w-[280px]">
                                 <input
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder={t('Search notifications...')}
-                                    className="w-full pl-11 pr-4 py-3 rounded-[20px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
+                                    className="w-full pl-11 pr-4 py-2.5 rounded-[20px] border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
+                                    dir={lang === 'ar' ? 'rtl' : 'ltr'}
                                 />
-                                <svg className="w-5 h-5 text-gray-400 absolute left-4 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className={`w-5 h-5 text-gray-400 absolute top-3 ${lang === 'ar' ? 'left-4' : 'left-4'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
                             </div>
 
-                            <button
-                                onClick={() => setIsModalOpen(true)}
-                                className="px-6 py-3 bg-[#0e7490] text-white font-bold rounded-[20px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-                            >
-                                <span className="text-xl">+</span>
-                                {t('New Notification')}
-                            </button>
+                            {activeTab === 'sent' && (
+                                <button
+                                    onClick={() => {
+                                        setInitialNotificationData(null);
+                                        setIsModalOpen(true);
+                                    }}
+                                    className="px-6 py-2.5 bg-[#0e7490] text-white font-bold rounded-[20px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 whitespace-nowrap"
+                                >
+                                    <span className="text-xl leading-none">+</span>
+                                    {t('New Notification')}
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -201,43 +254,63 @@ export default function Index({ notifications, stats, templates, classrooms, bus
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
-                                    <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase">{t('Notification')}</th>
-                                    <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase">{t('Type')}</th>
-                                    <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">{t('Recipients')}</th>
+                                    <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">الإشعار</th>
+                                    <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 text-center uppercase">{t('Type')}</th>
+                                    {activeTab === 'sent' && (
+                                        <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">{t('Recipients')}</th>
+                                    )}
                                     <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">{t('Status')}</th>
                                     <th className="px-6 py-5 text-sm font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">{t('Date')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                                 {filteredNotifications.map((notification) => (
-                                    <tr key={notification.id} className="group hover:bg-cyan-50/50 dark:hover:bg-cyan-900/10 transition-colors">
+                                    <tr 
+                                        key={notification.id} 
+                                        className={`group hover:bg-cyan-50/50 dark:hover:bg-cyan-900/10 transition-colors ${activeTab === 'received' && notification.incident ? 'cursor-pointer' : ''}`}
+                                        onClick={() => {
+                                            if (activeTab === 'received' && notification.incident) {
+                                                setSelectedIncident(notification.incident);
+                                            }
+                                        }}
+                                    >
                                         <td className="px-6 py-4">
-                                            <div>
-                                                <p className="font-bold text-gray-900 dark:text-white mb-1 group-hover:text-[#0e7490] transition-colors">
-                                                    {notification.title}
-                                                </p>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1 max-w-md">
+                                            <div className="flex flex-col items-center justify-center text-center">
+                                                {notification.type !== 'incident' && (
+                                                    <p className="font-bold text-gray-900 dark:text-white mb-1 group-hover:text-[#0e7490] transition-colors">
+                                                        {notification.title}
+                                                    </p>
+                                                )}
+                                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 line-clamp-2 max-w-md">
                                                     {notification.message}
                                                 </p>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-6 py-4 text-center">
                                             <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-[15px] text-xs font-bold ${getTypeColor(notification.type)}`}>
-                                                <span>{getTypeIcon(notification.type)}</span>
-                                                {t(notification.type)}
+                                                {notification.type === 'incident' ? (
+                                                    <span>{notification.title}</span>
+                                                ) : (
+                                                    <>
+                                                        <span>{getTypeIcon(notification.type)}</span>
+                                                        {t(notification.type)}
+                                                    </>
+                                                )}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col items-center">
-                                                <span className="font-bold text-gray-900 dark:text-white text-lg">
-                                                    {notification.total_recipients}
-                                                </span>
-                                                <div className="flex items-center gap-1 text-[10px] text-gray-500">
-                                                    <span className="text-green-600">{notification.sent_count} ✓</span>
-                                                    <span className="text-red-500">{notification.failed_count} ✗</span>
+                                        {activeTab === 'sent' && (
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col items-center">
+                                                    <span className="font-bold text-gray-900 dark:text-white text-lg">
+                                                        {notification.total_recipients}
+                                                    </span>
+                                                    <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                                                        <span className="text-green-600">{notification.sent_count} ✓</span>
+                                                        <span className="text-red-500">{notification.failed_count} ✗</span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </td>
+                                            </td>
+                                        )}
                                         <td className="px-6 py-4 text-center">
                                             <span className={`px-3 py-1.5 rounded-[10px] text-xs font-bold capitalize ${
                                                 notification.status === 'sent'
@@ -305,7 +378,123 @@ export default function Index({ notifications, stats, templates, classrooms, bus
                 classrooms={classrooms}
                 buses={buses}
                 parents={parents}
+                initialData={initialNotificationData}
             />
+
+            {/* Incident Details Modal */}
+            {selectedIncident && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-gray-800 rounded-[30px] shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+                            <h3 className="text-xl font-bold text-[#0e7490] dark:text-cyan-400">
+                                {t('تفاصيل البلاغ / الحادث')}
+                            </h3>
+                            <button
+                                onClick={() => setSelectedIncident(null)}
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 transition-colors"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-6">
+                            {/* General Details */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-[20px]">
+                                    <p className="text-sm font-bold text-gray-500 mb-1">{t('المبلغ (من رفع البلاغ)')}</p>
+                                    <p className="font-bold text-gray-900 dark:text-white">
+                                        {selectedIncident.reporter ? selectedIncident.reporter.name : 'غير معروف'}
+                                    </p>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-[20px]">
+                                    <p className="text-sm font-bold text-gray-500 mb-1">{t('نوع البلاغ')}</p>
+                                    <p className="font-bold text-gray-900 dark:text-white capitalize">
+                                        {t(selectedIncident.type)}
+                                    </p>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-[20px]">
+                                    <p className="text-sm font-bold text-gray-500 mb-1">{t('الحافلة (المركبة)')}</p>
+                                    <p className="font-bold text-gray-900 dark:text-white">
+                                        {selectedIncident.bus ? selectedIncident.bus.bus_code : 'لم يُحدد'}
+                                    </p>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-[20px]">
+                                    <p className="text-sm font-bold text-gray-500 mb-1">{t('السائق')}</p>
+                                    <p className="font-bold text-gray-900 dark:text-white">
+                                        {selectedIncident.bus?.driver ? selectedIncident.bus.driver.name : 'لا يوجد سائق'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Bus Supervisor (If Any) */}
+                            {selectedIncident.bus?.supervisor && (
+                                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-[20px]">
+                                    <p className="text-sm font-bold text-gray-500 mb-1">{t('مشرفة الحافلة')}</p>
+                                    <p className="font-bold text-gray-900 dark:text-white">
+                                        {selectedIncident.bus.supervisor.name}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Student Info (If Behavioral) */}
+                            {selectedIncident.students_list && selectedIncident.students_list.length > 0 && (
+                                <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-4 rounded-[20px]">
+                                    <p className="text-sm font-bold text-red-600 dark:text-red-400 mb-1">{t('الطلاب المعنيين')}</p>
+                                    <ul className="list-disc list-inside">
+                                        {selectedIncident.students_list.map((student: any) => (
+                                            <li key={student.id} className="font-bold text-gray-900 dark:text-white">
+                                                {student.name} {student.uuid ? `(${student.uuid})` : ''}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-[20px]">
+                                <p className="text-sm font-bold text-gray-500 mb-1">{t('الوصف')}</p>
+                                <p className="font-bold text-gray-900 dark:text-white whitespace-pre-wrap">
+                                    {selectedIncident.description || 'لا يوجد وصف'}
+                                </p>
+                            </div>
+
+                            {selectedIncident.photo_urls && selectedIncident.photo_urls.length > 0 && (
+                                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-[20px]">
+                                    <p className="text-sm font-bold text-gray-500 mb-3">{t('صورة المرفقات')}</p>
+                                    <div className="flex gap-4 overflow-x-auto">
+                                        {selectedIncident.photo_urls.map((photoUrl: string, index: number) => (
+                                            <a key={index} href={photoUrl} target="_blank" rel="noopener noreferrer">
+                                                <img 
+                                                    src={photoUrl} 
+                                                    alt="Incident Photo" 
+                                                    className="h-32 w-32 object-cover rounded-[15px] border border-gray-200 dark:border-gray-600 hover:opacity-80 transition-opacity"
+                                                />
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 flex justify-between items-center">
+                            {selectedIncident.bus_id ? (
+                                <button
+                                    onClick={() => handleForwardIncident(selectedIncident)}
+                                    className="px-6 py-2.5 rounded-[15px] font-bold bg-[#0e7490] text-white hover:bg-[#155e75] transition-colors shadow-sm flex items-center gap-2"
+                                >
+                                    <span>📨</span>
+                                    {t('تحويل الرسالة لأولياء أمور الحافلة')}
+                                </button>
+                            ) : (
+                                <div />
+                            )}
+                            <button
+                                onClick={() => setSelectedIncident(null)}
+                                className="px-6 py-2.5 rounded-[15px] font-bold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                            >
+                                إغلاق
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </SchoolAuthenticatedLayout>
     );
 }

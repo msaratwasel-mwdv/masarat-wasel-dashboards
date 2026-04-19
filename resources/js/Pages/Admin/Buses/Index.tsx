@@ -223,7 +223,7 @@ export default function Index({
         year: bus.year,
         capacity: bus.capacity,
         status: bus.status as any,
-        driver_id: bus.driver_id?.toString() || "",
+        driver_id: bus.driver?.user_id?.toString() || "",
         field_supervisor_id: bus.field_supervisor_id?.toString() || "",
         assistant_id: bus.assistant_id?.toString() || "",
         school_id: bus.school_id?.toString() || "",
@@ -290,15 +290,19 @@ export default function Index({
     if (modalState.type !== "edit" || !modalState.bus) return availableDrivers;
     const currentDriver = modalState.bus.driver;
     if (!currentDriver) return availableDrivers;
-    const alreadyIn = availableDrivers.some((d) => d.id === currentDriver.id);
-    return alreadyIn ? availableDrivers : [currentDriver, ...availableDrivers];
+    const driverId = (currentDriver as any).user_id || (currentDriver as any).id;
+    const alreadyIn = availableDrivers.some((d) => d.id === driverId);
+    if (alreadyIn) return availableDrivers;
+    // Normalize current driver to look like a User object for the dropdown
+    return [{ ...currentDriver, id: driverId } as any, ...availableDrivers];
   }, [modalState, availableDrivers]);
 
   const editFieldSupervisorOptions = useMemo(() => {
     if (modalState.type !== "edit" || !modalState.bus) return availableFieldSupervisors;
     const currentSupervisor = modalState.bus.field_supervisor;
     if (!currentSupervisor) return availableFieldSupervisors;
-    const alreadyIn = availableFieldSupervisors.some((s) => s.id === currentSupervisor.id);
+    const supervisorId = currentSupervisor.id;
+    const alreadyIn = availableFieldSupervisors.some((s) => s.id === supervisorId);
     return alreadyIn ? availableFieldSupervisors : [currentSupervisor, ...availableFieldSupervisors];
   }, [modalState, availableFieldSupervisors]);
 
@@ -306,7 +310,8 @@ export default function Index({
     if (modalState.type !== "edit" || !modalState.bus) return availableAssistants;
     const currentAssistant = modalState.bus.assistant;
     if (!currentAssistant) return availableAssistants;
-    const alreadyIn = availableAssistants.some((s) => s.id === currentAssistant.id);
+    const assistantId = currentAssistant.id;
+    const alreadyIn = availableAssistants.some((s) => s.id === assistantId);
     return alreadyIn ? availableAssistants : [currentAssistant, ...availableAssistants];
   }, [modalState, availableAssistants]);
 

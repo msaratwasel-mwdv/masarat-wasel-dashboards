@@ -442,7 +442,7 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                 {/* External Member Sub-Modal */}
                 {showMemberModal && (
                     <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/70 backdrop-blur-xl animate-fadeIn" onClick={() => setShowMemberModal(false)}>
-                        <div className={`bg-white dark:bg-gray-900 rounded-[35px] shadow-2xl max-w-sm w-full p-8 transform animate-slideUp ${isRtl ? 'rtl' : 'ltr'}`} onClick={e => e.stopPropagation()}>
+                        <div className={`bg-white dark:bg-gray-900 rounded-[35px] shadow-2xl max-w-sm w-full p-8 transform animate-slideUp ${isRTL ? 'rtl' : 'ltr'}`} onClick={e => e.stopPropagation()}>
                             <h3 className="text-xl font-black text-gray-800 dark:text-white mb-6 flex items-center gap-3">
                                 <span className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl text-lg">➕</span>
                                 {t('External Escort')}

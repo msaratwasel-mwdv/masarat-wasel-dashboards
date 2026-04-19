@@ -10,7 +10,7 @@ interface Notification {
     message: string;
     data: any;
     from_user_name: string;
-    status: 'unread' | 'read';
+    status: 'unread' | 'read' | 'sent' | 'pending';
     icon: string;
     color: string;
     created_at: string;
@@ -73,7 +73,7 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
         try {
             await axios.delete(`/notifications/${id}`);
             setNotifications(prev => prev.filter(n => n.id !== id));
-            if (notifications.find(n => n.id === id)?.status === 'unread') {
+            if (notifications.find(n => n.id === id)?.status !== 'read') {
                 setUnreadCount(prev => Math.max(0, prev - 1));
             }
         } catch (error) {
@@ -227,10 +227,10 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
                                     <div
                                         key={notification.id}
                                         className={`p-4 hover:bg-gray-50 dark:hover:bg-brand-navy/10 transition-colors cursor-pointer relative group ${
-                                            notification.status === 'unread' ? 'bg-brand-yellow/5' : ''
+                                            notification.status !== 'read' ? 'bg-brand-yellow/5' : ''
                                         }`}
                                         onClick={() => {
-                                            if (notification.status === 'unread') markAsRead(notification.id);
+                                            if (notification.status !== 'read') markAsRead(notification.id);
                                             if (notification.data?.bus_request_id) {
                                                 router.visit('/admin/bus-requests');
                                                 setIsOpen(false);
@@ -240,11 +240,11 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
                                         <div className="flex gap-4">
                                             {/* Icon */}
                                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm border ${
-                                                notification.status === 'unread' 
+                                                notification.status !== 'read' 
                                                     ? 'bg-white dark:bg-gray-700 border-brand-yellow/30' 
                                                     : 'bg-gray-50 dark:bg-gray-800 border-transparent opacity-60'
                                             }`}>
-                                                <div className={notification.status === 'unread' ? 'text-brand-dark dark:text-brand-yellow' : 'text-gray-400'}>
+                                                <div className={notification.status !== 'read' ? 'text-brand-dark dark:text-brand-yellow' : 'text-gray-400'}>
                                                     {getIcon(notification.icon, notification.color)}
                                                 </div>
                                             </div>
@@ -253,16 +253,16 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex justify-between items-start mb-1">
                                                     <h4 className={`font-bold text-sm truncate ${
-                                                        notification.status === 'unread' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+                                                        notification.status !== 'read' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
                                                     }`}>
                                                         {notification.title}
                                                     </h4>
-                                                    {notification.status === 'unread' && (
+                                                    {notification.status !== 'read' && (
                                                         <span className="w-2.5 h-2.5 bg-brand-yellow rounded-full flex-shrink-0 animate-pulse-slow shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
                                                     )}
                                                 </div>
                                                 <p className={`text-[13px] line-clamp-2 ${
-                                                    notification.status === 'unread' ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400'
+                                                    notification.status !== 'read' ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400'
                                                 }`}>
                                                     {notification.message}
                                                 </p>

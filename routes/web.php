@@ -44,11 +44,16 @@ Route::get('/seed-test-data', function () {
 
     $results = [];
 
-    // 1. Create Classroom if not exists
-    $classroom = \App\Models\Classroom::firstOrCreate(
-        ['school_id' => $school->id, 'name' => 'أول ابتدائي'],
-        ['section' => 'أ', 'grade' => '1']
+    // 1. Create Grade and Classroom
+    $grade = \App\Models\Grade::firstOrCreate(
+        ['school_id' => $school->id, 'name' => 'الصف الأول']
     );
+    
+    $classroom = \App\Models\Classroom::firstOrCreate(
+        ['school_id' => $school->id, 'name' => 'أول ابتدائي أ'],
+        ['grade_id' => $grade->id]
+    );
+    $results[] = "✅ المرحلة: {$grade->name} (ID: {$grade->id})";
     $results[] = "✅ الفصل: {$classroom->name} (ID: {$classroom->id})";
 
     // 2. Create Guardian user if not exists
@@ -238,6 +243,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('emergencies', [\App\Http\Controllers\Admin\EmergencyController::class, 'index'])->name('emergencies.index');
         Route::put('emergencies/{incident}/status', [\App\Http\Controllers\Admin\EmergencyController::class, 'updateStatus'])->name('emergencies.update-status');
         Route::get('inspection-logs', [\App\Http\Controllers\Admin\InspectionLogController::class, 'index'])->name('inspection-logs.index');
+        Route::get('delay-logs', [\App\Http\Controllers\Admin\DelayLogController::class, 'index'])->name('delay-logs.index');
 
         // مراقبة المحادثات
         Route::get('chat', [\App\Http\Controllers\Admin\ChatMonitorController::class, 'index'])->name('chat.index');
@@ -280,10 +286,14 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
 
         // 2. إدارة الفصول
         Route::get('classes-api', [ClassroomController::class, 'apiIndex'])->name('classrooms.api');
+        Route::post('classrooms/grades', [ClassroomController::class, 'storeGrade'])->name('classrooms.grades.store');
+        Route::put('classrooms/grades/{grade}', [ClassroomController::class, 'updateGrade'])->name('classrooms.grades.update');
+        Route::delete('classrooms/grades/{grade}', [ClassroomController::class, 'destroyGrade'])->name('classrooms.grades.destroy');
         Route::resource('classrooms', ClassroomController::class);
 
         // 3. إدارة المعلمين والمشرفين
         Route::resource('teachers', TeacherController::class)->except(['show']);
+        Route::resource('supervisors', \App\Http\Controllers\School\SupervisorController::class)->except(['show']);
 
         // 4. إدارة الطلاب
         Route::get('students-api', [StudentController::class, 'apiIndex'])->name('students.api');
@@ -293,11 +303,6 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::post('guardians/search', [StudentController::class, 'searchGuardian'])->name('guardians.search');
         Route::post('guardians', [StudentController::class, 'storeGuardian'])->name('guardians.store');
 
-        // 5. الحضور
-        Route::get('students/{student}/attendance', [StudentController::class, 'attendanceHistory'])->name('students.attendance');
-        Route::get('/reports/attendance', function () {
-            return Inertia::render('School/Attendance/AttendanceReports');
-        })->name('reports.attendance');
         // 5. الحضور
         Route::get('students/{student}/attendance', [StudentController::class, 'attendanceHistory'])->name('students.attendance');
         Route::get('/reports/attendance', function () {
@@ -319,6 +324,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         // 6. الحافلات والرحلات
         Route::resource('buses', \App\Http\Controllers\School\BusController::class);
         Route::post('buses/bulk-destroy', [\App\Http\Controllers\School\BusController::class, 'bulkDestroy'])->name('buses.bulk-destroy');
+        Route::resource('bus-groups', \App\Http\Controllers\School\BusGroupController::class);
 
         Route::get('buses/tracking/api', [\App\Http\Controllers\School\BusController::class, 'trackingApi'])->name('buses.tracking.api');
         Route::get('live-tracking', [\App\Http\Controllers\School\BusController::class, 'liveTracking'])->name('live-tracking.index');
@@ -334,7 +340,8 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::resource('notifications', \App\Http\Controllers\School\NotificationController::class);
         Route::post('notifications/preview', [\App\Http\Controllers\School\NotificationController::class, 'preview'])->name('notifications.preview');
 
-
+        Route::resource('trip-schedules', \App\Http\Controllers\School\TripScheduleController::class);
+        Route::post('trip-schedules/copy', [\App\Http\Controllers\School\TripScheduleController::class, 'copy'])->name('trip-schedules.copy');
 
         Route::resource('routes', \App\Http\Controllers\School\RouteController::class);
         Route::resource('field-trips', \App\Http\Controllers\School\FieldTripController::class);
@@ -342,6 +349,10 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         // Trips Dashboard
         Route::get('trips-dashboard', [\App\Http\Controllers\School\TripDashboardController::class, 'index'])->name('trips.dashboard');
         Route::get('trips/{trip}', [\App\Http\Controllers\School\TripDashboardController::class, 'show'])->name('trips.show');
+        
+        // Trip Reports
+        Route::get('trip-reports', [\App\Http\Controllers\School\TripReportController::class, 'index'])->name('trip-reports.index');
+        Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');
 
     });
 

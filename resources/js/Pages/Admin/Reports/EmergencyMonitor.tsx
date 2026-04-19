@@ -6,10 +6,12 @@ import { useTheme } from "@/Contexts/ThemeContext";
 interface Incident {
   id: number;
   reporter?: { name: string; role: string };
-  bus?: { bus_number: string; driver?: { name: string } };
+  bus?: { bus_code: string; bus_number: string; driver?: { name: string } };
   type: string;
   severity: string;
   description: string;
+  photo_urls?: string[];
+  student_names?: string[];
   location_lat: number | null;
   location_lng: number | null;
   status: string;
@@ -50,7 +52,10 @@ export default function EmergencyMonitor({
     sos: isRTL ? "استغاثة (SOS)" : "SOS",
     accident: isRTL ? "حادث" : "Accident",
     breakdown: isRTL ? "عطل فني" : "Breakdown",
-    health: isRTL ? "حالة طبية" : "Health Issue",
+    health: isRTL ? "حالة صحية" : "Health Issue",
+    behavioral: isRTL ? "بلاغ سلوكي" : "Behavioral",
+    technical: isRTL ? "بلاغ تقني" : "Technical",
+    traffic: isRTL ? "حادث مروري" : "Traffic Accident",
   };
 
   return (
@@ -100,9 +105,40 @@ export default function EmergencyMonitor({
                   </h3>
 
                   <div className={`space-y-2 text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
-                    <p><strong>{isRTL ? "الحافلة:" : "Bus:"}</strong> {incident.bus?.bus_number}</p>
+                    <p><strong>{isRTL ? "الحافلة:" : "Bus:"}</strong> {incident.bus?.bus_code} ({incident.bus?.bus_number})</p>
                     <p><strong>{isRTL ? "المبلغ:" : "Reporter:"}</strong> {incident.reporter?.name} - {incident.reporter?.role}</p>
                     <p className="line-clamp-3 mt-2"><strong>{isRTL ? "التفاصيل:" : "Details:"}</strong><br/>{incident.description}</p>
+                    
+                    {incident.photo_urls && incident.photo_urls.length > 0 && (
+                      <div className="mt-3">
+                        <a href={incident.photo_urls[0]} target="_blank" rel="noreferrer">
+                          <img 
+                             src={incident.photo_urls[0]} 
+                             alt="Incident details" 
+                             className="w-full h-32 object-cover rounded-xl border border-gray-200 dark:border-gray-700 hover:opacity-90 transition"
+                          />
+                        </a>
+                      </div>
+                    )}
+
+                    {incident.student_names && incident.student_names.length > 0 && (
+                      <div className="mt-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="p-1 px-2 rounded-lg bg-brand/10 text-brand text-xs font-bold flex items-center gap-1">
+                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                             {isRTL ? "الطلاب المعنيين" : "Involved Students"} ({incident.student_names.length})
+                          </span>
+                        </div>
+                        <ul className={`text-xs space-y-1 p-2 rounded-xl ${isDark ? "bg-gray-900/50" : "bg-gray-50 opacity-90"}`}>
+                           {incident.student_names.map((name, idx) => (
+                             <li key={idx} className="flex items-center gap-2">
+                               <span className="w-1.5 h-1.5 rounded-full bg-brand"></span>
+                               {name}
+                             </li>
+                           ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -171,7 +207,7 @@ export default function EmergencyMonitor({
                       {resolvedIncidents.map((incident) => (
                         <tr key={incident.id} className={isDark ? "hover:bg-gray-700/50" : "hover:bg-gray-50"}>
                           <td className="px-4 py-3 text-sm font-medium">{typeLabels[incident.type] || incident.type}</td>
-                          <td className="px-4 py-3 text-sm">{incident.bus?.bus_number}</td>
+                          <td className="px-4 py-3 text-sm">{incident.bus?.bus_code}</td>
                           <td className="px-4 py-3 text-sm truncate max-w-xs">{incident.description}</td>
                           <td className="px-4 py-3 text-sm text-gray-500">{incident.updated_at ? new Date(incident.updated_at).toLocaleString() : ''}</td>
                         </tr>

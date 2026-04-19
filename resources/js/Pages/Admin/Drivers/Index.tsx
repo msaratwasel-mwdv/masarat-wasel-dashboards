@@ -16,12 +16,19 @@ import BaseDataTable, {
   type PaginationMeta,
 } from "@/Components/BaseDataTable";
 import { createColumnHelper } from "@tanstack/react-table";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
   CheckCircle2,
   Bus as BusIcon,
   UserCheck,
+  Eye,
+  CreditCard,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  X,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -49,12 +56,17 @@ interface Driver {
   national_id: string;
   user_code: string;
   school_id: number | null;
+  address: string | null;
   driver: {
     license_number: string;
     license_expiry_date: string;
     status: string;
+    license_front_image: string | null;
+    license_back_image: string | null;
   } | null;
   image?: string | null;
+  license_front_image?: string | null; // From Controller flat mapping if used
+  license_back_image?: string | null; // From Controller flat mapping if used
   assigned_bus: AssignedBus | null;
 }
 
@@ -92,11 +104,15 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [currentDriverId, setCurrentDriverId] = useState<number | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewLicenseFront, setPreviewLicenseFront] = useState<string | null>(null);
+  const [previewLicenseBack, setPreviewLicenseBack] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
 
   // --- Form ---
   const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
-    _method: "post",
+    _method: "post" as "post" | "put",
     first_name_ar: "",
     second_name_ar: "",
     third_name_ar: "",
@@ -112,6 +128,8 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
     license_expiry_date: "",
     address: "",
     image: null as File | null,
+    license_front_image: null as File | null,
+    license_back_image: null as File | null,
   });
 
   // --- Handlers ---
@@ -144,6 +162,8 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
     setIsEditing(false);
     setCurrentDriverId(null);
     setPreviewImage(null);
+    setPreviewLicenseFront(null);
+    setPreviewLicenseBack(null);
     reset();
     setData("_method", "post");
     clearErrors();
@@ -155,6 +175,8 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
     setIsEditing(true);
     setCurrentDriverId(driver.id);
     setPreviewImage(driver.image ? `/storage/${driver.image}` : null);
+    setPreviewLicenseFront(driver.license_front_image ? `/storage/${driver.license_front_image}` : null);
+    setPreviewLicenseBack(driver.license_back_image ? `/storage/${driver.license_back_image}` : null);
     setData({
       _method: "put",
       first_name_ar: driver.first_name_ar || "",
@@ -172,15 +194,24 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
       license_expiry_date: driver.driver?.license_expiry_date || "",
       address: driver.address || "",
       image: null,
+      license_front_image: null,
+      license_back_image: null,
     });
     clearErrors();
     setCurrentStep(1);
     setIsModalOpen(true);
   };
 
+  const openDetailsModal = (driver: Driver) => {
+    setSelectedDriver(driver);
+    setShowDetailsModal(true);
+  };
+
   const closeModal = () => {
     setIsModalOpen(false);
     setPreviewImage(null);
+    setPreviewLicenseFront(null);
+    setPreviewLicenseBack(null);
     reset();
   };
 
@@ -319,18 +350,6 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
           );
         },
       }),
-      columnHelper.accessor("driver.status", {
-        header: isRTL ? "الحالة" : "Status",
-        cell: (info) => {
-          const status = info.getValue();
-          const isActive = status === "active" || status === "Active";
-          return (
-            <span className={`px-2 py-0.5 inline-flex text-xs font-semibold rounded-full ${isActive ? (isDark ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-800") : (isDark ? "bg-yellow-900/30 text-yellow-400" : "bg-yellow-100 text-yellow-800")}`}>
-              {isRTL ? (isActive ? "نشط" : (status || "غير محدد")) : (status || "N/A")}
-            </span>
-          );
-        },
-      }),
       columnHelper.display({
         id: "actions",
         header: isRTL ? "الإجراءات" : "Actions",
@@ -338,6 +357,11 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
           const driver = info.row.original;
           return (
             <div className={`flex gap-2 column-actions ${isRTL ? "justify-start" : "justify-end"}`}>
+              <ActionButton
+                label={isRTL ? "عرض" : "Show"}
+                onClick={() => openDetailsModal(driver)}
+                color="blue"
+              />
               <ActionButton
                 label={isRTL ? "تعديل" : "Edit"}
                 onClick={() => openEditModal(driver)}
@@ -390,10 +414,11 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
 
         {/* Stats Header */}
         <motion.div
+           layout
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="grid grid-cols-3 gap-4"
+          className="grid grid-cols-1 md:grid-cols-3 gap-4"
         >
           {[
             { label: isRTL ? "إجمالي السائقين" : "Total Drivers", value: counts.all, icon: <Users className="w-5 h-5" />, color: "blue" as const },
@@ -415,11 +440,6 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
             data={drivers.data}
             pagination={pagination}
             title={isRTL ? "سائقو الأسطول" : "Fleet Drivers"}
-/*             subtitle={
-              isRTL
-                ? `${counts.all} سائق — ${counts.assigned} معين — ${counts.available} متاح`
-                : `${counts.all} total — ${counts.assigned} assigned — ${counts.available} available`
-            } */
             headerAction={headerAction}
             exportEnabled={true}
             searchValue={search}
@@ -429,20 +449,79 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
             activeFilter={filters.status}
             onFilterChange={handleFilterChange}
             emptyMessage={isRTL ? "لا يوجد سائقون" : "No Drivers Yet"}
-            emptyDescription={
-              isRTL
-                ? "لم يتم تسجيل أي سائق بعد. ابدأ بإضافة أول سائق للأسطول."
-                : "No drivers registered yet. Add your first fleet driver."
-            }
             emptyIcon={<UserCheck className="w-10 h-10" />}
-            emptyAction={
-              filters.status === "all" || !filters.status
-                ? { label: isRTL ? "+ إضافة سائق" : "+ Add New Driver", onClick: openAddModal }
-                : undefined
-            }
           />
 
-          {/* Modern Add/Edit Modal */}
+          {/* Details Modal */}
+          <AnimatePresence>
+            {showDetailsModal && selectedDriver && (
+              <Modal show={showDetailsModal} onClose={() => setShowDetailsModal(false)} maxWidth="3xl">
+                <div className={`relative ${isDark ? "bg-gray-900" : "bg-white"} rounded-3xl overflow-hidden shadow-2xl p-0`}>
+                  {/* Backdrop Header */}
+                  <div className="h-32 bg-gradient-to-r from-brand-navy to-brand-dark flex items-end px-8 pb-4 relative">
+                    <button onClick={() => setShowDetailsModal(false)} className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all"><X size={20}/></button>
+                    <div className="absolute -bottom-12 left-8 w-24 h-24 rounded-2xl border-4 border-white dark:border-gray-900 bg-gray-100 overflow-hidden shadow-lg">
+                       {selectedDriver.image ? <img src={`/storage/${selectedDriver.image}`} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-brand-dark bg-yellow-50">{selectedDriver.name.charAt(0)}</div>}
+                    </div>
+                  </div>
+
+                  <div className="pt-16 px-8 pb-8">
+                     <div className="flex justify-between items-start">
+                        <div>
+                           <h2 className={`text-2xl font-black ${isDark ? "text-white" : "text-gray-900"}`}>{selectedDriver.name}</h2>
+                           <p className="text-brand-navy font-bold">{selectedDriver.name_en || ""}</p>
+                           <div className="flex gap-2 mt-2">
+                              <StatusBadge status={selectedDriver.driver?.status === 'active' ? 'active' : 'inactive'} />
+                              <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${isDark ? "bg-gray-800 text-gray-400" : "bg-gray-100 text-gray-500"}`}>{selectedDriver.user_code}</span>
+                           </div>
+                        </div>
+                        <div className="text-right">
+                           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{isRTL ? 'تاريخ التسجيل' : 'Registration Date'}</p>
+                           <p className={`text-sm font-bold ${isDark ? "text-gray-200" : "text-gray-900"}`}>{new Date().toLocaleDateString()}</p>
+                        </div>
+                     </div>
+
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
+                        {/* Personal Info */}
+                        <div className="space-y-4">
+                           <h3 className="text-sm font-black text-brand-navy border-b pb-2 mb-4 flex items-center gap-2 uppercase tracking-wider underline decoration-brand-yellow decoration-4 underline-offset-4">
+                              {isRTL ? 'معلومات الشخصية' : 'Personal Info'}
+                           </h3>
+                           <InfoRow icon={<CreditCard size={16}/>} label={isRTL ? "رقم الهوية" : "National ID"} value={selectedDriver.national_id} isDark={isDark}/>
+                           <InfoRow icon={<Phone size={16}/>} label={isRTL ? "رقم الجوال" : "Phone"} value={selectedDriver.phone} isDark={isDark}/>
+                           <InfoRow icon={<Mail size={16}/>} label={isRTL ? "البريد الإلكتروني" : "Email"} value={selectedDriver.email} isDark={isDark}/>
+                           <InfoRow icon={<MapPin size={16}/>} label={isRTL ? "العنوان" : "Address"} value={selectedDriver.address || "—"} isDark={isDark}/>
+                        </div>
+
+                        {/* Professional Info */}
+                        <div className="space-y-4">
+                           <h3 className="text-sm font-black text-brand-navy border-b pb-2 mb-4 flex items-center gap-2 uppercase tracking-wider underline decoration-brand-yellow decoration-4 underline-offset-4">
+                              {isRTL ? 'بيانات العمل' : 'Professional Info'}
+                           </h3>
+                           <InfoRow icon={<CreditCard size={16}/>} label={isRTL ? "رقم الرخصة" : "License Number"} value={selectedDriver.driver?.license_number || "—"} isDark={isDark}/>
+                           <InfoRow icon={<Calendar size={16}/>} label={isRTL ? "انتهاء الرخصة" : "License Expiry"} value={selectedDriver.driver?.license_expiry_date || "—"} isDark={isDark} highlight={IS_EXPIRED(selectedDriver.driver?.license_expiry_date)}/>
+                           <InfoRow icon={<BusIcon size={16}/>} label={isRTL ? "الحافلة المعينة" : "Assigned Bus"} value={selectedDriver.assigned_bus?.bus_number || (isRTL ? "غير محدد" : "Unassigned")} isDark={isDark}/>
+                        </div>
+                     </div>
+
+                     {/* Documents Visualization */}
+                     <div className="mt-12">
+                        <h3 className="text-sm font-black text-brand-navy border-b pb-4 mb-6 flex items-center gap-2 uppercase tracking-wider underline decoration-brand-yellow decoration-4 underline-offset-4">
+                           {isRTL ? 'المستندات والصور' : 'Documents & Photos'}
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                           <MediaCard label={isRTL ? "صورة السائق" : "Driver Photo"} src={selectedDriver.image} isDark={isDark} isRTL={isRTL}/>
+                           <MediaCard label={isRTL ? "الرخصة (أمام)" : "License (Front)"} src={selectedDriver.license_front_image || selectedDriver.driver?.license_front_image} isDark={isDark} isRTL={isRTL}/>
+                           <MediaCard label={isRTL ? "الرخصة (خلف)" : "License (Back)"} src={selectedDriver.license_back_image || selectedDriver.driver?.license_back_image} isDark={isDark} isRTL={isRTL}/>
+                        </div>
+                     </div>
+                  </div>
+                </div>
+              </Modal>
+            )}
+          </AnimatePresence>
+
+          {/* Add/Edit Modal */}
           <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
             <div className={`relative ${isDark ? "bg-gray-900 border border-gray-700" : "bg-white"} rounded-2xl overflow-hidden shadow-2xl`}>
               {/* Close Button */}
@@ -451,12 +530,10 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
                 onClick={closeModal}
                 className={`absolute top-6 ${isRTL ? "left-6" : "right-6"} p-2 rounded-full hover:bg-gray-100 transition-colors ${isDark ? "hover:bg-gray-800 text-gray-400" : "text-gray-500"}`}
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X size={20}/>
               </button>
 
-                            {/* Header */}
+                             {/* Header */}
               <div className={`px-8 pt-8 pb-6 border-b ${isDark ? "border-gray-800" : "border-gray-100"}`}>
                 <h2 className={`text-2xl font-bold ${isDark ? "text-white" : "text-brand-navy"}`}>
                   {isEditing ? (isRTL ? "تعديل بيانات السائق" : "Edit Driver Details") : (isRTL ? "تسجيل بيانات سائق جديد" : "Register New Driver")}
@@ -491,16 +568,14 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
                             ) : previewImage ? (
                               <img src={previewImage} alt="Current" className="w-full h-full object-cover" />
                             ) : (
-                              <svg className="w-10 h-10 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                              </svg>
+                              <Users className="w-10 h-10 text-gray-300" />
                             )}
                           </div>
                         </div>
 
                         <div className={`flex-1 ${isRTL ? "text-right" : "text-left"}`}>
                           <h4 className={`font-bold ${isDark ? "text-gray-200" : "text-gray-800"}`}>
-                            {isRTL ? "صورة الملف الشخصي للسائق" : "Driver Profile Image"}
+                            {isRTL ? "صورة السائق (أمامي)" : "Driver Photo (Front)"}
                           </h4>
                           <div className={`flex gap-3 mt-3 ${isRTL ? "flex-row-reverse justify-end" : ""}`}>
                             <label className={`cursor-pointer px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${isDark ? "bg-brand-navy border border-gray-600 text-white hover:bg-gray-800" : "bg-brand-navy text-white hover:bg-opacity-90"}`}>
@@ -527,8 +602,7 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
                             <div key={field.key}>
                               <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{field.label}</label>
                               <input type="text" value={(data as any)[field.key]} onChange={e => setData(field.key as any, e.target.value)} dir="rtl" required={field.key === 'first_name_ar' || field.key === 'last_name_ar'}
-                                className={`w-full rounded-lg px-3 py-2 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy focus:border-transparent"}`} />
-                              <InputError message={(errors as any)[field.key]} className="mt-1" />
+                                className={`w-full rounded-lg px-3 py-2 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"}`} />
                             </div>
                           ))}
                         </div>
@@ -549,8 +623,7 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
                             <div key={field.key}>
                               <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{field.label}</label>
                               <input type="text" value={(data as any)[field.key]} onChange={e => setData(field.key as any, e.target.value)} dir="ltr"
-                                className={`w-full rounded-lg px-3 py-2 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy focus:border-transparent"}`} />
-                              <InputError message={(errors as any)[field.key]} className="mt-1" />
+                                className={`w-full rounded-lg px-3 py-2 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"}`} />
                             </div>
                           ))}
                         </div>
@@ -580,14 +653,6 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
                           <InputError message={errors.phone} className="mt-1" />
                         </div>
 
-                        {/* Email */}
-                        <div>
-                          <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "البريد الإلكتروني" : "Email Address"}</label>
-                          <input type="email" value={data.email} onChange={e => setData("email", e.target.value)} dir="ltr"
-                            className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"}`} />
-                          <InputError message={errors.email} className="mt-1" />
-                        </div>
-
                         {/* License Number */}
                         <div>
                           <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "رقم الرخصة" : "License Number"}</label>
@@ -604,12 +669,26 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
                           <InputError message={errors.license_expiry_date} className="mt-1" />
                         </div>
 
-                        {/* Address */}
-                        <div className="md:col-span-2">
-                          <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "العنوان" : "Address"}</label>
-                          <input type="text" value={data.address} onChange={e => setData("address", e.target.value)}
-                            className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow" : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"}`} />
-                          <InputError message={errors.address} className="mt-1" />
+                        {/* License Front Image */}
+                        <div>
+                           <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "صورة الرخصة (أمامي)" : "License Front Image"}</label>
+                           <div className="flex items-center gap-4">
+                              <div className="w-16 h-12 bg-gray-50 border rounded-lg overflow-hidden flex items-center justify-center">
+                                 {data.license_front_image ? <img src={URL.createObjectURL(data.license_front_image)} className="w-full h-full object-cover"/> : (previewLicenseFront ? <img src={previewLicenseFront} className="w-full h-full object-cover"/> : <CreditCard size={20} className="text-gray-300"/>)}
+                              </div>
+                              <label className="cursor-pointer text-xs font-bold text-brand-navy underline">{isRTL ? 'اختيار' : 'Choose'}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("license_front_image", e.target.files?.[0] || null)}/></label>
+                           </div>
+                        </div>
+
+                        {/* License Back Image */}
+                        <div>
+                           <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{isRTL ? "صورة الرخصة (خلفي)" : "License Back Image"}</label>
+                           <div className="flex items-center gap-4">
+                              <div className="w-16 h-12 bg-gray-50 border rounded-lg overflow-hidden flex items-center justify-center">
+                                 {data.license_back_image ? <img src={URL.createObjectURL(data.license_back_image)} className="w-full h-full object-cover"/> : (previewLicenseBack ? <img src={previewLicenseBack} className="w-full h-full object-cover"/> : <CreditCard size={20} className="text-gray-300"/>)}
+                              </div>
+                              <label className="cursor-pointer text-xs font-bold text-brand-navy underline">{isRTL ? 'اختيار' : 'Choose'}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("license_back_image", e.target.files?.[0] || null)}/></label>
+                           </div>
                         </div>
                       </div>
 
@@ -632,11 +711,11 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
 
                   <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
                     {currentStep === 1 ? (
-                      <button type="button" onClick={(e) => { e.preventDefault(); setCurrentStep(2); }} className={`px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-opacity ${isDark ? "bg-brand-navy text-white hover:opacity-90" : "bg-brand-navy text-white hover:opacity-90"}`}>
+                      <button type="button" onClick={(e) => { e.preventDefault(); setCurrentStep(2); }} className={`px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-opacity bg-brand-navy text-white hover:opacity-90`}>
                         {isRTL ? "التالي" : "Next"}
                       </button>
                     ) : (
-                      <button type="submit" disabled={processing} className={`px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-opacity disabled:opacity-50 ${isDark ? "bg-brand-yellow text-brand-dark hover:opacity-90" : "bg-brand-yellow text-brand-dark hover:opacity-90"}`}>
+                      <button type="submit" disabled={processing} className={`px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-opacity disabled:opacity-50 bg-brand-yellow text-brand-dark hover:opacity-90`}>
                         {isEditing ? (isRTL ? "حفظ التعديلات" : "Save Changes") : (isRTL ? "إضافة السائق" : "Add Driver")}
                       </button>
                     )}
@@ -652,25 +731,36 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
   );
 }
 
-// ─── PersonStatCard ───────────────────────────────────────
+// ─── Sub-Components ───────────────────────────────────────
 
-const personStatColorMap = {
-  blue: {
-    bg: "bg-blue-50 dark:bg-blue-900/20",
-    icon: "text-blue-500",
-    border: "border-blue-100 dark:border-blue-900/30",
-  },
-  green: {
-    bg: "bg-emerald-50 dark:bg-emerald-900/20",
-    icon: "text-emerald-500",
-    border: "border-emerald-100 dark:border-emerald-900/30",
-  },
-  orange: {
-    bg: "bg-orange-50 dark:bg-orange-900/20",
-    icon: "text-orange-500",
-    border: "border-orange-100 dark:border-orange-900/30",
-  },
-};
+function InfoRow({ icon, label, value, isDark, highlight = false }: any) {
+   return (
+      <div className="flex items-center justify-between">
+         <div className="flex items-center gap-3">
+            <div className={`p-1.5 rounded-lg ${isDark ? "bg-gray-800 text-gray-500" : "bg-gray-50 text-brand-navy"}`}>{icon}</div>
+            <span className={`text-xs font-bold ${isDark ? "text-gray-500" : "text-gray-400"}`}>{label}</span>
+         </div>
+         <span className={`text-sm font-bold ${highlight ? "text-red-500" : (isDark ? "text-gray-200" : "text-gray-900")}`}>{value}</span>
+      </div>
+   );
+}
+
+function MediaCard({ label, src, isDark, isRTL }: any) {
+   return (
+      <div className={`flex flex-col gap-2 ${isRTL ? "text-right" : "text-left"}`}>
+         <span className={`text-[10px] font-black uppercase tracking-widest ${isDark ? "text-gray-500" : "text-gray-400"}`}>{label}</span>
+         <div className={`aspect-[4/3] rounded-2xl overflow-hidden border-2 ${isDark ? "bg-gray-800 border-gray-700" : "bg-gray-100 border-gray-50"}`}>
+            {src ? (
+               <a href={`/storage/${src}`} target="_blank" rel="noreferrer" className="w-full h-full block">
+                  <img src={`/storage/${src}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500 cursor-zoom-in"/>
+               </a>
+            ) : (
+               <div className="w-full h-full flex items-center justify-center text-gray-300 italic text-xs">No Image</div>
+            )}
+         </div>
+      </div>
+   );
+}
 
 function PersonStatCard({
   label, value, icon, color, isDark, isRTL,
@@ -678,7 +768,7 @@ function PersonStatCard({
   label: string; value: number; icon: React.ReactNode;
   color: keyof typeof personStatColorMap; isDark: boolean; isRTL: boolean;
 }) {
-  const scheme = personStatColorMap[color];
+  const scheme = personStatColorMap[color as keyof typeof personStatColorMap];
   return (
     <motion.div
       whileHover={{ y: -2 }}
@@ -704,3 +794,21 @@ function PersonStatCard({
     </motion.div>
   );
 }
+
+const personStatColorMap = {
+  blue: {
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    icon: "text-blue-500",
+    border: "border-blue-100 dark:border-blue-900/30",
+  },
+  green: {
+    bg: "bg-emerald-50 dark:bg-emerald-900/20",
+    icon: "text-emerald-500",
+    border: "border-emerald-100 dark:border-emerald-900/30",
+  },
+  orange: {
+    bg: "bg-orange-50 dark:bg-orange-900/20",
+    icon: "text-orange-500",
+    border: "border-orange-100 dark:border-orange-900/30",
+  },
+};

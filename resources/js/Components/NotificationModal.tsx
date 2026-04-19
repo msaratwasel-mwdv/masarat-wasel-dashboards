@@ -36,6 +36,15 @@ interface Props {
     classrooms: Classroom[];
     buses: Bus[];
     parents: User[];
+    initialData?: {
+        type?: string;
+        title_en?: string;
+        title_ar?: string;
+        body_en?: string;
+        body_ar?: string;
+        recipient_type?: string;
+        recipient_filter?: any;
+    };
 }
 
 export default function NotificationModal({
@@ -45,6 +54,7 @@ export default function NotificationModal({
     classrooms,
     buses,
     parents,
+    initialData,
 }: Props) {
     const { t, lang } = useTranslation();
     const [showPreview, setShowPreview] = useState(false);
@@ -52,13 +62,13 @@ export default function NotificationModal({
     const { data, setData, post, processing, errors, reset, transform } =
         useForm({
             template_id: "",
-            type: "school_announcement",
-            title_en: "",
-            title_ar: "",
-            body_en: "",
-            body_ar: "",
-            recipient_type: "all_parents",
-            recipient_filter: {},
+            type: initialData?.type || "school_announcement",
+            title_en: initialData?.title_en || "",
+            title_ar: initialData?.title_ar || "",
+            body_en: initialData?.body_en || "",
+            body_ar: initialData?.body_ar || "",
+            recipient_type: initialData?.recipient_type || "all_parents",
+            recipient_filter: initialData?.recipient_filter || {},
         });
 
     // تحويل البيانات قبل الإرسال لتطابق ما يتوقعه الـ Backend
@@ -104,6 +114,17 @@ export default function NotificationModal({
         if (!isOpen) {
             reset();
             setShowPreview(false);
+        } else if (initialData) {
+            setData({
+                template_id: "",
+                type: initialData.type || "school_announcement",
+                title_en: initialData.title_en || "",
+                title_ar: initialData.title_ar || "",
+                body_en: initialData.body_en || "",
+                body_ar: initialData.body_ar || "",
+                recipient_type: initialData.recipient_type || "all_parents",
+                recipient_filter: initialData.recipient_filter || {},
+            });
         }
     }, [isOpen]);
 

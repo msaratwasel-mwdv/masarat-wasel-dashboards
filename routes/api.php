@@ -101,11 +101,20 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // --- المشرف الميداني (Field Supervisor) ---
     Route::group(['prefix' => 'field'], function () {
+        Route::get('/dashboard-stats', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getDashboardStats']);
+        Route::get('/staff', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getStaff']);
         Route::get('/buses', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getBuses']);
         Route::get('/inspection-items', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getInspectionItems']);
         Route::post('/inspections', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'submitInspection']);
+        Route::get('/inspections', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getInspections']);
         Route::post('/incidents', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'reportIncident']);
+        Route::get('/incidents', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getIncidents']);
         Route::post('/violations', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'submitViolation']);
+        Route::get('/field-trips', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getFieldTrips']);
+        Route::get('/report', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getDashboardReport']);
+        Route::get('/delays', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getDelays']);
+        Route::post('/delays', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'storeDelay']);
+        Route::get('/students', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getStudentsList']);
     });
 
     // --- المعلم (Teacher) ---
@@ -115,5 +124,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/students/{studentId}/attendance', [\App\Http\Controllers\Api\TeacherController::class, 'markAttendance']);
         Route::get('/classes/{classId}/attendance-history', [\App\Http\Controllers\Api\TeacherController::class, 'getClassAttendanceHistory']);
         Route::get('/attendance-history', [\App\Http\Controllers\Api\TeacherController::class, 'getTeacherAttendanceHistory']);
+        Route::get('/reports/stats', [\App\Http\Controllers\Api\TeacherController::class, 'getAttendanceStats']);
     });
 });
