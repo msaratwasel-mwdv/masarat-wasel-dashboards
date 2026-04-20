@@ -21,7 +21,7 @@ class BusRequestController extends Controller
      */
     public function index(Request $request)
     {
-        $query = BusRequest::with(['school', 'approvedBy', 'buses.driver', 'buses.assistant', 'buses.fieldSupervisor']);
+        $query = BusRequest::with(['school', 'bus.driver', 'bus.assistant', 'bus.fieldSupervisor']);
 
         // Status filter
         $status = $request->input('status');
@@ -31,21 +31,20 @@ class BusRequestController extends Controller
 
         // Apply DataTable (search, sort, paginate)
         $paginated = $this->applyDataTable($query, $request, [
-            'reason',
+            'purpose',
             'school.name',
             'request_type',
         ], 15, function($busReq) {
             return [
                 'المدرسة' => $busReq->school ? $busReq->school->name : 'غير محدد',
                 'نوع الطلب' => match($busReq->request_type) {
-                    'new_route' => 'مسار جديد',
-                    'change_route' => 'تغيير مسار',
-                    'maintenance' => 'صيانة',
+                    'permanent' => 'دائم',
+                    'temporary' => 'مؤقت',
                     default => $busReq->request_type
                 },
-                'المقاعد المطلوبة' => $busReq->requested_seats,
-                'التكلفة الإجمالية' => $busReq->total_cost ? number_format($busReq->total_cost, 2) . ' ريال' : 'غير محدد',
-                'السبب' => $busReq->reason,
+                'المقاعد المطلوبة' => $busReq->seats,
+                'التكلفة الإجمالية' => $busReq->cost ? number_format($busReq->cost, 2) . ' ريال' : 'غير محدد',
+                'السبب' => $busReq->purpose,
                 'تاريخ الإنشاء' => $busReq->created_at->format('Y-m-d H:i'),
                 'الحالة' => match($busReq->status) {
                     'pending' => 'قيد الانتظار',
@@ -53,7 +52,7 @@ class BusRequestController extends Controller
                     'rejected' => 'مرفوض',
                     default => $busReq->status
                 },
-                'تم الرد بواسطة' => $busReq->approvedBy ? $busReq->approvedBy->name : 'لم يتم الرد',
+                'الحافلة المخصصة' => $busReq->bus ? $busReq->bus->bus_number : 'لم يتم التخصيص',
             ];
         });
 
@@ -92,33 +91,25 @@ class BusRequestController extends Controller
     public function approve(Request $request, BusRequest $busRequest)
     {
         $validated = $request->validate([
-            'bus_ids' => 'required|array|min:1',
-            'bus_ids.*' => 'exists:buses,id',
-            'total_cost' => 'required|numeric|min:0',
+            'bus_id' => 'required|exists:buses,id',
+            'cost' => 'required|numeric|min:0',
         ]);
 
         DB::transaction(function () use ($busRequest, $validated) {
             $busRequest->update([
                 'status' => 'approved',
-                'total_cost' => $validated['total_cost'],
-                'approved_by' => Auth::id(),
+                'cost' => $validated['cost'],
+                'bus_id' => $validated['bus_id'],
                 'approved_at' => now(),
             ]);
 
-            // Assign buses to the school
-            $buses = Bus::whereIn('id', $validated['bus_ids'])->get();
-            $schoolId = $busRequest->school_id;
-
-            foreach ($buses as $bus) {
-                $bus->update(['school_id' => $schoolId]);
-            }
-
-            // Sync with pivot table
-            $busRequest->buses()->sync($validated['bus_ids']);
+            // Assign bus to the school
+            $bus = Bus::findOrFail($validated['bus_id']);
+            $bus->update(['school_id' => $busRequest->school_id]);
         });
 
         return redirect()->back()
-            ->with('success', 'تم الموافقة على الطلب وتعيين الحافلات بنجاح');
+            ->with('success', 'تم الموافقة على الطلب وتعيين الحافلة بنجاح');
     }
 
     /**
@@ -132,7 +123,6 @@ class BusRequestController extends Controller
 
         $busRequest->update([
             'status' => 'rejected',
-            'approved_by' => Auth::id(),
             'approved_at' => now(),
             'rejection_reason' => $validated['rejection_reason'] ?? null,
         ]);

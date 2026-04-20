@@ -70,6 +70,7 @@ interface Bus {
   color?: string;
   status: "active" | "maintenance" | "out_of_service" | "inactive";
   front_qr: string | null;
+  back_qr: string | null;
   school_id: number | null;
   driver_id: number | null;
   assistant_id: number | null;
@@ -176,6 +177,7 @@ export default function Index({
     assistant_id: "",
     school_id: "",
     route_id: "",
+    color: "",
     photos: [] as File[],
     registration_file: null as File | null,
   });
@@ -228,6 +230,7 @@ export default function Index({
         assistant_id: bus.assistant_id?.toString() || "",
         school_id: bus.school_id?.toString() || "",
         route_id: bus.route_id?.toString() || "",
+        color: bus.color || "",
         photos: [],
         registration_file: null,
       });
@@ -250,11 +253,12 @@ export default function Index({
     formData.append("year", String(d.year));
     formData.append("capacity", String(d.capacity));
     formData.append("status", d.status);
-    if (d.driver_id) formData.append("driver_id", d.driver_id);
-    if (d.field_supervisor_id) formData.append("field_supervisor_id", d.field_supervisor_id);
-    if (d.assistant_id) formData.append("assistant_id", d.assistant_id);
-    if (d.school_id) formData.append("school_id", d.school_id);
-    if (d.route_id) formData.append("route_id", d.route_id);
+    formData.append("driver_id", d.driver_id || "");
+    formData.append("field_supervisor_id", d.field_supervisor_id || "");
+    formData.append("assistant_id", d.assistant_id || "");
+    formData.append("school_id", d.school_id || "");
+    formData.append("route_id", d.route_id || "");
+    formData.append("color", d.color || "");
     if (d.photos && d.photos.length > 0) {
       d.photos.forEach((p) => formData.append("photos[]", p));
     }
@@ -368,7 +372,14 @@ export default function Index({
                 <div className={`text-sm font-bold ${isDark ? "text-white" : "text-gray-900"} font-mono`}>
                   {bus.plate_number}
                 </div>
-                <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"} flex items-center gap-2`}>
+                  {bus.color && (
+                    <span 
+                      className="w-2 h-2 rounded-full border border-gray-400/20" 
+                      style={{ backgroundColor: bus.color }}
+                      title={bus.color}
+                    />
+                  )}
                   {bus.model} • {bus.capacity} {isRTL ? "مقعد" : "Seats"}
                 </div>
               </div>
@@ -628,27 +639,43 @@ export default function Index({
                     </div>
                   </div>
 
-                  {/* QR Code Passport */}
-                  <div className="relative group shrink-0">
-                    <div className="p-4 bg-white rounded-3xl shadow-2xl transition-transform duration-500 group-hover:rotate-6 group-hover:scale-105">
-                      {modalState.bus.front_qr ? (
-                        <img 
-                          src={`/storage/${modalState.bus.front_qr}?t=${new Date(modalState.bus.updated_at || "").getTime()}`} 
-                          className="w-28 h-28" 
-                          alt="Passport QR" 
-                        />
-                      ) : (
-                        <div className="w-28 h-28 flex flex-col items-center justify-center gap-3 text-gray-300 dark:text-gray-700">
-                          <div className="relative">
-                            <Smartphone className="w-10 h-10 opacity-20 animate-pulse" />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-2 h-2 bg-brand-yellow rounded-full animate-ping" />
+                  {/* Dual QR Code Passport */}
+                  <div className={`flex gap-4 scrollbar-hide overflow-x-auto pb-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+                    {[
+                      { id: 'front', label: isRTL ? 'الأمامي' : 'FRONT', path: modalState.bus.front_qr },
+                      { id: 'back', label: isRTL ? 'الخلفي' : 'BACK', path: modalState.bus.back_qr }
+                    ].map((qr) => (
+                      <div key={qr.id} className="relative group shrink-0">
+                        <div className="p-3 bg-white rounded-3xl shadow-xl transition-all duration-500 group-hover:scale-105 border border-white/20">
+                          {qr.path ? (
+                            <div className="flex flex-col items-center gap-2">
+                              <img 
+                                src={`/storage/${qr.path}?t=${new Date(modalState.bus!.updated_at || "").getTime()}`} 
+                                className="w-24 h-24 object-contain" 
+                                alt={`${qr.label} QR`} 
+                              />
+                              <div className="flex flex-col items-center gap-1 w-full">
+                                <span className="text-[7px] font-black text-brand-dark opacity-40 uppercase tracking-widest">{qr.label}</span>
+                                <a 
+                                  href={`/storage/${qr.path}`} 
+                                  download={`${modalState.bus!.bus_number}_${qr.id}_qr.png`}
+                                  className="w-full py-1 bg-brand-dark/5 hover:bg-brand-dark/10 rounded-lg flex items-center justify-center transition-colors"
+                                  title={isRTL ? "تنزيل" : "Download"}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <FolderUp className="w-3 h-3 text-brand-dark opacity-60 rotate-180" />
+                                </a>
+                              </div>
                             </div>
-                          </div>
-                          <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40 italic">Syncing Data...</span>
+                          ) : (
+                            <div className="w-24 h-24 flex flex-col items-center justify-center gap-3 text-gray-300">
+                              <Smartphone className="w-8 h-8 opacity-20 animate-pulse" />
+                              <span className="text-[6px] font-black uppercase tracking-[0.2em] opacity-40 italic">Wait...</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -662,7 +689,8 @@ export default function Index({
                              { title: isRTL ? "الطيار (السائق)" : "PILOT", name: modalState.bus.driver?.name, icon: "👨‍✈️", color: "amber", sub: isRTL ? "المشغل الرئيسي" : "Main Operator" },
                              { title: isRTL ? "المساعدة" : "ASSISTANT", name: modalState.bus.assistant?.name, icon: "👩‍🏫", color: "rose", sub: isRTL ? "سلامة الركاب" : "Passenger Safety" },
                              { title: isRTL ? "المشرف الميداني" : "SUPERVISOR", name: modalState.bus.field_supervisor?.name, icon: "🏢", color: "violet", sub: isRTL ? "عمليات الميدان" : "Field Operations" },
-                             { title: isRTL ? "الموقع (المدرسة)" : "LOCATION", name: modalState.bus.school?.name, icon: "🏫", color: "emerald", sub: modalState.bus.route?.name || (isRTL ? "في وضع الانتظار" : "Standby Route") }
+                             { title: isRTL ? "الموقع (المدرسة)" : "LOCATION", name: modalState.bus.school?.name, icon: "🏫", color: "emerald", sub: modalState.bus.route?.name || (isRTL ? "في وضع الانتظار" : "Standby Route") },
+                             { title: isRTL ? "لون الحافلة" : "VEHICLE COLOR", name: modalState.bus.color, icon: "🎨", color: "blue", sub: isRTL ? "المظهر الخارجي" : "Exterior Appearance" }
                            ].map(card => (
                          <div key={card.title} className={`p-4 rounded-[2rem] border transition-all ${isDark ? "bg-gray-800/40 border-gray-800 hover:bg-gray-800" : "bg-white border-gray-100 hover:shadow-lg shadow-sm"}`}>
                             <p className={`text-[9px] font-black mb-3 uppercase tracking-widest ${card.color === "amber" ? "text-amber-500" : card.color === "violet" ? "text-violet-500" : "text-emerald-500"}`}>{card.title}</p>
@@ -807,6 +835,24 @@ export default function Index({
                           <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المقاعد" : "Capacity (Seats)"}</label>
                           <input type="number" value={busForm.data.capacity} onChange={(e) => busForm.setData("capacity", Number(e.target.value))} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`} />
                         </div>
+                        <div className={isRTL ? "text-right" : ""}>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "لون الحافلة" : "Bus Color"}</label>
+                          <div className="relative">
+                            <input 
+                              type="text" 
+                              value={busForm.data.color} 
+                              onChange={(e) => busForm.setData("color", e.target.value)} 
+                              placeholder={isRTL ? "أصفر، أبيض، #FFD700..." : "Yellow, White, #FFD700..."}
+                              className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`} 
+                            />
+                            {busForm.data.color && (
+                                <div 
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border border-gray-400/20 shadow-sm"
+                                    style={{ backgroundColor: busForm.data.color }}
+                                />
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       <div className={isRTL ? "text-right" : ""}>
@@ -839,14 +885,14 @@ export default function Index({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className={isRTL ? "text-right" : ""}>
                           <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المدرسة" : "Educational Institution"}</label>
-                          <select value={busForm.data.school_id} onChange={(e) => busForm.setData("school_id", Number(e.target.value))} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
+                          <select value={busForm.data.school_id} onChange={(e) => busForm.setData("school_id", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
                             <option value="">{isRTL ? "— بدون مدرسة —" : "— Unassigned —"}</option>
                             {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
                         </div>
                         <div className={isRTL ? "text-right" : ""}>
                           <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المسار" : "Strategic Route"}</label>
-                          <select value={busForm.data.route_id || ""} onChange={(e) => busForm.setData("route_id", e.target.value ? Number(e.target.value) : null)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
+                          <select value={busForm.data.route_id || ""} onChange={(e) => busForm.setData("route_id", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
                             <option value="">{isRTL ? "— بدون مسار —" : "— Tactical Reserve —"}</option>
                             {routes.map(r => <option key={r.id} value={r.id}>{r.name} ({r.code})</option>)}
                           </select>
@@ -856,21 +902,21 @@ export default function Index({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className={isRTL ? "text-right" : ""}>
                           <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "السائق المعتمد" : "Certified Pilot (Driver)"}</label>
-                          <select value={busForm.data.driver_id || ""} onChange={(e) => busForm.setData("driver_id", e.target.value ? Number(e.target.value) : null)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
+                          <select value={busForm.data.driver_id || ""} onChange={(e) => busForm.setData("driver_id", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
                             <option value="">{isRTL ? "— بدون سائق —" : "— Standby Mode —"}</option>
                             {(modalState.type === "edit" ? editDriverOptions : availableDrivers).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                           </select>
                         </div>
                         <div className={isRTL ? "text-right" : ""}>
                           <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المشرف الميداني" : "Field Supervisor"}</label>
-                           <select value={busForm.data.field_supervisor_id || ""} onChange={(e) => busForm.setData("field_supervisor_id", e.target.value ? Number(e.target.value) : null)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
+                           <select value={busForm.data.field_supervisor_id || ""} onChange={(e) => busForm.setData("field_supervisor_id", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
                             <option value="">{isRTL ? "— بدون مشرف —" : "— No Supervision —"}</option>
                             {(modalState.type === "edit" ? editFieldSupervisorOptions : availableFieldSupervisors).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
                         </div>
                         <div className={isRTL ? "text-right" : ""}>
                           <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المساعدة" : "Assistant"}</label>
-                           <select value={busForm.data.assistant_id || ""} onChange={(e) => busForm.setData("assistant_id", e.target.value ? Number(e.target.value) : null)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
+                           <select value={busForm.data.assistant_id || ""} onChange={(e) => busForm.setData("assistant_id", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
                             <option value="">{isRTL ? "— بدون مساعدة —" : "— No Assistant —"}</option>
                             {(modalState.type === "edit" ? editAssistantOptions : availableAssistants).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>

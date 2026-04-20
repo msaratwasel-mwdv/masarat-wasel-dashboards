@@ -5,11 +5,11 @@ import useTranslation from '@/hooks/useTranslation';
 interface BusRequest {
     id: number;
     request_type: string;
-    requested_seats: number;
+    seats: number;
     start_date: string;
     end_date?: string;
-    reason: string;
-    special_requirements?: string;
+    purpose: string;
+    details?: string;
 }
 
 interface Props {
@@ -23,11 +23,11 @@ export default function BusRequestModal({ show, onClose, request }: Props) {
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
         request_type: request?.request_type || 'permanent',
-        requested_seats: request?.requested_seats || 20,
+        seats: request?.seats || 20,
         start_date: request?.start_date || '',
         end_date: request?.end_date || '',
-        reason: request?.reason || '',
-        special_requirements: request?.special_requirements || '',
+        purpose: request?.purpose || '',
+        details: request?.details || '',
     });
 
     const handleSubmit: FormEventHandler = (e) => {
@@ -94,21 +94,21 @@ export default function BusRequestModal({ show, onClose, request }: Props) {
                         {errors.request_type && <p className="text-red-500 text-sm mt-2 ml-2">{errors.request_type}</p>}
                     </div>
 
-                    {/* Requested Seats */}
+                    {/* Seats */}
                     <div>
                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                            {t('Requested Seats')} <span className="text-red-500">*</span>
+                            {t('Required Seats')} <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="number"
                             min="1"
                             max="200"
-                            value={data.requested_seats}
-                            onChange={e => setData('requested_seats', parseInt(e.target.value))}
+                            value={data.seats}
+                            onChange={e => setData('seats', parseInt(e.target.value))}
                             className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
                             required
                         />
-                        {errors.requested_seats && <p className="text-red-500 text-sm mt-2 ml-2">{errors.requested_seats}</p>}
+                        {errors.seats && <p className="text-red-500 text-sm mt-2 ml-2">{errors.seats}</p>}
                     </div>
 
                     {/* Date Range */}
@@ -141,35 +141,35 @@ export default function BusRequestModal({ show, onClose, request }: Props) {
                         </div>
                     </div>
 
-                    {/* Reason */}
+                    {/* Purpose */}
                     <div>
                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                            {t('Reason')} <span className="text-red-500">*</span>
+                            {t('Purpose')} <span className="text-red-500">*</span>
                         </label>
                         <textarea
-                            value={data.reason}
-                            onChange={e => setData('reason', e.target.value)}
+                            value={data.purpose}
+                            onChange={e => setData('purpose', e.target.value)}
                             rows={3}
                             className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
-                            placeholder={t('Explain why you need this bus request...')}
+                            placeholder={t('Explain the purpose of this request...')}
                             required
                         />
-                        {errors.reason && <p className="text-red-500 text-sm mt-2 ml-2">{errors.reason}</p>}
+                        {errors.purpose && <p className="text-red-500 text-sm mt-2 ml-2">{errors.purpose}</p>}
                     </div>
 
-                    {/* Special Requirements */}
+                    {/* Details */}
                     <div>
                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                            {t('Special Requirements')} ({t('Optional')})
+                            {t('Details')} ({t('Optional')})
                         </label>
                         <textarea
-                            value={data.special_requirements}
-                            onChange={e => setData('special_requirements', e.target.value)}
+                            value={data.details}
+                            onChange={e => setData('details', e.target.value)}
                             rows={2}
                             className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-[#0e7490] focus:border-transparent transition-all"
-                            placeholder={t('Any special requirements or notes...')}
+                            placeholder={t('Any special details or notes...')}
                         />
-                        {errors.special_requirements && <p className="text-red-500 text-sm mt-2 ml-2">{errors.special_requirements}</p>}
+                        {errors.details && <p className="text-red-500 text-sm mt-2 ml-2">{errors.details}</p>}
                     </div>
 
                     {/* Actions */}

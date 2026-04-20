@@ -12,34 +12,36 @@ class BusRequest extends Model
     use HasFactory;
 
     /**
-     * Get the buses assigned to this request.
+     * Get the bus assigned to this request.
      */
-    public function buses(): BelongsToMany
+    public function bus(): BelongsTo
     {
-        return $this->belongsToMany(Bus::class, 'bus_request_assignments')->withTimestamps();
+        return $this->belongsTo(Bus::class);
     }
 
     protected $fillable = [
         'school_id',
         'request_type',
-        'requested_seats',
-        'total_cost',
+        'bus_id',
+        'seats',
+        'cost',
         'start_date',
         'end_date',
-        'reason',
-        'special_requirements',
+        'destination_address',
+        'destination_location',
+        'purpose',
+        'details',
         'status',
-        'approved_by',
-        'approved_at',
         'rejection_reason',
+        'approved_at',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
         'approved_at' => 'datetime',
-        'requested_seats' => 'integer',
-        'total_cost' => 'decimal:2',
+        'seats' => 'integer',
+        'cost' => 'decimal:2',
     ];
 
     /**
@@ -48,14 +50,6 @@ class BusRequest extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
-    }
-
-    /**
-     * Get the user who approved the request.
-     */
-    public function approvedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'approved_by');
     }
 
     /**

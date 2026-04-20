@@ -48,7 +48,7 @@ Route::get('/seed-test-data', function () {
     $grade = \App\Models\Grade::firstOrCreate(
         ['school_id' => $school->id, 'name' => 'الصف الأول']
     );
-    
+
     $classroom = \App\Models\Classroom::firstOrCreate(
         ['school_id' => $school->id, 'name' => 'أول ابتدائي أ'],
         ['grade_id' => $grade->id]
@@ -273,6 +273,15 @@ Route::middleware(['auth', 'verified', 'role:admin'])
             Route::delete('/', [\App\Http\Controllers\NotificationController::class, 'destroyAll']);
         });
 
+        // مصاريف الحافلات والتقارير
+        Route::get('bus-expenses/reports/consumption', [\App\Http\Controllers\Admin\BusReportController::class, 'getConsumptionReport'])->name('bus-expenses.reports.consumption');
+        Route::get('bus-expenses/reports/export/pdf', [\App\Http\Controllers\Admin\BusReportController::class, 'exportPdf'])->name('bus-expenses.reports.export-pdf');
+        Route::get('bus-expenses/reports/export/excel', [\App\Http\Controllers\Admin\BusReportController::class, 'exportExcel'])->name('bus-expenses.reports.export-excel');
+        Route::resource('bus-expenses', \App\Http\Controllers\Admin\BusExpenseController::class);
+        
+        // Trips Verification (Monitoring)
+        Route::get('trips-verification', [\App\Http\Controllers\Admin\TripController::class, 'index'])->name('trips.index');
+
     });
 
 
@@ -331,7 +340,8 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::get('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'assignStudentsPage'])->name('buses.students.assign');
         Route::post('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'saveAssignedStudents'])->name('buses.students.save');
 
-        // طلبات الحافلات (ما زالت موجودة كـ API/Controller لكن الواجهة موحدة)
+        // طلبات الحافلات
+        Route::get('bus-requests', [\App\Http\Controllers\School\BusRequestController::class, 'index'])->name('bus-requests.index');
         Route::post('bus-requests', [\App\Http\Controllers\School\BusRequestController::class, 'store'])->name('bus-requests.store');
         Route::put('bus-requests/{busRequest}', [\App\Http\Controllers\School\BusRequestController::class, 'update'])->name('bus-requests.update');
         Route::delete('bus-requests/{busRequest}', [\App\Http\Controllers\School\BusRequestController::class, 'destroy'])->name('bus-requests.destroy');
@@ -349,7 +359,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         // Trips Dashboard
         Route::get('trips-dashboard', [\App\Http\Controllers\School\TripDashboardController::class, 'index'])->name('trips.dashboard');
         Route::get('trips/{trip}', [\App\Http\Controllers\School\TripDashboardController::class, 'show'])->name('trips.show');
-        
+
         // Trip Reports
         Route::get('trip-reports', [\App\Http\Controllers\School\TripReportController::class, 'index'])->name('trip-reports.index');
         Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');

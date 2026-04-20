@@ -6,21 +6,21 @@ import { User } from "@/types";
 import { ToastContainer } from "react-toastify";
 import NotificationDropdown from "@/Components/NotificationDropdown";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Menu, 
-  X, 
-  LayoutDashboard, 
-  School, 
-  Route as RouteIcon, 
-  Bus, 
-  ClipboardList, 
-  Users, 
-  UserSquare2, 
-  Search, 
-  MessageSquare, 
-  Settings, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  X,
+  LayoutDashboard,
+  School,
+  Route as RouteIcon,
+  Bus,
+  ClipboardList,
+  Users,
+  UserSquare2,
+  Search,
+  MessageSquare,
+  Settings,
   LogOut,
   Bell,
   PanelLeft,
@@ -28,7 +28,9 @@ import {
   PanelRight,
   PanelRightClose,
   Sun,
-  Moon
+  Moon,
+  Map,
+  Video,
 } from "lucide-react";
 
 // تعريف عناصر القائمة
@@ -54,9 +56,24 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "bus",
   },
   {
+    label: isRTL ? "مصاريف الحافلات" : "Bus Expenses",
+    route: "admin.bus-expenses.index",
+    icon: "clipboard",
+  },
+  {
     label: isRTL ? "طلبات الحافلات" : "Bus Requests",
     route: "admin.bus-requests.index",
     icon: "clipboard",
+  },
+  {
+    label: isRTL ? "الرحلات الميدانية" : "Field Trips",
+    route: "admin.field-trips.index",
+    icon: "map",
+  },
+  {
+    label: isRTL ? "توثيق الرحلات" : "Trips Verification",
+    route: "admin.trips.index",
+    icon: "video",
   },
   {
     label: isRTL ? "السائقين" : "Drivers",
@@ -77,10 +94,6 @@ const getMenuItems = (isRTL: boolean) => [
         route: "admin.field-supervisors.index",
       },
       {
-        label: isRTL ? "الرحلات الميدانية" : "Field Trips",
-        route: "admin.field-trips.index",
-      },
-      {
         label: isRTL ? "مراقبة الطوارئ" : "Emergency Monitor",
         route: "admin.emergencies.index",
       },
@@ -96,10 +109,10 @@ const getMenuItems = (isRTL: boolean) => [
         label: isRTL ? "إدارة بنود الفحص" : "Checklist Manager",
         route: "admin.inspection-items.index",
       },
-      {
+      /*       {
         label: isRTL ? "سجل التعيينات" : "Assignment History",
         route: "admin.assignmentHistory",
-      },
+      }, */
       {
         label: isRTL ? "سجلات التأخير" : "Delay Logs",
         route: "admin.delay-logs.index",
@@ -124,7 +137,7 @@ export default function Authenticated({
   children,
 }: PropsWithChildren<{ user?: User; header?: ReactNode }>) {
   const user = defaultUser || usePage().props.auth.user;
-  
+
   // Sidebar states
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
@@ -173,7 +186,7 @@ export default function Authenticated({
   };
 
   const toggleMenu = (label: string) => {
-    setExpandedMenus(prev => 
+    setExpandedMenus(prev =>
       prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]
     );
   };
@@ -183,14 +196,14 @@ export default function Authenticated({
   const flexDirection = isRTL ? "flex-row-reverse" : "flex-row";
   const paddingSide = isRTL ? "pr-12" : "pl-12";
   const sidebarPosition = isRTL ? "right-0" : "left-0";
-  
+
   // Animation Variants
   const sidebarVariants = {
-    expanded: { 
+    expanded: {
       width: 260,
       transition: { type: "spring" as const, stiffness: 300, damping: 30 }
     },
-    collapsed: { 
+    collapsed: {
       width: 80,
       transition: { type: "spring" as const, stiffness: 300, damping: 30 }
     }
@@ -214,8 +227,10 @@ export default function Authenticated({
       case "clipboard": return <ClipboardList className={baseClass} />;
       case "teacher": return <UserSquare2 className={baseClass} />;
       case "search": return <Search className={baseClass} />;
+      case "map": return <Map className={baseClass} />;
       case "route": return <RouteIcon className={baseClass} />;
       case "calendar": return <Bell className={baseClass} />;
+      case "video": return <Video className={baseClass} />;
       case "cog": return <Settings className={baseClass} />;
       default: return null;
     }
@@ -245,7 +260,7 @@ export default function Authenticated({
         initial={isCollapsed ? "collapsed" : "expanded"}
         animate={isCollapsed ? "collapsed" : "expanded"}
         className={`
-          bg-gradient-to-b from-brand-dark to-brand-navy dark:from-gray-900 dark:to-gray-800 
+          bg-gradient-to-b from-brand-dark to-brand-navy dark:from-gray-900 dark:to-gray-800
           text-white flex flex-col fixed h-full z-50 shadow-sidebar overflow-hidden
           ${sidebarPosition}
           ${isMobileMenuOpen ? "translate-x-0" : isRTL ? "translate-x-full md:translate-x-0" : "-translate-x-full md:translate-x-0"}
@@ -261,7 +276,7 @@ export default function Authenticated({
             <div className={`rounded-xl flex items-center justify-center bg-white shadow-lg group-hover:scale-105 transition-transform ${isCollapsed ? "w-11 h-11" : "w-14 h-14"} p-1.5`}>
               <ApplicationLogo className="w-full h-full" />
             </div>
-            
+
             {!isCollapsed && (
               <motion.div
                 initial={{ opacity: 0, x: isRTL ? 20 : -20 }}
@@ -280,7 +295,7 @@ export default function Authenticated({
         </div>
 
         {/* Navigation Section */}
-        <nav 
+        <nav
           ref={sidebarNavRef}
           onScroll={handleSidebarScroll}
           className="flex-1 px-3 space-y-1.5 mt-8 overflow-y-auto custom-scrollbar hide-scrollbar"
@@ -315,7 +330,7 @@ export default function Authenticated({
                     <span className={`${!isCollapsed ? (isRTL ? "ml-4" : "mr-4") : ""} ${isActive ? "scale-110 text-brand-yellow" : "group-hover:scale-110"} transition-transform duration-300`}>
                       {item.icon && renderIcon(item.icon, isActive)}
                     </span>
-                    
+
                     {!isCollapsed && (
                       <>
                         <span className={`flex-1 text-sm font-medium ${isRTL ? "text-right" : "text-left"} whitespace-nowrap`}>
@@ -324,17 +339,17 @@ export default function Authenticated({
                         <ChevronRight className={`w-4 h-4 transition-all duration-300 ${isExpanded ? "rotate-90 text-brand-yellow" : `opacity-40 group-hover:opacity-100 ${isRTL ? "rotate-180" : ""}`}`} />
                       </>
                     )}
-                    
+
                     {isActive && (
-                      <motion.div 
+                      <motion.div
                         layoutId="active-indicator"
-                        className={`absolute w-1 h-6 bg-brand-yellow rounded-full ${isRTL ? "left-0" : "right-0"}`} 
+                        className={`absolute w-1 h-6 bg-brand-yellow rounded-full ${isRTL ? "left-0" : "right-0"}`}
                       />
                     )}
                   </button>
-                  
+
                   {!isCollapsed && isExpanded && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       className={`mt-1 space-y-1 ${isRTL ? "pr-12" : "pl-12"}`}
@@ -387,9 +402,9 @@ export default function Authenticated({
                 )}
 
                 {isActive && (
-                  <motion.div 
+                  <motion.div
                     layoutId="active-indicator"
-                    className={`absolute w-1 h-6 bg-brand-yellow rounded-full ${isRTL ? "left-0" : "right-0"}`} 
+                    className={`absolute w-1 h-6 bg-brand-yellow rounded-full ${isRTL ? "left-0" : "right-0"}`}
                   />
                 )}
               </Link>
@@ -433,7 +448,7 @@ export default function Authenticated({
 
       {/* --- MAIN CONTENT --- */}
       <main
-        style={{ 
+        style={{
           [isRTL ? 'marginRight' : 'marginLeft']: typeof window !== "undefined" && window.innerWidth >= 768 ? (isCollapsed ? "80px" : "260px") : "0px",
           transition: "margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
         }}
@@ -541,9 +556,9 @@ export default function Authenticated({
         <div className="p-4 md:p-8 flex-1">
           <div className="max-w-7xl mx-auto">
             {header && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }} 
-                animate={{ opacity: 1, y: 0 }} 
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
                 className="mb-8"
               >
                 {header}

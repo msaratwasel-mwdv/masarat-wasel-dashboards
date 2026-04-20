@@ -158,6 +158,7 @@ class BusController extends Controller
             'model'             => 'required|string|max:100',
             'year'              => 'required|integer|min:2000|max:' . (date('Y') + 1),
             'capacity'          => 'required|integer|min:5|max:100',
+            'color'             => 'nullable|string|max:50',
             'driver_id'         => [
                 'nullable',
                 'exists:users,id',
@@ -206,6 +207,7 @@ class BusController extends Controller
                 'route_id'            => $request->route_id,
                 'field_supervisor_id' => $request->field_supervisor_id,
                 'assistant_id'        => $request->assistant_id,
+                'color'               => $request->color,
             ]);
 
             // Map driver model directly
@@ -214,32 +216,7 @@ class BusController extends Controller
                     ->update(['bus_id' => $bus->id]);
             }
 
-            $qrData = route('admin.buses.index') . "?bus=" . $bus->id;
-            $qrFileName = 'qrcodes/' . $busNumber . '.png';
-            Storage::disk('public')->makeDirectory('qrcodes');
-
-            try {
-                // We use an external API because SimpleQRCode requires 'imagick' extension for PNG, which might be missing on some servers.
-                $qrApiUrl = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=" . urlencode($qrData) . "&margin=10&format=png";
-                $response = Http::timeout(5)->get($qrApiUrl);
-                
-                if ($response->successful()) {
-                    Storage::disk('public')->put($qrFileName, $response->body());
-                    $bus->update(['front_qr' => $qrFileName]);
-                } else {
-                    // Fallback to SVG if API fails (and log it, though we don't have easy access to logs here)
-                    $qrFileNameSvg = 'qrcodes/' . $busNumber . '.svg';
-                    $qrImage = QrCode::format('svg')->size(400)->margin(2)->generate($qrData);
-                    Storage::disk('public')->put($qrFileNameSvg, $qrImage);
-                    $bus->update(['front_qr' => $qrFileNameSvg]);
-                }
-            } catch (\Exception $e) {
-                // Catch network timeout or other issues and fallback to local SVG
-                $qrFileNameSvg = 'qrcodes/' . $busNumber . '.svg';
-                $qrImage = QrCode::format('svg')->size(400)->margin(2)->generate($qrData);
-                Storage::disk('public')->put($qrFileNameSvg, $qrImage);
-                $bus->update(['front_qr' => $qrFileNameSvg]);
-            }
+            $this->generateQRCodes($bus);
 
             $this->uploadFiles($request, $bus);
         });
@@ -337,6 +314,7 @@ class BusController extends Controller
             'model'        => 'required|string|max:100',
             'year'         => 'required|integer|min:2000|max:' . (date('Y') + 1),
             'capacity'     => 'required|integer|min:5|max:100',
+            'color'        => 'nullable|string|max:50',
             'status'       => 'required|in:active,maintenance,inactive,out_of_service',
             'driver_id'    => [
                 'nullable',
@@ -371,24 +349,15 @@ class BusController extends Controller
         ]);
 
         DB::transaction(function () use ($bus, $validated) {
-            $oldDriverId     = $bus->driver?->user_id;
-            $oldSupervisorId = $bus->field_supervisor_id;
-            $oldAssistantId  = $bus->assistant_id;
-            $newDriverId     = $validated['driver_id'] ?? null;
-            $newSupervisorId = $validated['field_supervisor_id'] ?? null;
-            $newAssistantId  = $validated['assistant_id'] ?? null;
-            $schoolId        = $bus->school_id; // احتفظ بمدرسة الباص الحالية
+            $oldDriverId = $bus->driver?->user_id;
+            $newDriverId = $validated['driver_id'] ?? null;
             
-            if (array_key_exists('driver_id', $validated)) {
-                unset($validated['driver_id']);
-            }
+            // Remove non-schema fields from validation array before update
+            $updateData = collect($validated)->except(['driver_id', 'photos', 'registration_file'])->toArray();
 
-            $bus->update($validated);
+            $bus->update($updateData);
 
-            // NOTE: school_id does NOT exist on the users table.
-            // Driver/supervisor school association lives in drivers.school_id / field_supervisors.school_id.
-            // Update those extension records when driver/supervisor assignment OR bus school changes.
-            // 1. Update Driver
+            // Handle Driver reassignment
             if ($oldDriverId !== $newDriverId) {
                 if ($oldDriverId) {
                     \App\Models\Driver::where('user_id', $oldDriverId)->update(['bus_id' => null]);
@@ -398,12 +367,13 @@ class BusController extends Controller
                 }
             }
 
-            // 2. No direct mapping table for supervisors/assistants to buses (they are foreign keys on buses table)
-            // But if we need to clear flags or something, we could do it here. 
-            // The bus update already handled changing the IDs on the bus itself.
-
             // Upload new files if provided
             $this->uploadFiles(request(), $bus);
+
+            // Regnerate QRs if missing
+            if (!$bus->front_qr || !$bus->back_qr) {
+                $this->generateQRCodes($bus);
+            }
         });
 
         return redirect()->route('admin.buses.index')
@@ -466,6 +436,58 @@ class BusController extends Controller
         $bus->update(['status' => 'active']);
 
         return redirect()->back()->with('success', 'تم استعادة الحافلة بنجاح');
+    }
+
+    /**
+     * Generate QR codes (Front and Back) for the bus.
+     */
+    private function generateQRCodes(Bus $bus)
+    {
+        $busNumber = $bus->bus_number;
+        $frontData = "FRONT-" . $bus->id;
+        $backData = "BACK-" . $bus->id;
+        
+        $frontFileName = 'qrcodes/' . $busNumber . '_front.png';
+        $backFileName = 'qrcodes/' . $busNumber . '_back.png';
+        
+        Storage::disk('public')->makeDirectory('qrcodes');
+
+        try {
+            // Using external API for PNG generation
+            $qrApiUrlFront = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=" . urlencode($frontData) . "&margin=10&format=png";
+            $qrApiUrlBack = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=" . urlencode($backData) . "&margin=10&format=png";
+
+            $respFront = Http::timeout(10)->get($qrApiUrlFront);
+            $respBack = Http::timeout(10)->get($qrApiUrlBack);
+            
+            if ($respFront->successful() && $respBack->successful()) {
+                Storage::disk('public')->put($frontFileName, $respFront->body());
+                Storage::disk('public')->put($backFileName, $respBack->body());
+                
+                $bus->update([
+                    'front_qr' => $frontFileName,
+                    'back_qr' => $backFileName
+                ]);
+                return;
+            }
+        } catch (\Exception $e) {
+            // Fallback will happen below
+        }
+
+        // Fallback to local SVG generation
+        $frontFileNameSvg = 'qrcodes/' . $busNumber . '_front.svg';
+        $backFileNameSvg = 'qrcodes/' . $busNumber . '_back.svg';
+        
+        $qrImageFront = QrCode::format('svg')->size(400)->margin(2)->generate($frontData);
+        $qrImageBack = QrCode::format('svg')->size(400)->margin(2)->generate($backData);
+        
+        Storage::disk('public')->put($frontFileNameSvg, $qrImageFront);
+        Storage::disk('public')->put($backFileNameSvg, $qrImageBack);
+        
+        $bus->update([
+            'front_qr' => $frontFileNameSvg,
+            'back_qr' => $backFileNameSvg
+        ]);
     }
 }
 

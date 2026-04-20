@@ -15,17 +15,17 @@ interface AssignedBus {
 interface BusRequest {
     id: number;
     request_type: string;
-    requested_seats: number;
+    seats: number;
     start_date: string;
     end_date?: string;
-    reason: string;
-    special_requirements?: string;
+    purpose: string;
+    details?: string;
     status: string;
-    total_cost?: string | number | null;
+    cost?: string | number | null;
     approvedBy?: { name: string };
     approved_at?: string;
     created_at: string;
-    buses?: AssignedBus[];
+    bus?: AssignedBus;
 }
 
 interface Props {
@@ -70,7 +70,7 @@ export default function RequestInvoiceModal({ show, onClose, request, schoolName
         return labels[type] || t(type);
     };
 
-    const totalCost = request.total_cost ? Number(request.total_cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00";
+    const cost = request.cost ? Number(request.cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00";
 
     return (
       <Modal show={show} onClose={onClose} maxWidth="3xl">
@@ -235,7 +235,7 @@ export default function RequestInvoiceModal({ show, onClose, request, schoolName
                     {isRTL ? "المقاعد المطلوبة" : "Requested Seats"}
                   </p>
                   <p className="font-bold text-sm text-gray-900 print:text-black flex items-center gap-1.5">
-                    {request.requested_seats}{" "}
+                    {request.seats}{" "}
                     <Users className="w-4 h-4 text-gray-400" />
                   </p>
                 </div>
@@ -259,38 +259,35 @@ export default function RequestInvoiceModal({ show, onClose, request, schoolName
               <div className="grid grid-cols-2 divide-x divide-x-reverse print:divide-gray-300 bg-gray-50 print:bg-white dark:bg-gray-800/50">
                 <div className="p-4">
                   <p className="text-[10px] uppercase font-bold text-[#0e7490] mb-1">
-                    {isRTL ? "المبررات والملاحظات" : "Reason & Remarks"}
+                    {isRTL ? "المبررات والملاحظات" : "Purpose & Remarks"}
                   </p>
                   <p className="font-medium text-sm text-gray-700 print:text-black leading-relaxed">
-                    {request.reason || (isRTL ? "لا يوجد" : "None")}
+                    {request.purpose || (isRTL ? "لا يوجد" : "None")}
                   </p>
                 </div>
                 <div className="p-4">
                   <p className="text-[10px] uppercase font-bold text-[#0e7490] mb-1">
-                    {isRTL ? "متطلبات خاصة" : "Special Requirements"}
+                    {isRTL ? "تفاصيل إضافية" : "Additional Details"}
                   </p>
                   <p className="font-medium text-sm text-gray-700 print:text-black leading-relaxed">
-                    {request.special_requirements || (isRTL ? "لا توجد متطلبات خاصة" : "None")}
+                    {request.details || (isRTL ? "لا توجد تفاصيل إضافية" : "None")}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Assigned Buses Table - Formal styling */}
-            {request.buses && request.buses.length > 0 && (
+            {/* Assigned Bus Table - Formal styling */}
+            {request.bus && (
               <div className="mb-6">
                 <h4 className="text-sm font-black text-gray-800 print:text-black mb-2 flex items-center gap-2">
                   <Bus className="w-5 h-5 text-[#0e7490] print:text-[#0e7490]" />
                   {isRTL
-                    ? "بيان الحافلات المُسندة والمركبات"
+                    ? "بيان الحافلة المُسندة"
                     : "Assigned Fleet Manifesto"}
                 </h4>
                 <table className="w-full text-left print:text-black border-collapse border border-gray-300 print:border-black">
                   <thead>
                     <tr className="bg-gray-100 print:bg-gray-100 print:-webkit-print-color-adjust-exact">
-                      <th className="py-2.5 px-4 font-bold text-xs uppercase text-gray-700 print:text-black border border-gray-300 print:border-black text-center w-12">
-                        #
-                      </th>
                       <th className="py-2.5 px-4 font-bold text-xs uppercase text-gray-700 print:text-black border border-gray-300 print:border-black text-center">
                         {isRTL ? "الرمز (كود)" : "Bus Code"}
                       </th>
@@ -303,23 +300,18 @@ export default function RequestInvoiceModal({ show, onClose, request, schoolName
                     </tr>
                   </thead>
                   <tbody>
-                    {request.buses.map((bus, idx) => (
-                      <tr key={bus.id} className="bg-white print:bg-white">
-                        <td className="py-3 px-4 text-sm font-bold border border-gray-300 print:border-black text-center text-gray-500 print:text-gray-800">
-                          {idx + 1}
-                        </td>
+                      <tr className="bg-white print:bg-white">
                         <td className="py-3 px-4 text-sm font-bold border border-gray-300 print:border-black text-center text-[#0e7490] print:text-black tracking-wide">
-                          {bus.bus_number}
+                          {request.bus.bus_number}
                         </td>
                         <td className="py-3 px-4 text-sm font-mono border border-gray-300 print:border-black text-center text-gray-700 print:text-black">
-                          {bus.plate_number}
+                          {request.bus.plate_number}
                         </td>
                         <td className="py-3 px-4 text-sm font-bold border border-gray-300 print:border-black text-center text-gray-800 print:text-black">
-                          {bus.capacity}{" "}
+                          {request.bus.capacity}{" "}
                           <Users className="w-3.5 h-3.5 inline text-gray-400 ml-1" />
                         </td>
                       </tr>
-                    ))}
                   </tbody>
                 </table>
               </div>
@@ -352,7 +344,7 @@ export default function RequestInvoiceModal({ show, onClose, request, schoolName
                     {isRTL ? "التكلفة المُعتمدة للخدمة" : "Approved Subtotal"}
                   </p>
                 </div>
-                <p className="text-2xl font-black text-white">{totalCost}</p>
+                <p className="text-2xl font-black text-white">{cost}</p>
                 <p className="text-[10px] font-bold text-white/70 mt-0.5">
                   {isRTL ? "ريال سعودي" : "SAR"}
                 </p>

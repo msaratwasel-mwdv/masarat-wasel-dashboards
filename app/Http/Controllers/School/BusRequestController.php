@@ -18,7 +18,7 @@ class BusRequestController extends Controller
         $schoolId = Auth::user()->getSchoolId();
 
         $requests = BusRequest::where('school_id', $schoolId)
-            ->with('approvedBy')
+            ->with(['bus'])
             ->latest()
             ->get();
 
@@ -34,11 +34,11 @@ class BusRequestController extends Controller
     {
         $validated = $request->validate([
             'request_type' => 'required|in:permanent,temporary',
-            'requested_seats' => 'required|integer|min:1',
+            'seats' => 'required|integer|min:1',
             'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'nullable|date|after:start_date',
-            'reason' => 'required|string|max:1000',
-            'special_requirements' => 'nullable|string|max:1000',
+            'purpose' => 'required|string|max:1000',
+            'details' => 'nullable|string|max:1000',
         ]);
 
         $validated['school_id'] = Auth::user()->getSchoolId();
@@ -68,11 +68,11 @@ class BusRequestController extends Controller
 
         $validated = $request->validate([
             'request_type' => 'required|in:permanent,temporary',
-            'requested_seats' => 'required|integer|min:1',
+            'seats' => 'required|integer|min:1',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after:start_date',
-            'reason' => 'required|string|max:1000',
-            'special_requirements' => 'nullable|string|max:1000',
+            'purpose' => 'required|string|max:1000',
+            'details' => 'nullable|string|max:1000',
         ]);
 
         $busRequest->update($validated);

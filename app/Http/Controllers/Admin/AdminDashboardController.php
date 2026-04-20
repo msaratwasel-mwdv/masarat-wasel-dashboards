@@ -119,8 +119,19 @@ class AdminDashboardController extends Controller
             ];
         });
 
-        // BusRequest table is deprecated / moved to @oldfile, returning empty collection for now
-        $recentRequests = collect([]);
+        // Fetch actual recent bus requests
+        $recentRequests = \App\Models\BusRequest::with('school')->latest()->take(3)->get()->map(function($item) {
+            return [
+                'id' => $item->id,
+                'type' => 'bus_request',
+                'title' => 'طلب حافلة جديد',
+                'description' => "مدرسة {$item->school->name}: طلب {$item->request_type} ({$item->seats} مقعد)",
+                'time' => $item->created_at->diffForHumans(),
+                'timestamp' => $item->created_at->timestamp,
+                'status' => $item->status,
+                'link' => route('admin.bus-requests.index'),
+            ];
+        });
 
         $recentActivities = $recentRequests->concat($recentViolations)
             ->sortByDesc('timestamp')

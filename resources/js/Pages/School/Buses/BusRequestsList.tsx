@@ -19,11 +19,11 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
 
     const { data, setData, post, processing, errors, reset } = useForm({
         request_type: 'permanent',
-        number_of_buses: 1,
+        seats: 20,
         start_date: '',
         end_date: '',
-        reason: '',
-        special_requirements: '',
+        purpose: '',
+        details: '',
     });
 
     const filteredRequests = requests.filter(req =>
@@ -147,16 +147,16 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
 
                                     {/* Info Grid */}
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                        {/* Number of Buses */}
+                                        {/* Number of Seats */}
                                         <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-    <div className="flex items-center gap-3">
-        <span className="text-3xl">🚌</span>
-        <div className="flex-1">
-            <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">{t('Number of Buses')}</p>
-            <p className="text-2xl font-extrabold text-gray-800 dark:text-white">{request.number_of_buses}</p>
-        </div>
-    </div>
-</div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-3xl">💺</span>
+                                                <div className="flex-1">
+                                                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">{t('Required Seats')}</p>
+                                                    <p className="text-2xl font-extrabold text-gray-800 dark:text-white">{request.seats}</p>
+                                                </div>
+                                            </div>
+                                        </div>
 
                                         {/* Start Date */}
                                         <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
@@ -192,20 +192,20 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
                                         <div className="flex items-start gap-3">
                                             <span className="text-2xl mt-1">📝</span>
                                             <div className="flex-1">
-                                                <p className="text-sm font-bold text-orange-700 dark:text-orange-400 mb-2">{t('Reason')}:</p>
-                                                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{request.reason}</p>
+                                                <p className="text-sm font-bold text-orange-700 dark:text-orange-400 mb-2">{t('Purpose')}:</p>
+                                                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{request.purpose}</p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Special Requirements */}
-                                    {request.special_requirements && (
+                                    {/* Details */}
+                                    {request.details && (
                                         <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 p-5 rounded-xl border border-purple-200 dark:border-purple-800 mb-4">
                                             <div className="flex items-start gap-3">
                                                 <span className="text-2xl mt-1">⭐</span>
                                                 <div className="flex-1">
-                                                    <p className="text-sm font-bold text-purple-700 dark:text-purple-400 mb-2">{t('Special Requirements')}:</p>
-                                                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{request.special_requirements}</p>
+                                                    <p className="text-sm font-bold text-purple-700 dark:text-purple-400 mb-2">{t('Details')}:</p>
+                                                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{request.details}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -295,32 +295,32 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
                                     </select>
                                 </div>
 
-                                {/* Number of Buses */}
+                                {/* Number of Seats */}
                                 <div className="space-y-2">
                                     <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300">
-                                        <span className="text-xl">🚌</span>
-                                        {t('Number of Buses')} <span className="text-red-500">*</span>
+                                        <span className="text-xl">💺</span>
+                                        {t('Required Seats')} <span className="text-red-500">*</span>
                                     </label>
                                     <div className="relative">
                                         <input
                                             type="number"
                                             min="1"
-                                            value={data.number_of_buses}
-                                            onChange={e => setData('number_of_buses', parseInt(e.target.value))}
+                                            value={data.seats}
+                                            onChange={e => setData('seats', parseInt(e.target.value))}
                                             className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent transition-all font-semibold"
                                             required
                                         />
                                         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
                                             <button
                                                 type="button"
-                                                onClick={() => setData('number_of_buses', Math.max(1, data.number_of_buses - 1))}
+                                                onClick={() => setData('seats', Math.max(1, data.seats - 1))}
                                                 className="w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
                                             >
                                                 −
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => setData('number_of_buses', data.number_of_buses + 1)}
+                                                onClick={() => setData('seats', data.seats + 1)}
                                                 className="w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
                                             >
                                                 +
@@ -365,31 +365,31 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
                                 <div className="space-y-2">
                                     <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300">
                                         <span className="text-xl">📝</span>
-                                        {t('Reason')} <span className="text-red-500">*</span>
+                                        {t('Purpose')} <span className="text-red-500">*</span>
                                     </label>
                                     <textarea
-                                        value={data.reason}
-                                        onChange={e => setData('reason', e.target.value)}
+                                        value={data.purpose}
+                                        onChange={e => setData('purpose', e.target.value)}
                                         rows={4}
                                         className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent transition-all resize-none"
-                                        placeholder={t('Explain the reason for this request...')}
+                                        placeholder={t('Explain the purpose of this request...')}
                                         required
                                     />
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{data.reason.length}/1000</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">{data.purpose.length}/1000</p>
                                 </div>
 
-                                {/* Special Requirements */}
+                                {/* Details */}
                                 <div className="space-y-2">
                                     <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300">
                                         <span className="text-xl">⭐</span>
-                                        {t('Special Requirements')}
+                                        {t('Details')}
                                     </label>
                                     <textarea
-                                        value={data.special_requirements}
-                                        onChange={e => setData('special_requirements', e.target.value)}
+                                        value={data.details}
+                                        onChange={e => setData('details', e.target.value)}
                                         rows={3}
                                         className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent transition-all resize-none"
-                                        placeholder={t('Any special requirements or notes...')}
+                                        placeholder={t('Any special requirements or details...')}
                                     />
                                 </div>
 

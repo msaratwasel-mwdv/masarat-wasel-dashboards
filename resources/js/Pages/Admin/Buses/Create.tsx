@@ -16,6 +16,7 @@ export default function Create({ auth, schools }: CreateProps) {
         bus_number: '',
         plate_number: '',
         capacity: 30,
+        color: '',
         type: 'permanent',
         status: 'active',
         driver_id: null,
@@ -131,21 +132,37 @@ export default function Create({ auth, schools }: CreateProps) {
                             </div>
                         </div>
 
-                        {/* Status */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                {t('Status')} *
-                            </label>
-                            <select
-                                value={data.status}
-                                onChange={e => setData('status', e.target.value as 'active' | 'maintenance' | 'inactive')}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                                required
-                            >
-                                <option value="active">{t('Active')}</option>
-                                <option value="maintenance">{t('Maintenance')}</option>
-                                <option value="inactive">{t('Inactive')}</option>
-                            </select>
+                        {/* Status & Color */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    {t('Status')} *
+                                </label>
+                                <select
+                                    value={data.status}
+                                    onChange={e => setData('status', e.target.value as 'active' | 'maintenance' | 'inactive')}
+                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                    required
+                                >
+                                    <option value="active">{t('Active')}</option>
+                                    <option value="maintenance">{t('Maintenance')}</option>
+                                    <option value="inactive">{t('Inactive')}</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    {t('Color')}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={data.color}
+                                    onChange={e => setData('color', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                    placeholder={t('e.g. Yellow, White')}
+                                />
+                                {errors.color && <p className="text-red-500 text-sm mt-1">{errors.color}</p>}
+                            </div>
                         </div>
 
                         {/* Actions */}

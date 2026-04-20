@@ -54,6 +54,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/bus/{bus}/passengers', [BusBoardingController::class, 'passengers']);
     Route::post('/bus/{bus}/start-trip', [BusBoardingController::class, 'startTrip']);
     Route::post('/bus/{bus}/end-trip', [BusBoardingController::class, 'endTrip']);
+    Route::post('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'store']);
+    Route::get('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'index']);
 
     // --- تحديث وجلب موقع الباص ---
     Route::post('/bus/{bus}/location', [BusLocationController::class, 'update']);

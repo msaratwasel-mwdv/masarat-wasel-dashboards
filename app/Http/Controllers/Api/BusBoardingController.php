@@ -557,18 +557,56 @@ class BusBoardingController extends Controller
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
-        Log::info('endTrip: Application attempting to end trip', [
+        $request->validate([
+            'video' => 'required|file|mimes:mp4,mov,avi,wmv|max:51200', // 50MB max
+            'start_qr_scanned' => 'required|boolean',
+            'end_qr_scanned' => 'required|boolean',
+            'start_qr_data' => 'required|string',
+            'end_qr_data' => 'required|string',
+        ]);
+
+        // Validation of QR data
+        if ($request->start_qr_data !== "FRONT-" . $bus->id || $request->end_qr_data !== "BACK-" . $bus->id) {
+            return response()->json(['message' => 'بيانات كود QR غير صحيحة لهذه الحافلة.'], 422);
+        }
+
+        Log::info('endTrip: Security verification passed, processing video', [
             'bus_id' => $bus->id,
             'driver_id' => $user->id
         ]);
 
+        // Find active trip
+        $trip = \App\Models\Trip::where('bus_id', $bus->id)
+            ->where('status', 'in_progress')
+            ->latest()
+            ->first();
+
+        if (!$trip) {
+            return response()->json(['message' => 'لا توجد رحلة قيد التنفيذ حالياً لهذا الباص.'], 404);
+        }
+
+        // Store video
+        if ($request->hasFile('video')) {
+            $dateFolder = now()->format('Y-m-d');
+            $path = $request->file('video')->store("trip_videos/{$dateFolder}", 'public');
+            
+            $trip->update([
+                'status' => 'completed',
+                'arrival_time' => now(),
+                'video_check' => true,
+                'video_path' => $path,
+                'end_qr_scanned_at' => now(),
+            ]);
+        }
+
         $bus->update(['trip_status' => 'idle']);
 
-        Log::info('endTrip: Trip ended successfully', ['bus_id' => $bus->id]);
+        Log::info('endTrip: Trip closed with video verification', ['trip_id' => $trip->id]);
 
         return response()->json([
-            'message' => 'تم إنهاء الرحلة بنجاح.',
+            'message' => 'تم إنهاء الرحلة وتوثيقها بنجاح.',
             'trip_status' => 'idle',
+            'video_path' => asset('storage/' . $path),
         ]);
     }
 

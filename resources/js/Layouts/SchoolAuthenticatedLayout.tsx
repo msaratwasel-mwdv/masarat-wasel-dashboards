@@ -71,6 +71,11 @@ export default function SchoolAuthenticatedLayout({
       icon: "bus",
     },
     {
+      label: isRtl ? "طلبات الحافلات" : "Bus Requests",
+      route: "school.bus-requests.index",
+      icon: "rocket",
+    },
+    {
       label: isRtl ? "المسارات" : "Routes",
       route: "school.routes.index",
       icon: "map",

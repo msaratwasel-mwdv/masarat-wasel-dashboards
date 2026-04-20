@@ -14,6 +14,8 @@ class School extends Model
     protected $fillable = [
         'name',
         'logo',
+        'latitude',
+        'longitude',
         'address',
         'status',
         'has_transport',

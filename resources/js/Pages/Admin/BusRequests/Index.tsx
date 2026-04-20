@@ -37,9 +37,11 @@ interface Bus {
   plate_number: string;
   capacity: number;
   driver_id: number | null;
-  supervisor_id: number | null;
+  field_supervisor_id: number | null;
+  assistant_id: number | null;
   driver?: { name: string };
-  supervisor?: { name: string };
+  field_supervisor?: { name: string };
+  assistant?: { name: string };
 }
 
 interface BusRequest {
@@ -47,17 +49,15 @@ interface BusRequest {
   school_id: number;
   school: { id: number; name: string };
   request_type: string;
-  requested_seats: number;
+  seats: number;
   start_date: string;
   end_date?: string;
-  reason: string;
-  special_requirements?: string;
+  purpose: string;
+  details?: string;
   status: "pending" | "approved" | "rejected";
   rejection_reason?: string;
-  total_cost?: string | number;
-  approved_by?: number;
-  approvedBy?: { name: string };
-  buses?: Bus[];
+  cost?: string | number;
+  bus?: Bus;
   approved_at?: string;
   created_at: string;
 }
@@ -98,8 +98,8 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<BusRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
-  const [selectedBusIds, setSelectedBusIds] = useState<number[]>([]);
-  const [totalCost, setTotalCost] = useState<string>("");
+  const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
+  const [cost, setCost] = useState<string>("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   // ── Server-side search (debounced via Inertia) ──
@@ -130,16 +130,16 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
 
   // ── Actions ──
   const handleApprove = () => {
-    if (selectedRequest && selectedBusIds.length > 0 && totalCost !== "") {
+    if (selectedRequest && selectedBusId && cost !== "") {
       router.post(
         route("admin.bus-requests.approve", selectedRequest.id),
-        { bus_ids: selectedBusIds, total_cost: parseFloat(totalCost) },
+        { bus_id: selectedBusId, cost: parseFloat(cost) },
         {
           onSuccess: () => {
             setShowApproveModal(false);
             setSelectedRequest(null);
-            setSelectedBusIds([]);
-            setTotalCost("");
+            setSelectedBusId(null);
+            setCost("");
           },
         }
       );
@@ -184,11 +184,9 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
     return map[s] || s;
   };
 
-  const totalSelectedCapacity = useMemo(() => {
-    return availableBuses
-      .filter((b) => selectedBusIds.includes(b.id))
-      .reduce((sum, b) => sum + b.capacity, 0);
-  }, [selectedBusIds, availableBuses]);
+  const selectedBusCapacity = useMemo(() => {
+    return availableBuses.find((b) => b.id === selectedBusId)?.capacity || 0;
+  }, [selectedBusId, availableBuses]);
 
   // ── Filter tabs ──
   const filterTabs: FilterTab[] = [
@@ -232,7 +230,7 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
           <StatusBadge label={getTypeLabel(info.getValue())} variant="blue" />
         ),
       }),
-      columnHelper.accessor("requested_seats", {
+      columnHelper.accessor("seats", {
         header: isRTL ? "المقاعد" : "Seats",
         cell: (info) => (
           <div className="flex items-center gap-2">
@@ -371,15 +369,15 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
                       <div>
                           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{isRTL ? "السبب الرئيسي" : "Primary Reason"}</p>
                           <div className={`p-4 rounded-xl ${isDark ? "bg-gray-800 text-gray-300" : "bg-gray-50 text-gray-700"} border border-transparent hover:border-brand-yellow/30 transition-all`}>
-                              {req.reason}
+                              {req.purpose}
                           </div>
                       </div>
 
-                      {req.special_requirements && (
+                      {req.details && (
                           <div>
-                              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{isRTL ? "متطلبات خاصة" : "Special Requirements"}</p>
+                              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{isRTL ? "تفاصيل إضافية" : "Additional Details"}</p>
                               <div className={`p-4 rounded-xl ${isDark ? "bg-brand-yellow/5 text-gray-300" : "bg-yellow-50 text-gray-700"} border border-dashed border-brand-yellow/40`}>
-                                  {req.special_requirements}
+                                  {req.details}
                               </div>
                           </div>
                       )}
@@ -397,49 +395,41 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
                         <div className="flex justify-between items-center mb-4">
                             <h4 className="font-bold text-md text-[#0e7490] flex items-center gap-2">
                                 <BusIcon className="w-5 h-5" />
-                                {isRTL ? "الحافلات المُسندة للطلب" : "Assigned Buses"}
+                                {isRTL ? "الحافلة المُسندة" : "Assigned Bus"}
                             </h4>
                             <div className="bg-brand-yellow/10 border border-brand-yellow/30 px-4 py-2 rounded-xl text-center">
-                                <p className="text-[10px] font-black uppercase text-brand-dark opacity-70 mb-0.5">{isRTL ? "التكلفة المُعتمدة" : "Approved Total Cost"}</p>
+                                <p className="text-[10px] font-black uppercase text-brand-dark opacity-70 mb-0.5">{isRTL ? "التكلفة المُعتمدة" : "Approved Cost"}</p>
                                 <p className="text-xl font-black text-brand-dark">
-                                    {req.total_cost ? Number(req.total_cost).toLocaleString() : "0.00"} <span className="text-sm">SAR</span>
+                                    {req.cost ? Number(req.cost).toLocaleString() : "0.00"} <span className="text-sm">SAR</span>
                                 </p>
                             </div>
                         </div>
 
-                        {req.buses && req.buses.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {req.buses.map(bus => (
-                                    <div key={bus.id} className={`p-4 rounded-xl border-l-4 border-[#0e7490] ${isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="font-bold text-sm">#{bus.bus_number}</span>
-                                            <span className="font-mono text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">{bus.plate_number}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-3">
-                                            <Users className="w-4 h-4" /> العتبة السعوية: {bus.capacity} مقعد
-                                        </div>
-                                        <div className="space-y-1 mt-2 border-t pt-2 dark:border-gray-700">
-                                            <div className="flex items-center gap-2 text-xs">
-                                                <UserCheck className="w-3.5 h-3.5 text-green-500" />
-                                                <span className="font-bold opacity-70 w-12">{isRTL ? "السائق:" : "Driver:"}</span>
-                                                <span className="text-gray-800 dark:text-gray-200">{bus.driver?.name || "---"}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs">
-                                                <UserCheck className="w-3.5 h-3.5 text-blue-500" />
-                                                <span className="font-bold opacity-70 w-12">{isRTL ? "المشرف:" : "Super:"}</span>
-                                                <span className="text-gray-800 dark:text-gray-200">{bus.supervisor?.name || "---"}</span>
-                                            </div>
+                        {req.bus ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className={`p-4 rounded-xl border-l-4 border-[#0e7490] ${isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="font-bold text-sm">#{req.bus.bus_number}</span>
+                                        <span className="font-mono text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">{req.bus.plate_number}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-3">
+                                        <Users className="w-4 h-4" /> العتبة السعوية: {req.bus.capacity} مقعد
+                                    </div>
+                                    <div className="space-y-1 mt-2 border-t pt-2 dark:border-gray-700">
+                                        <div className="flex items-center gap-2 text-xs">
+                                            <UserCheck className="w-3.5 h-3.5 text-green-500" />
+                                            <span className="font-bold opacity-70 w-12">{isRTL ? "السائق:" : "Driver:"}</span>
+                                            <span className="text-gray-800 dark:text-gray-200">{req.bus.driver?.name || "---"}</span>
                                         </div>
                                     </div>
-                                ))}
+                                </div>
                             </div>
                         ) : (
-                            <p className="text-sm text-gray-500 italic">{isRTL ? "لم يتم إسناد أية حافلات واضحة بعد." : "No specific buses assigned."}</p>
+                            <p className="text-sm text-gray-500 italic">{isRTL ? "لم يتم إسناد حافلة بعد." : "No bus assigned yet."}</p>
                         )}
                         
                         <div className="mt-4 flex items-center gap-2 text-xs opacity-60">
-                            <span className="font-bold">{isRTL ? "تم الاعتماد بواسطة:" : "Approved by:"}</span> {req.approvedBy?.name || "---"} 
-                            <span className="mx-2">•</span> 
+                            <span className="font-bold">{isRTL ? "تاريخ الموافقة:" : "Approved at:"}</span> 
                             {req.approved_at ? new Date(req.approved_at).toLocaleString() : ""}
                         </div>
                     </div>
@@ -459,28 +449,28 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
               <div className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center">
                 <CheckCircle className="w-6 h-6" />
               </div>
-              {isRTL ? "الموافقة وتعيين الحافلات" : "Approve & Assign Buses"}
+              {isRTL ? "الموافقة وتعيين الحافلة" : "Approve & Assign Bus"}
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              {isRTL ? `المدرسة: ${selectedRequest?.school.name} - مطلوب ${selectedRequest?.requested_seats} مقعد` : `School: ${selectedRequest?.school.name} - Requested ${selectedRequest?.requested_seats} seats`}
+              {isRTL ? `المدرسة: ${selectedRequest?.school.name} - مطلوب ${selectedRequest?.seats} مقعد` : `School: ${selectedRequest?.school.name} - Requested ${selectedRequest?.seats} seats`}
             </p>
           </div>
 
           <div className="p-6">
             <div className="mb-4 flex justify-between items-center bg-brand-yellow/10 p-4 rounded-xl border border-brand-yellow/30">
                 <div className={isRTL ? "text-right" : "text-left"}>
-                    <p className="text-xs font-bold text-brand-dark opacity-60 uppercase">{isRTL ? "المقاعد المختارة / المطلوبة" : "Selected / Requested Seats"}</p>
+                    <p className="text-xs font-bold text-brand-dark opacity-60 uppercase">{isRTL ? "سعة الحافلة المختارة / المطلوبة" : "Bus Capacity / Requested Seats"}</p>
                     <p className="text-2xl font-black text-brand-dark">
-                        <span className={totalSelectedCapacity >= (selectedRequest?.requested_seats || 0) ? "text-green-600" : "text-red-500"}>
-                            {totalSelectedCapacity}
+                        <span className={selectedBusCapacity >= (selectedRequest?.seats || 0) ? "text-green-600" : "text-red-500"}>
+                            {selectedBusCapacity}
                         </span> 
                         <span className="text-lg text-gray-400 mx-1">/</span> 
-                        {selectedRequest?.requested_seats || 0}
+                        {selectedRequest?.seats || 0}
                     </p>
                 </div>
                 <div className="text-right">
-                    <p className="text-xs font-bold text-brand-dark opacity-60 uppercase">{isRTL ? "الحافلات المختارة" : "Selected Buses"}</p>
-                    <p className="text-2xl font-black text-brand-dark">{selectedBusIds.length}</p>
+                    <p className="text-xs font-bold text-brand-dark opacity-60 uppercase">{isRTL ? "حالة الاختيار" : "Selection Status"}</p>
+                    <p className="text-2xl font-black text-brand-dark">{selectedBusId ? (isRTL ? "محددة" : "Selected") : (isRTL ? "غير محددة" : "None")}</p>
                 </div>
             </div>
 
@@ -492,26 +482,24 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
                 </div>
               ) : (
                 availableBuses.map((bus) => {
-                  const isSelected = selectedBusIds.includes(bus.id);
-                  const hasCrew = bus.driver_id && bus.supervisor_id;
+                  const isSelected = selectedBusId === bus.id;
+                  const hasCrew = bus.driver_id && bus.field_supervisor_id; // Check for minimal safe crew
                   
                   return (
                     <div
                       key={bus.id}
                       onClick={() => {
-                        setSelectedBusIds(prev => 
-                          prev.includes(bus.id) ? prev.filter(id => id !== bus.id) : [...prev, bus.id]
-                        );
+                        setSelectedBusId(bus.id);
                       }}
                       className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                        isSelected 
+                        selectedBusId === bus.id 
                           ? "border-brand-yellow bg-brand-yellow/5" 
                           : isDark ? "border-gray-700 hover:border-gray-600" : "border-gray-100 hover:border-gray-200"
                       }`}
                     >
                       <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
-                        <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? "bg-brand-yellow border-brand-yellow" : "border-gray-300"}`}>
-                           {isSelected && <CheckCheck className="w-4 h-4 text-brand-navy" />}
+                        <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${selectedBusId === bus.id ? "bg-brand-yellow border-brand-yellow" : "border-gray-300"}`}>
+                           {selectedBusId === bus.id && <CheckCheck className="w-4 h-4 text-brand-navy" />}
                         </div>
                         
                         <div className="flex-1">
@@ -547,14 +535,14 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
             </div>
             <div className="mt-4 pt-4 border-t border-brand-yellow/20">
               <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-400" : "text-gray-500"} ${isRTL ? "text-right" : "text-left"}`}>
-                {isRTL ? "التكلفة الإجمالية المطلوبة (بالريال)" : "Total Required Cost (SAR)"} <span className="text-red-500">*</span>
+                {isRTL ? "التكلفة المطلوبة (بالريال)" : "Required Cost (SAR)"} <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 min="0"
                 step="0.01"
-                value={totalCost}
-                onChange={(e) => setTotalCost(e.target.value)}
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
                 placeholder="0.00"
                 required
                 className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-4 focus:ring-brand-yellow/20 transition-all ${
@@ -568,8 +556,8 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
             <button
                 onClick={() => {
                     setShowApproveModal(false);
-                    setSelectedBusIds([]);
-                    setTotalCost("");
+                    setSelectedBusId(null);
+                    setCost("");
                 }}
                 className={`px-6 py-2 rounded-xl font-bold transition-all ${isDark ? "hover:bg-gray-700" : "hover:bg-gray-50"}`}
             >
@@ -577,7 +565,7 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
             </button>
             <button
                 onClick={handleApprove}
-                disabled={selectedBusIds.length === 0 || totalCost === ""}
+                disabled={!selectedBusId || cost === ""}
                 className={`px-8 py-2.5 bg-brand-yellow text-brand-dark font-black rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:scale-100`}
             >
                 {isRTL ? "تأكيد وتعيين" : "Confirm & Assign"}

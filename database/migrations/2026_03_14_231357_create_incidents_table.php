@@ -15,9 +15,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('reporter_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('bus_id')->constrained('buses')->cascadeOnDelete();
+            $table->json('student_ids')->nullable();
             $table->foreignId('trip_id')->nullable()->constrained('field_trips')->nullOnDelete();
             
-            $table->enum('type', ['sos', 'accident', 'breakdown', 'health']);
+            $table->string('type');
             $table->enum('severity', ['low', 'medium', 'high', 'critical'])->default('medium');
             
             $table->text('description');
@@ -25,7 +26,7 @@ return new class extends Migration
             $table->decimal('location_lat', 10, 8)->nullable();
             $table->decimal('location_lng', 11, 8)->nullable();
             
-            $table->enum('status', ['active', 'in_progress', 'resolved'])->default('active');
+            $table->string('status')->default('pending');
             
             $table->foreignId('resolved_by')->nullable()->constrained('users')->nullOnDelete();
             

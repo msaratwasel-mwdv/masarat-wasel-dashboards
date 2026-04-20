@@ -151,6 +151,14 @@ class Bus extends Model
     {
         return $this->hasMany(BusDocument::class);
     }
+
+    /**
+     * Get the expenses for the bus.
+     */
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(BusExpense::class);
+    }
     // --- Helper Methods ---
 
     /**
@@ -274,9 +282,9 @@ class Bus extends Model
     /**
      * Get the requests this bus has been assigned to.
      */
-    public function busRequests(): BelongsToMany
+    public function busRequests(): HasMany
     {
-        return $this->belongsToMany(BusRequest::class, 'bus_request_assignments')->withTimestamps();
+        return $this->hasMany(BusRequest::class, 'bus_id');
     }
 
     /**
@@ -294,6 +302,22 @@ class Bus extends Model
     {
         return $this->field_supervisor_id === $userId || 
                $this->driver?->user_id === $userId;
+    }
+
+    /**
+     * Get full URL for front QR code.
+     */
+    public function getFrontQrUrlAttribute(): ?string
+    {
+        return $this->front_qr ? asset('storage/' . $this->front_qr) : null;
+    }
+
+    /**
+     * Get full URL for back QR code.
+     */
+    public function getBackQrUrlAttribute(): ?string
+    {
+        return $this->back_qr ? asset('storage/' . $this->back_qr) : null;
     }
 }
 

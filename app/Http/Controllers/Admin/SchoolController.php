@@ -13,7 +13,9 @@ class SchoolController extends Controller
 {
     public function index()
     {
-        $schools = School::latest()->get();
+        $schools = School::withCount(['buses', 'enrollments'])
+            ->latest()
+            ->get();
 
         return Inertia::render('Admin/Schools/Index', [
             'schools' => $schools

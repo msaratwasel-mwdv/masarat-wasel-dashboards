@@ -12,6 +12,7 @@ interface Bus {
     capacity: number;
     type: 'permanent' | 'temporary';
     status: 'active' | 'maintenance' | 'inactive';
+    color?: string;
     driver_id?: number;
     assistant_id?: number;
     field_supervisor_id?: number;
@@ -36,6 +37,7 @@ export default function Edit({ auth, bus, schools, drivers, assistants, fieldSup
         capacity: bus.capacity,
         type: bus.type,
         status: bus.status,
+        color: bus.color || '',
         driver_id: bus.driver_id || null,
         assistant_id: bus.assistant_id || null,
         field_supervisor_id: bus.field_supervisor_id || null,
@@ -80,11 +82,11 @@ export default function Edit({ auth, bus, schools, drivers, assistants, fieldSup
                                 {t('School')} *
                             </label>
                             <select
-                                value={data.school_id}
-                                onChange={e => setData('school_id', parseInt(e.target.value))}
+                                value={data.school_id || ''}
+                                onChange={e => setData('school_id', e.target.value ? parseInt(e.target.value) : null)}
                                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow"
-                                required
                             >
+                                <option value="">{t('Unassigned (Central Pool)')}</option>
                                 {schools.map(school => (
                                     <option key={school.id} value={school.id}>
                                         {school.name}
@@ -160,7 +162,7 @@ export default function Edit({ auth, bus, schools, drivers, assistants, fieldSup
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {/* Status */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -176,6 +178,21 @@ export default function Edit({ auth, bus, schools, drivers, assistants, fieldSup
                                     <option value="maintenance">{t('Maintenance')}</option>
                                     <option value="inactive">{t('Inactive')}</option>
                                 </select>
+                            </div>
+
+                            {/* Color Selection */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    {t('Color')}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={data.color}
+                                    onChange={e => setData('color', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow"
+                                    placeholder={t('e.g. Yellow, White')}
+                                />
+                                {errors.color && <p className="text-red-500 text-sm mt-1">{errors.color}</p>}
                             </div>
 
                             {/* Driver */}
