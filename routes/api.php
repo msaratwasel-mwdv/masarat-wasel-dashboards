@@ -117,6 +117,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/delays', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getDelays']);
         Route::post('/delays', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'storeDelay']);
         Route::get('/students', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getStudentsList']);
+        Route::post('/reassign-staff', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'reassignStaff']);
     });
 
     // --- المعلم (Teacher) ---

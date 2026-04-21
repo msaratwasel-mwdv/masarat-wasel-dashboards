@@ -456,7 +456,11 @@ class BusBoardingController extends Controller
                 'studentCode' => $student->student_code,
                 'name' => $student->full_name ?? $student->name,
                 'grade' => $student->grade ?? 'متوسط',
-                'schoolId' => (string) $student->school_id,
+                'classroom' => [
+                    'id' => $student->currentEnrollment?->classroom_id,
+                    'name' => $student->currentEnrollment?->classroom?->name,
+                    'school_id' => $student->currentEnrollment?->classroom?->school_id,
+                ],
                 'parentName' => $student->guardian->first()?->name ?? 'غير محدد',
                 'parentPhone' => $student->guardian->first()?->phone ?? 'غير محدد',
                 'parentUserId' => (string) $student->guardian->first()?->id,
@@ -464,6 +468,7 @@ class BusBoardingController extends Controller
                 'status' => $studentStatus, // atHome, onBus, atSchool, absent
                 'isOnBus' => ($studentStatus === 'onBus'),
                 'isAbsent' => ($studentStatus === 'absent'),
+                'has_absence_request' => $student->absenceRequests->isNotEmpty(),
                 'behavioralNote' => null, // Placeholder for now
                 'lastEvent' => $lastLog ? [
                     'type' => $lastLog->type,

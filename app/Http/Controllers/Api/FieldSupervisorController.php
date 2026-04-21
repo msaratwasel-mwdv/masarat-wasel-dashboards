@@ -604,4 +604,62 @@ class FieldSupervisorController extends Controller
             'data'    => $students,
         ]);
     }
+
+    /**
+     * إعادة تعيين سائق أو مشرفة لحافلة
+     * POST /api/field/reassign-staff
+     */
+    public function reassignStaff(Request $request): JsonResponse
+    {
+        $request->validate([
+            'bus_id'  => 'required|exists:buses,id',
+            'user_id' => 'required|exists:users,id',
+            'type'    => 'required|in:driver,assistant',
+        ]);
+
+        $busId = $request->bus_id;
+        $userId = $request->user_id;
+        $type = $request->type;
+
+        try {
+            DB::beginTransaction();
+
+            $user = \App\Models\User::findOrFail($userId);
+
+            if ($type === 'driver') {
+                if (!$user->hasRole('driver')) {
+                    return response()->json(['success' => false, 'message' => 'User is not a driver'], 400);
+                }
+
+                // فك ارتباط أي سائق قديم بهذا الباص
+                \App\Models\Driver::where('bus_id', $busId)->update(['bus_id' => null]);
+                
+                // تعيين السائق الجديد
+                \App\Models\Driver::where('user_id', $userId)->update(['bus_id' => $busId]);
+                
+                $message = 'تم إعادة تعيين السائق بنجاح';
+            } else {
+                if (!$user->hasRole('assistant')) {
+                    return response()->json(['success' => false, 'message' => 'User is not an assistant'], 400);
+                }
+
+                // تعيين المشرفة الجديدة للباص (يحل محل القديمة تلقائياً)
+                Bus::where('id', $busId)->update(['assistant_id' => $userId]);
+                
+                $message = 'تم إعادة تعيين المشرفة بنجاح';
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('[Staff Reassignment] failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'فشل في إعادة التعيين'], 500);
+        }
+    }
 }

@@ -117,18 +117,19 @@ class Student extends Model
 
     // ⬅️ أضف هذه العلاقة
     /**
-     * Get the school the student is currently enrolled in.
+     * الحصول على رقم معرف المدرسة برمجياً من خلال الفصل المرتبط به الطالب
      */
-    public function school(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
+    public function getSchoolIdAttribute()
     {
-        return $this->hasOneThrough(
-            School::class,
-            StudentSchoolEnrollment::class,
-            'student_id', // Foreign key on enrollment table
-            'id',         // Foreign key on schools table
-            'id',         // Local key on students table
-            'school_id'   // Local key on enrollment table
-        )->where('student_school_enrollments.is_active', true);
+        return $this->currentEnrollment?->classroom?->school_id;
+    }
+
+    /**
+     * الوصول للمدرسة التي ينتمي إليها الطالب حالياً
+     */
+    public function school()
+    {
+        return $this->currentEnrollment?->classroom?->school();
     }
 
 
