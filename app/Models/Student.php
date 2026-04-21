@@ -29,7 +29,11 @@ class Student extends Model
         'image',
         'is_active',
         'forth_bus_id',
+        'forth_latitude',
+        'forth_longitude',
         'back_bus_id',
+        'back_latitude',
+        'back_longitude',
     ];
 
     /**
@@ -153,26 +157,18 @@ class Student extends Model
         return $this->belongsToMany(Trip::class, 'trip_attendances', 'student_id', 'trip_id')->withTimestamps();
     }
 
-    /**
-     * جميع سجلات الركوب/النزول
-     */
-    public function boardingLogs(): HasMany
-    {
-        return $this->hasMany(BusBoardingLog::class);
-    }
-
     public function absenceRequests(): HasMany
     {
         return $this->hasMany(AbsenceRequest::class);
     }
 
     /**
-     * آخر سجل ركوب/نزول اليوم — يستخدم لتحديد حالة الطالب الحالية
+     * آخر سجل تحضير في رحلات اليوم
      */
-    public function lastBusLog(): HasOne
+    public function lastTripAttendance(): HasOne
     {
-        return $this->hasOne(BusBoardingLog::class)
-            ->where('created_at', '>=', now()->startOfDay())
+        return $this->hasOne(TripAttendance::class)
+            ->whereHas('trip', fn($q) => $q->whereDate('trip_date', today()))
             ->latest();
     }
 

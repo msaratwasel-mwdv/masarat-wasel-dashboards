@@ -54,7 +54,10 @@ class DashboardController extends Controller
                 'active_buses' => $activeBuses,
                 'routes' => $routesCount,
                 'attendance_percentage' => $attendancePercentage,
-                'attendance_today_count' => $totalAttendanceRecords
+                'attendance_today_count' => $totalAttendanceRecords,
+                'daily_trips_today' => \App\Models\Trip::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+                    ->whereDate('trip_date', $today)
+                    ->count(),
             ],
             'recent_students' => $recentStudents,
             'system_status' => 'operational' // Mocking system status

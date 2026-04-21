@@ -3,6 +3,10 @@ import { Head, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { toast } from 'react-toastify';
+import Modal from '@/Components/Modal';
+import SecondaryButton from '@/Components/SecondaryButton';
+import { Video, ShieldCheck, Play, X, Eye, Edit2, Trash2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface Driver {
     name: string;
@@ -28,6 +32,8 @@ interface Trip {
     assistant?: {
         name: string;
     };
+    video_check: boolean;
+    video_path: string | null;
 }
 
 interface PaginatedTrips {
@@ -55,10 +61,12 @@ const statusConfig: Record<string, { label: string; labelAr: string; class: stri
 };
 
 export default function Index({ auth, trips, filters }: Props) {
-    const { isRTL } = useTheme();
+    const { isRTL, isDarkMode } = useTheme();
     const { flash } = usePage().props as any;
     const [dateFilter, setDateFilter] = useState(filters.date || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
+    const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+    const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
     useEffect(() => {
         if (flash?.error) {
@@ -205,16 +213,10 @@ export default function Index({ auth, trips, filters }: Props) {
                                         {isRTL ? 'الحافلة' : 'Bus'}
                                     </th>
                                     <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">
-                                        {isRTL ? 'المسار' : 'Route'}
-                                    </th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">
-                                        {isRTL ? 'السائق' : 'Driver'}
-                                    </th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">
-                                        {isRTL ? 'المشرف' : 'Supervisor'}
-                                    </th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">
                                         {isRTL ? 'الحالة' : 'Status'}
+                                    </th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">
+                                        {isRTL ? 'التوثيق' : 'Verification'}
                                     </th>
                                     <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">
                                         {isRTL ? 'إجراءات' : 'Actions'}
@@ -224,7 +226,7 @@ export default function Index({ auth, trips, filters }: Props) {
                             <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
                                 {trips.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={9} className="px-6 py-20 text-center text-gray-400 dark:text-gray-500">
+                                        <td colSpan={7} className="px-6 py-20 text-center text-gray-400 dark:text-gray-500">
                                             <div className="flex flex-col items-center gap-3">
                                                 <span className="text-5xl">🚌</span>
                                                 <p className="text-base font-medium">
@@ -265,28 +267,44 @@ export default function Index({ auth, trips, filters }: Props) {
                                                 <td className="px-6 py-4 text-center text-gray-700 dark:text-gray-300 font-medium">
                                                     {trip.bus?.bus_number || '—'}
                                                 </td>
-                                                <td className="px-6 py-4 text-center text-gray-600 dark:text-gray-400 text-xs">
-                                                    {trip.bus?.route?.name || '—'}
-                                                </td>
-                                                <td className="px-6 py-4 text-center text-gray-700 dark:text-gray-300">
-                                                    {trip.driver?.name || trip.bus?.driver?.name || '—'}
-                                                </td>
-                                                <td className="px-6 py-4 text-center text-gray-700 dark:text-gray-300">
-                                                    {trip.assistant?.name || '—'}
-                                                </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${st.class}`}>
                                                         {isRTL ? st.labelAr : st.label}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
+                                                    {trip.video_path ? (
+                                                        <button 
+                                                            onClick={() => {
+                                                                setSelectedVideo(trip.video_path);
+                                                                setIsVideoModalOpen(true);
+                                                            }}
+                                                            className="flex items-center justify-center gap-1.5 mx-auto px-2.5 py-1 bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 rounded-full text-[10px] font-bold border border-indigo-500/20 transition-all"
+                                                        >
+                                                            <Play size={12} fill="currentColor" />
+                                                            {isRTL ? 'تشغيل' : 'Play'}
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-[10px] text-gray-400 italic">
+                                                            {isRTL ? 'لا يوجد فديو' : 'No video'}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
                                                     <div className="flex justify-center gap-2">
                                                         <button
+                                                            onClick={() => router.get(route('admin.daily-trips.show', trip.id))}
+                                                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors border border-transparent hover:border-emerald-100"
+                                                            title={isRTL ? 'عرض التفاصيل' : 'View Details'}
+                                                        >
+                                                            <Eye size={18} />
+                                                        </button>
+                                                        <button
                                                             onClick={() => router.get(route('admin.daily-trips.edit', trip.id))}
-                                                            className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                                                            className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors border border-transparent hover:border-blue-100"
                                                             title={isRTL ? 'تعديل' : 'Edit'}
                                                         >
-                                                            ✏️
+                                                            <Edit2 size={18} />
                                                         </button>
                                                         <button
                                                             onClick={() => {
@@ -294,10 +312,10 @@ export default function Index({ auth, trips, filters }: Props) {
                                                                     router.delete(route('admin.daily-trips.destroy', trip.id));
                                                                 }
                                                             }}
-                                                            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                                                            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors border border-transparent hover:border-red-100"
                                                             title={isRTL ? 'حذف' : 'Delete'}
                                                         >
-                                                            🗑️
+                                                            <Trash2 size={18} />
                                                         </button>
                                                     </div>
                                                 </td>
@@ -339,6 +357,62 @@ export default function Index({ auth, trips, filters }: Props) {
                     )}
                 </div>
             </div>
+
+            {/* Video Verification Modal */}
+            <Modal show={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} maxWidth="2xl">
+                <div className={`p-0 overflow-hidden ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
+                    <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+                        <div className="flex items-center gap-2 font-bold text-indigo-600">
+                            <Video size={20} />
+                            {isRTL ? 'فيديو توثيق الرحلة' : 'Trip Verification Video'}
+                        </div>
+                        <button onClick={() => setIsVideoModalOpen(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+                            <X size={20} />
+                        </button>
+                    </div>
+                    
+                    <div className="aspect-video bg-black flex items-center justify-center relative group">
+                        <AnimatePresence mode="wait">
+                            {selectedVideo ? (
+                                <video
+                                    key={selectedVideo}
+                                    src={`/storage/${selectedVideo}`}
+                                    controls
+                                    autoPlay
+                                    className="w-full h-full object-contain"
+                                />
+                            ) : (
+                                <div className="text-white flex flex-col items-center gap-3">
+                                    <Video size={48} className="opacity-40 animate-pulse" />
+                                    <span className="opacity-60 italic text-sm">{isRTL ? 'جاري تحميل الفيديو...' : 'Loading video...'}</span>
+                                </div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    <div className="p-6 bg-emerald-500/5">
+                        <div className="flex items-start gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                <ShieldCheck size={24} />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-lg mb-1">{isRTL ? 'تم التحقق أمنياً' : 'Security Verified'}</h4>
+                                <p className="text-sm opacity-70 leading-relaxed">
+                                    {isRTL 
+                                        ? 'هذا الفيديو تم تسجيله بواسطة السائق لتوثيق خلو الحافلة تماماً من الركاب بعد انتهاء الرحلة.'
+                                        : 'This video was recorded by the driver to document that the bus is completely empty after the trip finished.'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+                        <SecondaryButton onClick={() => setIsVideoModalOpen(false)}>
+                            {isRTL ? 'إغلاق' : 'Close'}
+                        </SecondaryButton>
+                    </div>
+                </div>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

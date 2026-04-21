@@ -190,6 +190,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
+        Route::get('/', function () {
+            return redirect()->route('admin.dashboard');
+        });
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
         // المدارس
@@ -259,8 +262,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('field-trips/{field_trip}/approve', [\App\Http\Controllers\Admin\FieldTripController::class, 'approve'])->name('field-trips.approve');
         Route::post('field-trips/{field_trip}/reject', [\App\Http\Controllers\Admin\FieldTripController::class, 'reject'])->name('field-trips.reject');
 
-        // الرحلات اليومية (Daily Trips)
-        Route::resource('daily-trips', \App\Http\Controllers\Admin\DailyTripController::class);
+        Route::resource('daily-trips', \App\Http\Controllers\Admin\DailyTripController::class)
+            ->parameters(['daily-trips' => 'trip']);
         Route::post('daily-trips/auto-create', [\App\Http\Controllers\Admin\DailyTripController::class, 'autoCreate'])->name('daily-trips.auto-create');
 
         // Alias for notifications to fix frontend desyncs
@@ -279,8 +282,6 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('bus-expenses/reports/export/excel', [\App\Http\Controllers\Admin\BusReportController::class, 'exportExcel'])->name('bus-expenses.reports.export-excel');
         Route::resource('bus-expenses', \App\Http\Controllers\Admin\BusExpenseController::class);
         
-        // Trips Verification (Monitoring)
-        Route::get('trips-verification', [\App\Http\Controllers\Admin\TripController::class, 'index'])->name('trips.index');
 
     });
 
@@ -314,9 +315,6 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
 
         // 5. الحضور
         Route::get('students/{student}/attendance', [StudentController::class, 'attendanceHistory'])->name('students.attendance');
-        Route::get('/reports/attendance', function () {
-            return Inertia::render('School/Attendance/AttendanceReports');
-        })->name('reports.attendance');
 
         Route::prefix('attendance')->group(function () {
             Route::get('/', [AttendanceController::class, 'index'])->name('attendance.index');
@@ -350,8 +348,6 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::resource('notifications', \App\Http\Controllers\School\NotificationController::class);
         Route::post('notifications/preview', [\App\Http\Controllers\School\NotificationController::class, 'preview'])->name('notifications.preview');
 
-        Route::resource('trip-schedules', \App\Http\Controllers\School\TripScheduleController::class);
-        Route::post('trip-schedules/copy', [\App\Http\Controllers\School\TripScheduleController::class, 'copy'])->name('trip-schedules.copy');
 
         Route::resource('routes', \App\Http\Controllers\School\RouteController::class);
         Route::resource('field-trips', \App\Http\Controllers\School\FieldTripController::class);

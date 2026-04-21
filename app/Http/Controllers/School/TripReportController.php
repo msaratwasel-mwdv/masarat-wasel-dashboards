@@ -4,7 +4,8 @@ namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bus;
-use App\Models\BusBoardingLog;
+use App\Models\TripAttendance;
+use App\Models\Trip;
 use App\Models\BusGroup;
 use App\Models\Student;
 use App\Models\User;
@@ -108,43 +109,40 @@ class TripReportController extends Controller
                 }
 
                 foreach ($directions as $direction) {
-                    // Get boarding logs for this bus, direction, and date range
-                    $logs = BusBoardingLog::where('bus_id', $bus->id)
-                        ->where('direction', $direction)
-                        ->whereDate('recorded_at', '>=', $dateFrom)
-                        ->whereDate('recorded_at', '<=', $dateTo)
-                        ->get()
-                        ->groupBy('student_id');
+                    $tripType = ($direction === 'to_school') ? 'forth' : 'back';
 
-                    // Calculate trip start and end times
-                    $allLogs = BusBoardingLog::where('bus_id', $bus->id)
-                        ->where('direction', $direction)
-                        ->whereDate('recorded_at', '>=', $dateFrom)
-                        ->whereDate('recorded_at', '<=', $dateTo)
-                        ->orderBy('recorded_at')
+                    // Get trip attendances for this bus, type, and date range
+                    $attendances = TripAttendance::whereHas('trip', function($q) use ($bus, $tripType, $dateFrom, $dateTo) {
+                        $q->where('bus_id', $bus->id)
+                          ->where('type', $tripType)
+                          ->whereDate('trip_date', '>=', $dateFrom)
+                          ->whereDate('trip_date', '<=', $dateTo);
+                    })->with('trip')->get()->groupBy('student_id');
+
+                    // Calculate trip start and end times from the Trip model
+                    $trips = Trip::where('bus_id', $bus->id)
+                        ->where('type', $tripType)
+                        ->whereDate('trip_date', '>=', $dateFrom)
+                        ->whereDate('trip_date', '<=', $dateTo)
+                        ->orderBy('departure_time')
                         ->get();
 
-                    $tripStartTime = $allLogs->first()?->recorded_at?->format('h:i:s A');
-                    $tripEndTime = $allLogs->last()?->recorded_at?->format('h:i:s A');
+                    $tripStartTime = $trips->first()?->departure_time?->format('h:i:s A');
+                    $tripEndTime = $trips->last()?->arrival_time?->format('h:i:s A');
 
                     // Build student rows
                     $studentRows = [];
                     foreach ($students as $index => $student) {
-                        $studentLogs = $logs->get($student->id, collect());
+                        $studentAttendances = $attendances->get($student->id, collect());
+                        $attendance = $studentAttendances->first();
 
-                        $boardingLog = $studentLogs->where('type', 'boarding')->first();
-                        $alightingLog = $studentLogs->where('type', 'alighting')->first();
-
-                        // "Bus at door" and "Bus nearby" are derived from the boarding timestamps
-                        // In the reference image these are separate columns
-                        // We use the boarding recorded_at as the boarding time
-                        $busAtDoor = $boardingLog?->recorded_at?->format('h:i:s A');
-                        $busNearby = null; // This would need a separate event type in the future
-                        $boardingTime = $boardingLog?->recorded_at?->format('h:i:s A');
-                        $alightingTime = $alightingLog?->recorded_at?->format('h:i:s A');
+                        $busAtDoor = $attendance?->check_in_time?->format('h:i:s A');
+                        $busNearby = null; 
+                        $boardingTime = $attendance?->check_in_time?->format('h:i:s A');
+                        $alightingTime = $attendance?->check_out_time?->format('h:i:s A');
 
                         // Status
-                        $status = $boardingLog ? 'arrived' : 'absent';
+                        $status = $attendance && $attendance->check_in_time ? 'arrived' : 'absent';
 
                         $studentRows[] = [
                             'number' => $index + 1,

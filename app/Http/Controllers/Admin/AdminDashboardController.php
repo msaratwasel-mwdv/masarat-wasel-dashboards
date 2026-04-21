@@ -23,7 +23,7 @@ class AdminDashboardController extends Controller
         // --- 2. Driver Stats ---
         $driverTotal = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))->count();
         // Drivers assigned to buses
-        $driverBooked = \App\Models\Driver::whereNotNull('bus_id')->distinct('user_id')->count();
+        $driverBooked = Bus::whereNotNull('driver_id')->distinct('driver_id')->count();
         $driverAvailable = max(0, $driverTotal - $driverBooked);
 
         // --- 3. Crew Stats (Assistants & Field Supervisors) ---
@@ -40,6 +40,11 @@ class AdminDashboardController extends Controller
             'total_schools' => \App\Models\School::count(),
             'total_students' => \App\Models\Student::count(),
             'total_trips' => \App\Models\Trip::count(),
+            'daily_trips_today' => [
+                'pending' => \App\Models\Trip::whereDate('trip_date', Carbon::today())->where('status', 'pending')->count(),
+                'ongoing' => \App\Models\Trip::whereDate('trip_date', Carbon::today())->where('status', 'ongoing')->count(),
+                'completed' => \App\Models\Trip::whereDate('trip_date', Carbon::today())->where('status', 'finished')->count(),
+            ],
 
             // Buses Detailed
             'buses' => [

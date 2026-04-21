@@ -25,6 +25,7 @@ class Bus extends Model
         'school_id',
         'field_supervisor_id',
         'assistant_id',
+        'driver_id',
         'status',
         'front_qr',
         'back_qr',
@@ -54,9 +55,9 @@ class Bus extends Model
     /**
      * Get the primary driver assigned to the bus.
      */
-    public function driver(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function driver(): BelongsTo
     {
-        return $this->hasOne(Driver::class, 'bus_id');
+        return $this->belongsTo(Driver::class, 'driver_id', 'user_id');
     }
 
     /**
@@ -94,13 +95,6 @@ class Bus extends Model
         return $this->hasMany(BusGroup::class);
     }
 
-    /**
-     * Get the trip schedules for the bus.
-     */
-    public function schedules(): HasMany
-    {
-        return $this->hasMany(TripSchedule::class);
-    }
 
     public function route(): BelongsTo
     {
@@ -298,10 +292,22 @@ class Bus extends Model
     /**
      * Check if the given user ID is part of the bus crew (driver or field supervisor).
      */
-    public function hasCrewMember(int $userId): bool
+    public function hasCrewMember($userId): bool
     {
-        return $this->field_supervisor_id === $userId || 
-               $this->driver?->user_id === $userId;
+        $supervisorId = $this->field_supervisor_id;
+        $driverId = $this->driver_id;
+
+        $isCrew = ($supervisorId == $userId || $driverId == $userId);
+
+        if (!$isCrew) {
+            \Illuminate\Support\Facades\Log::warning("Unauthorized access attempt to Bus {$this->id}", [
+                'user_id' => $userId,
+                'assigned_supervisor' => $supervisorId,
+                'assigned_driver' => $driverId
+            ]);
+        }
+
+        return $isCrew;
     }
 
     /**

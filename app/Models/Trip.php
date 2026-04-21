@@ -81,6 +81,36 @@ class Trip extends Model
             'route_id' // Local key on buses table
         );
     }
+
+    /**
+     * Get the driver for the trip via the assigned bus.
+     */
+    public function driver()
+    {
+        return $this->hasOneThrough(
+            User::class,
+            Bus::class,
+            'id',         // Foreign key on buses table (bus id)
+            'id',         // Foreign key on users table (user id)
+            'bus_id',     // Local key on trips table
+            'driver_id'   // Local key on buses table
+        );
+    }
+
+    /**
+     * Get the assistant for the trip via the assigned bus.
+     */
+    public function assistant()
+    {
+        return $this->hasOneThrough(
+            User::class,
+            Bus::class,
+            'id',           // Foreign key on buses table (id)
+            'id',           // Foreign key on users table (id)
+            'bus_id',       // Local key on trips table
+            'assistant_id'  // Local key on buses table
+        );
+    }
 }
 
 

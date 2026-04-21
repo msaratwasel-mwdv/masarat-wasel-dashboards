@@ -19,7 +19,7 @@ class DailyTripController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Trip::with(['bus.driver.user', 'bus.route', 'driver', 'assistant'])
+        $query = Trip::with(['bus'])
             ->whereIn('type', ['forth', 'back'])
             ->orderByDesc('departure_time');
 
@@ -125,6 +125,18 @@ class DailyTripController extends Controller
         $trip->delete();
 
         return redirect()->route('admin.daily-trips.index')->with('success', 'Trip deleted successfully.');
+    }
+
+    /**
+     * Show the detailed view of a specific daily trip.
+     */
+    public function show(Trip $trip)
+    {
+        $trip->load(['bus.school', 'bus.driver.user', 'driver', 'assistant', 'bus.route', 'attendances.student']);
+
+        return Inertia::render('Admin/DailyTrips/Show', [
+            'trip' => $trip,
+        ]);
     }
 
     /**

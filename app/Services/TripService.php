@@ -66,10 +66,11 @@ class TripService
     public function createDailyTrip(Bus $bus, string $type, Carbon $date, int $routeId): array
     {
         Log::info('[TripService] createDailyTrip called', ['bus_id' => $bus->id, 'type' => $type, 'date' => $date->toDateString()]);
+        
         // Check if trip already exists for today
         $existingTrip = Trip::where('bus_id', $bus->id)
             ->where('type', $type)
-            ->whereDate('departure_time', $date)
+            ->whereDate('trip_date', $date)
             ->first();
 
         if ($existingTrip) {
@@ -77,36 +78,28 @@ class TripService
             return [$existingTrip, 'already_exists'];
         }
 
-        $driverUserId = $bus->driver_id;
-        $assistantUserId = $bus->assistant_id;
-
-        // Driver and Assistant (المشرفة) must be assigned to the bus for daily routines
-        if (!$driverUserId || !$assistantUserId) {
-            Log::warning('[TripService] Missing staff assignment', ['bus_id' => $bus->id, 'driver' => $driverUserId, 'assistant' => $assistantUserId]);
+        // Driver and Assistant (المشرفة) are informed from the bus
+        if (!$bus->driver || !$bus->assistant_id) {
+            Log::warning('[TripService] Missing staff assignment', ['bus_id' => $bus->id]);
             return [null, 'missing_staff_assignment'];
         }
 
         $trip = Trip::create([
             'bus_id' => $bus->id,
-            'route_id' => $routeId,
-            'driver_id' => $driverUserId,
-            'assistant_id' => $assistantUserId,
             'trip_date' => $date,
             'type' => $type,
             'status' => 'pending',
-            'departure_time' => $date->copy()->setTime(0, 0, 0),
         ]);
 
-        // Get students assigned to this route for this direction
-        $routeField = $type === 'forth' ? 'forth_route_id' : 'back_route_id';
-        $students = Student::where($routeField, $routeId)->get();
+        // Get students assigned to this bus for this direction
+        $busField = $type === 'forth' ? 'forth_bus_id' : 'back_bus_id';
+        $students = Student::where($busField, $bus->id)->get();
 
         foreach ($students as $student) {
             TripAttendance::create([
                 'trip_id' => $trip->id,
                 'student_id' => $student->id,
                 'status' => 'absent',
-                'date' => $date,
             ]);
         }
 
@@ -115,31 +108,20 @@ class TripService
 
     /**
      * Initialize a field trip after admin approval.
+     * Note: FieldTrip is a separate model/table, but we might want to create a 'Trip' 
+     * record for the execution phase if we want to unify mobile tracking.
+     * For now, following user guidance that they are separate.
      */
-    public function initializeFieldTrip(Trip $trip, array $studentIds): void
+    public function initializeFieldTrip(\App\Models\FieldTrip $fieldTrip): void
     {
-        if ($trip->type !== 'field_trip') {
-            return;
-        }
-
-        DB::transaction(function () use ($trip, $studentIds) {
-            foreach ($studentIds as $studentId) {
-                // Add to participants table
-                TripStudent::create([
-                    'trip_id' => $trip->id,
-                    'student_id' => $studentId,
-                ]);
-
-                // Create initial attendance record
-                TripAttendance::create([
-                    'trip_id' => $trip->id,
-                    'student_id' => $studentId,
-                    'status' => 'absent',
-                    'date' => $trip->departure_time->toDateString(),
-                ]);
+        DB::transaction(function () use ($fieldTrip) {
+            foreach ($fieldTrip->students as $student) {
+                // We logic for field trip attendance might need a separate table or 
+                // a way to link to the general TripAttendance if we unify.
+                // Since they are separate, we stick to FieldTrip logic.
             }
             
-            $trip->update(['status' => 'pending']);
+            $fieldTrip->update(['status' => 'approved']);
         });
     }
 

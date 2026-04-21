@@ -89,7 +89,7 @@ class BusController extends Controller
         ];
 
         // 3. جلب السائقين المتاحين
-        $assignedDriverIds = \App\Models\Driver::whereNotNull('bus_id')->pluck('user_id')->toArray();
+        $assignedDriverIds = Bus::whereNotNull('driver_id')->pluck('driver_id')->toArray();
         $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
             ->whereNotIn('id', $assignedDriverIds)
             ->select('id', 'first_name_ar', 'second_name_ar', 'third_name_ar', 'last_name_ar', 'national_id')
@@ -164,7 +164,7 @@ class BusController extends Controller
                 'exists:users,id',
                 // يمنع تعيين سائق مرتبط بباص آخر
                 function ($attribute, $value, $fail) {
-                    if ($value && \App\Models\Driver::where('user_id', $value)->whereNotNull('bus_id')->exists()) {
+                    if ($value && Bus::where('driver_id', $value)->exists()) {
                         $fail('هذا السائق مُعيَّن لباص آخر بالفعل.');
                     }
                 },
@@ -205,16 +205,11 @@ class BusController extends Controller
                 'status'        => 'active',
                 'school_id'           => $request->school_id,
                 'route_id'            => $request->route_id,
+                'driver_id'           => $request->driver_id,
                 'field_supervisor_id' => $request->field_supervisor_id,
                 'assistant_id'        => $request->assistant_id,
                 'color'               => $request->color,
             ]);
-
-            // Map driver model directly
-            if ($request->driver_id) {
-                \App\Models\Driver::where('user_id', $request->driver_id)
-                    ->update(['bus_id' => $bus->id]);
-            }
 
             $this->generateQRCodes($bus);
 
@@ -268,9 +263,9 @@ class BusController extends Controller
         $schools = School::where('status', 'active')->get();
 
         // السائقون المتاحون: غير مُعيَّنين لأي باص + السائق الحالي لهذا الباص
-        $assignedDriverIds = \App\Models\Driver::whereNotNull('bus_id')
-            ->where('bus_id', '!=', $bus->id)
-            ->pluck('user_id')
+        $assignedDriverIds = Bus::whereNotNull('driver_id')
+            ->where('id', '!=', $bus->id)
+            ->pluck('driver_id')
             ->toArray();
         $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
             ->whereNotIn('id', $assignedDriverIds)
@@ -321,7 +316,7 @@ class BusController extends Controller
                 'exists:users,id',
                 // يمنع تعيين سائق مرتبط بباص آخر (غير هذا الباص)
                 function ($attribute, $value, $fail) use ($busId) {
-                    if ($value && \App\Models\Driver::where('user_id', $value)->whereNotNull('bus_id')->where('bus_id', '!=', $busId)->exists()) {
+                    if ($value && Bus::where('driver_id', $value)->where('id', '!=', $busId)->exists()) {
                         $fail('هذا السائق مُعيَّن لباص آخر بالفعل.');
                     }
                 },
@@ -349,23 +344,10 @@ class BusController extends Controller
         ]);
 
         DB::transaction(function () use ($bus, $validated) {
-            $oldDriverId = $bus->driver?->user_id;
-            $newDriverId = $validated['driver_id'] ?? null;
-            
             // Remove non-schema fields from validation array before update
-            $updateData = collect($validated)->except(['driver_id', 'photos', 'registration_file'])->toArray();
+            $updateData = collect($validated)->except(['photos', 'registration_file'])->toArray();
 
             $bus->update($updateData);
-
-            // Handle Driver reassignment
-            if ($oldDriverId !== $newDriverId) {
-                if ($oldDriverId) {
-                    \App\Models\Driver::where('user_id', $oldDriverId)->update(['bus_id' => null]);
-                }
-                if ($newDriverId) {
-                    \App\Models\Driver::where('user_id', $newDriverId)->update(['bus_id' => $bus->id]);
-                }
-            }
 
             // Upload new files if provided
             $this->uploadFiles(request(), $bus);

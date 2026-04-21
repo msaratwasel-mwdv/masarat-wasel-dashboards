@@ -10,6 +10,7 @@ interface ThemeContextType {
   toggleTheme: () => void;
   toggleLanguage: () => void;
   isRTL: boolean;
+  isDarkMode: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -77,6 +78,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
         toggleTheme,
         toggleLanguage,
         isRTL: language === "ar",
+        isDarkMode: theme === "dark",
       }}
     >
       {children}

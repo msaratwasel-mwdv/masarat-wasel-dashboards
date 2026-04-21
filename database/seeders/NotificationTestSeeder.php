@@ -136,10 +136,7 @@ class NotificationTestSeeder extends Seeder
             ]
         );
         
-        $driverModel = Driver::where('user_id', $driver->id)->first();
-        if ($driverModel) {
-            $driverModel->update(['bus_id' => $bus->id]);
-        }
+        $bus->update(['driver_id' => $driver->id]);
 
         // 7. Create Guardian
         $parentUser = User::where('national_id', '1000200030')->first() ?? User::create([

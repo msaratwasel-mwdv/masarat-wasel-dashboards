@@ -199,9 +199,10 @@ class NotificationService
         ?array $data = null,
         ?string $fromUserName = null
     ): Collection {
-        $driverIds = \Illuminate\Support\Facades\DB::table('drivers')
-            ->whereIn('bus_id', $busIds)
-            ->pluck('user_id')
+        $driverIds = \Illuminate\Support\Facades\DB::table('buses')
+            ->whereIn('id', $busIds)
+            ->whereNotNull('driver_id')
+            ->pluck('driver_id')
             ->unique()
             ->toArray();
 

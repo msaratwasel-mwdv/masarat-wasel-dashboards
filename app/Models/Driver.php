@@ -18,7 +18,6 @@ class Driver extends Model
         'license_front_image',
         'license_back_image',
         'status',
-        'bus_id',
     ];
 
     protected $appends = ['name'];
@@ -33,9 +32,9 @@ class Driver extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function bus(): BelongsTo
+    public function bus(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
-        return $this->belongsTo(Bus::class, 'bus_id');
+        return $this->hasOne(Bus::class, 'driver_id', 'user_id');
     }
 
 }

@@ -4,14 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bus;
-use App\Models\BusBoardingLog;
+use App\Models\TripAttendance;
 use App\Models\Student;
 use App\Services\NotificationService;
 use App\Events\StudentStatusUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-class BusBoardingController extends Controller
+class DailyTripApiController extends Controller
 {
     protected NotificationService $notificationService;
 
@@ -24,11 +24,10 @@ class BusBoardingController extends Controller
      * تسجيل ركوب طالب على الباص
      * POST /api/bus/{bus}/board
      */
-    public function board(Request $request, Bus $bus)
+    public function markBoarded(Request $request, Bus $bus)
     {
         $request->validate([
             'student_id' => 'required|exists:students,id',
-            'direction'  => 'nullable|in:to_school,to_home',
             'latitude'   => 'nullable|numeric',
             'longitude'  => 'nullable|numeric',
         ]);
@@ -36,17 +35,18 @@ class BusBoardingController extends Controller
         $student = Student::findOrFail($request->student_id);
         $user = $request->user();
 
-        // ══════════════════════════════════════════════════════════
-        // ① التحقق من صلاحية المستخدم (سائق أو مشرف لهذا الباص)
-        // ══════════════════════════════════════════════════════════
+        // ① التحقق من صلاحية المستخدم
         if (!$bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك بتسجيل الركوب لهذا الباص.'], 403);
         }
 
-        // ══════════════════════════════════════════════════════════
-        // ② تحديد الاتجاه من trip_status الفعلي (وليس الساعة)
-        // ══════════════════════════════════════════════════════════
-        $direction = $this->resolveDirection($bus, $request->direction);
+        // ② الحصول على الرحلة النشطة واشتقاق الاتجاه منها
+        $trip = $this->getActiveTrip($bus);
+        if (!$trip) {
+            return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
+        }
+
+        $direction = $trip->type === 'forth' ? 'to_school' : 'to_home';
 
         // ══════════════════════════════════════════════════════════
         // ③ التحقق من تخصيص الطالب لهذا الباص في هذا الاتجاه
@@ -88,42 +88,31 @@ class BusBoardingController extends Controller
 
         if ($currentStatus !== $expectedStatus) {
             // We can gracefully log and allow it or return 200. The user requested no errors.
-            // Let's just log it and proceed anyway to force correction, or ignore? We will just return 200 with the current state to simulate success.
             Log::warning('board: Invalid transition handled gracefully', ['current' => $currentStatus, 'expected' => $expectedStatus]);
-            
-            // Allow the boarding anyway to let the driver sync the state!
-            // The driver might have forgotten to alight the student in the morning.
-            // So we override the state and let them board.
         }
 
-        // ══════════════════════════════════════════════════════════
         // ✅ تنفيذ الركوب
-        // ══════════════════════════════════════════════════════════
+
         Log::info('board: Valid transition', [
             'bus_id' => $bus->id, 'student_id' => $student->id,
             'from' => $currentStatus, 'to' => 'onBus', 'direction' => $direction,
+            'trip_id' => $trip->id
         ]);
 
         $boardedAt = now();
-        $log = BusBoardingLog::create([
-            'student_id'  => $student->id,
-            'bus_id'      => $bus->id,
-            'type'        => 'boarding',
-            'direction'   => $direction,
-            'latitude'    => $request->latitude,
-            'longitude'   => $request->longitude,
-            'recorded_by' => $user->id,
-            'recorded_at' => $boardedAt,
-        ]);
+        $attendance = TripAttendance::updateOrCreate(
+            ['trip_id' => $trip->id, 'student_id' => $student->id],
+            [
+                'check_in_time' => $boardedAt,
+                'status' => 'boarded',
+            ]
+        );
 
         // ═══════════════════════════════════════════════════
         // 🔔 بث التحديث الفوري لولي الأمر عبر WebSocket
         // ═══════════════════════════════════════════════════
         try {
-            $broadcast = broadcast(new StudentStatusUpdated($student, $bus, 'boarding', $direction));
-            if (isset($broadcast)) {
-                unset($broadcast);
-            }
+            broadcast(new StudentStatusUpdated($student, $bus, 'boarding', $direction));
         } catch (\Exception $e) {
             Log::error("Broadcast error (board): " . $e->getMessage());
         }
@@ -139,7 +128,7 @@ class BusBoardingController extends Controller
                 message: "لقد ركب الطالب {$student->full_name} الحافلة الآن متوجهاً إلى المدرسة بسلام.",
                 data: [
                     'notification_type' => 'bus_boarding_morning',
-                    'log_id'            => $log->id,
+                    'attendance_id'     => $attendance->id,
                     'bus_id'            => $bus->id,
                     'bus_number'        => $bus->bus_number,
                     'student_id'        => $student->id,
@@ -156,7 +145,7 @@ class BusBoardingController extends Controller
                 message: "لقد ركب الطالب {$student->full_name} الحافلة للعودة إلى المنزل.",
                 data: [
                     'notification_type' => 'bus_boarding_afternoon',
-                    'log_id'            => $log->id,
+                    'attendance_id'     => $attendance->id,
                     'bus_id'            => $bus->id,
                     'bus_number'        => $bus->bus_number,
                     'student_id'        => $student->id,
@@ -170,7 +159,66 @@ class BusBoardingController extends Controller
         return response()->json([
             'message' => 'تم تسجيل ركوب الطالب بنجاح.',
             'new_status' => 'onBus',
-            'log' => $log,
+            'attendance' => $attendance,
+        ], 201);
+    }
+
+    /**
+     * تسجيل ركوب مجموعة من الطلاب (مثل بداية رحلة العودة من المدرسة)
+     * POST /api/bus/{bus}/group-board
+     */
+    public function groupBoard(Request $request, Bus $bus)
+    {
+        $request->validate([
+            'student_ids' => 'required|array',
+            'student_ids.*' => 'exists:students,id',
+        ]);
+
+        $user = $request->user();
+        if (!$bus->hasCrewMember($user->id)) {
+            return response()->json(['message' => 'غير مصرح لك.'], 403);
+        }
+
+        $trip = $this->getActiveTrip($bus);
+        if (!$trip) {
+            return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
+        }
+
+        $recordedAt = now();
+        $direction = $trip->type === 'forth' ? 'to_school' : 'to_home';
+
+        foreach ($request->student_ids as $studentId) {
+            $attendance = TripAttendance::updateOrCreate(
+                ['trip_id' => $trip->id, 'student_id' => $studentId],
+                [
+                    'check_in_time' => $recordedAt,
+                    'status' => 'boarded',
+                ]
+            );
+
+            // Notify parent
+            if ($direction === 'to_home') {
+                 $this->notificationService->notifyStudentGuardian(
+                    studentId: $studentId,
+                    type: 'bus_boarding_afternoon',
+                    title: "طالبك ركب باص العودة",
+                    message: "لقد ركب الطالب الحافلة الآن للعودة إلى المنزل.",
+                    data: [
+                        'type' => 'bus_boarding_afternoon',
+                        'student_id' => $studentId,
+                        'bus_id' => $bus->id
+                    ]
+                );
+            }
+
+            try {
+                broadcast(new StudentStatusUpdated(Student::find($studentId), $bus, 'boarding', $direction));
+            } catch (\Exception $e) {}
+        }
+
+        return response()->json([
+            'message' => 'تم تسجيل ركوب مجموعة الطلاب بنجاح.',
+            'count' => count($request->student_ids)
         ], 201);
     }
 
@@ -178,11 +226,10 @@ class BusBoardingController extends Controller
      * تسجيل نزول طالب من الباص
      * POST /api/bus/{bus}/alight
      */
-    public function alight(Request $request, Bus $bus)
+    public function markDropped(Request $request, Bus $bus)
     {
         $request->validate([
             'student_id' => 'required|exists:students,id',
-            'direction'  => 'nullable|in:to_school,to_home',
             'latitude'   => 'nullable|numeric',
             'longitude'  => 'nullable|numeric',
         ]);
@@ -195,8 +242,13 @@ class BusBoardingController extends Controller
             return response()->json(['message' => 'غير مصرح لك بتسجيل النزول لهذا الباص.'], 403);
         }
 
-        // ② تحديد الاتجاه من trip_status
-        $direction = $this->resolveDirection($bus, $request->direction);
+        // ② الحصول على الرحلة النشطة واشتقاق الاتجاه منها
+        $trip = $this->getActiveTrip($bus);
+        if (!$trip) {
+            return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
+        }
+
+        $direction = $trip->type === 'forth' ? 'to_school' : 'to_home';
 
         // ③ التحقق من التخصيص
         $tripType = $direction === 'to_school' ? 'morning' : 'afternoon';
@@ -228,38 +280,33 @@ class BusBoardingController extends Controller
                     'message' => 'تم تسجيل النزول بالفعل لهذه الرحلة.',
                     'current_status' => $currentStatus,
                     'error_code' => 'already_alighted',
-                ], 200); // 200 لتفادي الأخطاء في واجهة المستخدم
+                ], 200); 
             }
 
-            // حالات أخرى، تجاوز وقم بتسجيل العملية لتصحيح حالة التطبيق
             Log::warning('alight: Invalid transition handled gracefully', ['status' => $currentStatus]);
         }
 
         // ✅ تنفيذ النزول
+
         $newStatus = $direction === 'to_school' ? 'atSchool' : 'atHome';
 
         Log::info('alight: Valid transition', [
             'bus_id' => $bus->id, 'student_id' => $student->id,
             'from' => 'onBus', 'to' => $newStatus, 'direction' => $direction,
+            'trip_id' => $trip->id
         ]);
 
-        $log = BusBoardingLog::create([
-            'student_id'  => $student->id,
-            'bus_id'      => $bus->id,
-            'type'        => 'alighting',
-            'direction'   => $direction,
-            'latitude'    => $request->latitude,
-            'longitude'   => $request->longitude,
-            'recorded_by' => $user->id,
-            'recorded_at' => now(),
-        ]);
+        $attendance = TripAttendance::updateOrCreate(
+            ['trip_id' => $trip->id, 'student_id' => $student->id],
+            [
+                'check_out_time' => now(),
+                'status' => 'dropped',
+            ]
+        );
 
         // 🔔 بث التحديث الفوري لولي الأمر عبر WebSocket عبر Reverb
         try {
-            $broadcast = broadcast(new StudentStatusUpdated($student, $bus, 'alight', $direction));
-            if (isset($broadcast)) {
-                unset($broadcast);
-            }
+            broadcast(new StudentStatusUpdated($student, $bus, 'alight', $direction));
         } catch (\Exception $e) {
             Log::error("Broadcast error (alight): " . $e->getMessage());
         }
@@ -272,7 +319,7 @@ class BusBoardingController extends Controller
                 title: "وصل طالبك {$student->full_name} للمنزل",
                 message: "لقد نزل الطالب {$student->full_name} من الحافلة الآن أمام المنزل بسلام.",
                 data: [
-                    'log_id' => $log->id, 'bus_id' => $bus->id,
+                    'attendance_id' => $attendance->id, 'bus_id' => $bus->id,
                     'student_id' => $student->id, 'type' => 'student_alighted',
                     'direction' => 'to_home',
                 ]
@@ -284,7 +331,7 @@ class BusBoardingController extends Controller
                 title: "وصل طالبك {$student->full_name} للمدرسة",
                 message: "لقد وصل الطالب {$student->full_name} إلى المدرسة الآن بسلام.",
                 data: [
-                    'log_id' => $log->id, 'bus_id' => $bus->id,
+                    'attendance_id' => $attendance->id, 'bus_id' => $bus->id,
                     'student_id' => $student->id, 'type' => 'student_alighted',
                     'direction' => 'to_school',
                 ]
@@ -294,7 +341,7 @@ class BusBoardingController extends Controller
         return response()->json([
             'message' => 'تم تسجيل نزول الطالب بنجاح.',
             'new_status' => $newStatus,
-            'log' => $log,
+            'attendance' => $attendance,
         ], 201);
     }
 
@@ -307,7 +354,6 @@ class BusBoardingController extends Controller
         $request->validate([
             'student_ids' => 'required|array',
             'student_ids.*' => 'exists:students,id',
-            'direction'   => 'required|in:to_school,to_home',
             'latitude'    => 'nullable|numeric',
             'longitude'   => 'nullable|numeric',
         ]);
@@ -317,23 +363,25 @@ class BusBoardingController extends Controller
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
-        $logs = [];
+        $trip = $this->getActiveTrip($bus);
+        if (!$trip) {
+            return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
+        }
+
+        $direction = $trip->type === 'forth' ? 'to_school' : 'to_home';
         $recordedAt = now();
 
         foreach ($request->student_ids as $studentId) {
-            $logs[] = BusBoardingLog::create([
-                'student_id'  => $studentId,
-                'bus_id'      => $bus->id,
-                'type'        => 'alighting',
-                'direction'   => $request->direction,
-                'latitude'    => $request->latitude,
-                'longitude'   => $request->longitude,
-                'recorded_by' => $user->id,
-                'recorded_at' => $recordedAt,
-            ]);
+            TripAttendance::updateOrCreate(
+                ['trip_id' => $trip->id, 'student_id' => $studentId],
+                [
+                    'check_out_time' => $recordedAt,
+                    'status' => 'dropped',
+                ]
+            );
 
             // إشعار ولي الأمر
-            if ($request->direction === 'to_home') {
+            if ($direction === 'to_home') {
                 $this->notificationService->notifyStudentGuardian(
                     studentId: $studentId,
                     type: 'student_alighted',
@@ -362,10 +410,7 @@ class BusBoardingController extends Controller
 
             // 🔔 بث التحديث الفوري
             try {
-                $broadcast = broadcast(new StudentStatusUpdated($studentId, $bus, 'alight', $request->direction));
-                if (isset($broadcast)) {
-                    unset($broadcast);
-                }
+                broadcast(new StudentStatusUpdated($studentId, $bus, 'alight', $direction));
             } catch (\Exception $e) {
                 Log::error("Broadcast error (groupAlight): " . $e->getMessage());
             }
@@ -373,8 +418,72 @@ class BusBoardingController extends Controller
 
         return response()->json([
             'message' => 'تم تسجيل نزول الطلاب بنجاح.',
-            'count' => count($logs)
+            'count' => count($request->student_ids)
         ], 201);
+    }
+
+    /**
+     * الوصول لآخر نقطة (إنزال جميع الركاب وإنهاء الرحلة)
+     * POST /api/bus/{bus}/arrive
+     */
+    public function arrive(Request $request, Bus $bus)
+    {
+        $user = $request->user();
+        if (!$bus->hasCrewMember($user->id)) {
+            return response()->json(['message' => 'غير مصرح لك.'], 403);
+        }
+
+        $trip = $this->getActiveTrip($bus);
+        if (!$trip) {
+            return response()->json(['message' => 'لا توجد رحلة قيد التنفيذ حالياً لهذا الباص.'], 404);
+        }
+
+        $attendances = TripAttendance::where('trip_id', $trip->id)
+            ->where('status', 'boarded')
+            ->get();
+
+        $recordedAt = now();
+        $direction = $trip->type === 'forth' ? 'to_school' : 'to_home';
+
+        foreach ($attendances as $attendance) {
+            $attendance->update([
+                'check_out_time' => $recordedAt,
+                'status' => 'dropped'
+            ]);
+
+            $this->notificationService->notifyStudentGuardian(
+                studentId: $attendance->student_id,
+                type: 'student_alighted',
+                title: $direction === 'to_school' ? "وصل طالبك للمدرسة" : "وصل طالبك للمنزل",
+                message: $direction === 'to_school' ? "لقد وصل الطالب إلى المدرسة الآن بسلام." : "لقد نزل الطالب من الحافلة الآن عند المنزل بسلام.",
+                data: [
+                    'type' => 'student_alighted',
+                    'direction' => $direction,
+                    'student_id' => $attendance->student_id
+                ]
+            );
+
+            try {
+                // Not broadcasting full student object to avoid heavy DB queries in loop,
+                // but just the ID if the frontend handles it, or skip. We will skip for simplicity as DB state is already updated.
+            } catch (\Exception $e) {}
+        }
+
+        $trip->update([
+            'status' => 'finished',
+            'arrival_time' => $recordedAt,
+        ]);
+
+        $bus->update([
+            // 'trip_status' => 'idle' // trip_status is an accessor, not a column
+        ]);
+
+        Log::info('arrive: Trip marked as arrived and finished', ['trip_id' => $trip->id, 'dropped_count' => $attendances->count()]);
+
+        return response()->json([
+            'message' => 'تم تسجيل الوصول للوجهة النهائية وتحديث حالة الركاب بنجاح.',
+            'dropped_count' => $attendances->count(),
+        ]);
     }
 
     /**
@@ -383,29 +492,19 @@ class BusBoardingController extends Controller
      */
     public function passengers(Request $request, Bus $bus)
     {
-        // تحديد نوع الرحلة المقترح حسب حالة الباص أو الوقت
-        $status = $bus->trip_status ?? 'idle';
-        $hour = now()->hour;
-
-        if ($status === 'to_school') {
-            $suggestedTripTypeArr = ['morning', 'to_school'];
-        } elseif ($status === 'to_home') {
-            $suggestedTripTypeArr = ['afternoon', 'to_home'];
-        } else {
-            // Fallback to time-based
-            $suggestedTripType = ($hour < 11) ? 'morning' : 'afternoon';
-            $suggestedDirection = ($hour < 11) ? 'to_school' : 'to_home';
-            $suggestedTripTypeArr = [$suggestedTripType, $suggestedDirection];
-        }
-
-        $suggestedTripType = $suggestedTripTypeArr[0];
-        $suggestedDirection = $suggestedTripTypeArr[1];
+        // تحديد نوع الرحلة المقترح حسب الرحلة النشطة أو المعلقة لهذا اليوم
+        $activeTrip = \App\Models\Trip::where('bus_id', $bus->id)
+            ->whereDate('trip_date', today())
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->orderByRaw("CASE WHEN type = 'forth' THEN 1 WHEN type = 'back' THEN 2 ELSE 3 END")
+            ->first();
+        $suggestedTripType = $activeTrip?->type === 'back' ? 'afternoon' : 'morning';
 
         // السماح بطلب نوع رحلة محدد عبر Query Param
         $filterTripType = $request->query('trip_type', $suggestedTripType);
 
         $query = \App\Models\Student::where('is_active', true)
-            ->with(['lastBusLog', 'guardian', 'absenceRequests' => function($q) {
+            ->with(['lastTripAttendance.trip', 'guardian', 'absenceRequests' => function($q) {
                 $q->whereDate('date', today())->where('status', '!=', 'rejected');
             }]);
 
@@ -421,8 +520,8 @@ class BusBoardingController extends Controller
             });
         }
 
-        $students = $query->get()->map(function ($student) use ($filterTripType) {
-            $lastLog = $student->lastBusLog;
+        $students = $query->get()->map(function ($student) use ($filterTripType, $activeTrip) {
+            $lastAttendance = $student->lastTripAttendance;
             $studentStatus = 'atHome'; // Default
 
             // ① التحقق من طلبات الغياب أولاً
@@ -442,12 +541,27 @@ class BusBoardingController extends Controller
                 }
             }
 
-            // ② إذا لم يكن غائباً، نحدد حالته من سجل الحافلة
-            if ($studentStatus !== 'absent' && $lastLog) {
-                if ($lastLog->type === 'boarding') {
-                    $studentStatus = 'onBus';
-                } elseif ($lastLog->type === 'alighting') {
-                    $studentStatus = ($lastLog->direction === 'to_school') ? 'atSchool' : 'atHome';
+            // ② تحديد الحالة من سجل الحافلة
+            if ($studentStatus !== 'absent') {
+                // Default based on trip type
+                $studentStatus = $filterTripType === 'afternoon' ? 'atSchool' : 'atHome';
+
+                if ($lastAttendance) {
+                    if (isset($activeTrip) && $lastAttendance->trip_id === $activeTrip->id) {
+                        // Attendance matches the current active trip
+                        if ($lastAttendance->status === 'boarded') {
+                            $studentStatus = 'onBus';
+                        } elseif ($lastAttendance->status === 'dropped') {
+                            $studentStatus = ($activeTrip->type === 'forth') ? 'atSchool' : 'atHome';
+                        }
+                    } else {
+                        // Attendance is from a previous trip today (e.g. morning trip)
+                        if ($lastAttendance->status === 'dropped' && $lastAttendance->trip?->type === 'forth') {
+                            $studentStatus = 'atSchool';
+                        } elseif ($lastAttendance->status === 'dropped' && $lastAttendance->trip?->type === 'back') {
+                            $studentStatus = 'atHome';
+                        }
+                    }
                 }
             }
 
@@ -470,10 +584,10 @@ class BusBoardingController extends Controller
                 'isAbsent' => ($studentStatus === 'absent'),
                 'has_absence_request' => $student->absenceRequests->isNotEmpty(),
                 'behavioralNote' => null, // Placeholder for now
-                'lastEvent' => $lastLog ? [
-                    'type' => $lastLog->type,
-                    'direction' => $lastLog->direction,
-                    'time' => $lastLog->recorded_at->format('H:i'),
+                'lastEvent' => $lastAttendance ? [
+                    'type' => $lastAttendance->status === 'boarded' ? 'boarding' : 'alighting',
+                    'direction' => $lastAttendance->trip?->type === 'forth' ? 'to_school' : 'to_home',
+                    'time' => $lastAttendance->updated_at->format('H:i'),
                 ] : null,
             ];
         });
@@ -483,9 +597,10 @@ class BusBoardingController extends Controller
                 'id' => $bus->id,
                 'bus_number' => $bus->bus_number,
                 'plate_number' => $bus->plate_number,
-                'suggested_direction' => $suggestedDirection,
-                'suggested_trip_type' => $suggestedTripType,
-                'trip_status' => $status,
+                'trip_type' => $suggestedTripType,
+                'trip_status' => $activeTrip && $activeTrip->status === 'in_progress' ? 'in_progress' : 'idle',
+                'has_active_trip' => $activeTrip !== null,
+                'trip_id' => $activeTrip?->id,
             ],
             'passengers' => $students,
             'on_bus_count' => $students->where('isOnBus', true)->count(),
@@ -504,53 +619,44 @@ class BusBoardingController extends Controller
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
-        // تحديد الاتجاه المقترح أو المستلم
-        $direction = $request->input('direction');
-        if (!$direction) {
-            $direction = (now()->hour < 11) ? 'to_school' : 'to_home';
+        // البحث عن أول رحلة غير منتهية لهذا اليوم (ذهاب أولاً)
+        $trip = \App\Models\Trip::where('bus_id', $bus->id)
+            ->whereDate('trip_date', today())
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->orderByRaw("CASE WHEN type = 'forth' THEN 1 WHEN type = 'back' THEN 2 ELSE 3 END")
+            ->first();
+
+        if (!$trip) {
+            return response()->json(['message' => 'لا توجد رحلة معلقة لبدءها اليوم.'], 404);
         }
 
-        $tripType = ($direction === 'to_school') ? 'forth' : 'back';
+        $tripType = $trip->type;
+        $direction = ($tripType === 'forth') ? 'to_school' : 'to_home';
 
         Log::info('startTrip: Application attempting to start trip', [
             'bus_id' => $bus->id,
             'driver_id' => $user->id,
             'direction' => $direction,
-            'trip_type' => $tripType
+            'trip_type' => $tripType,
+            'trip_id' => $trip->id,
         ]);
 
-        $trip = \App\Models\Trip::where('bus_id', $bus->id)
-            ->where('type', $tripType)
-            ->whereDate('trip_date', today())
-            ->where('status', 'pending')
-            ->first();
+        $trip->update([
+            'status' => 'in_progress',
+            'departure_time' => now(),
+        ]);
 
-        if ($trip) {
-            $trip->update([
-                'status' => 'in_progress',
-                'departure_time' => now()
-            ]);
-        } else {
-            $trip = \App\Models\Trip::create([
-                'bus_id' => $bus->id,
-                'driver_id' => $user->id,
-                'assistant_id' => $bus->assistant_id,
-                'route_id' => $bus->route_id,
-                'trip_date' => today(),
-                'type' => $tripType,
-                'status' => 'in_progress',
-                'departure_time' => now()
-            ]);
-        }
+        // $bus->update([
+        //     'trip_status' => 'in_progress',
+        // ]);
 
         Log::info('startTrip: Trip started successfully', ['bus_id' => $bus->id, 'trip_id' => $trip->id]);
 
         return response()->json([
             'message' => 'تم بدء الرحلة بنجاح.',
-            'trip_status' => $bus->trip_status,
+            'trip_status' => $bus->fresh()->trip_status,
         ]);
     }
-
     /**
      * إنهاء رحلة الحافلة
      * POST /api/bus/{bus}/end-trip
@@ -596,7 +702,7 @@ class BusBoardingController extends Controller
             $path = $request->file('video')->store("trip_videos/{$dateFolder}", 'public');
             
             $trip->update([
-                'status' => 'completed',
+                'status' => 'finished',
                 'arrival_time' => now(),
                 'video_check' => true,
                 'video_path' => $path,
@@ -611,7 +717,7 @@ class BusBoardingController extends Controller
         return response()->json([
             'message' => 'تم إنهاء الرحلة وتوثيقها بنجاح.',
             'trip_status' => 'idle',
-            'video_path' => asset('storage/' . $path),
+            'video_path' => isset($path) ? asset('storage/' . $path) : null,
         ]);
     }
 
@@ -620,45 +726,28 @@ class BusBoardingController extends Controller
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * تحديد حالة الطالب الحالية من آخر سجل ركوب/نزول اليوم
+     * تحديد حالة الطالب الحالية من آخر سجل تحضير اليوم
      */
     private function getStudentCurrentStatus(Student $student): string
     {
-        $lastLog = BusBoardingLog::where('student_id', $student->id)
-            ->where('created_at', '>=', now()->startOfDay())
-            ->latest()
-            ->first();
+        $lastAttendance = $student->lastTripAttendance;
 
-        if (!$lastLog) {
-            return 'atHome'; // لم يُسجَّل أي حدث اليوم
+        if (!$lastAttendance) {
+            return 'atHome';
         }
 
-        if ($lastLog->type === 'boarding') {
+        if ($lastAttendance->status === 'boarded') {
             return 'onBus';
         }
 
-        // alighting
-        return $lastLog->direction === 'to_school' ? 'atSchool' : 'atHome';
+        return $lastAttendance->trip?->type === 'forth' ? 'atSchool' : 'atHome';
     }
 
-    /**
-     * تحديد الاتجاه من حالة الرحلة الفعلية (trip_status)
-     * المصدر الأساسي هو حالة الباص، وليس الساعة.
-     */
-    private function resolveDirection(Bus $bus, ?string $explicitDirection): string
+    private function getActiveTrip(Bus $bus)
     {
-        // إذا أرسل العميل اتجاهاً صريحاً → استخدمه
-        if ($explicitDirection) {
-            return $explicitDirection;
-        }
-
-        // تحديد من trip_status الفعلي
-        return match ($bus->trip_status) {
-            'to_school' => 'to_school',
-            'to_home'   => 'to_home',
-            default     => now()->hour < 11 ? 'to_school' : 'to_home', // آخر ملاذ فقط
-        };
+        return \App\Models\Trip::where('bus_id', $bus->id)
+            ->whereDate('trip_date', today())
+            ->where('status', 'in_progress')
+            ->first();
     }
 }
-
-

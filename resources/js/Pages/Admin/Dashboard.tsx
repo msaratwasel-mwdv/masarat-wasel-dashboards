@@ -29,6 +29,7 @@ interface DashboardProps {
     drivers: { total: number; available: number; booked: number };
     field_supervisors: { total: number; available: number; booked: number };
     assistants: { total: number; available: number; booked: number };
+    daily_trips_today: { pending: number; ongoing: number; completed: number };
   };
   alerts: Array<{ type: "warning" | "critical"; category?: string; message: string }>;
   mapData: Array<{ id: number; code: string; lat: number; lng: number; status: string; speed: string; school_id?: number }>;
@@ -352,6 +353,49 @@ export default function Dashboard({
                     link={route('admin.emergencies.index')}
                     color="red"
                   />
+               </div>
+            </div>
+
+            {/* Daily Trips Today Summary */}
+            <div className={`p-6 rounded-3xl border backdrop-blur-md ${isDark ? 'bg-slate-800/40 border-slate-700 shadow-xl' : 'bg-white border-slate-100 shadow-sm shadow-slate-200/50'}`}>
+               <div className="flex justify-between items-center mb-6">
+                 <h3 className={`text-lg font-bold flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <Activity className="w-5 h-5 text-blue-500" />
+                    {isRTL ? "ملخص الرحلات اليومية (اليوم)" : "Daily Trips Summary (Today)"}
+                 </h3>
+                 <Link href={route('admin.daily-trips.index')} className="text-xs text-blue-500 font-bold hover:underline">
+                    {isRTL ? "عرض الكل" : "View All"}
+                 </Link>
+               </div>
+               
+               <div className="grid grid-cols-3 gap-4">
+                  <div className={`p-4 rounded-2xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'} flex flex-col items-center justify-center`}>
+                     <span className={`text-2xl font-black ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{stats.daily_trips_today.pending}</span>
+                     <span className={`text-[10px] font-bold uppercase ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{isRTL ? "انتظار" : "Pending"}</span>
+                  </div>
+                  <div className={`p-4 rounded-2xl ${isDark ? 'bg-sky-500/10' : 'bg-sky-50'} flex flex-col items-center justify-center border border-sky-500/20`}>
+                     <span className={`text-2xl font-black text-sky-500`}>{stats.daily_trips_today.ongoing}</span>
+                     <span className={`text-[10px] font-bold uppercase text-sky-400`}>{isRTL ? "جارية" : "Ongoing"}</span>
+                  </div>
+                  <div className={`p-4 rounded-2xl ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-50'} flex flex-col items-center justify-center border border-emerald-500/20`}>
+                     <span className={`text-2xl font-black text-emerald-500`}>{stats.daily_trips_today.completed}</span>
+                     <span className={`text-[10px] font-bold uppercase text-emerald-400`}>{isRTL ? "مكتملة" : "Completed"}</span>
+                  </div>
+               </div>
+
+               <div className="mt-6">
+                  <Link 
+                    href={route('admin.daily-trips.auto-create')}
+                    method="post"
+                    as="button"
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-brand-yellow hover:bg-yellow-500 text-slate-900 rounded-2xl font-black text-sm transition-all shadow-lg shadow-yellow-500/20 active:scale-95"
+                  >
+                    <Zap className="w-4 h-4" />
+                    {isRTL ? "توليد الرحلات اليومية آلياً" : "Auto-Create Daily Trips"}
+                  </Link>
+                  <p className={`text-[9px] text-center mt-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {isRTL ? "* يقوم بإنشاء رحلات لليوم بناءً على مسارات الحافلات النشطة" : "* Generates trips for today based on active bus routes"}
+                  </p>
                </div>
             </div>
 

@@ -87,11 +87,6 @@ return new class extends Migration
 
             $table->enum('status', ['active', 'inactive'])->default('active');
 
-            $table->foreignId('bus_id')
-                  ->nullable()
-                  ->constrained('buses')
-                  ->nullOnDelete();
-
             $table->timestamps();
         });
 
@@ -105,6 +100,8 @@ return new class extends Migration
 
         // Add foreign keys back to buses which reference these newly created tables
         Schema::table('buses', function (Blueprint $table) {
+            $table->foreignId('driver_id')->nullable()->after('school_id');
+            $table->foreign('driver_id')->references('user_id')->on('drivers')->nullOnDelete();
             $table->foreign('assistant_id')->references('user_id')->on('assistants')->nullOnDelete();
             $table->foreign('field_supervisor_id')->references('user_id')->on('field_supervisors')->nullOnDelete();
         });
