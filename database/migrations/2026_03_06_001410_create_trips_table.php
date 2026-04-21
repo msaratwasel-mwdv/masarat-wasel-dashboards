@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('type'); // forth, back
             $table->string('video_check')->default(false); // video path
             $table->string('video_path')->nullable();
-            $table->timestamp('end_qr_scanned_at')->nullable();
+            // $table->timestamp('end_qr_scanned_at')->nullable();
             $table->dateTime('departure_time')->nullable();
             $table->dateTime('arrival_time')->nullable();
             $table->enum('status', ['pending', 'in_progress', 'finished'])->default('pending');

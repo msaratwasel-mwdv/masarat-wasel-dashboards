@@ -37,17 +37,11 @@ class BusSeeder extends Seeder
                     'year' => 2024,
                     'field_supervisor_id' => $supervisor->id,
                     'assistant_id' => $assistants[$index]->id ?? null,
+                    'driver_id' => $drivers[$index]->id ?? null,
                     'route_id' => $route->id,
                     'status' => 'active',
                 ]
             );
-
-            if (isset($drivers[$index])) {
-                $driverExtension = Driver::where('user_id', $drivers[$index]->id)->first();
-                if ($driverExtension) {
-                    $driverExtension->update(['bus_id' => $bus->id]);
-                }
-            }
         }
     }
 }

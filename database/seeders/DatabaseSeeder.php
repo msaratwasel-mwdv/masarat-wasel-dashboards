@@ -23,7 +23,6 @@ class DatabaseSeeder extends Seeder
             InspectionItemsSeeder::class,
             NotificationTemplateSeeder::class,
             NotificationTestSeeder::class,
-            TripReportSeeder::class,
         ]);
     }
 }

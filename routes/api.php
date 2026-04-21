@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\BusBoardingController;
+use App\Http\Controllers\Api\DailyTripApiController;
 use App\Http\Controllers\Api\BusLocationController;
 use App\Http\Controllers\Api\GuardianNotificationController;
 use Illuminate\Http\Request;
@@ -49,11 +49,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/profile/avatar', [AuthController::class, 'updateAvatar']);    // تحديث الصورة
 
     // --- ركوب/نزول الطلاب (للمشرف والسائق) ---
-    Route::post('/bus/{bus}/board', [BusBoardingController::class, 'board']);
-    Route::post('/bus/{bus}/alight', [BusBoardingController::class, 'alight']);
-    Route::get('/bus/{bus}/passengers', [BusBoardingController::class, 'passengers']);
-    Route::post('/bus/{bus}/start-trip', [BusBoardingController::class, 'startTrip']);
-    Route::post('/bus/{bus}/end-trip', [BusBoardingController::class, 'endTrip']);
+    Route::post('/bus/{bus}/mark-boarded', [DailyTripApiController::class, 'markBoarded']);
+    Route::post('/bus/{bus}/group-board', [DailyTripApiController::class, 'groupBoard']);
+    Route::post('/bus/{bus}/mark-dropped', [DailyTripApiController::class, 'markDropped']);
+    Route::get('/bus/{bus}/passengers', [DailyTripApiController::class, 'passengers']);
+    Route::post('/bus/{bus}/start-trip', [DailyTripApiController::class, 'startTrip']);
+    Route::post('/bus/{bus}/arrive', [DailyTripApiController::class, 'arrive']);
+    Route::post('/bus/{bus}/end-trip', [DailyTripApiController::class, 'endTrip']);
     Route::post('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'store']);
     Route::get('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'index']);
 

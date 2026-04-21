@@ -267,16 +267,9 @@ class User extends Authenticatable
 
     // ── Bus Assignments ─────────────────────────────────
 
-    public function assignedBus(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
+    public function assignedBus(): HasOne
     {
-        return $this->hasOneThrough(
-            Bus::class,
-            Driver::class,
-            'user_id', // Foreign key on drivers table
-            'id',      // Foreign key on buses table
-            'id',      // Local key on users table
-            'bus_id'   // Local key on drivers table
-        );
+        return $this->hasOne(Bus::class, 'driver_id');
     }
 
     public function assignedBusAsFieldSupervisor(): HasOne

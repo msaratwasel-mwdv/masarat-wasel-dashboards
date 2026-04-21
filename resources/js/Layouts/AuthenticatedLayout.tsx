@@ -56,6 +56,11 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "bus",
   },
   {
+    label: isRTL ? "الرحلات اليومية" : "Daily Trips",
+    route: "admin.daily-trips.index",
+    icon: "grid",
+  },
+  {
     label: isRTL ? "مصاريف الحافلات" : "Bus Expenses",
     route: "admin.bus-expenses.index",
     icon: "clipboard",
@@ -69,11 +74,6 @@ const getMenuItems = (isRTL: boolean) => [
     label: isRTL ? "الرحلات الميدانية" : "Field Trips",
     route: "admin.field-trips.index",
     icon: "map",
-  },
-  {
-    label: isRTL ? "توثيق الرحلات" : "Trips Verification",
-    route: "admin.trips.index",
-    icon: "video",
   },
   {
     label: isRTL ? "السائقين" : "Drivers",

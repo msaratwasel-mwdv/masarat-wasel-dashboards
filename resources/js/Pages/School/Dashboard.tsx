@@ -13,6 +13,7 @@ interface DashboardProps {
         routes: number;
         attendance_percentage: number;
         attendance_today_count: number;
+        daily_trips_today: number;
     };
     recent_students: Array<{
         id: number;
@@ -77,6 +78,15 @@ export default function SchoolDashboard({ auth, stats, recent_students, system_s
             iconBg: 'bg-orange-500',
             textColor: 'text-orange-600',
             link: route('school.reports.attendance')
+        },
+        {
+            title: t('Daily Trips'),
+            value: stats.daily_trips_today,
+            sub: t('Scheduled Today'),
+            icon: '🚀',
+            iconBg: 'bg-blue-500',
+            textColor: 'text-blue-600',
+            link: route('school.trips.dashboard')
         }
     ];
 

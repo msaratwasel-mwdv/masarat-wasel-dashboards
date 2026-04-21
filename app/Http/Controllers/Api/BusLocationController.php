@@ -43,11 +43,10 @@ class BusLocationController extends Controller
 
         // 🔔 بث الموقع فورياً لجميع المتابعين (تطبيق السائق، المشرف، ولي الأمر)
         try {
-            // حساب عدد الطلاب الراكبين حالياً (اختياري)
             $today = now()->startOfDay();
-            $boardedCount = \App\Models\BusBoardingLog::where('bus_id', $bus->id)->where('type', 'boarding')->where('created_at', '>=', $today)->distinct('student_id')->count();
-            $alightedCount = \App\Models\BusBoardingLog::where('bus_id', $bus->id)->where('type', 'alighting')->where('created_at', '>=', $today)->distinct('student_id')->count();
-            $onBoard = max(0, $boardedCount - $alightedCount);
+            $onBoard = \App\Models\TripAttendance::whereHas('trip', function($q) use ($bus, $today) {
+                $q->where('bus_id', $bus->id)->whereDate('trip_date', $today)->where('status', 'in_progress');
+            })->where('status', 'boarded')->count();
 
             broadcast(new \App\Events\BusLocationUpdated($bus, $request->latitude, $request->longitude, $onBoard));
         } catch (\Exception $e) {
@@ -96,34 +95,26 @@ class BusLocationController extends Controller
         // Fetch Driver Info
         $driver = $bus->driver;
         
-        // Calculate Students on Board (Students who boarded but not alighted today)
+        // Calculate Students on Board (Students who are currently in 'boarded' status on an active trip)
         $today = now()->startOfDay();
-        $boardedCount = \App\Models\BusBoardingLog::where('bus_id', $bus->id)
-            ->where('type', 'boarding')
-            ->where('created_at', '>=', $today)
-            ->distinct('student_id')
-            ->count();
-        $alightedCount = \App\Models\BusBoardingLog::where('bus_id', $bus->id)
-            ->where('type', 'alighting')
-            ->where('created_at', '>=', $today)
-            ->distinct('student_id')
-            ->count();
-        $studentsOnBoard = max(0, $boardedCount - $alightedCount);
+        $studentsOnBoard = \App\Models\TripAttendance::whereHas('trip', function($q) use ($bus, $today) {
+            $q->where('bus_id', $bus->id)->whereDate('trip_date', $today)->where('status', 'in_progress');
+        })->where('status', 'boarded')->count();
 
         // Per-student boarding status for this bus (for real-time updates)
         $guardianStudents = [];
         if ($isGuardian) {
             $guardianStudentIds = \App\Models\Student::whereHas('guardians', fn($q) => $q->where('users.id', $user->id))->pluck('id');
             foreach ($guardianStudentIds as $sid) {
-                $lastLog = \App\Models\BusBoardingLog::where('student_id', $sid)
-                    ->where('bus_id', $bus->id)
-                    ->where('created_at', '>=', $today)
+                $lastAttendance = \App\Models\TripAttendance::where('student_id', $sid)
+                    ->whereHas('trip', fn($q) => $q->where('bus_id', $bus->id)->whereDate('trip_date', $today))
                     ->latest()
                     ->first();
+                
                 $status = 'atHome';
-                if ($lastLog) {
-                    if ($lastLog->type === 'boarding') $status = 'onBus';
-                    elseif ($lastLog->type === 'alighting') $status = ($lastLog->direction === 'to_school') ? 'atSchool' : 'atHome';
+                if ($lastAttendance) {
+                    if ($lastAttendance->status === 'boarded') $status = 'onBus';
+                    elseif ($lastAttendance->status === 'dropped') $status = ($lastAttendance->trip?->type === 'forth') ? 'atSchool' : 'atHome';
                 }
                 $guardianStudents[] = ['student_id' => $sid, 'status' => $status];
             }
@@ -205,13 +196,13 @@ class BusLocationController extends Controller
 
                 $distanceText = $this->formatDistance($distance);
 
-                // تحديد اتجاه الرحلة بناءً على آخر سجل للباص اليوم
-                $lastLog = \App\Models\BusBoardingLog::where('bus_id', $bus->id)
-                    ->today()
-                    ->latest()
+                // تحديد اتجاه الرحلة بناءً على الرحلة النشطة الحالية
+                $activeTrip = \App\Models\Trip::where('bus_id', $bus->id)
+                    ->whereDate('trip_date', today())
+                    ->where('status', 'in_progress')
                     ->first();
                 
-                $direction = $lastLog?->direction ?? 'to_home';
+                $direction = ($activeTrip?->type === 'forth') ? 'to_school' : 'to_home';
                 
                 // SCRUM-85 & SCRUM-88: التنبيه عند اقتراب الحافلة (مسافة + زمن تقديري)
                 if ($direction === 'to_school') {

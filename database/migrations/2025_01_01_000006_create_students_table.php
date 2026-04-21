@@ -30,7 +30,12 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
 
             $table->foreignId('forth_bus_id')->nullable()->constrained('buses')->nullOnDelete();
+            $table->decimal('forth_latitude', 10, 8)->nullable();
+            $table->decimal('forth_longitude', 11, 8)->nullable();
+
             $table->foreignId('back_bus_id')->nullable()->constrained('buses')->nullOnDelete();
+            $table->decimal('back_latitude', 10, 8)->nullable();
+            $table->decimal('back_longitude', 11, 8)->nullable();
 
             $table->timestamps();
 

@@ -16,13 +16,11 @@ class TripAttendance extends Model
         'check_in_time',
         'check_out_time',
         'status',
-        'date',
     ];
 
     protected $casts = [
         'check_in_time' => 'datetime',
         'check_out_time' => 'datetime',
-        'date' => 'date',
     ];
 
     /**
@@ -41,5 +39,3 @@ class TripAttendance extends Model
         return $this->belongsTo(Student::class);
     }
 }
-
-

@@ -98,7 +98,7 @@ export default function SchoolAuthenticatedLayout({
     },
 
     {
-      label: isRtl ? "لوحة الرحلات" : "Trips Dashboard",
+      label: isRtl ? "الرحلات اليومية" : "Daily Trips",
       route: "school.trips.dashboard",
       icon: "rocket",
     },
