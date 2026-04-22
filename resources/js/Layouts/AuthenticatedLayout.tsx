@@ -46,6 +46,16 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "school",
   },
   {
+    label: isRTL ? "التقويم الدراسي" : "Academic Calendar",
+    route: "admin.academic-calendars.index",
+    icon: "calendar",
+  },
+  {
+    label: isRTL ? "إدارة العطل" : "Holidays",
+    route: "admin.holidays.index",
+    icon: "calendar",
+  },
+  {
     label: isRTL ? "المسارات" : "Routes",
     route: "admin.routes.index",
     icon: "route",

@@ -13,12 +13,16 @@ return new class extends Migration
     {
         Schema::create('trip_attendances', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('trip_id')->constrained()->onDelete('cascade');
+            $table->foreignId('trip_id')->constrained()->cascadeOnDelete();
             $table->foreignId('student_id')->constrained();
-            $table->time('check_in_time')->nullable();
-            $table->time('check_out_time')->nullable();
-            $table->enum('status', ['absent', 'boarded', 'dropped', 'excused'])->default('absent');
+            $table->enum('status', ['pending', 'boarded', 'dropped', 'absent'])->default('pending');
+            $table->timestamp('check_in_time')->nullable();
+            $table->timestamp('check_out_time')->nullable();
             $table->timestamps();
+
+            // Performance & Integrity
+            $table->unique(['trip_id', 'student_id'], 'unique_trip_student');
+            $table->index(['trip_id', 'status'], 'idx_trip_status');
         });
     }
 

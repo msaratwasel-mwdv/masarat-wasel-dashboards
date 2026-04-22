@@ -95,7 +95,7 @@ export default function Edit({
     children: React.ReactNode;
   }) => (
     <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm overflow-hidden transition-all hover:shadow-md">
-      <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700/50 bg-gradient-to-r from-[#13395e] to-[#1B3A5C]">
+      <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700/50 bg-gradient-to-r from-[#041b3a] to-[#1B3A5C]">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-white/10 rounded-xl text-white">{icon}</div>
           <div>
@@ -365,7 +365,7 @@ export default function Edit({
                   <button
                     type="submit"
                     disabled={processing}
-                    className="px-6 py-2.5 bg-gradient-to-r from-[#13395e] to-[#1B3A5C] hover:from-[#1B3A5C] hover:to-[#244b73] text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50"
+                    className="px-6 py-2.5 bg-gradient-to-r from-[#041b3a] to-[#1B3A5C] hover:from-[#1B3A5C] hover:to-[#244b73] text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50"
                   >
                     {isRtl ? "حفظ التغييرات" : "Save Changes"}
                   </button>

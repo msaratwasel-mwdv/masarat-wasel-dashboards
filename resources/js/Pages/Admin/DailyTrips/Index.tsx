@@ -5,7 +5,7 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import { toast } from 'react-toastify';
 import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
-import { Video, ShieldCheck, Play, X, Eye, Edit2, Trash2 } from 'lucide-react';
+import { Video, ShieldCheck, Play, X, Eye, Edit2, Trash2, CheckCircle2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface Driver {
@@ -55,6 +55,7 @@ interface Props {
 
 const statusConfig: Record<string, { label: string; labelAr: string; class: string }> = {
     pending: { label: 'Pending', labelAr: 'في الانتظار', class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300' },
+    awaiting_confirmation: { label: 'Awaiting Confirmation', labelAr: 'بانتظار التأكيد', class: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300' },
     in_progress: { label: 'In Progress', labelAr: 'جارية', class: 'bg-blue-100   text-blue-800   dark:bg-blue-900/40   dark:text-blue-300' },
     completed: { label: 'Completed', labelAr: 'مكتملة', class: 'bg-green-100  text-green-800  dark:bg-green-900/40  dark:text-green-300' },
     cancelled: { label: 'Cancelled', labelAr: 'ملغاة', class: 'bg-red-100    text-red-800    dark:bg-red-900/40    dark:text-red-300' },
@@ -292,6 +293,19 @@ export default function Index({ auth, trips, filters }: Props) {
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <div className="flex justify-center gap-2">
+                                                        {trip.status === 'awaiting_confirmation' && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (confirm(isRTL ? 'تأكيد بدء هذه الرحلة؟' : 'Confirm starting this trip?')) {
+                                                                        router.post(route('admin.daily-trips.confirm', trip.id));
+                                                                    }
+                                                                }}
+                                                                className="p-1.5 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-colors border border-transparent hover:border-purple-100"
+                                                                title={isRTL ? 'تأكيد الرحلة' : 'Confirm Trip'}
+                                                            >
+                                                                <CheckCircle2 size={18} />
+                                                            </button>
+                                                        )}
                                                         <button
                                                             onClick={() => router.get(route('admin.daily-trips.show', trip.id))}
                                                             className="p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors border border-transparent hover:border-emerald-100"

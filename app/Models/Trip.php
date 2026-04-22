@@ -16,31 +16,33 @@ class Trip extends Model
         'trip_date',
         'type',
         'video_check',
+        'video_path',
+        'end_qr_scanned_at',
         'departure_time',
         'arrival_time',
         'status',
+        'school_id',
+        'driver_id',
+        'route_id',
+        'generation_type',
+        'cancellation_reason',
+        'cancelled_by'
     ];
 
     protected $casts = [
-        'trip_date' => 'date',
+        'trip_date' => 'date:Y-m-d',
         'video_check' => 'boolean',
-        'departure_time' => 'datetime',
-        'arrival_time' => 'datetime',
+        'departure_time' => 'datetime:Y-m-d H:i',
+        'arrival_time' => 'datetime:Y-m-d H:i',
+        'end_qr_scanned_at' => 'datetime:Y-m-d H:i',
     ];
 
     /**
-     * Get the school that owns the trip (via the bus).
+     * Get the school that owns the trip.
      */
-    public function school(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
+    public function school(): BelongsTo
     {
-        return $this->hasOneThrough(
-            School::class,
-            Bus::class,
-            'id', // Foreign key on items table (bus id)
-            'id', // Foreign key on schools table (school id)
-            'bus_id', // Local key on trips table
-            'school_id' // Local key on buses table
-        );
+        return $this->belongsTo(School::class);
     }
 
     /**
@@ -68,33 +70,19 @@ class Trip extends Model
     }
 
     /**
-     * Get the route for the trip via the assigned bus.
+     * Get the route for the trip.
      */
-    public function route(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
+    public function route(): BelongsTo
     {
-        return $this->hasOneThrough(
-            Route::class,
-            Bus::class,
-            'id', // Foreign key on buses table (bus id)
-            'id', // Foreign key on routes table (route id)
-            'bus_id', // Local key on trips table
-            'route_id' // Local key on buses table
-        );
+        return $this->belongsTo(Route::class);
     }
 
     /**
-     * Get the driver for the trip via the assigned bus.
+     * Get the driver for the trip.
      */
-    public function driver()
+    public function driver(): BelongsTo
     {
-        return $this->hasOneThrough(
-            User::class,
-            Bus::class,
-            'id',         // Foreign key on buses table (bus id)
-            'id',         // Foreign key on users table (user id)
-            'bus_id',     // Local key on trips table
-            'driver_id'   // Local key on buses table
-        );
+        return $this->belongsTo(User::class, 'driver_id');
     }
 
     /**

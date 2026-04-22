@@ -16,16 +16,20 @@ class BusExpenseApiController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $driverProfile = $user->driver;
 
-        if (!$driverProfile || !$driverProfile->bus_id) {
+        // Find the bus where this user is assigned
+        $bus = \App\Models\Bus::where('driver_id', $user->id)
+            ->orWhere('assistant_id', $user->id)
+            ->first();
+
+        if (!$bus) {
             return response()->json([
                 'success' => false,
                 'message' => 'User is not assigned to any bus.'
             ], 403);
         }
 
-        $expenses = BusExpense::where('bus_id', $driverProfile->bus_id)
+        $expenses = BusExpense::where('bus_id', $bus->id)
             ->orderBy('date', 'desc')
             ->orderBy('id', 'desc')
             ->paginate(15);
@@ -48,9 +52,12 @@ class BusExpenseApiController extends Controller
     {
         $user = $request->user();
 
-        // Ensure the user is a driver and has an assigned bus
-        $driverProfile = $user->driver;
-        if (!$driverProfile || !$driverProfile->bus_id) {
+        // Ensure the user has an assigned bus
+        $bus = \App\Models\Bus::where('driver_id', $user->id)
+            ->orWhere('assistant_id', $user->id)
+            ->first();
+
+        if (!$bus) {
             return response()->json([
                 'success' => false,
                 'message' => 'User is not assigned to any bus.'
@@ -76,7 +83,7 @@ class BusExpenseApiController extends Controller
         // --- Odometer Guard Validation ---
         if ($request->type === 'fuel' && !empty($request->extra_info)) {
             $currentOdometer = (int) filter_var($request->extra_info, FILTER_SANITIZE_NUMBER_INT);
-            $lastExpense = BusExpense::where('bus_id', $driverProfile->bus_id)
+            $lastExpense = BusExpense::where('bus_id', $bus->id)
                 ->where('type', 'fuel')
                 ->whereNotNull('extra_info')
                 ->latest('date')
@@ -105,7 +112,7 @@ class BusExpenseApiController extends Controller
         }
 
         $expense = BusExpense::create([
-            'bus_id'        => $driverProfile->bus_id,
+            'bus_id'        => $bus->id,
             'type'          => $request->type,
             'amount'        => $request->amount,
             'date'          => $request->date,
@@ -118,7 +125,7 @@ class BusExpenseApiController extends Controller
         // $table->string('extra_info');
         // If I want to support photo, I should probably add a column or store it in extra_info JSON.
         // Let's check the migration I actually ran.
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Expense recorded successfully',

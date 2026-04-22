@@ -16,7 +16,7 @@ module.exports = {
             },
             colors: {
                 brand: {
-                    dark: '#13395e',      // الكحلي الغامق
+                    dark: '#041b3a',      // الكحلي الغامق
                     navy: '#0f172a',      // الكحلي الأغمق
                     yellow: '#facc15',    // الأصفر الذهبي
                     'yellow-light': '#fef3c7',

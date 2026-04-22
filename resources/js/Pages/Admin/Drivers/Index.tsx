@@ -449,6 +449,11 @@ export default function DriversIndex({ drivers, counts, filters }: Props) {
               }`}
             >
               <ActionButton
+                label={isRTL ? "طباعة" : "Print"}
+                onClick={() => window.open(route("admin.drivers.print", driver.id), "_blank")}
+                color="gray"
+              />
+              <ActionButton
                 label={isRTL ? "عرض" : "Show"}
                 onClick={() => openDetailsModal(driver)}
                 color="blue"

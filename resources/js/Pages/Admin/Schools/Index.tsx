@@ -35,6 +35,8 @@ import {
   ChevronLeft,
   LayoutGrid,
   Map as MapIcon,
+  List as ListIcon,
+  Filter,
 } from "lucide-react";
 import FieldTripMapPicker from "@/Components/FieldTripMapPicker";
 import {
@@ -91,13 +93,24 @@ export default function SchoolsIndex({ schools }: Props) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
 
-  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "map" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filteredSchools = useMemo(() => {
+    return schools.filter(school => {
+      const matchesSearch = school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (school.address && school.address.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesStatus = statusFilter === "all" || school.status.toLowerCase() === statusFilter.toLowerCase();
+      return matchesSearch && matchesStatus;
+    });
+  }, [schools, searchQuery, statusFilter]);
 
   const counts = useMemo(() => ({
-    all: schools.length,
-    active: schools.filter(s => s.status === "Active").length,
-    inactive: schools.filter(s => s.status !== "Active").length,
-  }), [schools]);
+    all: filteredSchools.length,
+    active: filteredSchools.filter(s => s.status === "Active").length,
+    inactive: filteredSchools.filter(s => s.status !== "Active").length,
+  }), [filteredSchools]);
 
   // --- State Management ---
   const [modalType, setModalType] = useState<"add" | "edit" | null>(null);
@@ -218,20 +231,6 @@ export default function SchoolsIndex({ schools }: Props) {
             {isRTL ? "إدارة المدارس" : "Schools Management"}
           </h2>
 
-          <div className={`flex items-center gap-2 p-1 rounded-2xl ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-xl transition-all ${viewMode === "grid" ? (isDark ? "bg-gray-700 text-brand-yellow shadow-lg" : "bg-white text-brand-navy shadow-md") : "text-gray-400"}`}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("map")}
-              className={`p-2 rounded-xl transition-all ${viewMode === "map" ? (isDark ? "bg-gray-700 text-brand-yellow shadow-lg" : "bg-white text-brand-navy shadow-md") : "text-gray-400"}`}
-            >
-              <MapIcon className="w-4 h-4" />
-            </button>
-          </div>
           <PrimaryButton
             onClick={openAddModal}
             className="bg-brand-yellow text-brand-dark hover:bg-yellow-500 shadow-lg px-6 py-2 rounded-xl font-bold border-none"
@@ -256,11 +255,66 @@ export default function SchoolsIndex({ schools }: Props) {
           ))}
         </div>
 
-        {/* Card Grid Section */}
+        </div>
 
+        {/* Toolbar Section */}
+        <div className={`flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-3xl border ${isDark ? "bg-gray-800/50 border-gray-700" : "bg-white border-gray-100"} shadow-sm`}>
+            {/* Search */}
+            <div className={`flex-1 flex items-center gap-3 px-4 py-2.5 rounded-2xl border transition-all ${isDark ? "bg-gray-900 border-gray-700 focus-within:border-brand-yellow" : "bg-gray-50 border-gray-200 focus-within:border-brand-navy focus-within:ring-2 focus-within:ring-brand-navy/20"}`}>
+                <Search className={`w-5 h-5 ${isDark ? "text-gray-500" : "text-gray-400"}`} />
+                <input
+                    type="text"
+                    placeholder={isRTL ? "البحث باسم المدرسة أو العنوان..." : "Search by school name or address..."}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-semibold p-0 w-full"
+                />
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+                {/* Status Filter */}
+                <div className={`flex items-center px-4 py-2.5 rounded-2xl border transition-all ${isDark ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                    <Filter className={`w-4 h-4 ${isRTL ? 'ml-2' : 'mr-2'} ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="bg-transparent border-none focus:ring-0 text-sm font-semibold p-0 w-full md:w-auto min-w-[120px] cursor-pointer"
+                    >
+                        <option value="all">{isRTL ? "جميع الحالات" : "All Status"}</option>
+                        <option value="Active">{isRTL ? "نشطة فقط" : "Active Only"}</option>
+                        <option value="Inactive">{isRTL ? "غير نشطة" : "Inactive Only"}</option>
+                    </select>
+                </div>
+
+                {/* View Toggles */}
+                <div className={`flex items-center gap-1 p-1.5 rounded-2xl ${isDark ? 'bg-gray-900 border border-gray-700' : 'bg-gray-100 border border-gray-200'}`}>
+                    <button
+                        onClick={() => setViewMode("grid")}
+                        className={`p-2 rounded-xl transition-all ${viewMode === "grid" ? (isDark ? "bg-brand-yellow/20 text-brand-yellow shadow-sm" : "bg-white text-brand-navy shadow-sm") : "text-gray-400 hover:text-gray-600"}`}
+                        title={isRTL ? "شبكة" : "Grid"}
+                    >
+                        <LayoutGrid className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setViewMode("list")}
+                        className={`p-2 rounded-xl transition-all ${viewMode === "list" ? (isDark ? "bg-brand-yellow/20 text-brand-yellow shadow-sm" : "bg-white text-brand-navy shadow-sm") : "text-gray-400 hover:text-gray-600"}`}
+                        title={isRTL ? "قائمة" : "List"}
+                    >
+                        <ListIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setViewMode("map")}
+                        className={`p-2 rounded-xl transition-all ${viewMode === "map" ? (isDark ? "bg-brand-yellow/20 text-brand-yellow shadow-sm" : "bg-white text-brand-navy shadow-sm") : "text-gray-400 hover:text-gray-600"}`}
+                        title={isRTL ? "خريطة" : "Map"}
+                    >
+                        <MapIcon className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+        </div>
 
         {/* Existing Grid or Empty State */}
-        {schools.length === 0 ? (
+        {filteredSchools.length === 0 ? (
             <div className={`p-12 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center ${isDark ? "bg-gray-800/50 border-gray-700" : "bg-white border-gray-100"}`}>
                 <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 ${isDark ? "bg-gray-700" : "bg-gray-50"}`}>
                     <SchoolIcon className={`w-10 h-10 ${isDark ? "text-gray-500" : "text-gray-300"}`} />
@@ -277,11 +331,36 @@ export default function SchoolsIndex({ schools }: Props) {
             </div>
         ) : viewMode === "map" ? (
             <div className="h-[600px] rounded-[35px] overflow-hidden border-2 border-white dark:border-gray-800 shadow-2xl relative">
-                <SchoolsDistributionMap schools={schools} isDark={isDark} isRTL={isRTL} />
+                <SchoolsDistributionMap schools={filteredSchools} isDark={isDark} isRTL={isRTL} />
+            </div>
+        ) : viewMode === "list" ? (
+            <div className="overflow-x-auto rounded-3xl border shadow-sm dark:border-gray-700 dark:bg-gray-800 bg-white">
+                <table className={`w-full text-sm ${isRTL ? "text-right" : "text-left"}`}>
+                    <thead className={`text-xs font-bold uppercase ${isDark ? "bg-gray-900/50 text-gray-400 border-b border-gray-700" : "bg-gray-50/50 text-gray-500 border-b border-gray-100"}`}>
+                        <tr>
+                            <th className="px-6 py-4">{isRTL ? "المدرسة" : "School"}</th>
+                            <th className="px-6 py-4">{isRTL ? "الموقع" : "Location"}</th>
+                            <th className="px-6 py-4 text-center">{isRTL ? "الحالة" : "Status"}</th>
+                            <th className="px-6 py-4 text-center">{isRTL ? "الخدمات" : "Services"}</th>
+                            <th className="px-6 py-4 text-center">{isRTL ? "إجراءات" : "Actions"}</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {filteredSchools.map(school => (
+                            <SchoolListRow
+                                key={school.id}
+                                school={school}
+                                isDark={isDark}
+                                isRTL={isRTL}
+                                onEdit={() => openEditModal(school)}
+                            />
+                        ))}
+                    </tbody>
+                </table>
             </div>
         ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {schools.map((school) => (
+                {filteredSchools.map((school) => (
                     <SchoolCard
                         key={school.id}
                         school={school}
@@ -665,7 +744,6 @@ export default function SchoolsIndex({ schools }: Props) {
             </div>
         </Modal>
 
-      </div>
     </AuthenticatedLayout>
   );
 }
@@ -676,48 +754,55 @@ function SchoolCard({ school, isDark, isRTL, onEdit }: { school: School; isDark:
     const { post } = useForm();
     const [localStatus, setLocalStatus] = useState(school.status);
 
-    // Sync local state when prop changes (after server response)
     useEffect(() => {
         setLocalStatus(school.status);
     }, [school.status]);
 
     const toggleStatus = () => {
         const nextStatus = localStatus === 'Active' ? 'Inactive' : 'Active';
-        setLocalStatus(nextStatus); // Optimistic update
+        setLocalStatus(nextStatus);
 
         router.post(route('admin.schools.toggle', school.id), {}, {
             preserveScroll: true,
-            onError: () => setLocalStatus(school.status) // Rollback on error
+            onError: () => setLocalStatus(school.status)
         });
     };
 
     return (
         <motion.div
             whileHover={{ y: -5 }}
-            className={`rounded-3xl border overflow-hidden transition-all duration-300 ${isDark ? "bg-gray-800/40 border-gray-700 hover:bg-gray-800 shadow-2xl" : "bg-white border-gray-100 shadow-sm hover:shadow-xl"}`}
+            className={`rounded-[2rem] border overflow-hidden transition-all duration-300 ${isDark ? "bg-gray-800/40 border-gray-700 hover:bg-gray-800 shadow-2xl" : "bg-white border-gray-100 shadow-sm hover:shadow-xl group"}`}
         >
-            <div className={`h-24 bg-gradient-to-r ${localStatus === 'Active' ? 'from-[#4F46E5] via-[#3730A3] to-[#1E1B4B]' : 'from-gray-500 to-gray-700'} relative`}>
-                <div className={`absolute -bottom-10 ${isRTL ? 'right-6' : 'left-6'} w-20 h-20 rounded-2xl border-4 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-white'} shadow-xl overflow-hidden flex items-center justify-center p-2`}>
+            <div className={`h-28 relative ${localStatus === 'Active' ? 'bg-gradient-to-r from-[#041b3a] to-[#0f172a]' : 'bg-gray-500'}`}>
+                {/* Status Badge */}
+                <div className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'}`}>
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold shadow-sm flex items-center gap-1 ${localStatus === 'Active' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-white/20 text-white border border-white/30'}`}>
+                        {localStatus === 'Active' ? (isRTL ? "نشطة" : "Active") : (isRTL ? "غير نشطة" : "Inactive")}
+                    </span>
+                </div>
+                {/* Decorative Pattern */}
+                <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_1px_1px,white_1px,transparent_0)]" style={{ backgroundSize: '20px 20px' }}></div>
+
+                {/* Logo Overlapping */}
+                <div className={`absolute -bottom-10 ${isRTL ? 'right-6' : 'left-6'} w-[84px] h-[84px] rounded-[1.25rem] border-[4px] ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-white'} shadow-xl overflow-hidden flex items-center justify-center p-2 z-10 transition-transform group-hover:scale-105`}>
                     {school.logo ? (
                         <img src={`/storage/${school.logo}`} className="w-full h-full object-contain" alt={school.name} />
                     ) : (
-                        <SchoolIcon className={`w-10 h-10 ${isDark ? 'text-gray-600' : 'text-gray-200'}`} />
+                        <SchoolIcon className={`w-8 h-8 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
                     )}
                 </div>
             </div>
 
-            <div className="pt-12 px-6 pb-6">
-                <div className={`flex justify-between items-start ${isRTL ? 'flex-row-reverse' : ''}`}>
-                    <div className={isRTL ? 'text-right' : ''}>
-                        <h4 className={`text-lg font-black ${isDark ? "text-white" : "text-brand-navy"}`}>{school.name}</h4>
-                        <p className={`text-xs flex items-center gap-1 mt-1 ${isDark ? "text-gray-400" : "text-gray-500"} ${isRTL ? 'flex-row-reverse' : ''}`}>
-                            <MapPin className="w-3.5 h-3.5" />
-                            {school.address || (isRTL ? "موقع غير محدد" : "No location")}
-                        </p>
-                    </div>
+            <div className="pt-14 px-6 pb-6">
+                <div className={`${isRTL ? 'text-right' : 'text-left'}`}>
+                    <h4 className={`text-xl font-black truncate ${isDark ? "text-white" : "text-brand-navy"}`}>{school.name}</h4>
+                    <p className={`text-xs flex items-center gap-1 mt-1.5 ${isDark ? "text-gray-400" : "text-gray-500"} ${isRTL ? 'flex-row-reverse' : ''}`}>
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{school.address || (isRTL ? "موقع غير محدد" : "No location")}</span>
+                    </p>
                 </div>
 
-                <div className={`flex gap-2 mt-6 ${isRTL ? 'flex-row-reverse' : ''} items-center justify-between`}>
+                <div className={`flex gap-3 mt-6 ${isRTL ? 'flex-row-reverse' : ''} items-center justify-between bg-gray-50 dark:bg-gray-900/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-800`}>
                     <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                         <ServiceBadge icon={<BusIcon size={12}/>} active={school.has_transport === 1 || school.has_transport === true} label={isRTL ? "نقل" : "Bus"} isDark={isDark} />
                         <ServiceBadge icon={<ClipboardList size={12}/>} active={school.has_attendance === 1 || school.has_attendance === true} label={isRTL ? "حضور" : "Attendance"} isDark={isDark} />
@@ -725,29 +810,30 @@ function SchoolCard({ school, isDark, isRTL, onEdit }: { school: School; isDark:
 
                     <button
                         onClick={toggleStatus}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow ${
                             localStatus === 'Active' ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'
                         }`}
+                        title={isRTL ? "تغيير الحالة" : "Toggle Status"}
                     >
-                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-300 ease-in-out ${
                             localStatus === 'Active' ? (isRTL ? '-translate-x-4' : 'translate-x-4') : 'translate-x-0'
                         }`} />
                     </button>
                 </div>
 
-                <div className={`mt-8 grid grid-cols-2 gap-3 border-t pt-5 ${isDark ? 'border-gray-700/50' : 'border-gray-100'}`}>
+                <div className={`mt-6 grid grid-cols-2 gap-3 pt-4 border-t ${isDark ? 'border-gray-700/50' : 'border-gray-100'}`}>
                     <Link
                         href={route('admin.schools.show', school.id)}
-                        className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
+                        className={`flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-brand-navy/5 text-brand-navy hover:bg-brand-navy/10'}`}
                     >
-                        <ExternalLink className="w-3.5 h-3.5" />
+                        <ExternalLink className="w-4 h-4" />
                         {isRTL ? "التفاصيل" : "Details"}
                     </Link>
                     <button
                         onClick={onEdit}
-                        className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${isDark ? 'bg-brand-yellow/10 text-brand-yellow hover:bg-brand-yellow/20' : 'bg-brand-yellow/10 text-brand-dark hover:bg-brand-yellow/20'}`}
+                        className={`flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all ${isDark ? 'bg-brand-yellow text-brand-dark hover:bg-yellow-400' : 'bg-brand-yellow text-brand-dark hover:bg-yellow-500 shadow-sm'}`}
                     >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <Pencil className="w-4 h-4" />
                         {isRTL ? "تعديل" : "Edit"}
                     </button>
                 </div>
@@ -874,27 +960,31 @@ function SchoolStatCard({ label, value, icon, color, isDark, isRTL }: {
     color: 'blue' | 'green' | 'orange'; isDark: boolean; isRTL: boolean;
 }) {
   const colorMap = {
-    blue: isDark ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-600 border-blue-100",
-    green: isDark ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border-emerald-100",
-    orange: isDark ? "bg-orange-500/10 text-orange-400 border-orange-500/20" : "bg-orange-50 text-orange-600 border-orange-100",
+    blue: isDark ? "from-blue-500/20 to-blue-600/5 text-blue-400 border-blue-500/20" : "from-blue-50 to-white text-blue-600 border-blue-100",
+    green: isDark ? "from-emerald-500/20 to-emerald-600/5 text-emerald-400 border-emerald-500/20" : "from-emerald-50 to-white text-emerald-600 border-emerald-100",
+    orange: isDark ? "from-orange-500/20 to-orange-600/5 text-orange-400 border-orange-500/20" : "from-orange-50 to-white text-orange-600 border-orange-100",
   };
+
+  const iconBgMap = {
+    blue: isDark ? "bg-blue-500/20" : "bg-blue-100/50",
+    green: isDark ? "bg-emerald-500/20" : "bg-emerald-100/50",
+    orange: isDark ? "bg-orange-500/20" : "bg-orange-100/50",
+  }
 
   return (
     <motion.div
-      whileHover={{ y: -4 }}
-      className={`p-6 rounded-3xl border flex items-center gap-5 transition-all ${
-        isDark ? "bg-gray-800/50 border-gray-700 shadow-2xl" : "bg-white border-gray-100 shadow-sm hover:shadow-xl"
-      } ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
+      whileHover={{ y: -4, scale: 1.01 }}
+      className={`p-6 rounded-[2rem] border flex items-center gap-5 transition-all bg-gradient-to-br ${colorMap[color]} shadow-sm hover:shadow-lg ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
     >
-      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border ${colorMap[color]}`}>
+      <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center shrink-0 ${iconBgMap[color]}`}>
         {icon}
       </div>
       <div>
-        <p className={`text-[10px] font-black uppercase tracking-widest ${
-          isDark ? "text-gray-500" : "text-gray-400"
+        <p className={`text-[11px] font-black uppercase tracking-widest ${
+          isDark ? "text-gray-400" : "text-gray-500"
         }`}>{label}</p>
-        <p className={`text-2xl font-black mt-0.5 ${
-          isDark ? "text-white" : "text-gray-900"
+        <p className={`text-3xl font-black mt-1 ${
+          isDark ? "text-white" : "text-brand-navy"
         }`}>{value}</p>
       </div>
     </motion.div>
@@ -918,3 +1008,84 @@ function StepBubble({ num, active, label, isRTL, isDark }: { num: number, active
     );
 }
 
+function SchoolListRow({ school, isDark, isRTL, onEdit }: { school: School; isDark: boolean; isRTL: boolean; onEdit: () => void }) {
+    const { post } = useForm();
+    const [localStatus, setLocalStatus] = useState(school.status);
+
+    useEffect(() => {
+        setLocalStatus(school.status);
+    }, [school.status]);
+
+    const toggleStatus = () => {
+        const nextStatus = localStatus === 'Active' ? 'Inactive' : 'Active';
+        setLocalStatus(nextStatus);
+
+        router.post(route('admin.schools.toggle', school.id), {}, {
+            preserveScroll: true,
+            onError: () => setLocalStatus(school.status)
+        });
+    };
+
+    return (
+        <tr className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+            <td className="px-6 py-4">
+                <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <div className={`w-12 h-12 rounded-xl border-2 ${isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-100'} flex items-center justify-center p-1.5 shrink-0`}>
+                        {school.logo ? (
+                            <img src={`/storage/${school.logo}`} className="w-full h-full object-contain" alt={school.name} />
+                        ) : (
+                            <SchoolIcon className={`w-6 h-6 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+                        )}
+                    </div>
+                    <div className={isRTL ? "text-right" : "text-left"}>
+                        <div className={`font-bold ${isDark ? 'text-white' : 'text-brand-navy'}`}>{school.name}</div>
+                        <div className={`text-xs mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{school.enrollments_count || 0} {isRTL ? 'طالب' : 'Students'}</div>
+                    </div>
+                </div>
+            </td>
+            <td className="px-6 py-4">
+                <div className={`flex items-center gap-1.5 text-xs ${isRTL ? 'flex-row-reverse text-right' : 'text-left'} ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <MapPin className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate max-w-[200px]">{school.address || (isRTL ? "موقع غير محدد" : "No location")}</span>
+                </div>
+            </td>
+            <td className="px-6 py-4 text-center">
+                <button
+                    onClick={toggleStatus}
+                    className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${
+                        localStatus === 'Active'
+                        ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20'
+                        : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
+                    } ${isRTL ? 'flex-row-reverse' : ''}`}
+                >
+                    <div className={`w-1.5 h-1.5 rounded-full ${localStatus === 'Active' ? 'bg-emerald-500' : 'bg-gray-400'}`}></div>
+                    {localStatus === 'Active' ? (isRTL ? "نشط" : "Active") : (isRTL ? "غير نشط" : "Inactive")}
+                </button>
+            </td>
+            <td className="px-6 py-4">
+                <div className={`flex items-center justify-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <ServiceBadge icon={<BusIcon size={12}/>} active={school.has_transport === 1 || school.has_transport === true} label={isRTL ? "نقل" : "Bus"} isDark={isDark} />
+                    <ServiceBadge icon={<ClipboardList size={12}/>} active={school.has_attendance === 1 || school.has_attendance === true} label={isRTL ? "حضور" : "Attendance"} isDark={isDark} />
+                </div>
+            </td>
+            <td className="px-6 py-4">
+                <div className={`flex items-center justify-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <Link
+                        href={route('admin.schools.show', school.id)}
+                        className={`p-2 rounded-xl transition-all ${isDark ? 'bg-gray-800 hover:bg-gray-700 text-gray-300' : 'bg-gray-50 hover:bg-gray-100 text-gray-600'}`}
+                        title={isRTL ? "التفاصيل" : "Details"}
+                    >
+                        <ExternalLink className="w-4 h-4" />
+                    </Link>
+                    <button
+                        onClick={onEdit}
+                        className={`p-2 rounded-xl transition-all ${isDark ? 'bg-brand-yellow/10 hover:bg-brand-yellow/20 text-brand-yellow' : 'bg-brand-yellow/10 hover:bg-brand-yellow/20 text-brand-dark'}`}
+                        title={isRTL ? "تعديل" : "Edit"}
+                    >
+                        <Pencil className="w-4 h-4" />
+                    </button>
+                </div>
+            </td>
+        </tr>
+    );
+}

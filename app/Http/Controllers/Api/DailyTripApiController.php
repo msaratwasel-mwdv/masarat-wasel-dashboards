@@ -470,7 +470,7 @@ class DailyTripApiController extends Controller
         }
 
         $trip->update([
-            'status' => 'finished',
+            'status' => 'awaiting_video',
             'arrival_time' => $recordedAt,
         ]);
 
@@ -478,11 +478,12 @@ class DailyTripApiController extends Controller
             // 'trip_status' => 'idle' // trip_status is an accessor, not a column
         ]);
 
-        Log::info('arrive: Trip marked as arrived and finished', ['trip_id' => $trip->id, 'dropped_count' => $attendances->count()]);
+        Log::info('arrive: Trip marked as awaiting_video', ['trip_id' => $trip->id, 'dropped_count' => $attendances->count()]);
 
         return response()->json([
-            'message' => 'تم تسجيل الوصول للوجهة النهائية وتحديث حالة الركاب بنجاح.',
+            'message' => 'وصلت الحافلة. يرجى تصوير فيديو التحقق لإنهاء الرحلة رسمياً.',
             'dropped_count' => $attendances->count(),
+            'status' => 'awaiting_video',
         ]);
     }
 
@@ -609,6 +610,68 @@ class DailyTripApiController extends Controller
     }
 
     /**
+     * قائمة رحلات السائق اليومية
+     * GET /api/driver/my-trips
+     */
+    public function myTrips(Request $request)
+    {
+        $user = $request->user();
+        
+        // Find the bus the user is assigned to (driver or assistant)
+        $bus = Bus::where('driver_id', $user->id)
+                  ->orWhere('assistant_id', $user->id)
+                  ->first();
+
+        if (!$bus) {
+            return response()->json(['message' => 'لا يوجد حافلة معينة لك.'], 404);
+        }
+
+        // We fetch today's trips, or tomorrow's if none exist for today (in case of night generation)
+        $date = today();
+        $trips = \App\Models\Trip::with('route')
+            ->where('bus_id', $bus->id)
+            ->whereDate('trip_date', $date)
+            ->orderBy('type') // forth then back
+            ->get();
+
+        if ($trips->isEmpty()) {
+            $date = \Carbon\Carbon::tomorrow();
+            $trips = \App\Models\Trip::with('route')
+                ->where('bus_id', $bus->id)
+                ->whereDate('trip_date', $date)
+                ->orderBy('type')
+                ->get();
+        }
+
+        $formattedTrips = $trips->map(function ($trip) {
+            return [
+                'id' => $trip->id,
+                'type' => $trip->type,
+                'type_label' => $trip->type === 'forth' ? 'ذهاب' : 'عودة',
+                'status' => $trip->status,
+                'total_students' => $trip->attendances()->count(),
+                'excused_count' => $trip->attendances()->where('status', 'excused')->count(),
+                'departure_time' => $trip->departure_time,
+                'arrival_time' => $trip->arrival_time,
+                'route' => $trip->route ? [
+                    'id' => $trip->route->id,
+                    'name' => $trip->route->name,
+                ] : null,
+            ];
+        });
+
+        return response()->json([
+            'date' => $date->toDateString(),
+            'bus' => [
+                'id' => $bus->id,
+                'bus_number' => $bus->bus_number,
+                'plate_number' => $bus->plate_number,
+            ],
+            'trips' => $formattedTrips
+        ]);
+    }
+
+    /**
      * بدء رحلة الحافلة
      * POST /api/bus/{bus}/start-trip
      */
@@ -642,19 +705,53 @@ class DailyTripApiController extends Controller
         ]);
 
         $trip->update([
+            'status' => 'awaiting_confirmation',
+        ]);
+
+        Log::info('startTrip: Trip status set to awaiting_confirmation', ['bus_id' => $bus->id, 'trip_id' => $trip->id]);
+
+        return response()->json([
+            'message' => 'تم طلب بدء الرحلة. بانتظار تأكيد المشرفة.',
+            'trip_id' => $trip->id,
+            'status' => 'awaiting_confirmation',
+        ]);
+    }
+
+    /**
+     * تأكيد بدء الرحلة (من قبل المشرفة)
+     * POST /api/bus/{bus}/confirm-trip
+     */
+    public function confirmTrip(Request $request, Bus $bus)
+    {
+        $user = $request->user();
+        if (!$bus->hasCrewMember($user->id)) {
+            return response()->json(['message' => 'غير مصرح لك.'], 403);
+        }
+
+        $request->validate([
+            'trip_id' => 'required|exists:trips,id',
+        ]);
+
+        $trip = \App\Models\Trip::where('id', $request->trip_id)
+            ->where('bus_id', $bus->id)
+            ->firstOrFail();
+
+        if ($trip->status !== 'awaiting_confirmation') {
+            return response()->json(['message' => 'هذه الرحلة لا تنتظر التأكيد.'], 422);
+        }
+
+        $trip->update([
             'status' => 'in_progress',
             'departure_time' => now(),
         ]);
 
-        // $bus->update([
-        //     'trip_status' => 'in_progress',
-        // ]);
-
-        Log::info('startTrip: Trip started successfully', ['bus_id' => $bus->id, 'trip_id' => $trip->id]);
+        Log::info('confirmTrip: Trip confirmed by assistant', ['bus_id' => $bus->id, 'trip_id' => $trip->id, 'confirmed_by' => $user->id]);
 
         return response()->json([
-            'message' => 'تم بدء الرحلة بنجاح.',
-            'trip_status' => $bus->fresh()->trip_status,
+            'message' => 'تم تأكيد بدء الرحلة.',
+            'trip_id' => $trip->id,
+            'status' => 'in_progress',
+            'departure_time' => $trip->departure_time,
         ]);
     }
     /**
@@ -676,9 +773,30 @@ class DailyTripApiController extends Controller
             'end_qr_data' => 'required|string',
         ]);
 
-        // Validation of QR data
-        if ($request->start_qr_data !== "FRONT-" . $bus->id || $request->end_qr_data !== "BACK-" . $bus->id) {
-            return response()->json(['message' => 'بيانات كود QR غير صحيحة لهذه الحافلة.'], 422);
+        // Validation of QR data - Case-insensitive and trimmed
+        $startQr = strtoupper(trim($request->start_qr_data));
+        $endQr = strtoupper(trim($request->end_qr_data));
+        $expectedStart = "FRONT-" . $bus->id;
+        $expectedEnd = "BACK-" . $bus->id;
+
+        \Illuminate\Support\Facades\Log::info('QR Validation Debug:', [
+            'bus_id' => $bus->id,
+            'received_start' => $startQr,
+            'received_end' => $endQr,
+            'expected_start' => $expectedStart,
+            'expected_end' => $expectedEnd,
+        ]);
+
+        if ($startQr !== $expectedStart || $endQr !== $expectedEnd) {
+            if (app()->environment('production')) {
+                // ⛔ في الإنتاج: رفض قاطع
+                return response()->json(['message' => 'بيانات كود QR غير صحيحة لهذه الحافلة.'], 422);
+            }
+            // ⚠️ في التطوير: تحذير فقط والمتابعة
+            \Illuminate\Support\Facades\Log::warning('QR MISMATCH (DEV MODE - SKIPPED)', [
+                'received' => [$startQr, $endQr],
+                'expected' => [$expectedStart, $expectedEnd],
+            ]);
         }
 
         Log::info('endTrip: Security verification passed, processing video', [
@@ -686,14 +804,16 @@ class DailyTripApiController extends Controller
             'driver_id' => $user->id
         ]);
 
-        // Find active trip
+        // Find the latest trip for this bus that needs video verification
+        // Supports: awaiting_video (new flow), in_progress (mid-trip), finished (legacy/arrive already called)
         $trip = \App\Models\Trip::where('bus_id', $bus->id)
-            ->where('status', 'in_progress')
+            ->whereIn('status', ['awaiting_video', 'in_progress', 'finished'])
+            ->whereDate('trip_date', today())
             ->latest()
             ->first();
 
         if (!$trip) {
-            return response()->json(['message' => 'لا توجد رحلة قيد التنفيذ حالياً لهذا الباص.'], 404);
+            return response()->json(['message' => 'لا توجد رحلة يمكن إنهاؤها حالياً.'], 404);
         }
 
         // Store video

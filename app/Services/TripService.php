@@ -6,7 +6,10 @@ use App\Models\Trip;
 use App\Models\TripAttendance;
 use App\Models\Bus;
 use App\Models\Student;
-use App\Models\TripStudent;
+use App\Models\School;
+use App\Models\AcademicCalendar;
+use App\Models\Holiday;
+use App\Models\AbsenceRequest;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -21,31 +24,75 @@ class TripService
      */
     public function autoCreateDailyTrips(?Carbon $date = null): array
     {
-        $targetDate = $date ?: Carbon::today();
-        $buses = Bus::whereNotNull('route_id')->get();
+        $targetDate = $date ?: Carbon::tomorrow(); // الافتراضي توليد رحلات الغد
+        $dayName = strtolower($targetDate->englishDayOfWeek);
 
-        Log::info('[DailyTrips] Auto-create started', ['date' => $targetDate->toDateString(), 'buses' => $buses->count()]);
+        Log::info('[DailyTrips] Auto-create started', ['date' => $targetDate->toDateString()]);
 
         $created = 0;
         $skipped = 0;
+        $activeSchools = [];
 
-        foreach ($buses as $bus) {
-            DB::transaction(function () use ($bus, $targetDate, &$created, &$skipped) {
-                [$forthResult, $forthReason] = $this->createDailyTrip($bus, 'forth', $targetDate, (int)$bus->route_id);
-                [$backResult, $backReason]   = $this->createDailyTrip($bus, 'back', $targetDate, (int)$bus->route_id);
+        // 1. فحص المدارس والتقويم الدراسي والعطل
+        $schools = School::all();
+        foreach ($schools as $school) {
+            $calendar = AcademicCalendar::where('school_id', $school->id)
+                ->where('is_active', true)
+                ->where('start_date', '<=', $targetDate)
+                ->where('end_date', '>=', $targetDate)
+                ->first();
 
-                $forthNew = $forthResult !== null && $forthResult->wasRecentlyCreated;
-                $backNew  = $backResult !== null && $backResult->wasRecentlyCreated;
+            if (!$calendar) {
+                Log::info("[DailyTrips] School {$school->id} skipped: No active calendar.");
+                continue;
+            }
 
-                if ($forthNew) { $created++; } else { $skipped++; }
-                if ($backNew)  { $created++; } else { $skipped++; }
+            $workingDays = is_string($calendar->working_days) ? json_decode($calendar->working_days, true) : $calendar->working_days;
+            $workingDays = $workingDays ?? [];
+            if (!in_array($dayName, $workingDays)) {
+                Log::info("[DailyTrips] School {$school->id} skipped: Not a working day ($dayName).");
+                continue;
+            }
 
-                Log::info("[DailyTrips] Bus {$bus->id} ({$bus->bus_number})", [
-                    'forth' => $forthNew ? 'created' : "skipped ($forthReason)",
-                    'back'  => $backNew  ? 'created' : "skipped ($backReason)",
-                ]);
-            });
+            $isHoliday = Holiday::where(function($q) use ($school) {
+                    $q->where('school_id', $school->id)->orWhereNull('school_id');
+                })
+                ->where('start_date', '<=', $targetDate)
+                ->where('end_date', '>=', $targetDate)
+                ->exists();
+
+            if ($isHoliday) {
+                Log::info("[DailyTrips] School {$school->id} skipped: Holiday.");
+                continue;
+            }
+
+            $activeSchools[] = $school->id;
         }
+
+        if (empty($activeSchools)) {
+            Log::info('[DailyTrips] No active schools found for this date. Exiting.');
+            return ['created' => 0, 'skipped' => 0];
+        }
+
+        // 2. معالجة الباصات بنظام الـ Chunking لتوفير الذاكرة
+        Bus::whereIn('school_id', $activeSchools)
+            ->whereNotNull('route_id')
+            ->chunk(50, function ($buses) use ($targetDate, &$created, &$skipped) {
+                foreach ($buses as $bus) {
+                    DB::transaction(function () use ($bus, $targetDate, &$created, &$skipped) {
+                        [$forthResult, $forthReason] = $this->createDailyTrip($bus, 'forth', $targetDate);
+                        [$backResult, $backReason]   = $this->createDailyTrip($bus, 'back', $targetDate);
+
+                        if ($forthResult) { $created++; } else { $skipped++; }
+                        if ($backResult)  { $created++; } else { $skipped++; }
+
+                        Log::info("[DailyTrips] Bus {$bus->id} ({$bus->bus_number})", [
+                            'forth' => $forthResult ? 'created' : "skipped ($forthReason)",
+                            'back'  => $backResult  ? 'created' : "skipped ($backReason)",
+                        ]);
+                    });
+                }
+            });
 
         Log::info('[DailyTrips] Auto-create finished', [
             'date'    => $targetDate->toDateString(),
@@ -60,67 +107,88 @@ class TripService
     }
 
     /**
-     * Create a specific daily trip and its attendance records.
+     * Create a specific daily trip and its attendance records using Bulk Insert.
      * Returns [Trip|null, string reason]
      */
-    public function createDailyTrip(Bus $bus, string $type, Carbon $date, int $routeId): array
+    public function createDailyTrip(Bus $bus, string $type, Carbon $date): array
     {
-        Log::info('[TripService] createDailyTrip called', ['bus_id' => $bus->id, 'type' => $type, 'date' => $date->toDateString()]);
-        
-        // Check if trip already exists for today
-        $existingTrip = Trip::where('bus_id', $bus->id)
+        $exists = Trip::where('bus_id', $bus->id)
             ->where('type', $type)
             ->whereDate('trip_date', $date)
-            ->first();
+            ->exists();
 
-        if ($existingTrip) {
-            Log::info('[TripService] Trip already exists', ['bus_id' => $bus->id, 'type' => $type]);
-            return [$existingTrip, 'already_exists'];
+        if ($exists) {
+            return [null, 'already_exists'];
         }
 
-        // Driver and Assistant (المشرفة) are informed from the bus
-        if (!$bus->driver || !$bus->assistant_id) {
-            Log::warning('[TripService] Missing staff assignment', ['bus_id' => $bus->id]);
-            return [null, 'missing_staff_assignment'];
+        if (!$bus->driver_id || !$bus->route_id) {
+            return [null, 'missing_staff_or_route'];
         }
 
+        // Snapshot details
         $trip = Trip::create([
             'bus_id' => $bus->id,
+            'school_id' => $bus->school_id,
+            'driver_id' => $bus->driver_id,
+            'route_id' => $bus->route_id,
             'trip_date' => $date,
             'type' => $type,
             'status' => 'pending',
+            'generation_type' => 'auto',
         ]);
 
-        // Get students assigned to this bus for this direction
         $busField = $type === 'forth' ? 'forth_bus_id' : 'back_bus_id';
-        $students = Student::where($busField, $bus->id)->get();
+        $students = Student::where($busField, $bus->id)->where('is_active', true)->get();
+
+        if ($students->isEmpty()) {
+            return [$trip, 'no_students'];
+        }
+
+        $attendances = [];
+        $now = now();
+
+        // جلب طلبات الغياب المعتمدة لتسجيل الطالب كـ excused بدلاً من absent
+        $studentIds = $students->pluck('id')->toArray();
+        $absences = AbsenceRequest::whereIn('student_id', $studentIds)
+            ->whereDate('date', $date)
+            ->where('status', 'approved')
+            ->get()
+            ->groupBy('student_id');
 
         foreach ($students as $student) {
-            TripAttendance::create([
+            $status = 'absent'; // الافتراضي غائب حتى يركب
+
+            if ($absences->has($student->id)) {
+                $studentAbsences = $absences->get($student->id);
+                foreach ($studentAbsences as $absence) {
+                    if ($absence->type === 'full_day' || $absence->type === ($type === 'forth' ? 'morning' : 'afternoon')) {
+                        $status = 'excused'; // عذر مقبول
+                        break;
+                    }
+                }
+            }
+
+            $attendances[] = [
                 'trip_id' => $trip->id,
                 'student_id' => $student->id,
-                'status' => 'absent',
-            ]);
+                'status' => $status,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
         }
+
+        // Bulk insert (سريع جداً للأعداد الكبيرة)
+        TripAttendance::insert($attendances);
 
         return [$trip, 'created'];
     }
 
     /**
      * Initialize a field trip after admin approval.
-     * Note: FieldTrip is a separate model/table, but we might want to create a 'Trip' 
-     * record for the execution phase if we want to unify mobile tracking.
-     * For now, following user guidance that they are separate.
      */
     public function initializeFieldTrip(\App\Models\FieldTrip $fieldTrip): void
     {
         DB::transaction(function () use ($fieldTrip) {
-            foreach ($fieldTrip->students as $student) {
-                // We logic for field trip attendance might need a separate table or 
-                // a way to link to the general TripAttendance if we unify.
-                // Since they are separate, we stick to FieldTrip logic.
-            }
-            
             $fieldTrip->update(['status' => 'approved']);
         });
     }

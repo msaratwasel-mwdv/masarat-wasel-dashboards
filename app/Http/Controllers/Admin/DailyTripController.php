@@ -99,6 +99,23 @@ class DailyTripController extends Controller
     }
 
     /**
+     * Confirm a trip manually from admin panel
+     */
+    public function confirm(Request $request, Trip $trip)
+    {
+        if ($trip->status !== 'awaiting_confirmation') {
+            return back()->with('error', 'هذه الرحلة لا تنتظر التأكيد.');
+        }
+
+        $trip->update([
+            'status' => 'in_progress',
+            'departure_time' => now(),
+        ]);
+
+        return redirect()->route('admin.daily-trips.show', $trip->id)->with('success', 'تم تأكيد الرحلة بنجاح وبدأت الآن.');
+    }
+
+    /**
      * Update the specified daily trip.
      */
     public function update(Request $request, Trip $trip)

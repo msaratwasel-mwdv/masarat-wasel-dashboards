@@ -49,11 +49,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/profile/avatar', [AuthController::class, 'updateAvatar']);    // تحديث الصورة
 
     // --- ركوب/نزول الطلاب (للمشرف والسائق) ---
+    Route::get('/driver/my-trips', [DailyTripApiController::class, 'myTrips']);
     Route::post('/bus/{bus}/mark-boarded', [DailyTripApiController::class, 'markBoarded']);
     Route::post('/bus/{bus}/group-board', [DailyTripApiController::class, 'groupBoard']);
     Route::post('/bus/{bus}/mark-dropped', [DailyTripApiController::class, 'markDropped']);
+    Route::post('/bus/{bus}/group-alight', [DailyTripApiController::class, 'groupAlight']);
     Route::get('/bus/{bus}/passengers', [DailyTripApiController::class, 'passengers']);
     Route::post('/bus/{bus}/start-trip', [DailyTripApiController::class, 'startTrip']);
+    Route::post('/bus/{bus}/confirm-trip', [DailyTripApiController::class, 'confirmTrip']);
     Route::post('/bus/{bus}/arrive', [DailyTripApiController::class, 'arrive']);
     Route::post('/bus/{bus}/end-trip', [DailyTripApiController::class, 'endTrip']);
     Route::post('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'store']);

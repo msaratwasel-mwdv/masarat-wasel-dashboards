@@ -25,9 +25,9 @@ class CreateDailyTripsCommand extends Command
      */
     public function handle(\App\Services\TripService $tripService)
     {
-        $this->info('Starting daily trip creation...');
-        $tripService->autoCreateDailyTrips();
-        $this->info('Daily trips created successfully!');
+        $this->info('Starting to generate daily trips for tomorrow...');
+        $results = $tripService->autoCreateDailyTrips();
+        $this->info("Finished! Created: {$results['created']}, Skipped: {$results['skipped']}");
     }
 }
 

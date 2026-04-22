@@ -220,6 +220,16 @@ class StaffController extends Controller
 
         return redirect()->back()->with('success', 'Driver deleted successfully');
     }
+
+    // --- 5. طباعة البطاقة (PRINT) ---
+    public function printCard(User $driver)
+    {
+        $driver->load(['driver', 'assignedBus.school']);
+        
+        return Inertia::render('Admin/Drivers/PrintCard', [
+            'driver' => $driver
+        ]);
+    }
 }
 
 

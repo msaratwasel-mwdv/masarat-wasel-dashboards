@@ -218,6 +218,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('drivers', [StaffController::class, 'storeDriver'])->name('drivers.store');
         Route::put('drivers/{driver}', [StaffController::class, 'updateDriver'])->name('drivers.update');
         Route::delete('drivers/{driver}', [StaffController::class, 'destroyDriver'])->name('drivers.destroy');
+        Route::get('drivers/{driver}/print', [StaffController::class, 'printCard'])->name('drivers.print');
 
         // المشرفين
         Route::resource('assistants', AssistantController::class)->except(['create', 'edit', 'show']);
@@ -265,6 +266,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::resource('daily-trips', \App\Http\Controllers\Admin\DailyTripController::class)
             ->parameters(['daily-trips' => 'trip']);
         Route::post('daily-trips/auto-create', [\App\Http\Controllers\Admin\DailyTripController::class, 'autoCreate'])->name('daily-trips.auto-create');
+        Route::post('daily-trips/{trip}/confirm', [\App\Http\Controllers\Admin\DailyTripController::class, 'confirm'])->name('daily-trips.confirm');
+
+        // التقويم الدراسي والعطل (Admin)
+        Route::resource('academic-calendars', \App\Http\Controllers\Admin\AcademicCalendarController::class)->except(['create', 'show', 'edit']);
+        Route::resource('holidays', \App\Http\Controllers\Admin\HolidayController::class)->except(['create', 'show', 'edit']);
 
         // Alias for notifications to fix frontend desyncs
         Route::prefix('notifications')->group(function () {
