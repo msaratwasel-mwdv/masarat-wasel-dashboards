@@ -351,6 +351,8 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::delete('bus-requests/{busRequest}', [\App\Http\Controllers\School\BusRequestController::class, 'destroy'])->name('bus-requests.destroy');
 
         // 7. الإشعارات
+        Route::get('notifications/sent', [\App\Http\Controllers\School\NotificationController::class, 'sent'])->name('notifications.sent');
+        Route::get('notifications/received', [\App\Http\Controllers\School\NotificationController::class, 'received'])->name('notifications.received');
         Route::resource('notifications', \App\Http\Controllers\School\NotificationController::class);
         Route::post('notifications/preview', [\App\Http\Controllers\School\NotificationController::class, 'preview'])->name('notifications.preview');
 

@@ -119,6 +119,125 @@ class NotificationController extends Controller
     /**
      * Show the form for creating a new notification.
      */
+
+    /**
+     * Display sent notifications only.
+     */
+    public function sent(Request $request)
+    {
+        $schoolId = Auth::user()->school_id;
+        $userId = Auth::id();
+
+        $query = Notification::where('sender_id', $userId)
+            ->with('sender')
+            ->latest();
+
+        if ($request->filled('type')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('template_type', $request->type)
+                  ->orWhere('type', $request->type);
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $notifications = $query->paginate(20);
+
+        $sentBase = Notification::where('sender_id', $userId);
+        $stats = [
+            'total' => (clone $sentBase)->count(),
+            'sent_today' => (clone $sentBase)->whereDate('created_at', today())->count(),
+            'pending' => (clone $sentBase)->whereIn('status', ['pending', 'sent'])->count(),
+        ];
+
+        $templates = NotificationTemplate::active()->get();
+        $classrooms = Classroom::where('school_id', $schoolId)->get();
+        $buses = Bus::where('school_id', $schoolId)->get();
+        $parents = User::atSchool($schoolId)
+            ->withRole('parent')
+            ->get()
+            ->map(fn ($user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email ?? '',
+            ]);
+
+        return Inertia::render('School/Notifications/Sent', [
+            'notifications' => $notifications,
+            'stats' => $stats,
+            'templates' => $templates,
+            'classrooms' => $classrooms,
+            'buses' => $buses,
+            'parents' => $parents,
+            'filters' => $request->only(['status', 'type']),
+        ]);
+    }
+
+    /**
+     * Display received notifications (incidents & reports) only.
+     */
+    public function received(Request $request)
+    {
+        $userId = Auth::id();
+
+        $receivedNotificationIds = \App\Models\NotificationRecipient::where('user_id', $userId)
+            ->pluck('notification_id');
+
+        $query = Notification::whereIn('id', $receivedNotificationIds)
+            ->with('sender')
+            ->latest();
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        $notifications = $query->paginate(20);
+
+        // Enrich with incident details
+        $notifications->getCollection()->transform(function ($notif) {
+            $incidentId = $notif->data['incident_id'] ?? null;
+            if ($notif->type === 'incident' && $incidentId) {
+                $incident = \App\Models\Incident::with([
+                    'bus.driver',
+                    'bus.fieldSupervisor',
+                    'bus',
+                    'reporter'
+                ])->find($incidentId);
+
+                if ($incident && !empty($incident->student_ids)) {
+                    $incident->students_list = \App\Models\Student::whereIn('id', $incident->student_ids)
+                        ->get()
+                        ->map(fn($s) => [
+                            'id' => $s->id,
+                            'name' => $s->full_name,
+                            'student_code' => $s->student_code ?? null,
+                        ]);
+                }
+
+                $notif->incident = $incident;
+            }
+            return $notif;
+        });
+
+        $receivedBase = Notification::whereIn('id', $receivedNotificationIds);
+        $stats = [
+            'total' => (clone $receivedBase)->count(),
+            'unread' => (clone $receivedBase)->whereIn('status', ['sent', 'pending'])->count(),
+            'incidents' => (clone $receivedBase)->where('type', 'incident')->count(),
+        ];
+
+        return Inertia::render('School/Notifications/Received', [
+            'notifications' => $notifications,
+            'stats' => $stats,
+            'filters' => $request->only(['type']),
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new notification.
+     */
     public function create()
     {
         $schoolId = Auth::user()->school_id;

@@ -59,9 +59,16 @@ class School extends Model
         return $this->hasMany(Classroom::class);
     }
 
-    public function enrollments(): HasMany
+    public function enrollments(): HasManyThrough
     {
-        return $this->hasMany(StudentSchoolEnrollment::class);
+        return $this->hasManyThrough(
+            StudentSchoolEnrollment::class,
+            Classroom::class,
+            'school_id',    // FK on classrooms
+            'classroom_id', // FK on student_school_enrollments
+            'id',           // PK on schools
+            'id'            // PK on classrooms
+        );
     }
 
     public function buses(): HasMany

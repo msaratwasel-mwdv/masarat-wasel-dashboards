@@ -27,7 +27,22 @@ export default function SchoolAuthenticatedLayout({
     return "dark";
   });
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("school-sidebar-expanded");
+      try { return saved ? JSON.parse(saved) : []; } catch { return []; }
+    }
+    return [];
+  });
+
+  const toggleMenu = (label: string) => {
+    setExpandedMenus(prev => {
+      const next = prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label];
+      localStorage.setItem("school-sidebar-expanded", JSON.stringify(next));
+      return next;
+    });
+  };
 
   const toggleLang = () => {
     const newLang = lang === "ar" ? "en" : "ar";
@@ -93,8 +108,17 @@ export default function SchoolAuthenticatedLayout({
     },
     {
       label: isRtl ? "الإشعارات" : "Notifications",
-      route: "school.notifications.index",
       icon: "bell",
+      subItems: [
+        {
+          label: isRtl ? "الإشعارات المرسلة" : "Sent Notifications",
+          route: "school.notifications.sent",
+        },
+        {
+          label: isRtl ? "الإشعارات المستلمة (حوادث وبلاغات)" : "Received (Incidents & Reports)",
+          route: "school.notifications.received",
+        },
+      ],
     },
 
     {
@@ -109,7 +133,7 @@ export default function SchoolAuthenticatedLayout({
     },
     {
       label: isRtl ? "تقرير الحضور اليومي" : "Daily Attendance",
-      route: "school.reports.attendance",
+      route: "school.attendance.index",
       icon: "report",
     },
     {
@@ -220,159 +244,118 @@ export default function SchoolAuthenticatedLayout({
             {t("Main Menu")}
           </p>
           {menuItems.map((item) => {
-            const routeExists = item.route !== "#" && route().has(item.route);
-            const isActive = routeExists && route().current(item.route + "*");
+            const hasSubItems = !!(item as any).subItems;
+            const subItems = (item as any).subItems as { label: string; route: string }[] | undefined;
+            const hasActiveChild = subItems?.some(sub => route().has(sub.route) && route().current(sub.route));
+            const routeExists = !hasSubItems && item.route !== "#" && item.route && route().has(item.route);
+            const isActive = (routeExists && route().current(item.route + "*")) || !!hasActiveChild;
+            const isExpanded = expandedMenus.includes(item.label) || !!hasActiveChild;
+
+            const renderIcon = (iconName: string) => {
+              const icons: Record<string, string> = {
+                grid: "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z",
+                classes: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10",
+                teacher: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
+                user: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
+                bus: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4",
+                users: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z",
+                report: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+                bell: "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9",
+                calendar: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+                map: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7",
+                rocket: "M15.585 15.585a6.267 6.267 0 001.188-8.844m-5.454 1.151a6.26 6.26 0 108.159 8.159m-8.158-8.158L3 3m3 3l.857.857m0 0L12 14.286m0 0l.857.857m0 0L21 21m-9-6.714V21m0-13.714V3m-3.429 8.571H3m13.714 0H21",
+              };
+              const cogPaths = [
+                "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z",
+                "M15 12a3 3 0 11-6 0 3 3 0 016 0z",
+              ];
+              if (iconName === "cog") {
+                return (
+                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {cogPaths.map((d, i) => <path key={i} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={d} />)}
+                  </svg>
+                );
+              }
+              const d = icons[iconName];
+              if (!d) return null;
+              return (
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={d} />
+                </svg>
+              );
+            };
+
+            // --- Expandable submenu ---
+            if (hasSubItems && subItems) {
+              return (
+                <div key={item.label} className="space-y-1">
+                  <button
+                    onClick={() => toggleMenu(item.label)}
+                    className={`
+                      w-full group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-200 relative overflow-hidden
+                      ${isActive || isExpanded
+                        ? "bg-brand-yellow/10 text-brand-yellow"
+                        : "text-slate-400 hover:bg-white/5 hover:text-white"
+                      }
+                    `}
+                  >
+                    <span className={`w-5 h-5 ${isRtl ? "ml-4" : "mr-4"} transition-transform group-hover:scale-110 duration-200`}>
+                      {item.icon && renderIcon(item.icon)}
+                    </span>
+                    <span className="flex-1 text-start">{item.label}</span>
+                    <svg
+                      className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? "rotate-90" : isRtl ? "rotate-180" : ""}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  {isExpanded && (
+                    <div className={`mt-1 space-y-1 ${isRtl ? "pr-12" : "pl-12"}`}>
+                      {subItems.map((sub) => {
+                        const isSubActive = route().has(sub.route) && route().current(sub.route);
+                        return (
+                          <Link
+                            key={sub.label}
+                            href={route().has(sub.route) ? route(sub.route) : "#"}
+                            onClick={() => setIsSidebarOpen(false)}
+                            className={`block px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
+                              isSubActive
+                                ? "text-brand-yellow font-bold"
+                                : "text-slate-400 hover:text-white"
+                            }`}
+                          >
+                            {sub.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // --- Normal menu item ---
             return (
               <Link
                 key={item.label}
-                href={routeExists ? route(item.route) : "#"}
+                href={routeExists ? route(item.route!) : "#"}
                 onClick={() => setIsSidebarOpen(false)}
                 className={`
-                                    group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-200 relative overflow-hidden
-                                    ${isActive
+                  group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-200 relative overflow-hidden
+                  ${isActive
                     ? "bg-brand-yellow text-slate-900 font-bold shadow-lg shadow-brand-yellow/20"
                     : "text-slate-400 hover:bg-white/5 hover:text-white"
                   }
-                                `}
+                `}
               >
-                <span
-                  className={`w-5 h-5 ${isRtl ? "ml-4" : "mr-4"
-                    } transition-transform group-hover:scale-110 duration-200`}
-                >
-                  {/* SVG Icons (Simplified) */}
-                  {item.icon === "grid" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "classes" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "teacher" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "user" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "bus" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "users" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "report" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "bell" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "calendar" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "map" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "rocket" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15.585 15.585a6.267 6.267 0 001.188-8.844m-5.454 1.151a6.26 6.26 0 108.159 8.159m-8.158-8.158L3 3m3 3l.857.857m0 0L12 14.286m0 0l.857.857m0 0L21 21m-9-6.714V21m0-13.714V3m-3.429 8.571H3m13.714 0H21"
-                      />
-                    </svg>
-                  )}
-                  {item.icon === "cog" && (
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                  )}
+                <span className={`w-5 h-5 ${isRtl ? "ml-4" : "mr-4"} transition-transform group-hover:scale-110 duration-200`}>
+                  {item.icon && renderIcon(item.icon)}
                 </span>
                 <span className="relative z-10">{item.label}</span>
                 {isActive && (
-                  <div
-                    className={`absolute ${isRtl ? "left-0" : "right-0"
-                      } w-1 h-6 bg-slate-900 rounded-full`}
-                  />
+                  <div className={`absolute ${isRtl ? "left-0" : "right-0"} w-1 h-6 bg-slate-900 rounded-full`} />
                 )}
               </Link>
             );

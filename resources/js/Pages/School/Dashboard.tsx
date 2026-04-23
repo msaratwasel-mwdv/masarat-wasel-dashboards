@@ -77,7 +77,7 @@ export default function SchoolDashboard({ auth, stats, recent_students, system_s
             icon: '📅',
             iconBg: 'bg-orange-500',
             textColor: 'text-orange-600',
-            link: route('school.reports.attendance')
+            link: route('school.attendance.index')
         },
         {
             title: t('Daily Trips'),
@@ -163,7 +163,7 @@ export default function SchoolDashboard({ auth, stats, recent_students, system_s
                                 <span className="text-4xl group-hover:scale-110 transition-transform">🎓</span>
                                 <span className="text-sm font-bold text-cyan-700 dark:text-cyan-300 text-center">{t('Enroll Student')}</span>
                             </Link>
-                            <Link href={route('school.reports.attendance')} className="flex flex-col items-center justify-center p-5 bg-purple-50 dark:bg-purple-900/20 rounded-[20px] hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all gap-3 group border border-purple-100 dark:border-purple-800">
+                            <Link href={route('school.attendance.index')} className="flex flex-col items-center justify-center p-5 bg-purple-50 dark:bg-purple-900/20 rounded-[20px] hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all gap-3 group border border-purple-100 dark:border-purple-800">
                                 <span className="text-4xl group-hover:scale-110 transition-transform">📋</span>
                                 <span className="text-sm font-bold text-purple-700 dark:text-purple-300 text-center">{t('Take Attendance')}</span>
                             </Link>
