@@ -183,7 +183,7 @@ export default function Received({ notifications, stats, auth }: Props) {
                                                 <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                                                     isIncident ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400'
                                                 }`}>
-                                                    {isIncident ? 'INCIDENT REPORT' : 'DISPATCH'} • REF-{notification.id}
+                                                    {isIncident ? t('INCIDENT REPORT') : t('DISPATCH')} • {t('REF-')}{notification.id}
                                                 </span>
                                                 <h3 className="font-black text-xl text-slate-900 dark:text-white leading-snug">
                                                     {isIncident ? notification.title : notification.title}

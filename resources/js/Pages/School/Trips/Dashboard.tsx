@@ -95,22 +95,22 @@ export default function TripDashboard({ auth, dailyTrips, fieldTrips, routes, fi
         <SchoolAuthenticatedLayout
             user={auth.user}
             header={
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 w-full">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 w-full py-2">
                     <div>
                         <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
                             {t('Fleet Operations Center')}
                         </h2>
-                        <div className="flex items-center gap-4 mt-2">
-                             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
+                        <div className="flex items-center gap-4 mt-3">
+                             <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
                                 <button 
                                     onClick={() => setActiveTab('trips')}
-                                    className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${activeTab === 'trips' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                    className={`px-5 py-2 rounded-lg text-sm font-black transition-all ${activeTab === 'trips' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}
                                 >
                                     {t('Daily Trips')}
                                 </button>
                                 <button 
                                     onClick={() => setActiveTab('routes')}
-                                    className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${activeTab === 'routes' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                    className={`px-5 py-2 rounded-lg text-sm font-black transition-all ${activeTab === 'routes' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}
                                 >
                                     {t('Static Routes')}
                                 </button>
@@ -119,22 +119,22 @@ export default function TripDashboard({ auth, dailyTrips, fieldTrips, routes, fi
                     </div>
 
                     {activeTab === 'trips' && (
-                        <div className="flex items-center gap-0 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-all focus-within:ring-2 focus-within:ring-indigo-500/20">
-                            <div className="flex items-center gap-2 px-4 py-2 border-r border-slate-100 dark:border-slate-700">
-                                <Calendar className="w-4 h-4 text-indigo-500" />
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-0 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-all focus-within:ring-2 focus-within:ring-indigo-500/20">
+                            <div className="flex items-center gap-2 px-4 py-3 sm:border-r border-slate-100 dark:border-slate-700">
+                                <Calendar className="w-5 h-5 text-indigo-500" />
                                 <input
                                     type="date"
                                     value={date}
                                     onChange={(e) => { setDate(e.target.value); handleFilterChange(e.target.value, routeId); }}
-                                    className="bg-transparent border-none focus:ring-0 text-[11px] font-black tracking-tight text-slate-700 dark:text-slate-200 p-0"
+                                    className="bg-transparent border-none focus:ring-0 text-xs font-black tracking-tight text-slate-700 dark:text-slate-200 p-0"
                                 />
                             </div>
-                            <div className="flex items-center gap-2 px-4 py-2 bg-slate-50/50 dark:bg-slate-900/20">
-                                <Filter className="w-4 h-4 text-slate-400" />
+                            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50/50 dark:bg-slate-900/20">
+                                <Filter className="w-5 h-5 text-slate-400" />
                                 <select
                                     value={routeId}
                                     onChange={(e) => { setRouteId(e.target.value); handleFilterChange(date, e.target.value); }}
-                                    className="bg-transparent border-none focus:ring-0 text-[10px] uppercase font-black tracking-widest text-slate-600 dark:text-slate-400 p-0 pr-8"
+                                    className={`bg-transparent border-none focus:ring-0 text-xs uppercase font-black tracking-widest text-slate-600 dark:text-slate-400 p-0 cursor-pointer ${isRtl ? 'pl-8' : 'pr-8'}`}
                                 >
                                     <option value="">{t('All Routes')}</option>
                                     {routes.map((r: any) => <option key={r.id} value={r.id.toString()}>{r.name}</option>)}

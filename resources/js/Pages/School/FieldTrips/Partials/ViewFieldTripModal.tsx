@@ -87,7 +87,7 @@ export default function ViewFieldTripModal({ show, onClose, tripId }: Props) {
                                     <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">📍 {t('Deployment')}</p>
                                     <p className="font-black text-sm text-gray-800 dark:text-gray-100 truncate">{tripData.destination_address}</p>
                                     <div className="flex gap-2 mt-1">
-                                        <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 rounded text-[8px] font-black uppercase tracking-widest">Geo-Linked</span>
+                                        <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 rounded text-[8px] font-black uppercase tracking-widest">{t('Geo-Linked')}</span>
                                     </div>
                                 </div>
                                 <div className="p-6 bg-brand-navy text-white rounded-3xl shadow-xl shadow-brand-navy/10 flex flex-col justify-center">
@@ -114,7 +114,7 @@ export default function ViewFieldTripModal({ show, onClose, tripId }: Props) {
                                         {tripData.internal_teachers?.map((teacher: any) => (
                                             <div key={teacher.id} className="p-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl flex items-center justify-between shadow-sm">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 bg-brand-navy rounded-lg flex items-center justify-center text-white text-[10px] font-black uppercase shadow-lg">T</div>
+                                                    <div className="w-8 h-8 bg-brand-navy rounded-lg flex items-center justify-center text-white text-[10px] font-black uppercase shadow-lg">{t('Tch')}</div>
                                                     <div>
                                                         <p className="font-black text-xs text-gray-800 dark:text-gray-100">{teacher.first_name_ar} {teacher.last_name_ar}</p>
                                                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t('School Faculty')}</p>

@@ -450,15 +450,15 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                             <div className="space-y-5 mb-8">
                                 <div>
                                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">{t('Legal Name')}</label>
-                                    <input type="text" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} className="w-full px-5 py-4 border-2 border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 font-bold text-sm" placeholder="Full name..." />
+                                    <input type="text" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} className="w-full px-5 py-4 border-2 border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 font-bold text-sm" placeholder={t("Full name...")} />
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">{t('Contact #')}</label>
-                                    <input type="text" value={memberForm.phone || ''} onChange={e => setMemberForm({...memberForm, phone: e.target.value})} className="w-full px-5 py-4 border-2 border-gray-100 dark:border-gray-800 rounded-2xl font-bold text-sm" placeholder="05XXXXXXXX" />
+                                    <input type="text" value={memberForm.phone || ''} onChange={e => setMemberForm({...memberForm, phone: e.target.value})} className="w-full px-5 py-4 border-2 border-gray-100 dark:border-gray-800 rounded-2xl font-bold text-sm" placeholder={t("05XXXXXXXX")} />
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">{t('ID / Passport')}</label>
-                                    <input type="text" value={memberForm.national_id || ''} onChange={e => setMemberForm({...memberForm, national_id: e.target.value})} className="w-full px-5 py-4 border-2 border-gray-100 dark:border-gray-800 rounded-2xl font-bold text-sm" placeholder="ID number..." />
+                                    <input type="text" value={memberForm.national_id || ''} onChange={e => setMemberForm({...memberForm, national_id: e.target.value})} className="w-full px-5 py-4 border-2 border-gray-100 dark:border-gray-800 rounded-2xl font-bold text-sm" placeholder={t("ID number...")} />
                                 </div>
                             </div>
                             <button 

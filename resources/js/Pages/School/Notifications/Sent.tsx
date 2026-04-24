@@ -294,7 +294,7 @@ export default function Sent({ notifications, stats, templates, classrooms, buse
                                     </div>
                                     <div className="flex-1">
                                         <span className="inline-block px-4 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-4">
-                                            {t(selectedNotification.type)} • REF-{selectedNotification.id}
+                                            {t(selectedNotification.type)} • {t('REF-')}{selectedNotification.id}
                                         </span>
                                         <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white leading-tight font-serif">
                                             {selectedNotification.title}

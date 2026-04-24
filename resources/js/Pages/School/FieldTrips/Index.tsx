@@ -59,7 +59,7 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
             user={auth.user}
             header={
                 <h2 className="text-4xl font-black text-gray-800 dark:text-white tracking-tight">
-                    {t('Field Trips')} <span className="text-[#0e7490] font-normal text-lg ml-2">/ {t('Resource Management')}</span>
+                    {t('Field Trips')}
                 </h2>
             }
         >
@@ -112,7 +112,7 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         placeholder={t('Global Search...')}
-                                        className="w-full pl-12 pr-6 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-transparent dark:border-transparent rounded-full text-gray-700 dark:text-gray-200 focus:bg-white dark:focus:bg-gray-900 focus:border-[#0e7490] transition-all font-bold placeholder-gray-400 shadow-inner"
+                                        className={`w-full py-4 bg-gray-50 dark:bg-gray-700 border-2 border-transparent dark:border-transparent rounded-full text-gray-700 dark:text-gray-200 focus:bg-white dark:focus:bg-gray-900 focus:border-[#0e7490] transition-all font-bold placeholder-gray-400 shadow-inner ${isRtl ? 'pr-12 pl-6' : 'pl-12 pr-6'}`}
                                     />
                                     <div className={`absolute ${isRtl ? 'right-5' : 'left-5'} top-1/2 -translate-y-1/2 text-gray-400`}>
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -124,7 +124,7 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                                     <select
                                         value={statusFilter}
                                         onChange={(e) => setStatusFilter(e.target.value as any)}
-                                        className="w-full lg:w-48 appearance-none pl-12 pr-10 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-transparent rounded-full text-xs font-black uppercase tracking-widest text-[#0e7490] dark:text-cyan-400 focus:bg-white dark:focus:bg-gray-900 focus:border-[#0e7490] transition-all cursor-pointer shadow-inner shadow-cyan-500/5 hover:bg-gray-100 transition-colors"
+                                        className={`w-full lg:w-48 appearance-none py-4 bg-gray-50 dark:bg-gray-700 border-2 border-transparent rounded-full text-xs font-black uppercase tracking-widest text-[#0e7490] dark:text-cyan-400 focus:bg-white dark:focus:bg-gray-900 focus:border-[#0e7490] transition-all cursor-pointer shadow-inner hover:bg-gray-100 ${isRtl ? 'pr-12 pl-10' : 'pl-12 pr-10'}`}
                                     >
                                         <option value="all">{t('Live All Status')}</option>
                                         <option value="pending">{t('Pending Verification')}</option>
@@ -135,7 +135,7 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                                     <div className={`absolute ${isRtl ? 'right-5' : 'left-5'} top-1/2 -translate-y-1/2 text-[#0e7490] dark:text-cyan-400`}>
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                                     </div>
-                                    <div className={`absolute ${isRtl ? 'left-5' : 'right-5'} top-1/2 -translate-y-1/2 text-gray-300`}>
+                                    <div className={`absolute ${isRtl ? 'left-5' : 'right-5'} top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none`}>
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                                     </div>
                                 </div>
