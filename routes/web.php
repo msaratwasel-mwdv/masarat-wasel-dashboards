@@ -263,6 +263,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('field-trips/{field_trip}/approve', [\App\Http\Controllers\Admin\FieldTripController::class, 'approve'])->name('field-trips.approve');
         Route::post('field-trips/{field_trip}/reject', [\App\Http\Controllers\Admin\FieldTripController::class, 'reject'])->name('field-trips.reject');
 
+        Route::get('daily-trips/validate-date', [\App\Http\Controllers\Admin\DailyTripController::class, 'validateDate'])->name('daily-trips.validate-date');
         Route::resource('daily-trips', \App\Http\Controllers\Admin\DailyTripController::class)
             ->parameters(['daily-trips' => 'trip']);
         Route::post('daily-trips/auto-create', [\App\Http\Controllers\Admin\DailyTripController::class, 'autoCreate'])->name('daily-trips.auto-create');

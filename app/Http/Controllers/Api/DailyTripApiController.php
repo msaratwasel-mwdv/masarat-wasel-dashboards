@@ -617,7 +617,87 @@ class DailyTripApiController extends Controller
     {
         $user = $request->user();
         
+        \Log::info('myTrips: starting for user ' . $user->id);
+        
         // Find the bus the user is assigned to (driver or assistant)
+        $bus = Bus::where('driver_id', $user->id)
+                  ->orWhere('assistant_id', $user->id)
+                  ->first();
+
+        if (!$bus) {
+            \Log::info('myTrips: no bus found');
+            return response()->json(['message' => 'لا يوجد حافلة معينة لك.'], 404);
+        }
+
+        \Log::info('myTrips: found bus ' . $bus->id);
+
+        // We fetch today's trips, or tomorrow's if none exist for today (in case of night generation)
+        $date = today();
+        \Log::info('myTrips: fetching trips for date ' . $date->toDateString());
+        
+        $trips = \App\Models\Trip::with('route')
+            ->withCount(['attendances as total_students', 'attendances as excused_count' => function ($query) {
+                $query->where('status', 'excused');
+            }])
+            ->where('bus_id', $bus->id)
+            ->whereDate('trip_date', $date)
+            ->orderBy('type') // forth then back
+            ->get();
+
+        if ($trips->isEmpty()) {
+            \Log::info('myTrips: no trips for today, checking tomorrow');
+            $date = \Carbon\Carbon::tomorrow();
+            $trips = \App\Models\Trip::with('route')
+                ->withCount(['attendances as total_students', 'attendances as excused_count' => function ($query) {
+                    $query->where('status', 'excused');
+                }])
+                ->where('bus_id', $bus->id)
+                ->whereDate('trip_date', $date)
+                ->orderBy('type')
+                ->get();
+        }
+
+        \Log::info('myTrips: found ' . $trips->count() . ' trips');
+
+        $formattedTrips = $trips->map(function ($trip) {
+            return [
+                'id' => $trip->id,
+                'type' => $trip->type,
+                'type_label' => $trip->type === 'forth' ? 'ذهاب' : 'عودة',
+                'status' => $trip->status,
+                'total_students' => $trip->total_students,
+                'excused_count' => $trip->excused_count,
+                'departure_time' => $trip->departure_time,
+                'arrival_time' => $trip->arrival_time,
+                'route' => $trip->route ? [
+                    'id' => $trip->route->id,
+                    'name' => $trip->route->name,
+                ] : null,
+            ];
+        });
+
+        \Log::info('myTrips: returning response');
+
+        return response()->json([
+
+            'date' => $date->toDateString(),
+            'bus' => [
+                'id' => $bus->id,
+                'bus_number' => $bus->bus_number,
+                'plate_number' => $bus->plate_number,
+            ],
+            'trips' => $formattedTrips
+        ]);
+    }
+
+    /**
+     * تاريخ الرحلات للسائق
+     * GET /api/driver/trips-history
+     */
+    public function tripsHistory(Request $request)
+    {
+        $user = $request->user();
+        
         $bus = Bus::where('driver_id', $user->id)
                   ->orWhere('assistant_id', $user->id)
                   ->first();
@@ -626,31 +706,31 @@ class DailyTripApiController extends Controller
             return response()->json(['message' => 'لا يوجد حافلة معينة لك.'], 404);
         }
 
-        // We fetch today's trips, or tomorrow's if none exist for today (in case of night generation)
-        $date = today();
-        $trips = \App\Models\Trip::with('route')
-            ->where('bus_id', $bus->id)
-            ->whereDate('trip_date', $date)
-            ->orderBy('type') // forth then back
-            ->get();
+        $startDate = $request->query('start_date', now()->subDays(30)->toDateString());
+        $endDate = $request->query('end_date', now()->addDays(30)->toDateString());
+        $status = $request->query('status');
 
-        if ($trips->isEmpty()) {
-            $date = \Carbon\Carbon::tomorrow();
-            $trips = \App\Models\Trip::with('route')
-                ->where('bus_id', $bus->id)
-                ->whereDate('trip_date', $date)
-                ->orderBy('type')
-                ->get();
+        $query = \App\Models\Trip::with('route')
+            ->withCount('attendances as total_students')
+            ->where('bus_id', $bus->id)
+            ->whereBetween('trip_date', [$startDate, $endDate])
+            ->orderBy('trip_date', 'desc')
+            ->orderBy('type', 'asc');
+
+        if ($status) {
+            $query->where('status', $status);
         }
 
-        $formattedTrips = $trips->map(function ($trip) {
+        $trips = $query->paginate(20);
+        
+        $formattedTrips = $trips->getCollection()->map(function ($trip) {
             return [
                 'id' => $trip->id,
                 'type' => $trip->type,
                 'type_label' => $trip->type === 'forth' ? 'ذهاب' : 'عودة',
                 'status' => $trip->status,
-                'total_students' => $trip->attendances()->count(),
-                'excused_count' => $trip->attendances()->where('status', 'excused')->count(),
+                'trip_date' => $trip->trip_date->toDateString(),
+                'total_students' => $trip->total_students,
                 'departure_time' => $trip->departure_time,
                 'arrival_time' => $trip->arrival_time,
                 'route' => $trip->route ? [
@@ -661,15 +741,20 @@ class DailyTripApiController extends Controller
         });
 
         return response()->json([
-            'date' => $date->toDateString(),
-            'bus' => [
-                'id' => $bus->id,
-                'bus_number' => $bus->bus_number,
-                'plate_number' => $bus->plate_number,
+            'trips' => $formattedTrips,
+            'pagination' => [
+                'current_page' => $trips->currentPage(),
+                'last_page' => $trips->lastPage(),
+                'total' => $trips->total(),
             ],
-            'trips' => $formattedTrips
+            'filters' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'status' => $status
+            ]
         ]);
     }
+
 
     /**
      * بدء رحلة الحافلة

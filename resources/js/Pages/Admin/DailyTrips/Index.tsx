@@ -7,6 +7,7 @@ import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
 import { Video, ShieldCheck, Play, X, Eye, Edit2, Trash2, CheckCircle2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import axios from 'axios';
 
 interface Driver {
     name: string;
@@ -23,9 +24,10 @@ interface Bus {
 
 interface Trip {
     id: number;
+    trip_date: string;
     type: 'forth' | 'back';
     status: string;
-    departure_time: string;
+    departure_time: string | null;
     arrival_time: string | null;
     bus?: Bus;
     driver?: Driver;
@@ -68,6 +70,18 @@ export default function Index({ auth, trips, filters }: Props) {
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
     const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+    const [autoCreateDate, setAutoCreateDate] = useState(new Date().toISOString().split('T')[0]);
+    const [dateValidation, setDateValidation] = useState<{ status: string; message: string; message_ar: string; is_working: boolean } | null>(null);
+
+    useEffect(() => {
+        if (!autoCreateDate) {
+            setDateValidation(null);
+            return;
+        };
+        axios.get(route('admin.daily-trips.validate-date'), { params: { date: autoCreateDate } })
+            .then(res => setDateValidation(res.data))
+            .catch(err => console.error('Date validation failed:', err));
+    }, [autoCreateDate]);
 
     useEffect(() => {
         if (flash?.error) {
@@ -126,24 +140,31 @@ export default function Index({ auth, trips, filters }: Props) {
                             {isRTL ? 'إنشاء يدوي' : 'Manual Create'}
                         </button>
 
-                        <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-1 shadow-sm">
-                            <input
-                                type="date"
-                                id="autoCreateDate"
-                                className="bg-transparent border-none focus:ring-0 text-sm dark:text-white px-2 py-1"
-                                defaultValue={new Date().toISOString().split('T')[0]}
-                            />
-                            <button
-                                onClick={() => {
-                                    const dateInput = document.getElementById('autoCreateDate') as HTMLInputElement;
-                                    if (confirm(isRTL ? 'هل أنت متأكد من إنشاء رحلات لهذا اليوم؟' : 'Are you sure you want to create trips for this date?')) {
-                                        router.post(route('admin.daily-trips.auto-create'), { date: dateInput.value });
-                                    }
-                                }}
-                                className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all"
-                            >
-                                🚀 {isRTL ? 'توليد تلقائي' : 'Auto-Create'}
-                            </button>
+                        <div className="flex flex-col gap-1 items-start">
+                            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-1 shadow-sm">
+                                <input
+                                    type="date"
+                                    id="autoCreateDate"
+                                    className="bg-transparent border-none focus:ring-0 text-sm dark:text-white px-2 py-1"
+                                    value={autoCreateDate}
+                                    onChange={(e) => setAutoCreateDate(e.target.value)}
+                                />
+                                <button
+                                    onClick={() => {
+                                        if (confirm(isRTL ? 'هل أنت متأكد من إنشاء رحلات لهذا اليوم؟' : 'Are you sure you want to create trips for this date?')) {
+                                            router.post(route('admin.daily-trips.auto-create'), { date: autoCreateDate });
+                                        }
+                                    }}
+                                    className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all"
+                                >
+                                    🚀 {isRTL ? 'توليد تلقائي' : 'Auto-Create'}
+                                </button>
+                            </div>
+                            {dateValidation && (
+                                <div className={`text-[10px] px-2 font-semibold max-w-[250px] leading-tight ${dateValidation.is_working ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                    {isRTL ? dateValidation.message_ar : dateValidation.message}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -251,7 +272,7 @@ export default function Index({ auth, trips, filters }: Props) {
                                                     {(trips.current_page - 1) * trips.per_page + index + 1}
                                                 </td>
                                                 <td className="px-6 py-4 text-center font-medium text-gray-800 dark:text-gray-200">
-                                                    {new Date(trip.departure_time).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+                                                    {new Date(trip.trip_date).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
                                                         year: 'numeric', month: 'short', day: 'numeric'
                                                     })}
                                                 </td>

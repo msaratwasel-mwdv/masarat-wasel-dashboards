@@ -168,7 +168,28 @@ class DailyTripController extends Controller
         $date = $request->filled('date') ? Carbon::parse($request->date) : null;
         $result = $this->tripService->autoCreateDailyTrips($date);
 
-        return back()->with('success', "Auto-creation complete: {$result['created']} trips created, {$result['skipped']} skipped.");
+        if (isset($result['status']) && $result['status'] === 'skipped') {
+            $reason = \Illuminate\Support\Facades\App::getLocale() === 'ar' ? ($result['reason_ar'] ?? $result['reason']) : ($result['reason'] ?? 'No schools are active for this date.');
+            return back()->with('error', $reason);
+        }
+
+        $message = "Auto-creation complete: {$result['created']} trips created, {$result['skipped']} skipped.";
+        return back()->with('success', $message);
+    }
+
+    /**
+     * Validate a date for auto-creation.
+     */
+    public function validateDate(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+        ]);
+
+        $date = Carbon::parse($request->date);
+        $result = $this->tripService->validateTargetDate($date);
+
+        return response()->json($result);
     }
 }
 

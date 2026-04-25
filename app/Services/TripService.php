@@ -32,6 +32,8 @@ class TripService
         $created = 0;
         $skipped = 0;
         $activeSchools = [];
+        $reasons = [];
+        $reasonsAr = [];
 
         // 1. فحص المدارس والتقويم الدراسي والعطل
         $schools = School::all();
@@ -43,6 +45,8 @@ class TripService
                 ->first();
 
             if (!$calendar) {
+                $reasons[] = "School {$school->name} has no active calendar.";
+                $reasonsAr[] = "مدرسة {$school->name}: لا يوجد تقويم نشط.";
                 Log::info("[DailyTrips] School {$school->id} skipped: No active calendar.");
                 continue;
             }
@@ -50,6 +54,9 @@ class TripService
             $workingDays = is_string($calendar->working_days) ? json_decode($calendar->working_days, true) : $calendar->working_days;
             $workingDays = $workingDays ?? [];
             if (!in_array($dayName, $workingDays)) {
+                $dayAr = $dayTranslations[$dayName] ?? $targetDate->englishDayOfWeek;
+                $reasons[] = "{$targetDate->englishDayOfWeek} is an off-day for school {$school->name}.";
+                $reasonsAr[] = "مدرسة {$school->name}: يوم {$dayAr} هو يوم عطلة.";
                 Log::info("[DailyTrips] School {$school->id} skipped: Not a working day ($dayName).");
                 continue;
             }
@@ -62,6 +69,8 @@ class TripService
                 ->exists();
 
             if ($isHoliday) {
+                $reasons[] = "{$targetDate->toDateString()} is a holiday for school {$school->name}.";
+                $reasonsAr[] = "{$targetDate->toDateString()} هو يوم عطلة رسمية لمدرسة {$school->name}.";
                 Log::info("[DailyTrips] School {$school->id} skipped: Holiday.");
                 continue;
             }
@@ -71,7 +80,13 @@ class TripService
 
         if (empty($activeSchools)) {
             Log::info('[DailyTrips] No active schools found for this date. Exiting.');
-            return ['created' => 0, 'skipped' => 0];
+            return [
+                'created' => 0, 
+                'skipped' => 0, 
+                'status' => 'skipped', 
+                'reason' => count($reasons) > 0 ? implode(' ', array_unique($reasons)) : 'No schools are active for this date.',
+                'reason_ar' => count($reasonsAr) > 0 ? implode(' ', array_unique($reasonsAr)) : 'لا توجد مدارس نشطة في هذا التاريخ.'
+            ];
         }
 
         // 2. معالجة الباصات بنظام الـ Chunking لتوفير الذاكرة
@@ -103,6 +118,93 @@ class TripService
         return [
             'created' => $created,
             'skipped' => $skipped,
+            'status' => 'completed'
+        ];
+    }
+
+    /**
+     * Validate if a specific date is a working day, holiday, or has no calendar.
+     * Returns ['status' => string, 'message' => string, 'is_working' => bool]
+     */
+    public function validateTargetDate(Carbon $date): array
+    {
+        $dayName = strtolower($date->englishDayOfWeek);
+        $schools = School::all();
+        
+        if ($schools->isEmpty()) {
+            return [
+                'status' => 'no_schools',
+                'message' => 'No schools found in the system.',
+                'message_ar' => 'لا توجد مدارس في النظام.',
+                'is_working' => false
+            ];
+        }
+
+        $activeCount = 0;
+        $reasons = [];
+        $reasonsAr = [];
+
+        $dayTranslations = [
+            'sunday' => 'الأحد',
+            'monday' => 'الاثنين',
+            'tuesday' => 'الثلاثاء',
+            'wednesday' => 'الأربعاء',
+            'thursday' => 'الخميس',
+            'friday' => 'الجمعة',
+            'saturday' => 'السبت',
+        ];
+
+        foreach ($schools as $school) {
+            $calendar = AcademicCalendar::where('school_id', $school->id)
+                ->where('is_active', true)
+                ->where('start_date', '<=', $date)
+                ->where('end_date', '>=', $date)
+                ->first();
+
+            if (!$calendar) {
+                $reasons[] = "School {$school->name}: No active calendar.";
+                $reasonsAr[] = "مدرسة {$school->name}: لا يوجد تقويم نشط.";
+                continue;
+            }
+
+            $workingDays = is_string($calendar->working_days) ? json_decode($calendar->working_days, true) : $calendar->working_days;
+            if (!in_array($dayName, $workingDays ?? [])) {
+                $dayAr = $dayTranslations[$dayName] ?? $dayName;
+                $reasons[] = "School {$school->name}: {$date->englishDayOfWeek} is an off-day.";
+                $reasonsAr[] = "مدرسة {$school->name}: يوم {$dayAr} هو يوم عطلة.";
+                continue;
+            }
+
+            $isHoliday = Holiday::where(function($q) use ($school) {
+                    $q->where('school_id', $school->id)->orWhereNull('school_id');
+                })
+                ->where('start_date', '<=', $date)
+                ->where('end_date', '>=', $date)
+                ->exists();
+
+            if ($isHoliday) {
+                $reasons[] = "School {$school->name}: Today is a holiday.";
+                $reasonsAr[] = "مدرسة {$school->name}: هذا اليوم عطلة رسمية.";
+                continue;
+            }
+
+            $activeCount++;
+        }
+
+        if ($activeCount > 0) {
+            return [
+                'status' => 'working',
+                'message' => "Confirmed: {$activeCount} school(s) have a working day on this date.",
+                'message_ar' => "تأكيد: {$activeCount} مدرسة لديها دوام في هذا التاريخ.",
+                'is_working' => true
+            ];
+        }
+
+        return [
+            'status' => 'skipped',
+            'message' => count($reasons) > 0 ? implode(' ', array_unique($reasons)) : 'This date is not a working day for any school.',
+            'message_ar' => count($reasonsAr) > 0 ? implode(' ', array_unique($reasonsAr)) : 'هذا التاريخ ليس يوم عمل لأي مدرسة.',
+            'is_working' => false
         ];
     }
 

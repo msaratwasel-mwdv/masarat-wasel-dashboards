@@ -50,7 +50,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // --- ركوب/نزول الطلاب (للمشرف والسائق) ---
     Route::get('/driver/my-trips', [DailyTripApiController::class, 'myTrips']);
+    Route::get('/driver/trips-history', [DailyTripApiController::class, 'tripsHistory']);
     Route::post('/bus/{bus}/mark-boarded', [DailyTripApiController::class, 'markBoarded']);
+
     Route::post('/bus/{bus}/group-board', [DailyTripApiController::class, 'groupBoard']);
     Route::post('/bus/{bus}/mark-dropped', [DailyTripApiController::class, 'markDropped']);
     Route::post('/bus/{bus}/group-alight', [DailyTripApiController::class, 'groupAlight']);
