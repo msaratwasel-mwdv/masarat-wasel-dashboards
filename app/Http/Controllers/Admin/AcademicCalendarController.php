@@ -40,7 +40,7 @@ class AcademicCalendarController extends Controller
         return redirect()->back()->with('success', 'تم إنشاء التقويم الدراسي بنجاح');
     }
 
-    public function update(Request $request, AcademicCalendar $calendar)
+    public function update(Request $request, AcademicCalendar $academic_calendar)
     {
         $validated = $request->validate([
             'school_id' => 'required|exists:schools,id',
@@ -54,17 +54,17 @@ class AcademicCalendarController extends Controller
 
         if ($request->is_active) {
             AcademicCalendar::where('school_id', $request->school_id)
-                ->where('id', '!=', $calendar->id)
+                ->where('id', '!=', $academic_calendar->id)
                 ->update(['is_active' => false]);
         }
 
-        $calendar->update($validated);
+        $academic_calendar->update($validated);
         return redirect()->back()->with('success', 'تم تحديث التقويم بنجاح');
     }
 
-    public function destroy(AcademicCalendar $calendar)
+    public function destroy(AcademicCalendar $academic_calendar)
     {
-        $calendar->delete();
+        $academic_calendar->delete();
         return redirect()->back()->with('success', 'تم حذف التقويم بنجاح');
     }
 }
