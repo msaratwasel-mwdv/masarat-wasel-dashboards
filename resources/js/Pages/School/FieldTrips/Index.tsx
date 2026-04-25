@@ -1,9 +1,33 @@
 import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import SchoolAuthenticatedLayout from '@/Layouts/SchoolAuthenticatedLayout';
 import useTranslation from '@/hooks/useTranslation';
 import CreateFieldTripModal from './Partials/CreateFieldTripModal';
 import ViewFieldTripModal from './Partials/ViewFieldTripModal';
+import { motion } from 'framer-motion';
+import { 
+    Map, Clock, CheckCircle, Navigation, 
+    Search, Plus, Eye, 
+    Calendar, MapPin, Users
+} from 'lucide-react';
+import {
+    DS_pageWrapper,
+    DS_pageTitle,
+    DS_statCard,
+    DS_statIcon,
+    DS_statLabel,
+    DS_statValue,
+    DS_card,
+    DS_searchInput,
+    DS_btnGold,
+    DS_tableWrapper,
+    DS_tableBase,
+    DS_tableHead,
+    DS_tableRow,
+    DS_tableTh,
+    DS_tableTd,
+    DS_filterBtn,
+} from '@/lib/DS';
 
 interface FieldTripsProps {
     auth: any;
@@ -14,7 +38,8 @@ interface FieldTripsProps {
 }
 
 export default function Index({ auth, fieldTrips = [], classrooms = [], teachers = [] }: FieldTripsProps) {
-    const { t, isRtl } = useTranslation();
+    const { lang } = useTranslation();
+    const isRtl = lang === 'ar';
 
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
@@ -34,209 +59,227 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
         setShowViewModal(true);
     };
 
+    const translateStatus = (status: string) => {
+        const map: Record<string, string> = {
+            pending:     isRtl ? 'قيد الانتظار'    : 'Pending',
+            approved:    isRtl ? 'موافق عليه'       : 'Approved',
+            in_progress: isRtl ? 'قيد التنفيذ'      : 'In Progress',
+            completed:   isRtl ? 'مكتملة'           : 'Completed',
+            cancelled:   isRtl ? 'ملغاة / مرفوضة'  : 'Cancelled',
+        };
+        return map[status] || status;
+    };
 
     const getStatusBadge = (status: string) => {
-        const styles = {
-            pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800",
-            approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800",
-            in_progress: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800",
-            completed: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800",
-            cancelled: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800",
+        const configs: Record<string, string> = {
+            pending:     'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800',
+            approved:    'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
+            in_progress: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
+            completed:   'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800',
+            cancelled:   'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',
         };
-        const currentStyle = styles[status as keyof typeof styles] || "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700";
-
-        const label = t(status === 'cancelled' ? 'Rejected/Cancelled' : status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' '));
-
+        const cls = configs[status] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300';
         return (
-            <span className={`px-4 py-1.5 text-[9px] font-black rounded-full border shadow-sm uppercase tracking-widest ${currentStyle}`}>
-                {label}
+            <span className={`px-2.5 py-1 text-xs font-bold rounded-[8px] border inline-flex items-center gap-1.5 ${cls}`}>
+                {status === 'in_progress' && <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />}
+                {translateStatus(status)}
             </span>
         );
     };
 
+    const filterBtns = [
+        { key: 'all',         label: isRtl ? 'الكل'          : 'All' },
+        { key: 'pending',     label: isRtl ? 'قيد الانتظار'  : 'Pending' },
+        { key: 'approved',    label: isRtl ? 'موافق عليه'    : 'Approved' },
+        { key: 'in_progress', label: isRtl ? 'قيد التنفيذ'   : 'In Progress' },
+        { key: 'completed',   label: isRtl ? 'مكتملة'        : 'Completed' },
+    ];
+
+    const statsCards = [
+        { label: isRtl ? 'إجمالي الرحلات'     : 'Total Trips',      val: fieldTrips.length,                                           icon: <Map className="w-5 h-5" />,        accent: 'navy' as const },
+        { label: isRtl ? 'طلبات قيد الانتظار' : 'Pending Requests', val: fieldTrips.filter(x => x.status === 'pending').length,      icon: <Clock className="w-5 h-5" />,      accent: 'gold' as const },
+        { label: isRtl ? 'جارية الآن'         : 'Active Now',       val: fieldTrips.filter(x => x.status === 'in_progress').length,  icon: <Navigation className="w-5 h-5" />, accent: 'blue' as const },
+        { label: isRtl ? 'مكتملة'             : 'Finalized',        val: fieldTrips.filter(x => x.status === 'completed').length,    icon: <CheckCircle className="w-5 h-5" />, accent: 'green' as const },
+    ];
+
+    const tableHeaders = [
+        isRtl ? 'الرحلة والوصف'  : 'Trip & Description',
+        isRtl ? 'التاريخ والوقت' : 'Schedule',
+        isRtl ? 'الوجهة'         : 'Destination',
+        isRtl ? 'المشاركون'      : 'Participants',
+        isRtl ? 'الحالة'         : 'Status',
+        isRtl ? 'الإجراءات'      : 'Operations',
+    ];
+
     return (
         <SchoolAuthenticatedLayout
             user={auth.user}
-            header={
-                <h2 className="text-4xl font-black text-gray-800 dark:text-white tracking-tight">
-                    {t('Field Trips')}
-                </h2>
-            }
+            header={<h2 className={DS_pageTitle}>{isRtl ? 'الرحلات الميدانية' : 'Field Trips'}</h2>}
         >
-            <Head title={t('Field Trips')} />
+            <Head title={isRtl ? 'الرحلات الميدانية' : 'Field Trips'} />
 
-            <div className={`space-y-8 pb-10 ${isRtl ? 'rtl' : 'ltr'}`}>
+            <div className={DS_pageWrapper}>
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {[
-                        { label: 'Total Trips', value: fieldTrips.length, icon: '📊', color: 'bg-cyan-600' },
-                        { label: 'Pending Requests', value: fieldTrips.filter(t => t.status === 'pending').length, icon: '⏳', color: 'bg-yellow-500' },
-                        { label: 'Active Now', value: fieldTrips.filter(t => t.status === 'in_progress').length, icon: '🚀', color: 'bg-orange-500' },
-                        { label: 'Finalized', value: fieldTrips.filter(t => t.status === 'completed').length, icon: '✅', color: 'bg-purple-600' },
-                    ].map((stat, idx) => (
-                        <div key={idx} className="bg-white dark:bg-gray-800 p-6 rounded-[35px] shadow-sm border border-gray-100 dark:border-gray-700 transition-all hover:shadow-xl group overflow-hidden relative">
-                            <div className={`absolute top-0 right-0 w-24 h-24 -mt-8 -mr-8 opacity-5 rounded-full ${stat.color} transition-transform group-hover:scale-150`}></div>
-                            <div className="flex justify-between items-start mb-4">
-                                <div className={`w-12 h-12 ${stat.color} rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg shadow-cyan-500/10`}>
-                                    {stat.icon}
-                                </div>
+                <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {statsCards.map((s, idx) => (
+                        <div key={idx} className={`${DS_statCard(s.accent)} ${isRtl ? "flex-row-reverse" : ""}`}>
+                            <div className={DS_statIcon(s.accent)}>{s.icon}</div>
+                            <div className={isRtl ? "text-right" : "text-left"}>
+                                <p className={DS_statLabel}>{s.label}</p>
+                                <p className={DS_statValue}>{s.val}</p>
                             </div>
-                            <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">{t(stat.label)}</p>
-                            <p className="text-4xl font-black text-gray-800 dark:text-white">{stat.value}</p>
                         </div>
                     ))}
-                </div>
+                </motion.div>
 
-                {/* Main Content Container */}
-                <div className="bg-white dark:bg-gray-800 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                    <div className="p-8">
-                        {/* Header Section with Actions */}
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-10 pb-8 border-b border-gray-50 dark:border-gray-700">
-                            <div className="flex items-center gap-5">
-                                <div className="p-5 bg-gradient-to-br from-[#0e7490] to-blue-600 text-white rounded-[25px] shadow-xl shadow-cyan-500/20">
-                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                </div>
-                                <div>
-                                    <h1 className="text-2xl font-black text-gray-800 dark:text-white mb-1 uppercase tracking-tight">{t('Registered Trips')}</h1>
-                                    <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                                        {t('Showing')} <span className="text-[#0e7490]">{filteredTrips.length}</span> {t('active requests')}
-                                    </p>
-                                </div>
+                {/* Main Card */}
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className={DS_card}>
+
+                    {/* Toolbar */}
+                    <div className="p-4 border-b border-gray-100 dark:border-[#243460] flex flex-wrap items-center justify-between gap-4 bg-gray-50/50 dark:bg-[#0f2044]/5">
+                        <div className={`flex items-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
+                            <div className="w-10 h-10 rounded-[14px] bg-[#0f2044]/5 dark:bg-[#0f2044]/30 flex items-center justify-center text-[#0f2044] dark:text-[#7ba7e8]">
+                                <Map className="w-5 h-5" />
                             </div>
-
-                            <div className="flex flex-col sm:flex-row items-center gap-4">
-                                {/* Search Bar */}
-                                <div className="relative w-full sm:w-64">
-                                    <input
-                                        type="text"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        placeholder={t('Global Search...')}
-                                        className={`w-full py-4 bg-gray-50 dark:bg-gray-700 border-2 border-transparent dark:border-transparent rounded-full text-gray-700 dark:text-gray-200 focus:bg-white dark:focus:bg-gray-900 focus:border-[#0e7490] transition-all font-bold placeholder-gray-400 shadow-inner ${isRtl ? 'pr-12 pl-6' : 'pl-12 pr-6'}`}
-                                    />
-                                    <div className={`absolute ${isRtl ? 'right-5' : 'left-5'} top-1/2 -translate-y-1/2 text-gray-400`}>
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                    </div>
-                                </div>
-
-                                {/* Filter Dropdown */}
-                                <div className="relative w-full sm:w-auto">
-                                    <select
-                                        value={statusFilter}
-                                        onChange={(e) => setStatusFilter(e.target.value as any)}
-                                        className={`w-full lg:w-48 appearance-none py-4 bg-gray-50 dark:bg-gray-700 border-2 border-transparent rounded-full text-xs font-black uppercase tracking-widest text-[#0e7490] dark:text-cyan-400 focus:bg-white dark:focus:bg-gray-900 focus:border-[#0e7490] transition-all cursor-pointer shadow-inner hover:bg-gray-100 ${isRtl ? 'pr-12 pl-10' : 'pl-12 pr-10'}`}
-                                    >
-                                        <option value="all">{t('Live All Status')}</option>
-                                        <option value="pending">{t('Pending Verification')}</option>
-                                        <option value="approved">{t('Admin Approved')}</option>
-                                        <option value="in_progress">{t('Trips In Progress')}</option>
-                                        <option value="completed">{t('Past Trips')}</option>
-                                    </select>
-                                    <div className={`absolute ${isRtl ? 'right-5' : 'left-5'} top-1/2 -translate-y-1/2 text-[#0e7490] dark:text-cyan-400`}>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                                    </div>
-                                    <div className={`absolute ${isRtl ? 'left-5' : 'right-5'} top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none`}>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={() => setShowCreateModal(true)}
-                                    className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-[#0e7490] to-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-full hover:shadow-2xl hover:shadow-cyan-500/30 transition-all active:scale-95 flex items-center justify-center gap-3 shadow-lg"
-                                >
-                                    <span className="text-xl leading-none font-normal">+</span> {t('Request New Trip')}
-                                </button>
+                            <div className={isRtl ? "text-right" : "text-left"}>
+                                <h3 className="text-base font-bold text-[#0f2044] dark:text-white">
+                                    {isRtl ? 'الرحلات الميدانية المسجلة' : 'Registered Field Trips'}
+                                </h3>
+                                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                    {isRtl ? `عرض ${filteredTrips.length} رحلة` : `Showing ${filteredTrips.length} trips`}
+                                </p>
                             </div>
                         </div>
 
-                        {/* Professional Table */}
-                        <div className="overflow-x-auto custom-scrollbar rounded-3xl border border-gray-50 dark:border-gray-700">
-                            <table className="w-full text-start border-collapse">
-                                <thead>
-                                    <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
-                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-start">{t('Identity')}</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-start">{t('Dep. Schedule')}</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-start">{t('Target Hub')}</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Participants')}</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Status')}</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] text-center">{t('Operations')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                                    {filteredTrips.length > 0 ? (
-                                        filteredTrips.map((trip) => (
-                                            <tr key={trip.id} className="group transition-all hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
-                                                <td className="px-8 py-6">
-                                                    <div className="font-black text-gray-800 dark:text-white mb-1 group-hover:text-[#0e7490] transition-colors">{trip.name}</div>
-                                                    <div className="text-[10px] font-bold text-gray-400 group-hover:text-gray-500 max-w-xs truncate">{trip.description}</div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <span className="flex items-center gap-2 text-xs font-black text-gray-700 dark:text-gray-300">
-                                                            <span className="opacity-40">📅</span> {trip.date}
-                                                        </span>
-                                                        <span className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
-                                                            <span className="opacity-40">🕐</span> {trip.departure_time}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <div className="text-xs font-black text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                                                        <span className="text-cyan-500">📍</span> {trip.destination_address}
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6 text-center">
-                                                    <div className="flex flex-col items-center gap-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] font-black text-[#0e7490] dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/30 px-2 py-0.5 rounded-md min-w-[50px] text-center">
-                                                                {trip.students_count || 0} {t('St')}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/10 px-2 py-0.5 rounded-md min-w-[50px] text-center">
-                                                                {trip.internal_teachers_count || 0} {t('Tch')}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6 text-center">
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        {getStatusBadge(trip.status)}
-                                                        {trip.status === 'cancelled' && trip.rejection_reason && (
-                                                            <div className="text-[9px] text-red-500 mt-1 max-w-[120px] text-justify break-words">
-                                                                <span className="font-bold">{t('Reason')}:</span> {trip.rejection_reason}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6 text-center">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <button 
-                                                            onClick={() => handleView(trip.id)}
-                                                            className="p-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-400 hover:text-[#0e7490] dark:hover:text-cyan-400 hover:shadow-md rounded-2xl transition-all"
-                                                        >
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7" /></svg>
-                                                        </button>
-                                                        {/* Verification button removed - Admin only task */}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={6} className="px-8 py-20 text-center">
-                                                <div className="flex flex-col items-center gap-5 opacity-40">
-                                                    <div className="w-24 h-24 bg-gray-100 dark:bg-gray-900 rounded-[35px] flex items-center justify-center text-5xl">🚌</div>
-                                                    <p className="text-sm font-black text-gray-500 uppercase tracking-widest">{t('No Deployment Found')}</p>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                        <div className="flex flex-col sm:flex-row items-center gap-3">
+                            <div className="relative w-full sm:w-60">
+                                <Search className={`absolute ${isRtl ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none`} />
+                                <input
+                                    type="text"
+                                    placeholder={isRtl ? 'بحث في الرحلات...' : 'Search trips...'}
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className={`${DS_searchInput} ${isRtl ? "pr-10 pl-4" : "pl-10 pr-4"}`}
+                                    dir={isRtl ? "rtl" : "ltr"}
+                                />
+                            </div>
+                            <button onClick={() => setShowCreateModal(true)} className={DS_btnGold}>
+                                <Plus className="w-4 h-4" />
+                                {isRtl ? 'طلب رحلة جديدة' : 'Request New Trip'}
+                            </button>
                         </div>
                     </div>
-                </div>
+
+                    {/* Filter Tabs */}
+                    <div className="px-4 py-3 border-b border-gray-100 dark:border-[#243460] flex gap-2 flex-wrap bg-white dark:bg-transparent">
+                        {filterBtns.map(f => (
+                            <button key={f.key} onClick={() => setStatusFilter(f.key as any)} className={DS_filterBtn(statusFilter === f.key)}>
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Table */}
+                    <div className={DS_tableWrapper}>
+                        <table className={DS_tableBase}>
+                            <thead className={DS_tableHead}>
+                                <tr>
+                                    {tableHeaders.map(h => <th key={h} className={DS_tableTh(isRtl)}>{h}</th>)}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredTrips.length > 0 ? (
+                                    filteredTrips.map((trip) => (
+                                        <tr key={trip.id} className={`${DS_tableRow} cursor-pointer`} onClick={() => handleView(trip.id)}>
+                                            {/* Trip Name */}
+                                            <td className={DS_tableTd}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-[12px] bg-[#0f2044]/5 dark:bg-[#0f2044]/30 flex items-center justify-center text-[#0f2044] dark:text-[#7ba7e8] flex-shrink-0">
+                                                        <Map className="w-5 h-5" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-sm text-[#0f2044] dark:text-white">{trip.name}</div>
+                                                        <div className="text-xs text-gray-400 max-w-[180px] truncate mt-0.5">{trip.description}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            {/* Schedule */}
+                                            <td className={DS_tableTd}>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300">
+                                                        <Calendar className="w-3.5 h-3.5 text-[#0f2044]/40" /> {trip.date}
+                                                    </span>
+                                                    <span className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
+                                                        <Clock className="w-3 h-3" /> {trip.departure_time}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            {/* Destination */}
+                                            <td className={DS_tableTd}>
+                                                <div className="flex items-start gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                                    <MapPin className="w-3.5 h-3.5 text-[#0f2044]/50 dark:text-[#7ba7e8] mt-0.5 flex-shrink-0" />
+                                                    <span className="max-w-[140px] leading-tight">{trip.destination_address}</span>
+                                                </div>
+                                            </td>
+                                            {/* Participants */}
+                                            <td className={DS_tableTd}>
+                                                <div className="flex flex-col gap-1.5">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Users className="w-3.5 h-3.5 text-gray-400" />
+                                                        <span className="text-[10px] font-bold text-[#0f2044] dark:text-[#7ba7e8] bg-[#0f2044]/5 dark:bg-[#0f2044]/30 px-2 py-0.5 rounded-[6px]">
+                                                            {trip.students_count || 0} {isRtl ? 'طالب' : 'Students'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Users className="w-3.5 h-3.5 text-gray-400" />
+                                                        <span className="text-[10px] font-bold text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-[6px]">
+                                                            {trip.internal_teachers_count || 0} {isRtl ? 'معلم' : 'Teachers'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            {/* Status */}
+                                            <td className={DS_tableTd}>
+                                                <div className="flex flex-col gap-2">
+                                                    {getStatusBadge(trip.status)}
+                                                    {trip.status === 'cancelled' && trip.rejection_reason && (
+                                                        <div className="text-[10px] text-red-500 max-w-[140px] bg-red-50 dark:bg-red-900/10 px-2 py-1 rounded-[8px] leading-relaxed border border-red-100 dark:border-red-900/30">
+                                                            <span className="font-bold">{isRtl ? 'السبب:' : 'Reason:'}</span> {trip.rejection_reason}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            {/* Actions */}
+                                            <td className={`${DS_tableTd} ${isRtl ? 'text-left' : 'text-right'}`}>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleView(trip.id); }}
+                                                    className="p-2 text-gray-400 hover:text-[#0f2044] hover:bg-[#0f2044]/5 dark:hover:text-white dark:hover:bg-[#243460] rounded-[10px] transition-all"
+                                                    title={isRtl ? 'عرض التفاصيل' : 'View Details'}
+                                                >
+                                                    <Eye className="w-5 h-5" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={6} className="py-16 text-center">
+                                            <div className="w-16 h-16 bg-gray-50 dark:bg-[#0f2044]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <Map className="w-7 h-7 text-gray-300" />
+                                            </div>
+                                            <h3 className="text-base font-bold text-[#0f2044] dark:text-white mb-1">
+                                                {isRtl ? 'لا توجد رحلات مطابقة' : 'No Trips Found'}
+                                            </h3>
+                                            <p className="text-gray-400 text-sm">
+                                                {isRtl ? 'جرب تغيير البحث أو الفلتر' : 'Try adjusting your search or filters'}
+                                            </p>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </motion.div>
 
                 {/* Create Modal */}
                 <CreateFieldTripModal

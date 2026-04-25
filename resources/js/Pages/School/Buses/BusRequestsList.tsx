@@ -2,6 +2,31 @@ import { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import SchoolAuthenticatedLayout from '@/Layouts/SchoolAuthenticatedLayout';
 import useTranslation from '@/hooks/useTranslation';
+import Modal from '@/Components/Modal';
+import { motion } from 'framer-motion';
+import { 
+    Bus as BusIcon, 
+    Calendar, 
+    Users, 
+    FileText, 
+    Info, 
+    ArrowLeft, 
+    ArrowRight,
+    Plus,
+    XCircle,
+    CheckCircle2,
+    Clock
+} from 'lucide-react';
+import {
+    DS_pageWrapper,
+    DS_pageTitle,
+    DS_sectionHeader,
+    DS_searchInput,
+    DS_btnGold,
+    DS_modalHeader,
+    DS_submitBtn,
+    DS_cancelBtn,
+} from '@/lib/DS';
 
 interface BusRequestsProps {
     auth: any;
@@ -11,7 +36,6 @@ interface BusRequestsProps {
 export default function BusRequestsList({ auth, requests: serverRequests }: BusRequestsProps) {
     const { t, isRtl } = useTranslation();
 
-    // Use real server data
     const requests = serverRequests || [];
 
     const [showRequestModal, setShowRequestModal] = useState(false);
@@ -44,13 +68,13 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'pending':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">{t('Pending')}</span>;
+                return <span className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-[8px] bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50"><Clock className="w-3.5 h-3.5" />{t('Pending')}</span>;
             case 'approved':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">{t('Approved')}</span>;
+                return <span className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-[8px] bg-[#f5b800]/20 text-[#7a5c00] dark:bg-[#f5b800]/10 dark:text-[#f5b800] border border-[#f5b800]/30"><CheckCircle2 className="w-3.5 h-3.5" />{t('Approved')}</span>;
             case 'rejected':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">{t('Rejected')}</span>;
+                return <span className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-[8px] bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50"><XCircle className="w-3.5 h-3.5" />{t('Rejected')}</span>;
             default:
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{status}</span>;
+                return <span className="px-3 py-1 text-xs font-bold rounded-[8px] bg-gray-100 text-gray-800">{status}</span>;
         }
     };
 
@@ -66,31 +90,26 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
     return (
         <SchoolAuthenticatedLayout
             user={auth.user}
-            header={
-                <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-                        {t('My Bus Requests')}
-                    </h2>
-                </div>
-            }
+            header={<h2 className={DS_pageTitle}>{t('My Bus Requests')}</h2>}
         >
             <Head title={t('Bus Requests')} />
 
-            <div className="space-y-6">
+            <div className={DS_pageWrapper}>
                 {/* Actions Bar */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                     <Link
                         href={route('school.buses.index')}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-500 hover:text-[#0f2044] dark:hover:text-white transition-all bg-white dark:bg-[#1a2845] rounded-[14px] shadow-sm border border-gray-100 dark:border-[#243460]"
                     >
-                        ← {t('Back to Buses')}
+                        {isRtl ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+                        {t('Back to Buses')}
                     </Link>
 
-                    <div className="flex gap-4">
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value as any)}
-                            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                            className={`${DS_searchInput} w-full sm:w-48 font-semibold`}
                         >
                             <option value="all">{t('All Status')}</option>
                             <option value="pending">{t('Pending')}</option>
@@ -100,323 +119,264 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
 
                         <button
                             onClick={() => setShowRequestModal(true)}
-                            className="px-6 py-2 bg-brand-yellow text-gray-900 font-bold rounded-lg hover:bg-yellow-500 transition-colors whitespace-nowrap"
+                            className={DS_btnGold}
                         >
-                            + {t('Request Additional Bus')}
+                            <Plus className="w-4 h-4" />
+                            {t('Request Additional Bus')}
                         </button>
                     </div>
                 </div>
 
-
-                {/* Premium Requests Grid */}
-                <div className="grid grid-cols-1 gap-6">
+                {/* Requests Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredRequests.length > 0 ? (
-                        filteredRequests.map((request) => (
-                            <div key={request.id} className="group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300">
-                                {/* Top Gradient Bar */}
-                                <div className={`h-2 ${
-                                    request.status === 'pending' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                                    request.status === 'approved' ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
-                                    'bg-gradient-to-r from-red-400 to-pink-500'
+                        filteredRequests.map((request, idx) => (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10 }} 
+                                animate={{ opacity: 1, y: 0 }} 
+                                transition={{ delay: idx * 0.05 }}
+                                key={request.id} 
+                                className="bg-white dark:bg-[#1a2845] rounded-[24px] shadow-sm border border-gray-100 dark:border-[#243460] overflow-hidden hover:shadow-md transition-all flex flex-col"
+                            >
+                                {/* Top Color Indicator */}
+                                <div className={`h-1.5 w-full ${
+                                    request.status === 'pending' ? 'bg-yellow-400' :
+                                    request.status === 'approved' ? 'bg-[#0f2044]' :
+                                    'bg-red-500'
                                 }`} />
 
-                                <div className="p-6">
+                                <div className="p-5 flex flex-col flex-1">
                                     {/* Header */}
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
-                                                request.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30' :
-                                                request.status === 'approved' ? 'bg-green-100 dark:bg-green-900/30' :
-                                                'bg-red-100 dark:bg-red-900/30'
-                                            }`}>
-                                                <span className="text-3xl">
-                                                    {request.request_type === 'permanent' ? '🔄' : request.request_type === 'field_trip' ? '🎒' : '⏰'}
-                                                </span>
+                                    <div className="flex items-start justify-between mb-5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 bg-[#0f2044]/5 dark:bg-[#0f2044]/30 rounded-[14px] flex items-center justify-center text-[#0f2044] dark:text-[#7ba7e8]">
+                                                <BusIcon className="w-6 h-6" />
                                             </div>
                                             <div>
-                                                <h3 className="text-2xl font-bold text-gray-800 dark:text-white">
+                                                <h3 className="text-lg font-bold text-[#0f2044] dark:text-white">
                                                     {getTypeText(request.request_type)}
                                                 </h3>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                    {t('Submitted')} {new Date(request.created_at).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                                <p className="text-xs font-semibold text-gray-500">
+                                                    {t('Submitted')}: {new Date(request.created_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric' })}
                                                 </p>
                                             </div>
                                         </div>
                                         {getStatusBadge(request.status)}
                                     </div>
 
-                                    {/* Info Grid */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                        {/* Number of Seats */}
-                                        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-3xl">💺</span>
-                                                <div className="flex-1">
-                                                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">{t('Required Seats')}</p>
-                                                    <p className="text-2xl font-extrabold text-gray-800 dark:text-white">{request.seats}</p>
-                                                </div>
+                                    {/* Quick Stats Grid */}
+                                    <div className="grid grid-cols-2 gap-3 mb-5">
+                                        <div className="bg-gray-50 dark:bg-[#0f2044]/20 p-3 rounded-[16px]">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Users className="w-4 h-4 text-gray-400" />
+                                                <span className="text-[10px] font-bold text-gray-500 uppercase">{t('Required Seats')}</span>
                                             </div>
+                                            <p className="text-xl font-black text-[#0f2044] dark:text-white">{request.seats}</p>
                                         </div>
-
-                                        {/* Start Date */}
-                                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-3xl">📅</span>
-                                                <div className="flex-1">
-                                                    <p className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase">{t('Start Date')}</p>
-                                                    <p className="text-lg font-bold text-gray-800 dark:text-white">
-                                                        {new Date(request.start_date).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}
-                                                    </p>
-                                                </div>
+                                        <div className="bg-gray-50 dark:bg-[#0f2044]/20 p-3 rounded-[16px]">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Calendar className="w-4 h-4 text-gray-400" />
+                                                <span className="text-[10px] font-bold text-gray-500 uppercase">{t('Start Date')}</span>
                                             </div>
+                                            <p className="text-sm font-bold text-[#0f2044] dark:text-white mt-1">
+                                                {new Date(request.start_date).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric' })}
+                                            </p>
                                         </div>
+                                    </div>
 
-                                        {/* End Date */}
-                                        {request.end_date && (
-                                            <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 rounded-xl border border-purple-200 dark:border-purple-800">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-3xl">🏁</span>
-                                                    <div className="flex-1">
-                                                        <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase">{t('End Date')}</p>
-                                                        <p className="text-lg font-bold text-gray-800 dark:text-white">
-                                                            {new Date(request.end_date).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                    {/* Text Info */}
+                                    <div className="flex-1 space-y-3">
+                                        <div>
+                                            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-400 mb-1">
+                                                <FileText className="w-3.5 h-3.5" />
+                                                {t('Purpose')}
+                                            </div>
+                                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 line-clamp-2">
+                                                {request.purpose}
+                                            </p>
+                                        </div>
+                                        
+                                        {request.rejection_reason && (
+                                            <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-[12px]">
+                                                <p className="text-[11px] font-bold text-red-600 dark:text-red-400 mb-0.5">{t('Rejection Reason')}:</p>
+                                                <p className="text-xs font-semibold text-red-800 dark:text-red-300">{request.rejection_reason}</p>
                                             </div>
                                         )}
                                     </div>
-
-                                    {/* Reason */}
-                                    <div className="bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 p-5 rounded-xl border border-orange-200 dark:border-orange-800 mb-4">
-                                        <div className="flex items-start gap-3">
-                                            <span className="text-2xl mt-1">📝</span>
-                                            <div className="flex-1">
-                                                <p className="text-sm font-bold text-orange-700 dark:text-orange-400 mb-2">{t('Purpose')}:</p>
-                                                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{request.purpose}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Details */}
-                                    {request.details && (
-                                        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 p-5 rounded-xl border border-purple-200 dark:border-purple-800 mb-4">
-                                            <div className="flex items-start gap-3">
-                                                <span className="text-2xl mt-1">⭐</span>
-                                                <div className="flex-1">
-                                                    <p className="text-sm font-bold text-purple-700 dark:text-purple-400 mb-2">{t('Details')}:</p>
-                                                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{request.details}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Rejection Reason */}
-                                    {request.rejection_reason && (
-                                        <div className="bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 p-5 rounded-xl border-2 border-red-300 dark:border-red-700">
-                                            <div className="flex items-start gap-3">
-                                                <span className="text-2xl mt-1">❌</span>
-                                                <div className="flex-1">
-                                                    <p className="text-sm font-bold text-red-700 dark:text-red-400 mb-2">{t('Rejection Reason')}:</p>
-                                                    <p className="text-red-800 dark:text-red-300 font-medium">{request.rejection_reason}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Approval Info */}
-                                    {request.status === 'approved' && request.approved_at && (
-                                        <div className="mt-4 flex items-center justify-center gap-2 p-4 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl">
-                                            <span className="text-3xl">✅</span>
-                                            <p className="text-sm font-bold text-green-700 dark:text-green-400">
-                                                {t('Approved on')} {new Date(request.approved_at).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
-                                            </p>
-                                        </div>
-                                    )}
                                 </div>
-                            </div>
+                            </motion.div>
                         ))
                     ) : (
-                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center">
-                            <div className="text-6xl mb-4">📝</div>
-                            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+                        <div className="col-span-full bg-white dark:bg-[#1a2845] rounded-[24px] shadow-sm border border-gray-100 dark:border-[#243460] p-16 text-center">
+                            <div className="w-20 h-20 bg-[#0f2044]/5 dark:bg-[#0f2044]/30 rounded-[20px] flex items-center justify-center mx-auto mb-5 text-[#0f2044] dark:text-[#7ba7e8]">
+                                <BusIcon className="w-10 h-10" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-[#0f2044] dark:text-white mb-2">
                                 {t('No Requests Found')}
                             </h3>
-                            <p className="text-gray-500 dark:text-gray-400 mb-6">
+                            <p className="text-gray-500 font-semibold mb-6">
                                 {t('You haven\'t submitted any bus requests yet')}
                             </p>
                             <button
                                 onClick={() => setShowRequestModal(true)}
-                                className="px-6 py-2 bg-brand-yellow text-gray-900 font-bold rounded-lg hover:bg-yellow-500 transition-colors"
+                                className={DS_btnGold + " mx-auto"}
                             >
+                                <Plus className="w-4 h-4" />
                                 {t('Submit Your First Request')}
                             </button>
                         </div>
                     )}
                 </div>
 
+                {/* Request Modal */}
+                <Modal show={showRequestModal} onClose={() => setShowRequestModal(false)} maxWidth="2xl">
+                    <div className={DS_modalHeader(isRtl)}>
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-white/20 rounded-[14px] flex items-center justify-center">
+                                <BusIcon className="w-6 h-6 text-white" />
+                            </div>
+                            <div className={isRtl ? "text-right" : "text-left"}>
+                                <h3 className="text-2xl font-bold text-white">
+                                    {t('Request Additional Bus')}
+                                </h3>
+                                <p className="text-[#7ba7e8] text-sm font-semibold mt-0.5">
+                                    {t('Fill out the form below to submit your request')}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
 
-                {/* Premium Request Modal */}
-                {showRequestModal && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn">
-                        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden transform animate-slideUp">
-                            {/* Header with Gradient */}
-                            <div className="relative overflow-hidden bg-gradient-to-r from-brand-yellow via-orange-400 to-orange-500 p-8">
-                                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30" />
-                                <div className="relative flex items-center gap-4">
-                                    <div className="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center">
-                                        <span className="text-4xl">🚌</span>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-3xl font-extrabold text-white drop-shadow-lg">
-                                            {t('Request Additional Bus')}
-                                        </h3>
-                                        <p className="text-white/90 text-sm mt-1">{t('Fill out the form below to submit your request')}</p>
+                    <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Request Type */}
+                            <div className="space-y-2">
+                                <label className="block text-sm font-bold text-[#0f2044] dark:text-gray-300 ms-1">
+                                    {t('Request Type')} <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={data.request_type}
+                                    onChange={e => setData('request_type', e.target.value)}
+                                    className={`${DS_searchInput} font-semibold`}
+                                    required
+                                >
+                                    <option value="permanent">{t('Permanent')}</option>
+                                    <option value="temporary">{t('Temporary')}</option>
+                                    <option value="field_trip">{t('Field Trip')}</option>
+                                </select>
+                            </div>
+
+                            {/* Number of Seats */}
+                            <div className="space-y-2">
+                                <label className="block text-sm font-bold text-[#0f2044] dark:text-gray-300 ms-1">
+                                    {t('Required Seats')} <span className="text-red-500">*</span>
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={data.seats}
+                                        onChange={e => setData('seats', parseInt(e.target.value))}
+                                        className={`${DS_searchInput} font-bold`}
+                                        required
+                                    />
+                                    <div className={`absolute ${isRtl ? 'left-2' : 'right-2'} top-1/2 -translate-y-1/2 flex gap-1`}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setData('seats', Math.max(1, data.seats - 1))}
+                                            className="w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-[#243460] rounded-[10px] text-gray-600 dark:text-gray-300 hover:bg-gray-300 transition-colors font-bold"
+                                        >
+                                            −
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setData('seats', data.seats + 1)}
+                                            className="w-8 h-8 flex items-center justify-center bg-[#0f2044]/10 dark:bg-[#243460] rounded-[10px] text-[#0f2044] dark:text-[#7ba7e8] hover:bg-[#0f2044]/20 transition-colors font-bold"
+                                        >
+                                            +
+                                        </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="p-8 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-                                {/* Request Type */}
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300">
-                                        <span className="text-xl">🏷️</span>
-                                        {t('Request Type')} <span className="text-red-500">*</span>
+                            {/* Dates */}
+                            <div className="space-y-2">
+                                <label className="block text-sm font-bold text-[#0f2044] dark:text-gray-300 ms-1">
+                                    {t('Start Date')} <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={data.start_date}
+                                    onChange={e => setData('start_date', e.target.value)}
+                                    className={`${DS_searchInput} font-semibold`}
+                                    required
+                                />
+                            </div>
+
+                            {(data.request_type === 'temporary' || data.request_type === 'field_trip') && (
+                                <div className="space-y-2 animate-slideDown">
+                                    <label className="block text-sm font-bold text-[#0f2044] dark:text-gray-300 ms-1">
+                                        {t('End Date')}
                                     </label>
-                                    <select
-                                        value={data.request_type}
-                                        onChange={e => setData('request_type', e.target.value)}
-                                        className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent transition-all font-semibold"
-                                        required
-                                    >
-                                        <option value="permanent">🔄 {t('Permanent')}</option>
-                                        <option value="temporary">⏰ {t('Temporary')}</option>
-                                        <option value="field_trip">🎒 {t('Field Trip')}</option>
-                                    </select>
-                                </div>
-
-                                {/* Number of Seats */}
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300">
-                                        <span className="text-xl">💺</span>
-                                        {t('Required Seats')} <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            value={data.seats}
-                                            onChange={e => setData('seats', parseInt(e.target.value))}
-                                            className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent transition-all font-semibold"
-                                            required
-                                        />
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setData('seats', Math.max(1, data.seats - 1))}
-                                                className="w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                                            >
-                                                −
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setData('seats', data.seats + 1)}
-                                                className="w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                                            >
-                                                +
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Dates */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300">
-                                            <span className="text-xl">📅</span>
-                                            {t('Start Date')} <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={data.start_date}
-                                            onChange={e => setData('start_date', e.target.value)}
-                                            className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent transition-all"
-                                            required
-                                        />
-                                    </div>
-
-                                    {(data.request_type === 'temporary' || data.request_type === 'field_trip') && (
-                                        <div className="space-y-2 animate-slideDown">
-                                            <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300">
-                                                <span className="text-xl">📅</span>
-                                                {t('End Date')}
-                                            </label>
-                                            <input
-                                                type="date"
-                                                value={data.end_date}
-                                                onChange={e => setData('end_date', e.target.value)}
-                                                className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent transition-all"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Reason */}
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300">
-                                        <span className="text-xl">📝</span>
-                                        {t('Purpose')} <span className="text-red-500">*</span>
-                                    </label>
-                                    <textarea
-                                        value={data.purpose}
-                                        onChange={e => setData('purpose', e.target.value)}
-                                        rows={4}
-                                        className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent transition-all resize-none"
-                                        placeholder={t('Explain the purpose of this request...')}
-                                        required
-                                    />
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{data.purpose.length}/1000</p>
-                                </div>
-
-                                {/* Details */}
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300">
-                                        <span className="text-xl">⭐</span>
-                                        {t('Details')}
-                                    </label>
-                                    <textarea
-                                        value={data.details}
-                                        onChange={e => setData('details', e.target.value)}
-                                        rows={3}
-                                        className="w-full px-4 py-3.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-brand-yellow focus:border-transparent transition-all resize-none"
-                                        placeholder={t('Any special requirements or details...')}
+                                    <input
+                                        type="date"
+                                        value={data.end_date}
+                                        onChange={e => setData('end_date', e.target.value)}
+                                        className={`${DS_searchInput} font-semibold`}
                                     />
                                 </div>
-
-                                {/* Footer Actions */}
-                                <div className="flex gap-4 pt-6 border-t-2 border-gray-200 dark:border-gray-700">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setShowRequestModal(false);
-                                            reset();
-                                        }}
-                                        className="flex-1 px-6 py-3.5 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all font-bold"
-                                    >
-                                        ❌ {t('Cancel')}
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={processing}
-                                        className="flex-1 px-6 py-3.5 bg-gradient-to-r from-brand-yellow to-orange-500 text-gray-900 font-extrabold rounded-xl hover:from-yellow-500 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                                    >
-                                        {processing ? '⏳ ' + t('Submitting...') : '✅ ' + t('Submit Request')}
-                                    </button>
-                                </div>
-                            </form>
+                            )}
                         </div>
-                    </div>
-                )}
+
+                        {/* Reason */}
+                        <div className="space-y-2">
+                            <label className="block text-sm font-bold text-[#0f2044] dark:text-gray-300 ms-1">
+                                {t('Purpose')} <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                value={data.purpose}
+                                onChange={e => setData('purpose', e.target.value)}
+                                rows={3}
+                                className={`${DS_searchInput} resize-none`}
+                                placeholder={t('Explain the purpose of this request...')}
+                                required
+                            />
+                        </div>
+
+                        {/* Details */}
+                        <div className="space-y-2">
+                            <label className="block text-sm font-bold text-[#0f2044] dark:text-gray-300 ms-1">
+                                {t('Details')}
+                            </label>
+                            <textarea
+                                value={data.details}
+                                onChange={e => setData('details', e.target.value)}
+                                rows={2}
+                                className={`${DS_searchInput} resize-none`}
+                                placeholder={t('Any special requirements or details...')}
+                            />
+                        </div>
+
+                        <div className={`flex gap-3 pt-4 border-t border-gray-100 dark:border-[#243460] ${isRtl ? 'justify-start' : 'justify-end'}`}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowRequestModal(false);
+                                    reset();
+                                }}
+                                className={DS_cancelBtn}
+                            >
+                                {t('Cancel')}
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className={DS_submitBtn(processing)}
+                            >
+                                {processing ? t('Submitting...') : t('Submit Request')}
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
             </div>
         </SchoolAuthenticatedLayout>
     );

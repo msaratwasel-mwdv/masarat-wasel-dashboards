@@ -59,7 +59,11 @@ class AttendanceController extends Controller
             });
         }
 
-        return response()->json($query->orderBy('date', 'desc')->limit(500)->get());
+        if (request()->wantsJson() && !request()->hasHeader('X-Inertia')) {
+            return response()->json($query->orderBy('date', 'desc')->limit(500)->get());
+        }
+
+        return \Inertia\Inertia::render('School/Attendance/AttendanceReports');
     }
 
     /**

@@ -61,7 +61,7 @@ class DashboardController extends Controller
             $dayPresent = (clone $dayAttendance)->where('status', 'present')->count();
 
             $attendanceTrend[] = [
-                'date' => $date->format('D'),
+                'date' => $date->translatedFormat('D'),
                 'present' => $dayPresent,
                 'absent' => $dayTotal - $dayPresent,
                 'total' => $dayTotal,
@@ -101,8 +101,9 @@ class DashboardController extends Controller
             $recentActivities[] = [
                 'id' => $student->id,
                 'type' => 'student',
-                'title' => $student->first_name_ar . ' ' . $student->last_name_ar,
-                'description' => 'تم تسجيل طالب جديد',
+                'title' => $student->full_name, // Full name handles localization in model
+                'description_ar' => 'تم تسجيل طالب جديد',
+                'description_en' => 'New student enrolled',
                 'time' => $student->created_at ? Carbon::parse($student->created_at)->diffForHumans() : '',
                 'status' => 'new',
             ];
@@ -110,7 +111,7 @@ class DashboardController extends Controller
 
         // Recent attendance as activities
         $recentAttendance = Attendance::whereHas('student', fn($q) => $q->inSchool($schoolId))
-            ->with('student:id,first_name_ar,last_name_ar')
+            ->with('student')
             ->latest('date')
             ->take(3)
             ->get();
@@ -119,8 +120,9 @@ class DashboardController extends Controller
             $recentActivities[] = [
                 'id' => $att->id,
                 'type' => 'attendance',
-                'title' => ($att->student->first_name_ar ?? '') . ' ' . ($att->student->last_name_ar ?? ''),
-                'description' => $att->status === 'present' ? 'تم تسجيل الحضور' : 'تم تسجيل الغياب',
+                'title' => $att->student->full_name,
+                'description_ar' => $att->status === 'present' ? 'تم تسجيل الحضور' : 'تم تسجيل الغياب',
+                'description_en' => $att->status === 'present' ? 'Attendance recorded' : 'Absence recorded',
                 'time' => Carbon::parse($att->date)->diffForHumans(),
                 'status' => $att->status,
             ];

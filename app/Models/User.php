@@ -48,7 +48,7 @@ class User extends Authenticatable
      *
      * @var array
      */
-    protected $appends = ['name', 'name_en', 'role', 'is_active'];
+    protected $appends = ['name', 'name_en', 'role', 'is_active', 'school'];
 
     /**
      * The attributes that should be hidden for serialization.

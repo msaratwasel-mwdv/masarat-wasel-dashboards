@@ -10,6 +10,18 @@ import TextInput from "@/Components/TextInput";
 import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
+import PrintReportHeader from "@/Components/PrintReportHeader";
+import { motion } from "framer-motion";
+import { Users, CheckCircle2, UserX, UserPlus, Printer } from "lucide-react";
+import {
+  DS_card, DS_pageWrapper, DS_pageTitle, DS_statLabel, DS_statValue,
+  DS_avatar, DS_tableWrapper, DS_tableBase, DS_tableHead, DS_tableRow, DS_tableTd,
+  DS_searchInput, DS_btnGold, DS_btnSecondary, DS_btnEdit, DS_btnDanger,
+  DS_inputCls, DS_labelCls, DS_cancelBtn, DS_confirmModal,
+  DS_statCard, DS_statIcon, DS_badge, DS_filterBtn, DS_tableTh,
+  DS_modalHeader, DS_sectionHeader, DS_submitBtn,
+  DS_modalContainer, DS_modalHeaderTitle, DS_modalHeaderAccent, DS_modalClose, DS_modalBody,
+} from "@/lib/DS";
 
 interface Guardian {
   id: number;
@@ -79,6 +91,16 @@ interface Props {
   storage_url: string;
 }
 
+// ─── Print CSS ───────────────────────────────────────────────────
+const PRINT_STYLES = `
+@media print {
+  body * { visibility: hidden !important; }
+  main { margin: 0 !important; position: static !important; }
+  #print-area, #print-area * { visibility: visible !important; }
+  #print-area { position: absolute; inset: 0; width: 100%; padding: 20px; background: white; }
+}
+`;
+
 export default function IndexStudents({
   auth,
   students,
@@ -89,6 +111,7 @@ export default function IndexStudents({
 }: Props) {
   const { t, isRtl } = useTranslation();
   const [search, setSearch] = useState(filters.search || "");
+  const [activeFilter, setActiveFilter] = useState("all");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
@@ -436,282 +459,203 @@ export default function IndexStudents({
     }
   }, [students, currentStorageUrl]);
 
+  // Filter
+  const filteredStudents = React.useMemo(() => {
+    let filtered = students;
+    if (activeFilter === "active") filtered = students.filter(s => s.is_active);
+    if (activeFilter === "inactive") filtered = students.filter(s => !s.is_active);
+    return filtered;
+  }, [students, activeFilter]);
+
+  // Counts
+  const counts = {
+    all: students.length,
+    active: students.filter(s => s.is_active).length,
+    inactive: students.filter(s => !s.is_active).length,
+  };
+
+  // Print
+  const handlePrint = () => window.print();
+
   return (
     <SchoolAuthenticatedLayout
       user={auth.user}
       header={
-        <h2 className="text-3xl font-extrabold text-[#0e7490] dark:text-cyan-400">
+        <h2 className={DS_pageTitle}>
           {t("Students Management")}
         </h2>
       }
     >
       <Head title={t("Students")} />
+      <style>{PRINT_STYLES}</style>
 
-      {/* Main Content */}
-      <div className="py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
-        <div className="p-8 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm rounded-[30px]">
-          {/* Header Strip */}
-          <div className="flex flex-col justify-between gap-6 mb-8 xl:flex-row xl:items-center">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-[#0e7490] text-white rounded-[20px] shadow-sm">
-                <svg
-                  className="w-8 h-8"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.5"
-                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                  ></path>
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-[#0e7490] dark:text-cyan-400">
-                  📚 {t("Students List")}
-                </h3>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {t("Total Students")}:{" "}
-                  <span className="font-bold text-[#0e7490] dark:text-cyan-400">
-                    {students.length}
-                  </span>
-                </p>
+      {/* Print Area */}
+      <div id="print-area" className="hidden print:block bg-white font-sans text-black w-full" dir="rtl">
+        <PrintReportHeader 
+          title={t("Students Report")}
+          schoolName={auth.user?.school?.name || t("School name not available")}
+          schoolLogo={auth.user?.school?.logo || null}
+          printDate={`${t("Print Date")}: ${new Date().toLocaleDateString("ar-SA", { year: 'numeric', month: 'long', day: 'numeric' })}`}
+          schoolAdminText={t("School Admin")}
+        />
+
+        {/* Print Table */}
+        <div className="px-4">
+          <table className="w-full border-collapse border border-gray-300 text-[10px]">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 p-1.5 text-right font-bold w-8 text-black">#</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{t("Student Name")}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{t("Civil ID")}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{t("Gender")}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{t("Class")}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{t("Guardian Name")}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{t("Guardian Phone")}</th>
+                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{t("Status")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredStudents.map((s, i) => (
+                <tr key={s.id} className="border-b border-gray-300">
+                  <td className="border border-gray-300 p-1.5 text-center text-gray-700 font-semibold">{i + 1}</td>
+                  <td className="border border-gray-300 p-1.5 font-bold text-gray-900">{s.full_name}</td>
+                  <td className="border border-gray-300 p-1.5 font-mono text-gray-700">{s.national_id || "-"}</td>
+                  <td className="border border-gray-300 p-1.5 text-gray-700">{s.gender === "male" ? t("Male") : s.gender === "female" ? t("Female") : "-"}</td>
+                  <td className="border border-gray-300 p-1.5 font-mono text-gray-700">{s.current_enrollment?.classroom?.name || "-"}</td>
+                  <td className="border border-gray-300 p-1.5 font-mono text-gray-700">{(s.guardians && s.guardians.length > 0) ? s.guardians[0].name : "-"}</td>
+                  <td className="border border-gray-300 p-1.5 font-mono text-gray-700" dir="ltr">{(s.guardians && s.guardians.length > 0) ? s.guardians[0].phone : "-"}</td>
+                  <td className="border border-gray-300 p-1.5 text-center">
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${s.is_active ? "bg-gray-100 text-black border border-gray-400" : "bg-gray-50 text-gray-500 border border-gray-200"}`}>
+                      {s.is_active ? t("Active") : t("Inactive")}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-8 flex justify-between items-center text-sm font-bold text-gray-800">
+            <p>{t("Total Students")}: {filteredStudents.length}</p>
+            <p>{t("Principal Signature")}: ............................</p>
+          </div>
+        </div>
+      </div>
+
+      <div className={DS_pageWrapper}>
+        {/* Stats */}
+        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { label: t("Total Students"), val: counts.all,     icon: <Users className="w-5 h-5" />,        accent: "navy" as const },
+            { label: t("Active"),         val: counts.active,  icon: <CheckCircle2 className="w-5 h-5" />, accent: "gold" as const },
+            { label: t("Inactive"),       val: counts.inactive, icon: <UserX className="w-5 h-5" />,       accent: "red"  as const },
+          ].map((s) => (
+            <div key={s.label} className={`${DS_statCard(s.accent)} ${isRtl ? "flex-row-reverse" : ""}`}>
+              <div className={DS_statIcon(s.accent)}>{s.icon}</div>
+              <div className={isRtl ? "text-right" : "text-left"}>
+                <p className={DS_statLabel}>{s.label}</p>
+                <p className={DS_statValue}>{s.val}</p>
               </div>
             </div>
+          ))}
+        </motion.div>
 
-            <div className="flex flex-col w-full gap-4 sm:flex-row xl:w-auto">
-              <div className="relative flex-grow sm:flex-grow-0">
-                <input
-                  type="text"
-                  value={search}
-                  onChange={handleSearchChange}
-                  placeholder={t("Search by Name, ID...")}
-                  className={`w-full py-3.5 border border-gray-200 dark:border-gray-600 shadow-sm sm:w-72 bg-gray-50 dark:bg-gray-700 rounded-[35px] focus:ring-2 focus:ring-[#0e7490] focus:border-transparent dark:text-white transition-all ${isRtl ? "pr-11 pl-4" : "pl-11 pr-4"}`}
-                />
-                <div className={`absolute ${isRtl ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 pointer-events-none`}>
-                  <svg
-                    className="w-5 h-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    ></path>
-                  </svg>
-                </div>
-              </div>
-
-              <button
-                onClick={openAddModal}
-                className="inline-flex justify-center items-center px-8 py-3.5 bg-[#0e7490] text-white hover:bg-[#155e75] rounded-[35px] font-bold shadow-lg hover:shadow-xl transition-all"
-              >
-                <svg
-                  className="w-5 h-5 me-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 4v16m8-8H4"
-                  ></path>
-                </svg>
-                {t("Enroll New Student")}
-              </button>
+        {/* Table Card */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className={DS_card}>
+          {/* Toolbar */}
+          <div className={DS_sectionHeader(isRtl)}>
+            <div className="flex-1 min-w-[200px]">
+              <input
+                type="text"
+                value={search}
+                onChange={handleSearchChange}
+                placeholder={t("Search by Name, ID...")}
+                className={DS_searchInput}
+                dir={isRtl ? "rtl" : "ltr"}
+              />
             </div>
+            <div className="flex gap-2 flex-wrap">
+              {[["all", t("All")], ["active", t("Active")], ["inactive", t("Inactive")]].map(([key, lbl]) => (
+                <button key={key} onClick={() => setActiveFilter(key)} className={DS_filterBtn(activeFilter === key)}>{lbl}</button>
+              ))}
+            </div>
+            <button onClick={handlePrint} className={DS_btnSecondary}>
+              <Printer className="w-4 h-4" />
+              {t("Print")}
+            </button>
+            <button onClick={openAddModal} className={DS_btnGold}>
+              <UserPlus className="w-4 h-4" />
+              {t("Enroll New Student")}
+            </button>
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto border border-gray-100 dark:border-gray-700 rounded-[20px]">
-            <table className="min-w-full text-start">
-              <thead className="bg-gray-50 dark:bg-gray-700/50 border-b-2 border-gray-200 dark:border-gray-600">
+          <div className={DS_tableWrapper}>
+            <table className={DS_tableBase}>
+              <thead className={DS_tableHead}>
                 <tr>
-                  <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                    {t("Student Name")} (Ar/En)
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                    {t("Civil ID")}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                    {t("Gender")}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                    {t("Class")}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                    {t("Morning Group")}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                    {t("Afternoon Group")}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                    {t("Guardian Name")}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                    {t("Guardian Civil ID")}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                    {t("Guardian Phone")}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                    {t("Address")}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                    {t("Guardian Photo")}
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-end">
-                    {t("Actions")}
-                  </th>
+                  {[
+                    t("Student Name"),
+                    t("Civil ID"),
+                    t("Gender"),
+                    t("Class"),
+                    t("Morning Group"),
+                    t("Afternoon Group"),
+                    t("Guardian Name"),
+                    t("Guardian Phone"),
+                    t("Status"),
+                    t("Actions"),
+                  ].map(h => (
+                    <th key={h} className={DS_tableTh(isRtl)}>{h}</th>
+                  ))}
                 </tr>
               </thead>
-
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {students.length > 0 ? (
-                  students.map((student) => (
-                    <tr
-                      key={student.id}
-                      className="transition-colors hover:bg-cyan-50 dark:hover:bg-cyan-900/10"
-                    >
-                      {/* اسم الطالب */}
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 overflow-hidden bg-gray-200 rounded-full dark:bg-gray-700">
-                            <img
-                              src={getImageUrl(student.image, "student")}
-                              alt={student.full_name}
-                              className="object-cover w-full h-full"
-                              onError={(e) => handleImageError(e, "student")}
-                            />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-gray-800 dark:text-white">
-                              {student.full_name}
-                            </span>
-                            {student.full_name_en && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {student.full_name_en}
-                              </span>
-                            )}
-                          </div>
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
+                {filteredStudents.length === 0 ? (
+                  <tr><td colSpan={10} className="py-16 text-center text-gray-400"><Users className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="font-bold">{t("No students found")}</p></td></tr>
+                ) : filteredStudents.map(student => (
+                  <tr key={student.id} className={DS_tableRow}>
+                    <td className={DS_tableTd}>
+                      <div className="flex items-center gap-3">
+                        <div className={DS_avatar}>
+                          {student.image ? <img src={getImageUrl(student.image, "student")} alt={student.full_name} className="w-full h-full object-cover" onError={(e) => handleImageError(e, "student")} /> : student.full_name.charAt(0)}
                         </div>
-                      </td>
-
-                      {/* الرقم المدني (الطالب) */}
-                      <td className="px-4 py-4 font-mono text-sm text-gray-600 dark:text-gray-300">
-                        {student.national_id || "-"}
-                      </td>
-
-                      {/* الجنس */}
-                      <td className="px-4 py-4 text-sm">
-                        {student.gender === "male" ? (
-                          <span className="font-bold text-blue-600 dark:text-blue-400">
-                            ♂ {t("Male")}
-                          </span>
-                        ) : student.gender === "female" ? (
-                          <span className="font-bold text-pink-600 dark:text-pink-400">
-                            ♀ {t("Female")}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-
-                      {/* الفصل */}
-                      <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
-                        {student.current_enrollment?.classroom?.name || "-"}
-                      </td>
-
-                      {/* المجموعة الصباحية المعادة للحافلة */}
-                      <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
-                        {student.forth_bus?.route?.name || "-"}
-                      </td>
-
-                      {/* المجموعة المسائية المعادة للحافلة */}
-                      <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
-                        {student.back_bus?.route?.name || "-"}
-                      </td>
-
-                      {/* اسم ولي الأمر */}
-                      <td className="px-4 py-4 text-sm font-bold text-gray-800 dark:text-white">
-                        {(student.guardians && student.guardians.length > 0) ? student.guardians[0].name : "-"}
-                      </td>
-
-                      {/* الرقم المدني لولي الأمر */}
-                      <td className="px-4 py-4 font-mono text-sm text-gray-600 dark:text-gray-300">
-                       {(student.guardians && student.guardians.length > 0) ? student.guardians[0].national_id : "-"}
-                      </td>
-
-                      {/* جوال ولي الأمر */}
-                      <td className="px-4 py-4 font-mono text-sm text-gray-600 dark:text-gray-300">
-                        {(student.guardians && student.guardians.length > 0) ? student.guardians[0].phone : "-"}
-                      </td>
-
-                      {/* العنوان */}
-                      <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
-                        {(student.guardians && student.guardians.length > 0) ? student.guardians[0].address : "-"}
-                      </td>
-
-                      {/* صورة ولي الأمر */}
-                      <td className="px-4 py-4">
-                        <div className="w-12 h-12 overflow-hidden bg-gray-100 border border-gray-200 rounded-[15px] dark:bg-gray-700 dark:border-gray-600">
-                          <img
-                            src={getImageUrl(
-                              (student.guardians && student.guardians.length > 0) ? student.guardians[0].image : null,
-                              "guardian"
-                            )}
-                            alt={(student.guardians && student.guardians.length > 0) ? student.guardians[0].name : "Guardian"}
-                            className="object-cover w-full h-full"
-                            onError={(e) => handleImageError(e, "guardian")}
-                          />
+                        <div className={isRtl ? "text-right" : "text-left"}>
+                          <p className="font-semibold text-[#0f2044] dark:text-white">{student.full_name}</p>
+                          {student.full_name_en && <p className="text-xs text-gray-400">{student.full_name_en}</p>}
                         </div>
-                      </td>
-
-                      {/* الإجراءات */}
-                      <td className="px-4 py-4 text-end">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => openEditModal(student)}
-                            className="p-2.5 text-[#0e7490] bg-cyan-50 dark:bg-cyan-900/20 transition-all rounded-[15px] hover:bg-cyan-100 dark:hover:bg-cyan-900/40 hover:scale-105 border border-cyan-100 dark:border-cyan-800"
-                            title={t("Edit")}
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => {
-                              setStudentToDelete(student);
-                              setShowDeleteModal(true);
-                            }}
-                            className="p-2.5 text-red-600 bg-red-50 dark:bg-red-900/20 transition-all rounded-[15px] hover:bg-red-100 dark:hover:bg-red-900/40 hover:scale-105 border border-red-100 dark:border-red-800"
-                            title={t("Delete")}
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={12} className="py-16 text-center">
-                      <div className="text-6xl mb-4 opacity-20">👨‍🎓</div>
-                      <p className="text-gray-400 dark:text-gray-500 font-medium">
-                        {t("No students found")}
-                      </p>
+                      </div>
+                    </td>
+                    <td className={`${DS_tableTd} font-mono text-xs text-gray-500 dark:text-gray-400`}>{student.national_id || "-"}</td>
+                    <td className={`${DS_tableTd} text-xs`}>
+                      {student.gender === "male" ? (
+                        <span className="font-bold text-[#0f2044] dark:text-[#7ba7e8]">♂ {t("Male")}</span>
+                      ) : student.gender === "female" ? (
+                        <span className="font-bold text-[#f5b800]/80 dark:text-[#f5b800]">♀ {t("Female")}</span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td className={`${DS_tableTd} text-gray-700 dark:text-gray-300 text-xs`}>{student.current_enrollment?.classroom?.name || "-"}</td>
+                    <td className={`${DS_tableTd} text-gray-700 dark:text-gray-300 text-xs`}>{student.forth_bus?.route?.name || "-"}</td>
+                    <td className={`${DS_tableTd} text-gray-700 dark:text-gray-300 text-xs`}>{student.back_bus?.route?.name || "-"}</td>
+                    <td className={`${DS_tableTd} font-semibold text-[#0f2044] dark:text-gray-200 text-xs`}>{(student.guardians && student.guardians.length > 0) ? student.guardians[0].name : "-"}</td>
+                    <td className={`${DS_tableTd} font-mono text-xs text-gray-500 dark:text-gray-400`}>{(student.guardians && student.guardians.length > 0) ? student.guardians[0].phone : "-"}</td>
+                    <td className={DS_tableTd}>
+                      <span className={DS_badge(student.is_active)}>
+                        {student.is_active ? t("Active") : t("Inactive")}
+                      </span>
+                    </td>
+                    <td className={DS_tableTd}>
+                      <div className={`flex gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
+                        <button onClick={() => openEditModal(student)} className={DS_btnEdit}>{t("Edit")}</button>
+                        <button onClick={() => { setStudentToDelete(student); setShowDeleteModal(true); }} className={DS_btnDanger}>{t("Delete")}</button>
+                      </div>
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Main Modal */}
@@ -721,11 +665,11 @@ export default function IndexStudents({
           onClick={closeModal}
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-[30px] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+            className="bg-white dark:bg-[#1a2845] rounded-[22px] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="bg-[#0e7490] p-6 text-white">
+            <div className="bg-[#0f2044] p-6 text-white">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-2xl font-bold text-white">
@@ -1374,28 +1318,28 @@ export default function IndexStudents({
                   <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100 dark:border-gray-700">
                     {!isEditing && (
                       <button
-                        type="button"
-                        onClick={() => setStep(1)}
-                        className="px-6 py-3 font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-[25px] transition-all"
-                      >
-                        {t("Back")}
-                      </button>
-                    )}
-                    <button
                       type="button"
-                      onClick={closeModal}
-                      className="px-6 py-3 font-bold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-[25px] transition-all border border-gray-200 dark:border-gray-600"
+                      onClick={() => setStep(1)}
+                      className={DS_cancelBtn}
                     >
-                      {t("Cancel")}
+                      {t("Back")}
                     </button>
-                    <button
-                      type="submit"
-                      disabled={studentForm.processing}
-                      className="px-8 py-3 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
-                    >
-                      {isEditing ? t("Save Changes") : t("Enroll Student")}
-                    </button>
-                  </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className={DS_cancelBtn}
+                  >
+                    {t("Cancel")}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={studentForm.processing}
+                    className={DS_submitBtn(studentForm.processing)}
+                  >
+                    {isEditing ? t("Save Changes") : t("Enroll Student")}
+                  </button>
+                </div>
                 </form>
               )}
             </div>
@@ -1405,27 +1349,27 @@ export default function IndexStudents({
 
       {/* Delete Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fadeIn">
-          <div className="w-full max-w-md p-8 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-xl rounded-[30px]">
-            <div className="text-center mb-6">
-              <div className="text-6xl mb-4">⚠️</div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                {t("Confirm Deletion")}
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400">
-                {t("Are you sure you want to delete this student?")}
-              </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className={DS_confirmModal}>
+            <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">⚠️</span>
             </div>
-            <div className="flex justify-end gap-3">
+            <h3 className="text-xl font-bold text-[#0f2044] dark:text-white mb-2">
+              {t("Confirm Deletion")}
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
+              {t("Are you sure you want to delete this student?")}
+            </p>
+            <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="px-6 py-3 font-bold text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-[25px] transition-all"
+                className={`flex-1 py-3 ${DS_cancelBtn}`}
               >
                 {t("Cancel")}
               </button>
               <button
                 onClick={handleDelete}
-                className="px-6 py-3 font-bold text-white bg-red-600 hover:bg-red-700 rounded-[25px] shadow-lg hover:shadow-xl transition-all"
+                className="flex-1 py-3 rounded-[14px] bg-red-600 hover:bg-red-700 text-white font-bold transition-all shadow"
               >
                 {t("Yes, Delete")}
               </button>

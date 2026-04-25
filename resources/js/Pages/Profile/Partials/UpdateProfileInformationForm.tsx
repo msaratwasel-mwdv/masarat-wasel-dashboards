@@ -1,104 +1,164 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
-import { Transition } from '@headlessui/react';
-import { Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { Link, useForm, usePage } from "@inertiajs/react";
+import { Transition } from "@headlessui/react";
+import { FormEventHandler } from "react";
+import InputError from "@/Components/InputError";
+import { useTheme } from "@/Contexts/ThemeContext";
+import { DS_inputCls, DS_labelCls, DS_submitBtn } from "@/lib/DS";
+import { User, Mail, Phone } from "lucide-react";
 
-export default function UpdateProfileInformation({
+export default function UpdateProfileInformationForm({
     mustVerifyEmail,
     status,
-    className = '',
 }: {
     mustVerifyEmail: boolean;
     status?: string;
-    className?: string;
 }) {
-    const user = usePage().props.auth.user;
+    const { isRTL: isRtl } = useTheme();
+    const user = usePage().props.auth.user as any;
 
-    const { data, setData, patch, errors, processing, recentlySuccessful } =
-        useForm({
-            name: user.name,
-            email: user.email,
-        });
+    const { data, setData, patch, errors, processing, recentlySuccessful } = useForm({
+        first_name_ar: user.first_name_ar || "",
+        second_name_ar: user.second_name_ar || "",
+        third_name_ar: user.third_name_ar || "",
+        last_name_ar: user.last_name_ar || "",
+        email: user.email,
+        phone: user.phone || "",
+    });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-
-        patch(route('profile.update'));
+        patch(route("profile.update"));
     };
 
     return (
-        <section className={className}>
+        <section className="space-y-6">
             <header>
-                <h2 className="text-lg font-medium text-gray-900">
-                    Profile Information
+                <h2 className="text-lg font-bold text-[#0f2044] dark:text-white">
+                    {isRtl ? "بيانات الحساب الشخصي" : "Personal Information"}
                 </h2>
-
-                <p className="mt-1 text-sm text-gray-600">
-                    Update your account's profile information and email address.
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {isRtl 
+                        ? "تعديل اسمك وبريدك الإلكتروني ورقم الجوال المرتبط بحسابك."
+                        : "Update your name, email address, and phone number associated with your account."}
                 </p>
             </header>
 
             <form onSubmit={submit} className="mt-6 space-y-6">
-                <div>
-                    <InputLabel htmlFor="name" value="Name" />
-
-                    <TextInput
-                        id="name"
-                        className="mt-1 block w-full"
-                        value={data.name}
-                        onChange={(e) => setData('name', e.target.value)}
-                        required
-                        isFocused
-                        autoComplete="name"
-                    />
-
-                    <InputError className="mt-2" message={errors.name} />
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="md:col-span-1">
+                        <label className={DS_labelCls} htmlFor="first_name_ar">
+                            {isRtl ? "الاسم الأول" : "First Name"}
+                        </label>
+                        <input
+                            id="first_name_ar"
+                            className={DS_inputCls}
+                            value={data.first_name_ar}
+                            onChange={(e) => setData("first_name_ar", e.target.value)}
+                            required
+                        />
+                        <InputError className="mt-2" message={errors.first_name_ar} />
+                    </div>
+                    <div className="md:col-span-1">
+                        <label className={DS_labelCls} htmlFor="second_name_ar">
+                            {isRtl ? "اسم الأب" : "Second Name"}
+                        </label>
+                        <input
+                            id="second_name_ar"
+                            className={DS_inputCls}
+                            value={data.second_name_ar}
+                            onChange={(e) => setData("second_name_ar", e.target.value)}
+                        />
+                        <InputError className="mt-2" message={errors.second_name_ar} />
+                    </div>
+                    <div className="md:col-span-1">
+                        <label className={DS_labelCls} htmlFor="third_name_ar">
+                            {isRtl ? "اسم الجد" : "Third Name"}
+                        </label>
+                        <input
+                            id="third_name_ar"
+                            className={DS_inputCls}
+                            value={data.third_name_ar}
+                            onChange={(e) => setData("third_name_ar", e.target.value)}
+                        />
+                        <InputError className="mt-2" message={errors.third_name_ar} />
+                    </div>
+                    <div className="md:col-span-1">
+                        <label className={DS_labelCls} htmlFor="last_name_ar">
+                            {isRtl ? "اللقب/العائلة" : "Last Name"}
+                        </label>
+                        <input
+                            id="last_name_ar"
+                            className={DS_inputCls}
+                            value={data.last_name_ar}
+                            onChange={(e) => setData("last_name_ar", e.target.value)}
+                            required
+                        />
+                        <InputError className="mt-2" message={errors.last_name_ar} />
+                    </div>
                 </div>
 
-                <div>
-                    <InputLabel htmlFor="email" value="Email" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className={DS_labelCls} htmlFor="email">
+                            <Mail className="w-3 h-3 inline-block mb-1 mx-1" />
+                            {isRtl ? "البريد الإلكتروني" : "Email Address"}
+                        </label>
+                        <input
+                            id="email"
+                            type="email"
+                            className={DS_inputCls}
+                            value={data.email}
+                            onChange={(e) => setData("email", e.target.value)}
+                            required
+                            autoComplete="username"
+                        />
+                        <InputError className="mt-2" message={errors.email} />
+                    </div>
 
-                    <TextInput
-                        id="email"
-                        type="email"
-                        className="mt-1 block w-full"
-                        value={data.email}
-                        onChange={(e) => setData('email', e.target.value)}
-                        required
-                        autoComplete="username"
-                    />
-
-                    <InputError className="mt-2" message={errors.email} />
+                    <div>
+                        <label className={DS_labelCls} htmlFor="phone">
+                            <Phone className="w-3 h-3 inline-block mb-1 mx-1" />
+                            {isRtl ? "رقم الجوال" : "Phone Number"}
+                        </label>
+                        <input
+                            id="phone"
+                            className={DS_inputCls}
+                            value={data.phone}
+                            onChange={(e) => setData("phone", e.target.value)}
+                            autoComplete="tel"
+                        />
+                        <InputError className="mt-2" message={errors.phone} />
+                    </div>
                 </div>
 
                 {mustVerifyEmail && user.email_verified_at === null && (
-                    <div>
-                        <p className="mt-2 text-sm text-gray-800">
-                            Your email address is unverified.
+                    <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50">
+                        <p className="text-sm text-amber-800 dark:text-amber-400 font-medium">
+                            {isRtl ? "بريدك الإلكتروني غير مفعل." : "Your email address is unverified."}
                             <Link
-                                href={route('verification.send')}
+                                href={route("verification.send")}
                                 method="post"
                                 as="button"
-                                className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                className="underline mx-2 hover:text-amber-900 dark:hover:text-amber-300"
                             >
-                                Click here to re-send the verification email.
+                                {isRtl ? "انقر هنا لإعادة إرسال رسالة التفعيل." : "Click here to re-send the verification email."}
                             </Link>
                         </p>
 
-                        {status === 'verification-link-sent' && (
-                            <div className="mt-2 text-sm font-medium text-green-600">
-                                A new verification link has been sent to your
-                                email address.
+                        {status === "verification-link-sent" && (
+                            <div className="mt-2 font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                                {isRtl 
+                                    ? "تم إرسال رابط تفعيل جديد إلى بريدك الإلكتروني." 
+                                    : "A new verification link has been sent to your email address."}
                             </div>
                         )}
                     </div>
                 )}
 
-                <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>Save</PrimaryButton>
+                <div className="flex items-center gap-4 pt-4 border-t border-gray-100 dark:border-[#243460]">
+                    <button type="submit" className={DS_submitBtn(processing)} disabled={processing}>
+                        {isRtl ? "حفظ التغييرات" : "Save Changes"}
+                    </button>
 
                     <Transition
                         show={recentlySuccessful}
@@ -107,8 +167,8 @@ export default function UpdateProfileInformation({
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
-                        <p className="text-sm text-gray-600">
-                            Saved.
+                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                            {isRtl ? "✓ تم الحفظ بنجاح" : "✓ Saved successfully"}
                         </p>
                     </Transition>
                 </div>

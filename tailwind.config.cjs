@@ -5,6 +5,30 @@ module.exports = {
         './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
         './resources/js/**/*.tsx',
+        './resources/js/**/*.ts',
+    ],
+
+    safelist: [
+        // DS Navy palette
+        { pattern: /bg-\[#0f2044\]/ },
+        { pattern: /text-\[#0f2044\]/ },
+        { pattern: /border-\[#0f2044\]/ },
+        { pattern: /ring-\[#0f2044\]/ },
+        // DS Gold palette
+        { pattern: /bg-\[#f5b800\]/ },
+        { pattern: /text-\[#f5b800\]/ },
+        { pattern: /border-\[#f5b800\]/ },
+        { pattern: /ring-\[#f5b800\]/ },
+        // DS Dark surfaces
+        { pattern: /bg-\[#1a2845\]/ },
+        { pattern: /border-\[#243460\]/ },
+        // DS light blue text
+        { pattern: /text-\[#7ba7e8\]/ },
+        { pattern: /text-\[#8a6b00\]/ },
+        { pattern: /text-\[#7a5c00\]/ },
+        { pattern: /text-\[#b38600\]/ },
+        { pattern: /hover:bg-\[#e0a900\]/ },
+        { pattern: /hover:bg-\[#162d60\]/ },
     ],
 
     darkMode: 'class',

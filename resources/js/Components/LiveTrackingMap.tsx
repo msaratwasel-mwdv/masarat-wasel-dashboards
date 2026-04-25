@@ -3,6 +3,13 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import useTranslation from '@/hooks/useTranslation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    Search, Filter, Map as MapIcon, Layers, 
+    Maximize2, Minimize2, X, Info, 
+    Navigation, School, Settings as SettingsIcon,
+    AlertTriangle, CheckCircle2, Clock
+} from 'lucide-react';
 
 interface Bus {
     id: number;
@@ -33,7 +40,7 @@ function MapController({ center }: { center: [number, number] }) {
 }
 
 export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng = 46.6753 }: Props) {
-    const { t } = useTranslation();
+    const { t, isRtl } = useTranslation();
     const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
     const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -61,9 +68,9 @@ export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng 
     // Create custom marker icon
     const createMarkerIcon = (status: string, selected: boolean = false) => {
         const colors = {
-            active: '#10b981',
-            maintenance: '#f59e0b',
-            inactive: '#6b7280',
+            active: '#f5b800', // Gold
+            maintenance: '#ef4444', // Red
+            inactive: '#94a3b8', // Gray
         };
 
         const color = colors[status as keyof typeof colors] || colors.inactive;
@@ -71,21 +78,22 @@ export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng 
         return L.divIcon({
             className: 'custom-bus-marker',
             html: `
-                <div style="
-                    width: 40px; 
-                    height: 40px; 
-                    background: ${color}; 
-                    border: 3px solid white; 
-                    border-radius: 50%; 
+                <div class="marker-container ${selected ? 'selected' : ''}" style="
+                    width: ${selected ? '48px' : '40px'}; 
+                    height: ${selected ? '48px' : '40px'}; 
+                    background: ${selected ? '#0f2044' : color}; 
+                    border: 3px solid ${selected ? '#f5b800' : 'white'}; 
+                    border-radius: 12px; 
                     display: flex; 
                     align-items: center; 
                     justify-content: center; 
-                    font-size: 20px;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-                    ${selected ? 'transform: scale(1.2); ring: 4px white;' : ''}
-                    transition: all 0.2s;
+                    font-size: ${selected ? '24px' : '20px'};
+                    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    cursor: pointer;
+                    z-index: ${selected ? '1000' : '1'};
                 ">
-                    🚌
+                    <span style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2))">🚌</span>
                 </div>
             `,
             iconSize: [40, 40],
@@ -102,278 +110,296 @@ export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng 
         : [centerLat, centerLng];
 
     return (
-        <div className={`space-y-6 ${isFullscreen ? 'fixed inset-0 z-[100] bg-white dark:bg-gray-900 p-4' : ''}`}>
-            {/* Control Panel */}
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-[35px] shadow-sm border border-gray-100 dark:border-gray-700">
-                <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-                    {/* Search & Filter */}
-                    <div className="flex flex-wrap gap-4 w-full lg:w-auto">
-                        <input
-                            type="text"
-                            placeholder={t('Search by bus number or plate...')}
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            className="px-6 py-3 rounded-[35px] bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent min-w-[300px]"
-                        />
-                        <div className="relative">
-                            <select
-                                value={statusFilter}
-                                onChange={e => setStatusFilter(e.target.value as any)}
-                                className="px-6 py-3 rounded-[35px] bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-[#0e7490] appearance-none pr-10 font-medium"
-                            >
-                                <option value="all">🔍 {t('All Buses')}</option>
-                                <option value="active">✅ {t('Active Only')}</option>
-                                <option value="maintenance">🔧 {t('Maintenance')}</option>
-                                <option value="inactive">⏸️ {t('Inactive')}</option>
-                            </select>
-                        </div>
-                    </div>
+        <div className={`flex flex-col gap-6 ${isFullscreen ? 'fixed inset-0 z-[100] bg-gray-50 dark:bg-[#0f172a] p-6' : ''}`}>
+            
+            {/* Control Panel: 2026 Command Style */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                
+                {/* Search & Stats: Left/Top Panel */}
+                <div className="xl:col-span-4 space-y-6">
+                    <div className="bg-white dark:bg-[#1a2845] p-6 rounded-[28px] shadow-sm border border-gray-100 dark:border-[#243460]">
+                        <div className="flex flex-col gap-4">
+                            <div className="relative group">
+                                <Search className={`absolute ${isRtl ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#f5b800] transition-colors`} />
+                                <input
+                                    type="text"
+                                    placeholder={t('Search by bus number or plate...')}
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className={`w-full ${isRtl ? 'pr-12' : 'pl-12'} py-4 rounded-2xl bg-gray-50 dark:bg-[#0f172a]/50 border border-transparent focus:border-[#f5b800]/50 focus:ring-4 focus:ring-[#f5b800]/5 transition-all text-sm font-bold`}
+                                />
+                            </div>
 
-                    {/* Map Type Controls */}
-                    <div className="flex gap-2 bg-gray-50 dark:bg-gray-700 p-1.5 rounded-[35px]">
-                        <button
-                            onClick={() => setMapType('roadmap')}
-                            className={`px-6 py-2.5 rounded-[30px] font-bold transition-all ${mapType === 'roadmap'
-                                ? 'bg-white dark:bg-gray-600 text-[#0e7490] shadow-md'
-                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-600/50'
-                                }`}
-                        >
-                            🗺️ {t('Map')}
-                        </button>
-                        <button
-                            onClick={() => setMapType('satellite')}
-                            className={`px-6 py-2.5 rounded-[30px] font-bold transition-all ${mapType === 'satellite'
-                                ? 'bg-white dark:bg-gray-600 text-[#0e7490] shadow-md'
-                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-600/50'
-                                }`}
-                        >
-                            🛰️ {t('Satellite')}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Live Stats Bar */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-[30px] shadow-sm border border-gray-100 dark:border-gray-700 hover:border-cyan-200 transition-colors">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-cyan-50 dark:bg-cyan-900/30 rounded-[15px] flex items-center justify-center text-2xl text-[#0e7490]">
-                            🚌
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('Total')}</p>
-                            <p className="text-3xl font-extrabold text-[#0e7490]">{stats.total}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-[30px] shadow-sm border border-gray-100 dark:border-gray-700 hover:border-green-200 transition-colors">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-green-50 dark:bg-green-900/30 rounded-[15px] flex items-center justify-center text-2xl text-green-600">
-                            ✅
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('Active')}</p>
-                            <p className="text-3xl font-extrabold text-green-600">{stats.active}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-[30px] shadow-sm border border-gray-100 dark:border-gray-700 hover:border-purple-200 transition-colors">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/30 rounded-[15px] flex items-center justify-center text-2xl text-purple-600">
-                            🚗
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('On Route')}</p>
-                            <p className="text-3xl font-extrabold text-purple-600">{stats.onRoute}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-[30px] shadow-sm border border-gray-100 dark:border-gray-700 hover:border-blue-200 transition-colors">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-[15px] flex items-center justify-center text-2xl text-blue-600">
-                            🏫
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('At School')}</p>
-                            <p className="text-3xl font-extrabold text-blue-600">{stats.atSchool}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-[30px] shadow-sm border border-gray-100 dark:border-gray-700 hover:border-orange-200 transition-colors">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/30 rounded-[15px] flex items-center justify-center text-2xl text-orange-500">
-                            🔧
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('Maintenance')}</p>
-                            <p className="text-3xl font-extrabold text-orange-500">{stats.maintenance}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Map Container */}
-            <div className="relative rounded-[35px] overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700 bg-gray-100">
-                <MapContainer
-                    center={[centerLat, centerLng]}
-                    zoom={13}
-                    style={{ height: isFullscreen ? 'calc(100vh - 300px)' : '650px', width: '100%' }}
-                    zoomControl={false}
-                >
-                    <TileLayer
-                        url={mapType === 'satellite'
-                            ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                            : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
-                        attribution={mapType === 'satellite' ? 'Tiles &copy; Esri' : '&copy; OpenStreetMap contributors'}
-                    />
-
-                    <MapController center={mapCenter} />
-
-                    {busesWithLocation.map(bus => (
-                        <Marker
-                            key={bus.id}
-                            position={[bus.latitude!, bus.longitude!]}
-                            icon={createMarkerIcon(bus.status, selectedBus?.id === bus.id)}
-                            eventHandlers={{
-                                click: () => setSelectedBus(bus),
-                            }}
-                        >
-                            <Popup minWidth={280}>
-                                <div className="p-2">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <div className="text-2xl">🚌</div>
-                                        <div>
-                                            <h3 className="m-0 text-lg font-bold text-gray-800">{bus.bus_number}</h3>
-                                            <p className="m-0 text-sm text-gray-500">{bus.plate_number}</p>
-                                        </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">{t('Status')}</label>
+                                    <div className="relative">
+                                        <select
+                                            value={statusFilter}
+                                            onChange={e => setStatusFilter(e.target.value as any)}
+                                            className="w-full px-4 py-3 rounded-2xl bg-gray-50 dark:bg-[#0f172a]/50 border border-transparent text-xs font-bold appearance-none cursor-pointer"
+                                        >
+                                            <option value="all">{t('All Status')}</option>
+                                            <option value="active">{t('Active Only')}</option>
+                                            <option value="maintenance">{t('Maintenance')}</option>
+                                            <option value="inactive">{t('Inactive')}</option>
+                                        </select>
+                                        <Filter className={`absolute ${isRtl ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none`} />
                                     </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">{t('Map')}</label>
+                                    <div className="flex bg-gray-50 dark:bg-[#0f172a]/50 rounded-2xl p-1">
+                                        <button 
+                                            onClick={() => setMapType('roadmap')}
+                                            className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${mapType === 'roadmap' ? 'bg-white dark:bg-[#1a2845] text-[#0f2044] dark:text-[#f5b800] shadow-sm' : 'text-gray-400'}`}
+                                        >
+                                            {t('Standard')}
+                                        </button>
+                                        <button 
+                                            onClick={() => setMapType('satellite')}
+                                            className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${mapType === 'satellite' ? 'bg-white dark:bg-[#1a2845] text-[#0f2044] dark:text-[#f5b800] shadow-sm' : 'text-gray-400'}`}
+                                        >
+                                            {t('Satellite')}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-2">
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <p className="m-0 text-[10px] text-gray-500 uppercase font-bold">{t('Status')}</p>
-                                                <p className={`m-0 text-sm font-bold ${bus.status === 'active' ? 'text-green-600' :
-                                                    bus.status === 'maintenance' ? 'text-orange-500' : 'text-gray-500'
-                                                    }`}>
-                                                    {t(bus.status)}
+                    {/* Compact Stats Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <StatBox label={t('Active')} value={stats.active} icon={CheckCircle2} color="text-emerald-500" bg="bg-emerald-500/10" />
+                        <StatBox label={t('On Route')} value={stats.onRoute} icon={Navigation} color="text-[#f5b800]" bg="bg-[#f5b800]/10" />
+                        <StatBox label={t('At School')} value={stats.atSchool} icon={School} color="text-blue-500" bg="bg-blue-500/10" />
+                        <StatBox label={t('Maintenance')} value={stats.maintenance} icon={AlertTriangle} color="text-rose-500" bg="bg-rose-500/10" />
+                    </div>
+                </div>
+
+                {/* Map Container: 2026 Command Style */}
+                <div className="xl:col-span-8 relative rounded-[32px] overflow-hidden shadow-2xl border border-gray-200 dark:border-[#243460] bg-gray-100 group/map">
+                    <MapContainer
+                        center={[centerLat, centerLng]}
+                        zoom={13}
+                        style={{ height: isFullscreen ? 'calc(100vh - 48px)' : '700px', width: '100%' }}
+                        zoomControl={false}
+                    >
+                        <TileLayer
+                            url={mapType === 'satellite'
+                                ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                                : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
+                            attribution={mapType === 'satellite' ? 'Tiles &copy; Esri' : '&copy; OpenStreetMap contributors'}
+                        />
+
+                        <MapController center={mapCenter} />
+
+                        {busesWithLocation.map(bus => (
+                            <Marker
+                                key={bus.id}
+                                position={[bus.latitude!, bus.longitude!]}
+                                icon={createMarkerIcon(bus.status, selectedBus?.id === bus.id)}
+                                eventHandlers={{
+                                    click: () => setSelectedBus(bus),
+                                }}
+                            >
+                                <Popup minWidth={300} className="custom-modern-popup">
+                                    <div className={`p-4 ${isRtl ? 'text-right' : 'text-left'}`}>
+                                        <div className={`flex items-center gap-4 mb-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                                            <div className="w-12 h-12 rounded-2xl bg-[#0f2044] flex items-center justify-center text-2xl shadow-lg">
+                                                🚌
+                                            </div>
+                                            <div className="flex-1">
+                                                <h3 className="m-0 text-xl font-black text-[#0f2044] dark:text-white leading-tight">
+                                                    {bus.bus_number}
+                                                </h3>
+                                                <p className="m-0 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                    {bus.plate_number}
                                                 </p>
                                             </div>
-                                            <div>
-                                                <p className="m-0 text-[10px] text-gray-500 uppercase font-bold">{t('Students')}</p>
-                                                <p className="m-0 text-sm font-bold">{bus.students_count || 0}/{bus.capacity}</p>
+                                            <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter ${
+                                                bus.status === 'active' ? 'bg-emerald-500/10 text-emerald-500' : 
+                                                bus.status === 'maintenance' ? 'bg-rose-500/10 text-rose-500' : 'bg-gray-100 text-gray-500'
+                                            }`}>
+                                                {t(bus.status)}
                                             </div>
                                         </div>
+
+                                        <div className="grid grid-cols-2 gap-3 mb-4">
+                                            <div className="p-3 rounded-2xl bg-gray-50 dark:bg-[#0f172a]/50 border border-gray-100 dark:border-white/5">
+                                                <p className="m-0 text-[9px] text-gray-400 font-bold uppercase mb-1">{t('Students')}</p>
+                                                <p className="m-0 text-sm font-black text-[#0f2044] dark:text-white">
+                                                    {bus.students_count || 0} <span className="text-gray-300 font-normal">/ {bus.capacity}</span>
+                                                </p>
+                                            </div>
+                                            <div className="p-3 rounded-2xl bg-gray-50 dark:bg-[#0f172a]/50 border border-gray-100 dark:border-white/5">
+                                                <p className="m-0 text-[9px] text-gray-400 font-bold uppercase mb-1">{t('Trip Status')}</p>
+                                                <p className="m-0 text-sm font-black text-blue-600">
+                                                    {bus.trip_status ? t(bus.trip_status) : t('idle')}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {bus.driver && (
+                                            <div className={`flex items-center gap-3 p-3 bg-[#f5b800]/10 rounded-2xl border border-[#f5b800]/20 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                                                <div className="w-8 h-8 rounded-xl bg-[#f5b800] text-[#0f2044] flex items-center justify-center font-bold">
+                                                    {bus.driver.name.charAt(0)}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="m-0 text-[9px] text-[#0f2044]/50 dark:text-[#f5b800]/50 font-black uppercase tracking-tighter">{t('Driver')}</p>
+                                                    <p className="m-0 text-[11px] font-black text-[#0f2044] dark:text-white truncate">
+                                                        {bus.driver.name}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
+                                </Popup>
+                            </Marker>
+                        ))}
+                    </MapContainer>
 
-                                    {bus.driver && (
-                                        <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-2">
-                                            <span>👨‍✈️</span>
-                                            <div>
-                                                <p className="m-0 text-[10px] text-blue-600 font-bold">{t('Driver')}</p>
-                                                <p className="m-0 text-sm font-bold text-blue-800">{bus.driver.name}</p>
+                    {/* Floating Controls */}
+                    <div className="absolute top-6 right-6 flex flex-col gap-3 z-[1000]">
+                        <button
+                            onClick={toggleFullscreen}
+                            className="w-12 h-12 bg-white/90 backdrop-blur-md dark:bg-[#1a2845]/90 text-[#0f2044] dark:text-white rounded-2xl shadow-xl border border-gray-100 dark:border-[#243460] flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+                            title={isFullscreen ? t('Exit') : t('Fullscreen')}
+                        >
+                            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+                        </button>
+                        <button
+                            onClick={() => setSelectedBus(null)}
+                            className="w-12 h-12 bg-white/90 backdrop-blur-md dark:bg-[#1a2845]/90 text-[#0f2044] dark:text-white rounded-2xl shadow-xl border border-gray-100 dark:border-[#243460] flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+                            title={t('Reset')}
+                        >
+                            <MapIcon className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {/* Enhanced Legend: Minimalist 2026 */}
+                    <div className={`absolute bottom-8 ${isRtl ? 'right-8' : 'left-8'} z-[1000]`}>
+                        <div className="bg-[#0f2044]/90 backdrop-blur-xl p-6 rounded-[30px] border border-white/10 shadow-2xl min-w-[180px]">
+                            <h4 className="text-[10px] font-black text-[#f5b800] uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                <Layers className="w-3.5 h-3.5" /> {t('Legend')}
+                            </h4>
+                            <div className="space-y-3">
+                                <LegendItem dotColor="bg-[#f5b800]" label={t('active')} />
+                                <LegendItem dotColor="bg-rose-500" label={t('maintenance')} />
+                                <LegendItem dotColor="bg-slate-400" label={t('inactive')} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Selected Info Slide-over (2026 Modern) */}
+                    <AnimatePresence>
+                        {selectedBus && (
+                            <motion.div 
+                                initial={{ x: isRtl ? -400 : 400, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                exit={{ x: isRtl ? -400 : 400, opacity: 0 }}
+                                className={`absolute top-8 ${isRtl ? 'left-8' : 'right-8'} bottom-8 w-80 bg-white/95 backdrop-blur-xl dark:bg-[#1a2845]/95 rounded-[35px] shadow-2xl border border-gray-100 dark:border-[#243460] z-[1001] overflow-hidden flex flex-col`}
+                            >
+                                <div className="p-8 border-b border-gray-50 dark:border-white/5 relative">
+                                    <button 
+                                        onClick={() => setSelectedBus(null)}
+                                        className="absolute top-6 right-6 p-2 rounded-full bg-gray-100 dark:bg-white/5 text-gray-400 hover:text-rose-500 transition-colors"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                    <div className="w-16 h-16 rounded-[22px] bg-[#0f2044] text-3xl flex items-center justify-center mb-6 shadow-xl shadow-[#0f2044]/20">
+                                        🚌
+                                    </div>
+                                    <h3 className="text-2xl font-black text-[#0f2044] dark:text-white mb-1">{selectedBus.bus_number}</h3>
+                                    <p className="text-xs font-bold text-gray-400 tracking-widest uppercase">{selectedBus.plate_number}</p>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                                    <DetailRow icon={Navigation} label={t('Status')} value={t(selectedBus.status)} color={selectedBus.status === 'active' ? 'text-emerald-500' : 'text-rose-500'} />
+                                    <DetailRow icon={Clock} label={t('Trip Status')} value={selectedBus.trip_status ? t(selectedBus.trip_status) : t('idle')} />
+                                    <DetailRow icon={Users} label={t('Students')} value={`${selectedBus.students_count || 0} / ${selectedBus.capacity}`} />
+                                    
+                                    {selectedBus.driver && (
+                                        <div className="p-5 rounded-3xl bg-[#f5b800]/5 border border-dashed border-[#f5b800]/30">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-[#f5b800] text-[#0f2044] flex items-center justify-center font-black text-xl shadow-lg">
+                                                    {selectedBus.driver.name.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('Driver')}</p>
+                                                    <p className="text-sm font-black text-[#0f2044] dark:text-white">{selectedBus.driver.name}</p>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
-
-                                    {bus.trip_status && (
-                                        <div className="p-2 bg-indigo-600 text-white rounded-lg text-center text-xs font-bold">
-                                            {t(bus.trip_status)}
-                                        </div>
-                                    )}
                                 </div>
-                            </Popup>
-                        </Marker>
-                    ))}
-                </MapContainer>
 
-                {/* Fullscreen Button (Inside Map) */}
-                <button
-                    onClick={toggleFullscreen}
-                    className="absolute top-4 right-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg shadow-md font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all z-[1000]"
-                >
-                    {isFullscreen ? '↙️ ' + t('Exit') : '↗️ ' + t('Fullscreen')}
-                </button>
-
-                {/* Enhanced Legend */}
-                <div className="absolute bottom-6 left-6 bg-white/90 backdrop-blur-md dark:bg-gray-800/90 p-5 rounded-[25px] shadow-lg border border-gray-100 dark:border-gray-700 z-[1000]">
-                    <h4 className="font-extrabold text-sm mb-3 text-gray-800 dark:text-white flex items-center gap-2">
-                        <span className="text-lg">📍</span> {t('Legend')}
-                    </h4>
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-3 text-sm">
-                            <div className="w-3 h-3 rounded-full bg-green-500 shadow-sm ring-2 ring-green-100"></div>
-                            <span className="text-gray-700 dark:text-gray-300 font-medium">{t('Active')}</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm">
-                            <div className="w-3 h-3 rounded-full bg-orange-500 shadow-sm ring-2 ring-orange-100"></div>
-                            <span className="text-gray-700 dark:text-gray-300 font-medium">{t('Maintenance')}</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm">
-                            <div className="w-3 h-3 rounded-full bg-gray-500 shadow-sm ring-2 ring-gray-100"></div>
-                            <span className="text-gray-700 dark:text-gray-300 font-medium">{t('Inactive')}</span>
-                        </div>
-                    </div>
+                                <div className="p-6">
+                                    <button className="w-full py-4 rounded-2xl bg-[#0f2044] text-white font-black text-sm hover:bg-[#1a2d5a] transition-all shadow-xl shadow-[#0f2044]/20">
+                                        {t('Details')}
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
-
-                {/* Selected Bus Info Panel */}
-                {selectedBus && (
-                    <div className="absolute top-16 right-6 bg-white/95 backdrop-blur-md dark:bg-gray-800/95 p-6 rounded-[25px] shadow-xl border border-gray-100 dark:border-gray-700 max-w-xs animate-in slide-in-from-right-4 duration-300 z-[1000]">
-                        <div className="flex items-center justify-between mb-4">
-                            <h4 className="font-extrabold text-xl text-gray-800 dark:text-white flex items-center gap-2">
-                                🚌 {selectedBus.bus_number}
-                            </h4>
-                            <button
-                                onClick={() => setSelectedBus(null)}
-                                className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-full transition-colors"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 mb-4">
-                            <p className="text-sm text-gray-600 dark:text-gray-400 font-mono text-center">{selectedBus.plate_number}</p>
-                        </div>
-
-                        <div className="space-y-3 text-sm">
-                            <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-                                <span className="text-gray-500 dark:text-gray-400">{t('Status')}</span>
-                                <span className={`font-bold px-2 py-0.5 rounded-full text-xs ${selectedBus.status === 'active' ? 'bg-green-100 text-green-700' :
-                                    selectedBus.status === 'maintenance' ? 'bg-orange-100 text-orange-700' :
-                                        'bg-gray-100 text-gray-700'
-                                    }`}>{t(selectedBus.status)}</span>
-                            </div>
-                            <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-                                <span className="text-gray-500 dark:text-gray-400">{t('Students')}</span>
-                                <span className="font-bold text-gray-900 dark:text-white">{selectedBus.students_count || 0} <span className="text-gray-400">/ {selectedBus.capacity}</span></span>
-                            </div>
-                            {selectedBus.driver && (
-                                <div className="flex justify-between items-center pt-1">
-                                    <span className="text-gray-500 dark:text-gray-400">{t('Driver')}</span>
-                                    <span className="font-bold text-gray-900 dark:text-white">{selectedBus.driver.name}</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
             </div>
 
-            {/* No Location Notice */}
+            {/* Empty State */}
             {busesWithLocation.length === 0 && (
-                <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-[30px] border border-gray-100 dark:border-gray-700 shadow-sm">
-                    <div className="text-6xl mb-6 opacity-20">📍</div>
-                    <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+                <div className="text-center py-20 bg-white dark:bg-[#1a2845] rounded-[40px] border border-dashed border-gray-200 dark:border-[#243460]">
+                    <div className="w-24 h-24 rounded-[30px] bg-gray-50 dark:bg-[#0f172a] flex items-center justify-center text-5xl mx-auto mb-8 grayscale opacity-50">
+                        📍
+                    </div>
+                    <h3 className="text-2xl font-black text-[#0f2044] dark:text-white mb-3">
                         {t('No buses with location data')}
                     </h3>
-                    <p className="text-gray-500">
+                    <p className="text-sm text-gray-400 max-w-md mx-auto leading-relaxed">
                         {searchQuery || statusFilter !== 'all'
                             ? t('Try adjusting your filters')
                             : t('Waiting for GPS data from buses...')}
                     </p>
                 </div>
             )}
+        </div>
+    );
+}
+
+function StatBox({ label, value, icon: Icon, color, bg }: any) {
+    return (
+        <div className="bg-white dark:bg-[#1a2845] p-5 rounded-3xl border border-gray-50 dark:border-[#243460] shadow-sm group hover:scale-105 transition-all">
+            <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 ${bg} ${color} rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-12`}>
+                    <Icon className="w-6 h-6" />
+                </div>
+                <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">{label}</p>
+                    <p className={`text-2xl font-black ${color}`}>{value}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function LegendItem({ dotColor, label }: { dotColor: string, label: string }) {
+    return (
+        <div className="flex items-center gap-3">
+            <div className={`w-2.5 h-2.5 rounded-full ${dotColor} shadow-[0_0_10px_rgba(255,255,255,0.2)]`} />
+            <span className="text-[11px] font-bold text-gray-300 capitalize">{label}</span>
+        </div>
+    );
+}
+
+function DetailRow({ icon: Icon, label, value, color = "text-[#0f2044] dark:text-white" }: any) {
+    return (
+        <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400">
+                <Icon className="w-5 h-5" />
+            </div>
+            <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{label}</p>
+                <p className={`text-sm font-black ${color}`}>{value}</p>
+            </div>
         </div>
     );
 }

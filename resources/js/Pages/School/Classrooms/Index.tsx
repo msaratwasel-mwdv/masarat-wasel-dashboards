@@ -1,4 +1,4 @@
-import React, { useState, useCallback, Fragment } from "react";
+import React, { useState, useCallback } from "react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import { Head, useForm, router } from "@inertiajs/react";
 import useTranslation from "@/hooks/useTranslation";
@@ -9,8 +9,17 @@ import {
   ListboxButton,
   ListboxOption,
   ListboxOptions,
-  Transition,
 } from "@headlessui/react";
+import { motion } from "framer-motion";
+import { Plus, Search, BookOpen, GraduationCap, X, AlertTriangle, Pencil, Trash2, ChevronDown } from "lucide-react";
+import {
+  DS_card, DS_pageWrapper, DS_pageTitle,
+  DS_tableWrapper, DS_tableBase, DS_tableHead, DS_tableRow, DS_tableTd,
+  DS_searchInput, DS_btnGold, DS_btnEdit, DS_btnDanger,
+  DS_inputCls, DS_labelCls, DS_cancelBtn, DS_confirmModal,
+  DS_tableTh, DS_modalHeader, DS_sectionHeader, DS_submitBtn,
+  DS_modalContainer, DS_modalHeaderTitle, DS_modalHeaderAccent, DS_modalClose, DS_modalBody,
+} from "@/lib/DS";
 
 export interface Classroom {
   id: number;
@@ -41,13 +50,7 @@ interface Props {
   filters: { search?: string };
 }
 
-export default function ClassroomIndex({
-  auth,
-  classrooms = [],
-  grades = [],
-  teachers = [],
-  filters,
-}: Props) {
+export default function ClassroomIndex({ auth, classrooms = [], grades = [], teachers = [], filters }: Props) {
   const { t, isRtl } = useTranslation();
   const [activeTab, setActiveTab] = useState<"classrooms" | "grades">("classrooms");
   const [search, setSearch] = useState(filters.search || "");
@@ -62,15 +65,8 @@ export default function ClassroomIndex({
   const [entityToDelete, setEntityToDelete] = useState<any>(null);
 
   // Forms
-  const classForm = useForm({
-    name: "",
-    grade_id: "",
-  });
-
-  const gradeForm = useForm({
-    name: "",
-    teacher_id: "",
-  });
+  const classForm = useForm({ name: "", grade_id: "" });
+  const gradeForm = useForm({ name: "", teacher_id: "" });
 
   // Handlers
   const handleAddSubmit = (e: React.FormEvent) => {
@@ -78,18 +74,12 @@ export default function ClassroomIndex({
     if (activeTab === "classrooms") {
       classForm.post(route("school.classrooms.store"), {
         preserveScroll: true,
-        onSuccess: () => {
-          setShowAddModal(false);
-          classForm.reset();
-        },
+        onSuccess: () => { setShowAddModal(false); classForm.reset(); },
       });
     } else {
       gradeForm.post(route("school.classrooms.grades.store"), {
         preserveScroll: true,
-        onSuccess: () => {
-          setShowAddModal(false);
-          gradeForm.reset();
-        },
+        onSuccess: () => { setShowAddModal(false); gradeForm.reset(); },
       });
     }
   };
@@ -101,20 +91,12 @@ export default function ClassroomIndex({
     if (activeTab === "classrooms") {
       classForm.put(route("school.classrooms.update", entityToEdit.id), {
         preserveScroll: true,
-        onSuccess: () => {
-          setShowEditModal(false);
-          classForm.reset();
-          setEntityToEdit(null);
-        },
+        onSuccess: () => { setShowEditModal(false); classForm.reset(); setEntityToEdit(null); },
       });
     } else {
       gradeForm.put(route("school.classrooms.grades.update", entityToEdit.id), {
         preserveScroll: true,
-        onSuccess: () => {
-          setShowEditModal(false);
-          gradeForm.reset();
-          setEntityToEdit(null);
-        },
+        onSuccess: () => { setShowEditModal(false); gradeForm.reset(); setEntityToEdit(null); },
       });
     }
   };
@@ -122,15 +104,9 @@ export default function ClassroomIndex({
   const openEditModal = (entity: any) => {
     setEntityToEdit(entity);
     if (activeTab === "classrooms") {
-      classForm.setData({
-        name: entity.name,
-        grade_id: entity.grade_id?.toString() || "",
-      });
+      classForm.setData({ name: entity.name, grade_id: entity.grade_id?.toString() || "" });
     } else {
-      gradeForm.setData({
-        name: entity.name,
-        teacher_id: entity.teacher_id?.toString() || "",
-      });
+      gradeForm.setData({ name: entity.name, teacher_id: entity.teacher_id?.toString() || "" });
     }
     setShowEditModal(true);
   };
@@ -142,29 +118,19 @@ export default function ClassroomIndex({
 
   const handleDelete = () => {
     if (!entityToDelete) return;
-
     const deleteRoute = activeTab === "classrooms" 
         ? route("school.classrooms.destroy", entityToDelete.id)
         : route("school.classrooms.grades.destroy", entityToDelete.id);
 
     router.delete(deleteRoute, {
-      onSuccess: () => {
-        setShowDeleteModal(false);
-        setEntityToDelete(null);
-      },
+      onSuccess: () => { setShowDeleteModal(false); setEntityToDelete(null); },
     });
   };
 
-  // Debounced search
   const debouncedSearch = useCallback(
     debounce((value: string) => {
-      router.get(
-        route("school.classrooms.index"),
-        { search: value },
-        { preserveState: true, preserveScroll: true }
-      );
-    }, 300),
-    []
+      router.get(route("school.classrooms.index"), { search: value }, { preserveState: true, preserveScroll: true });
+    }, 300), []
   );
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,313 +152,344 @@ export default function ClassroomIndex({
   return (
     <SchoolAuthenticatedLayout
       user={auth.user}
-      header={
-        <h2 className="text-3xl font-extrabold text-[#0e7490] dark:text-cyan-400">
-          {t("Education Structure")}
-        </h2>
-      }
+      header={<h2 className={DS_pageTitle}>{t("Education Structure")}</h2>}
     >
       <Head title={t("Classes & Grades")} />
 
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8" dir={isRtl ? "rtl" : "ltr"}>
+      <div className={DS_pageWrapper}>
         
-        {/* Modern Tab Switcher */}
-        <div className="flex p-1 bg-gray-100 dark:bg-gray-800/50 rounded-[25px] mb-8 w-fit mx-auto sm:mx-0 border border-gray-200 dark:border-gray-700/50 backdrop-blur-md">
+        {/* Top Header & Tabs */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          {/* Tab Switcher */}
+          <div className={`flex p-1.5 bg-white dark:bg-[#1a2845] rounded-[20px] shadow-sm border border-[#0f2044]/5 dark:border-[#243460] w-fit ${isRtl ? "md:mr-auto" : "md:ml-auto"}`}>
             <button
-                onClick={() => setActiveTab("classrooms")}
-                className={`px-8 py-3 rounded-[20px] font-bold transition-all duration-300 ${
-                    activeTab === "classrooms" 
-                    ? "bg-[#0e7490] text-white shadow-lg" 
-                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                }`}
+              onClick={() => setActiveTab("classrooms")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-[16px] text-sm font-bold transition-all ${
+                activeTab === "classrooms" 
+                  ? "bg-[#0f2044] text-white shadow-md" 
+                  : "text-gray-500 hover:text-[#0f2044] hover:bg-[#0f2044]/5 dark:text-gray-400 dark:hover:text-white dark:hover:bg-[#243460]"
+              }`}
             >
-                {t("Classrooms")}
+              <BookOpen className="w-4 h-4" />
+              {t("Classrooms")}
             </button>
             <button
-                onClick={() => setActiveTab("grades")}
-                className={`px-8 py-3 rounded-[20px] font-bold transition-all duration-300 ${
-                    activeTab === "grades" 
-                    ? "bg-[#0e7490] text-white shadow-lg" 
-                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                }`}
+              onClick={() => setActiveTab("grades")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-[16px] text-sm font-bold transition-all ${
+                activeTab === "grades" 
+                  ? "bg-[#0f2044] text-white shadow-md" 
+                  : "text-gray-500 hover:text-[#0f2044] hover:bg-[#0f2044]/5 dark:text-gray-400 dark:hover:text-white dark:hover:bg-[#243460]"
+              }`}
             >
-                {t("Grades")}
+              <GraduationCap className="w-4 h-4" />
+              {t("Grades")}
             </button>
-        </div>
-
-        <div className="bg-white dark:bg-[#0f172a] rounded-[30px] overflow-hidden shadow-sm border border-gray-200 dark:border-gray-800 transition-colors duration-300">
-          <div className="p-8">
-            
-            {/* Header Content */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-[#0e7490] text-white rounded-[20px] shadow-sm">
-                  <span className="text-3xl">{activeTab === "classrooms" ? "🏫" : "🎓"}</span>
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-[#0e7490] dark:text-cyan-400 mb-1">
-                    {activeTab === "classrooms" ? t("Classrooms List") : t("Grades List")}
-                  </h1>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {t("Total")}:{" "}
-                    <span className="font-bold text-[#0e7490] dark:text-cyan-400">
-                      {activeTab === "classrooms" ? classrooms.length : grades.length}
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="relative w-full sm:w-80">
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={handleSearchChange}
-                    placeholder={t("Search")}
-                    className="w-full bg-gray-50 dark:bg-[#1e293b] border-gray-200 dark:border-white/10 rounded-[35px] py-3 pl-10 pr-4 text-gray-800 dark:text-white placeholder-gray-500 focus:ring-[#0e7490] focus:border-[#0e7490] border transition-all"
-                  />
-                  <div className={`absolute ${isRtl ? "right-3" : "left-3"} top-3.5`}>
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#0e7490] hover:bg-[#155e75] text-white px-8 py-3 rounded-[35px] font-bold shadow-lg shadow-cyan-500/20 transition-all hover:scale-[1.02] active:scale-95"
-                >
-                  <span className="text-xl">+</span>
-                  {activeTab === "classrooms" ? t("Add New Class") : t("Add New Grade")}
-                </button>
-              </div>
-            </div>
-
-            {/* Content Table */}
-            <div className="overflow-hidden rounded-[30px] border border-gray-200 dark:border-gray-700">
-                <table className="w-full text-start mb-0" dir={isRtl ? "rtl" : "ltr"}>
-                    <thead className="bg-gray-50 dark:bg-gray-700/50 border-b-2 border-gray-200 dark:border-gray-600">
-                        <tr>
-                            <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                                {activeTab === "classrooms" ? t("Class Name") : t("Grade Name")}
-                            </th>
-                            <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-start">
-                                {activeTab === "classrooms" ? t("Grade") : t("Responsible Teacher")}
-                            </th>
-                            <th className="px-6 py-4 text-xs font-bold text-[#0e7490] dark:text-cyan-400 uppercase text-center">
-                                {t("Actions")}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                        {activeTab === "classrooms" ? (
-                            classrooms.length > 0 ? classrooms.map((c) => (
-                                <tr key={c.id} className="transition-colors hover:bg-cyan-50 dark:hover:bg-cyan-900/10">
-                                    <td className="px-6 py-4 text-gray-800 dark:text-white font-medium">{c.name}</td>
-                                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{c.grade_name || "-"}</td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center justify-center gap-3">
-                                            <button onClick={() => openEditModal(c)} className="p-2.5 bg-cyan-50 dark:bg-cyan-900/20 rounded-[15px] hover:bg-cyan-100">✏️</button>
-                                            <button onClick={() => confirmDelete(c)} className="p-2.5 bg-red-50 dark:bg-red-900/20 rounded-[15px] hover:bg-red-100">🗑️</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr><td colSpan={3} className="px-6 py-12 text-center text-gray-400">{t("No Data")}</td></tr>
-                            )
-                        ) : (
-                            grades.length > 0 ? grades.map((g) => (
-                                <tr key={g.id} className="transition-colors hover:bg-cyan-50 dark:hover:bg-cyan-900/10">
-                                    <td className="px-6 py-4 text-gray-800 dark:text-white font-medium">{g.name}</td>
-                                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{g.teacher_name || t("No Teacher Assigned")}</td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center justify-center gap-3">
-                                            <button onClick={() => openEditModal(g)} className="p-2.5 bg-cyan-50 dark:bg-cyan-900/20 rounded-[15px] hover:bg-cyan-100">✏️</button>
-                                            <button onClick={() => confirmDelete(g)} className="p-2.5 bg-red-50 dark:bg-red-900/20 rounded-[15px] hover:bg-red-100">🗑️</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr><td colSpan={3} className="px-6 py-12 text-center text-gray-400">{t("No Data")}</td></tr>
-                            )
-                        )}
-                    </tbody>
-                </table>
-            </div>
           </div>
         </div>
+
+        {/* Main Content Card */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={DS_card}>
+          <div className={DS_sectionHeader(isRtl)}>
+            {/* Title */}
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-[14px] bg-[#f5b800]/10 dark:bg-[#f5b800]/20 flex items-center justify-center text-[#b38600] flex-shrink-0">
+                {activeTab === "classrooms" ? <BookOpen className="w-6 h-6" /> : <GraduationCap className="w-6 h-6" />}
+              </div>
+              <div className={isRtl ? "text-right" : "text-left"}>
+                <h3 className="text-xl font-bold text-[#0f2044] dark:text-white">
+                  {activeTab === "classrooms" ? t("Classrooms List") : t("Grades List")}
+                </h3>
+                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                  {t("Total")}: <span className="text-[#0f2044] dark:text-[#7ba7e8]">{activeTab === "classrooms" ? classrooms.length : grades.length}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative w-full sm:w-72">
+                <Search className={`absolute ${isRtl ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none`} />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={handleSearchChange}
+                  placeholder={t("Search...")}
+                  className={`${DS_searchInput} ${isRtl ? "pr-10 pl-4" : "pl-10 pr-4"}`}
+                  dir={isRtl ? "rtl" : "ltr"}
+                />
+              </div>
+              <button onClick={() => setShowAddModal(true)} className={DS_btnGold}>
+                <Plus className="w-4 h-4" />
+                {activeTab === "classrooms" ? t("Add New Class") : t("Add New Grade")}
+              </button>
+            </div>
+          </div>
+
+          <div className={DS_tableWrapper}>
+            <table className={DS_tableBase}>
+              <thead className={DS_tableHead}>
+                <tr>
+                  <th className={DS_tableTh(isRtl)}>{activeTab === "classrooms" ? t("Class Name") : t("Grade Name")}</th>
+                  <th className={DS_tableTh(isRtl)}>{activeTab === "classrooms" ? t("Grade") : t("Responsible Teacher")}</th>
+                  <th className={DS_tableTh(isRtl)}>{t("Actions")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeTab === "classrooms" ? (
+                  classrooms.length > 0 ? classrooms.map((c) => (
+                    <tr key={c.id} className={DS_tableRow}>
+                      <td className={DS_tableTd}>
+                        <span className="font-bold text-[#0f2044] dark:text-white">{c.name}</span>
+                      </td>
+                      <td className={DS_tableTd}>
+                        {c.grade_name ? (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#0f2044]/[0.07] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8]">
+                            {c.grade_name}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 italic text-xs">—</span>
+                        )}
+                      </td>
+                      <td className={DS_tableTd}>
+                        <div className={`flex gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
+                          <button onClick={() => openEditModal(c)} className={DS_btnEdit}>{t("Edit")}</button>
+                          <button onClick={() => confirmDelete(c)} className={DS_btnDanger}>{t("Delete")}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={3} className="py-12 text-center text-gray-400 font-bold">{t("No Data Found")}</td></tr>
+                  )
+                ) : (
+                  grades.length > 0 ? grades.map((g) => (
+                    <tr key={g.id} className={DS_tableRow}>
+                      <td className={DS_tableTd}>
+                        <span className="font-bold text-[#0f2044] dark:text-white">{g.name}</span>
+                      </td>
+                      <td className={DS_tableTd}>
+                        {g.teacher_name ? (
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">{g.teacher_name}</span>
+                        ) : (
+                          <span className="text-gray-400 italic text-xs">{t("No Teacher Assigned")}</span>
+                        )}
+                      </td>
+                      <td className={DS_tableTd}>
+                        <div className={`flex gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
+                          <button onClick={() => openEditModal(g)} className={DS_btnEdit}>{t("Edit")}</button>
+                          <button onClick={() => confirmDelete(g)} className={DS_btnDanger}>{t("Delete")}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={3} className="py-12 text-center text-gray-400 font-bold">{t("No Data Found")}</td></tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
       </div>
 
-      {/* Add Entity Modal */}
-      {showAddModal && (
-          <Modal show={showAddModal} onClose={() => setShowAddModal(false)} maxWidth="lg">
-              <div className="bg-[#0e7490] p-6 text-white flex justify-between items-center rounded-t-[30px]">
-                  <h2 className="text-xl font-bold">{activeTab === "classrooms" ? t("Add New Class") : t("Add New Grade")}</h2>
-              </div>
-              <form onSubmit={handleAddSubmit} className="p-8 space-y-6 bg-white dark:bg-[#1e293b] rounded-b-[30px]">
-                  {activeTab === "classrooms" ? (
-                      <>
-                        <div>
-                            <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t("Class Name")}</label>
-                            <input
-                                type="text"
-                                value={classForm.data.name}
-                                onChange={(e) => classForm.setData("name", e.target.value)}
-                                className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t("Grade")}</label>
-                            <Listbox value={classForm.data.grade_id} onChange={(val) => classForm.setData("grade_id", val)}>
-                                <div className="relative">
-                                    <ListboxButton className="relative w-full cursor-pointer rounded-[35px] bg-gray-50 dark:bg-[#0f172a] py-4 px-6 border text-start">
-                                        {getGradeName(classForm.data.grade_id)}
-                                    </ListboxButton>
-                                    <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[20px] bg-white dark:bg-[#1e293b] py-1 shadow-2xl border">
-                                        {grades.map((g) => (
-                                            <ListboxOption key={g.id} value={g.id.toString()} className={({ active }) => `cursor-pointer py-3 px-4 ${active ? "bg-[#0e7490] text-white" : ""}`}>
-                                                {g.name}
-                                            </ListboxOption>
-                                        ))}
-                                    </ListboxOptions>
-                                </div>
-                            </Listbox>
-                        </div>
-                      </>
-                  ) : (
-                      <>
-                        <div>
-                            <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t("Grade Name")}</label>
-                            <input
-                                type="text"
-                                value={gradeForm.data.name}
-                                onChange={(e) => gradeForm.setData("name", e.target.value)}
-                                className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t("Responsible Teacher")}</label>
-                            <Listbox value={gradeForm.data.teacher_id} onChange={(val) => gradeForm.setData("teacher_id", val)}>
-                                <div className="relative">
-                                    <ListboxButton className="relative w-full cursor-pointer rounded-[35px] bg-gray-50 dark:bg-[#0f172a] py-4 px-6 border text-start">
-                                        {getTeacherName(gradeForm.data.teacher_id)}
-                                    </ListboxButton>
-                                    <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[20px] bg-white dark:bg-[#1e293b] py-1 shadow-2xl border">
-                                        <ListboxOption value="" className="p-3 bg-gray-50 dark:bg-gray-800 italic text-gray-400">{t("None")}</ListboxOption>
-                                        {teachers.map((tItem) => (
-                                            <ListboxOption key={tItem.id} value={tItem.id.toString()} className={({ active }) => `cursor-pointer py-3 px-4 ${active ? "bg-[#0e7490] text-white" : ""}`}>
-                                                {tItem.name}
-                                            </ListboxOption>
-                                        ))}
-                                    </ListboxOptions>
-                                </div>
-                            </Listbox>
-                        </div>
-                      </>
-                  )}
-                  <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-white/10 mt-6">
-                      <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 bg-gray-100 dark:bg-[#0f172a] py-3.5 rounded-[35px] font-bold">{t("Cancel")}</button>
-                      <button type="submit" disabled={classForm.processing || gradeForm.processing} className="flex-1 bg-[#0e7490] text-white py-3.5 rounded-[35px] font-bold shadow-lg shadow-cyan-500/20">{t("Add")}</button>
-                  </div>
-              </form>
-          </Modal>
-      )}
+      {/* ── Add Entity Modal ──────────────────────────────────────── */}
+      <Modal show={showAddModal} onClose={() => setShowAddModal(false)} maxWidth="md">
+        <div className={DS_modalContainer}>
+          <div className={DS_modalHeader(isRtl)}>
+            <div className="flex items-center gap-3">
+              <div className={DS_modalHeaderAccent} />
+              <h2 className={DS_modalHeaderTitle}>
+                {activeTab === "classrooms" ? t("Add New Class") : t("Add New Grade")}
+              </h2>
+            </div>
+            <button onClick={() => setShowAddModal(false)} className={DS_modalClose}><X className="w-4 h-4" /></button>
+          </div>
 
-      {/* Edit Entity Modal */}
-      {showEditModal && (
-          <Modal show={showEditModal} onClose={() => setShowEditModal(false)} maxWidth="lg">
-              <div className="bg-[#0e7490] p-6 text-white flex justify-between items-center rounded-t-[30px]">
-                  <h2 className="text-xl font-bold">{activeTab === "classrooms" ? t("Edit Class") : t("Edit Grade")}</h2>
+          <form onSubmit={handleAddSubmit} className={DS_modalBody}>
+            {activeTab === "classrooms" ? (
+              <div className="space-y-4">
+                <div>
+                  <label className={DS_labelCls}>{t("Class Name")}</label>
+                  <input
+                    type="text"
+                    value={classForm.data.name}
+                    onChange={(e) => classForm.setData("name", e.target.value)}
+                    className={DS_inputCls}
+                    required
+                    dir="auto"
+                  />
+                </div>
+                <div>
+                  <label className={DS_labelCls}>{t("Grade")}</label>
+                  <Listbox value={classForm.data.grade_id} onChange={(val) => classForm.setData("grade_id", val)}>
+                    <div className="relative">
+                      <ListboxButton className={`${DS_inputCls} flex items-center justify-between cursor-pointer`}>
+                        <span className="block truncate">{getGradeName(classForm.data.grade_id)}</span>
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                      </ListboxButton>
+                      <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[16px] bg-white dark:bg-[#1a2845] py-2 shadow-xl border border-[#0f2044]/10 dark:border-[#243460] focus:outline-none">
+                        {grades.map((g) => (
+                          <ListboxOption key={g.id} value={g.id.toString()} className={({ active }) => `cursor-pointer py-2.5 px-4 text-sm font-semibold transition-colors ${active ? "bg-[#0f2044]/5 dark:bg-[#243460] text-[#0f2044] dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                            {g.name}
+                          </ListboxOption>
+                        ))}
+                      </ListboxOptions>
+                    </div>
+                  </Listbox>
+                </div>
               </div>
-              <form onSubmit={handleEditSubmit} className="p-8 space-y-6 bg-white dark:bg-[#1e293b] rounded-b-[30px]">
-                  {activeTab === "classrooms" ? (
-                      <>
-                        <div>
-                            <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t("Class Name")}</label>
-                            <input
-                                type="text"
-                                value={classForm.data.name}
-                                onChange={(e) => classForm.setData("name", e.target.value)}
-                                className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t("Grade")}</label>
-                            <Listbox value={classForm.data.grade_id} onChange={(val) => classForm.setData("grade_id", val)}>
-                                <div className="relative">
-                                    <ListboxButton className="relative w-full cursor-pointer rounded-[35px] bg-gray-50 dark:bg-[#0f172a] py-4 px-6 border text-start">
-                                        {getGradeName(classForm.data.grade_id)}
-                                    </ListboxButton>
-                                    <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[20px] bg-white dark:bg-[#1e293b] py-1 shadow-2xl border">
-                                        {grades.map((g) => (
-                                            <ListboxOption key={g.id} value={g.id.toString()} className={({ active }) => `cursor-pointer py-3 px-4 ${active ? "bg-[#0e7490] text-white" : ""}`}>
-                                                {g.name}
-                                            </ListboxOption>
-                                        ))}
-                                    </ListboxOptions>
-                                </div>
-                            </Listbox>
-                        </div>
-                      </>
-                  ) : (
-                      <>
-                        <div>
-                            <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t("Grade Name")}</label>
-                            <input
-                                type="text"
-                                value={gradeForm.data.name}
-                                onChange={(e) => gradeForm.setData("name", e.target.value)}
-                                className="w-full bg-gray-50 dark:bg-[#0f172a] border-gray-200 dark:border-white/10 rounded-[35px] py-4 px-6 text-gray-800 dark:text-white"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">{t("Responsible Teacher")}</label>
-                            <Listbox value={gradeForm.data.teacher_id} onChange={(val) => gradeForm.setData("teacher_id", val)}>
-                                <div className="relative">
-                                    <ListboxButton className="relative w-full cursor-pointer rounded-[35px] bg-gray-50 dark:bg-[#0f172a] py-4 px-6 border text-start">
-                                        {getTeacherName(gradeForm.data.teacher_id)}
-                                    </ListboxButton>
-                                    <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[20px] bg-white dark:bg-[#1e293b] py-1 shadow-2xl border">
-                                        <ListboxOption value="" className="p-3 bg-gray-50 dark:bg-gray-800 italic text-gray-400">{t("None")}</ListboxOption>
-                                        {teachers.map((tItem) => (
-                                            <ListboxOption key={tItem.id} value={tItem.id.toString()} className={({ active }) => `cursor-pointer py-3 px-4 ${active ? "bg-[#0e7490] text-white" : ""}`}>
-                                                {tItem.name}
-                                            </ListboxOption>
-                                        ))}
-                                    </ListboxOptions>
-                                </div>
-                            </Listbox>
-                        </div>
-                      </>
-                  )}
-                  <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-white/10 mt-6">
-                      <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 bg-gray-100 dark:bg-[#0f172a] py-3.5 rounded-[35px] font-bold">{t("Cancel")}</button>
-                      <button type="submit" disabled={classForm.processing || gradeForm.processing} className="flex-1 bg-[#0e7490] text-white py-3.5 rounded-[35px] font-bold shadow-lg shadow-cyan-500/20">{t("Save Changes")}</button>
-                  </div>
-              </form>
-          </Modal>
-      )}
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className={DS_labelCls}>{t("Grade Name")}</label>
+                  <input
+                    type="text"
+                    value={gradeForm.data.name}
+                    onChange={(e) => gradeForm.setData("name", e.target.value)}
+                    className={DS_inputCls}
+                    required
+                    dir="auto"
+                  />
+                </div>
+                <div>
+                  <label className={DS_labelCls}>{t("Responsible Teacher")}</label>
+                  <Listbox value={gradeForm.data.teacher_id} onChange={(val) => gradeForm.setData("teacher_id", val)}>
+                    <div className="relative">
+                      <ListboxButton className={`${DS_inputCls} flex items-center justify-between cursor-pointer`}>
+                        <span className="block truncate">{getTeacherName(gradeForm.data.teacher_id)}</span>
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                      </ListboxButton>
+                      <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[16px] bg-white dark:bg-[#1a2845] py-2 shadow-xl border border-[#0f2044]/10 dark:border-[#243460] focus:outline-none">
+                        <ListboxOption value="" className="py-2.5 px-4 text-sm font-semibold text-gray-400 italic cursor-pointer hover:bg-gray-50 dark:hover:bg-[#243460]">{t("None")}</ListboxOption>
+                        {teachers.map((tItem) => (
+                          <ListboxOption key={tItem.id} value={tItem.id.toString()} className={({ active }) => `cursor-pointer py-2.5 px-4 text-sm font-semibold transition-colors ${active ? "bg-[#0f2044]/5 dark:bg-[#243460] text-[#0f2044] dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                            {tItem.name}
+                          </ListboxOption>
+                        ))}
+                      </ListboxOptions>
+                    </div>
+                  </Listbox>
+                </div>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-4 border-t border-[#0f2044]/10 dark:border-[#243460] mt-2">
+              <button type="button" onClick={() => setShowAddModal(false)} className={DS_cancelBtn}>{t("Cancel")}</button>
+              <button type="submit" disabled={classForm.processing || gradeForm.processing} className={DS_submitBtn(classForm.processing || gradeForm.processing)}>
+                {t("Add")}
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
 
-      {/* Delete Confirmation Modal */}
+      {/* ── Edit Entity Modal ─────────────────────────────────────── */}
+      <Modal show={showEditModal} onClose={() => setShowEditModal(false)} maxWidth="md">
+        <div className={DS_modalContainer}>
+          <div className={DS_modalHeader(isRtl)}>
+            <div className={`flex items-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
+              <div className={DS_modalHeaderAccent} />
+              <h2 className={DS_modalHeaderTitle}>
+                {activeTab === "classrooms" ? t("Edit Class") : t("Edit Grade")}
+              </h2>
+            </div>
+            <button onClick={() => setShowEditModal(false)} className={DS_modalClose}><X className="w-4 h-4" /></button>
+          </div>
+
+          <form onSubmit={handleEditSubmit} className={DS_modalBody}>
+            {activeTab === "classrooms" ? (
+              <div className="space-y-4">
+                <div>
+                  <label className={DS_labelCls}>{t("Class Name")}</label>
+                  <input
+                    type="text"
+                    value={classForm.data.name}
+                    onChange={(e) => classForm.setData("name", e.target.value)}
+                    className={DS_inputCls}
+                    required
+                    dir="auto"
+                  />
+                </div>
+                <div>
+                  <label className={DS_labelCls}>{t("Grade")}</label>
+                  <Listbox value={classForm.data.grade_id} onChange={(val) => classForm.setData("grade_id", val)}>
+                    <div className="relative">
+                      <ListboxButton className={`${DS_inputCls} flex items-center justify-between cursor-pointer`}>
+                        <span className="block truncate">{getGradeName(classForm.data.grade_id)}</span>
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                      </ListboxButton>
+                      <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[16px] bg-white dark:bg-[#1a2845] py-2 shadow-xl border border-[#0f2044]/10 dark:border-[#243460] focus:outline-none">
+                        {grades.map((g) => (
+                          <ListboxOption key={g.id} value={g.id.toString()} className={({ active }) => `cursor-pointer py-2.5 px-4 text-sm font-semibold transition-colors ${active ? "bg-[#0f2044]/5 dark:bg-[#243460] text-[#0f2044] dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                            {g.name}
+                          </ListboxOption>
+                        ))}
+                      </ListboxOptions>
+                    </div>
+                  </Listbox>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className={DS_labelCls}>{t("Grade Name")}</label>
+                  <input
+                    type="text"
+                    value={gradeForm.data.name}
+                    onChange={(e) => gradeForm.setData("name", e.target.value)}
+                    className={DS_inputCls}
+                    required
+                    dir="auto"
+                  />
+                </div>
+                <div>
+                  <label className={DS_labelCls}>{t("Responsible Teacher")}</label>
+                  <Listbox value={gradeForm.data.teacher_id} onChange={(val) => gradeForm.setData("teacher_id", val)}>
+                    <div className="relative">
+                      <ListboxButton className={`${DS_inputCls} flex items-center justify-between cursor-pointer`}>
+                        <span className="block truncate">{getTeacherName(gradeForm.data.teacher_id)}</span>
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                      </ListboxButton>
+                      <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[16px] bg-white dark:bg-[#1a2845] py-2 shadow-xl border border-[#0f2044]/10 dark:border-[#243460] focus:outline-none">
+                        <ListboxOption value="" className="py-2.5 px-4 text-sm font-semibold text-gray-400 italic cursor-pointer hover:bg-gray-50 dark:hover:bg-[#243460]">{t("None")}</ListboxOption>
+                        {teachers.map((tItem) => (
+                          <ListboxOption key={tItem.id} value={tItem.id.toString()} className={({ active }) => `cursor-pointer py-2.5 px-4 text-sm font-semibold transition-colors ${active ? "bg-[#0f2044]/5 dark:bg-[#243460] text-[#0f2044] dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                            {tItem.name}
+                          </ListboxOption>
+                        ))}
+                      </ListboxOptions>
+                    </div>
+                  </Listbox>
+                </div>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-4 border-t border-[#0f2044]/10 dark:border-[#243460] mt-2">
+              <button type="button" onClick={() => setShowEditModal(false)} className={DS_cancelBtn}>{t("Cancel")}</button>
+              <button type="submit" disabled={classForm.processing || gradeForm.processing} className={DS_submitBtn(classForm.processing || gradeForm.processing)}>
+                {t("Save Changes")}
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+
+      {/* ── Delete Confirmation Modal ───────────────────────────────── */}
       {showDeleteModal && (
-          <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)} maxWidth="md">
-              <div className="bg-white dark:bg-[#1e293b] p-8 rounded-[30px] border">
-                  <div className="text-center mb-6">
-                      <div className="text-6xl mb-4">⚠️</div>
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t("Confirm Deletion")}</h3>
-                      <p className="text-gray-500 underline decoration-[#0e7490] underline-offset-4">{entityToDelete?.name}</p>
-                      <p className="text-gray-500 dark:text-gray-400 mt-2">{t("Are you sure you want to delete this? This action cannot be undone.")}</p>
-                  </div>
-                  <div className="flex gap-4">
-                      <button onClick={() => setShowDeleteModal(false)} className="flex-1 bg-gray-100 py-3.5 rounded-[35px] font-bold">{t("Cancel")}</button>
-                      <button onClick={handleDelete} className="flex-1 bg-red-600 text-white py-3.5 rounded-[35px] font-bold shadow-lg shadow-red-500/20">{t("Yes, Delete")}</button>
-                  </div>
-              </div>
-          </Modal>
+        <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)} maxWidth="sm">
+          <div className={DS_confirmModal}>
+            <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-xl font-bold text-[#0f2044] dark:text-white mb-2">{t("Confirm Deletion")}</h3>
+            <p className="font-bold text-[#0f2044] dark:text-[#7ba7e8] bg-[#0f2044]/5 dark:bg-[#0f2044]/30 py-2 px-4 rounded-xl inline-block mb-3">
+              {entityToDelete?.name}
+            </p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
+              {t("Are you sure you want to delete this? This action cannot be undone.")}
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowDeleteModal(false)} className={`flex-1 py-3 ${DS_cancelBtn}`}>{t("Cancel")}</button>
+              <button onClick={handleDelete} className="flex-1 py-3 rounded-[14px] bg-red-600 hover:bg-red-700 text-white font-bold transition-all shadow">{t("Yes, Delete")}</button>
+            </div>
+          </div>
+        </Modal>
       )}
     </SchoolAuthenticatedLayout>
   );

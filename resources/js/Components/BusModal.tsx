@@ -1,6 +1,9 @@
 import { FormEventHandler, useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
 import useTranslation from '@/hooks/useTranslation';
+import Modal from '@/Components/Modal';
+import { Map, Check } from 'lucide-react';
+import { DS_modalHeader, DS_submitBtn, DS_cancelBtn } from '@/lib/DS';
 
 interface Bus {
     id?: number;
@@ -29,7 +32,7 @@ interface BusModalProps {
 }
 
 export default function BusModal({ show, onClose, bus, drivers = [], assistants = [], field_supervisors = [], routes = [] }: BusModalProps) {
-    const { t } = useTranslation();
+    const { t, isRtl } = useTranslation();
     const isEditing = !!bus;
 
     const { data, setData, post, put, processing, errors, reset } = useForm<Bus>({
@@ -88,102 +91,77 @@ export default function BusModal({ show, onClose, bus, drivers = [], assistants 
         }
     };
 
-    if (!show) return null;
-
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-[30px] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-                {/* Header */}
-                <div className="bg-[#0e7490] p-6 text-white">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-[15px] flex items-center justify-center">
-                                <span className="text-3xl">🛣️</span>
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-bold">
-                                    {t('Assign Route')}
-                                </h3>
-                                <p className="text-blue-100 text-sm">{bus?.bus_number} - {bus?.plate_number}</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={onClose}
-                            className="text-white/80 hover:text-white transition-colors"
-                        >
-                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
+        <Modal show={show} onClose={onClose} maxWidth="2xl">
+            <div className={DS_modalHeader(isRtl)}>
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/20 rounded-[12px] flex items-center justify-center">
+                        <Map className="w-5 h-5 text-white" />
+                    </div>
+                    <div className={isRtl ? "text-right" : "text-left"}>
+                        <h3 className="text-xl font-bold text-white">
+                            {t('Assign Route')}
+                        </h3>
+                        <p className="text-[#7ba7e8] text-sm font-semibold mt-0.5">{bus?.bus_number} - {bus?.plate_number}</p>
                     </div>
                 </div>
+            </div>
 
-                {/* Form */}
-                <form onSubmit={submit} className="p-8 space-y-6">
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 ml-1">
-                            {t('Select Route for this Bus')}
-                        </label>
-                        <div className="grid grid-cols-1 gap-4">
-                            {routes.map(route => (
-                                <button
-                                    key={route.id}
-                                    type="button"
-                                    onClick={() => setData('route_id', route.id)}
-                                    className={`flex items-center justify-between p-5 rounded-[25px] border-2 transition-all ${
-                                        data.route_id === route.id
-                                            ? 'border-[#0e7490] bg-cyan-50 dark:bg-cyan-900/20 ring-4 ring-cyan-100 dark:ring-cyan-900/10'
-                                            : 'border-gray-100 dark:border-gray-700 hover:border-gray-200'
-                                    }`}
-                                >
-                                    <div className="flex flex-col items-start">
-                                        <span className={`font-black tracking-tight ${data.route_id === route.id ? 'text-[#0e7490]' : 'text-gray-700 dark:text-white'}`}>
-                                            {route.name}
-                                        </span>
-                                        <span className="text-xs text-gray-400 font-bold uppercase">{route.code || '---'}</span>
-                                    </div>
-                                    {data.route_id === route.id && (
-                                        <div className="w-8 h-8 bg-[#0e7490] rounded-full flex items-center justify-center text-white shadow-lg">
-                                            ✓
-                                        </div>
-                                    )}
-                                </button>
-                            ))}
-                            
+            <form onSubmit={submit} className="p-6 space-y-6">
+                <div>
+                    <label className="block text-sm font-bold text-[#0f2044] dark:text-gray-300 mb-4 ms-1">
+                        {t('Select Route for this Bus')}
+                    </label>
+                    <div className="grid grid-cols-1 gap-4">
+                        {routes.map(route => (
                             <button
+                                key={route.id}
                                 type="button"
-                                onClick={() => setData('route_id', null)}
-                                className={`p-4 rounded-[25px] border-2 border-dashed transition-all text-sm font-bold ${
-                                    data.route_id === null
-                                        ? 'border-gray-400 bg-gray-50 text-gray-600'
-                                        : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                                onClick={() => setData('route_id', route.id)}
+                                className={`flex items-center justify-between p-4 rounded-[20px] border-2 transition-all text-start ${
+                                    data.route_id === route.id
+                                        ? 'border-[#0f2044] bg-[#0f2044]/5 dark:border-[#7ba7e8] dark:bg-[#7ba7e8]/10 ring-4 ring-[#0f2044]/10 dark:ring-[#7ba7e8]/20'
+                                        : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'
                                 }`}
                             >
-                                {t('Unassign Route')}
+                                <div className="flex flex-col">
+                                    <span className={`font-bold tracking-tight text-lg ${data.route_id === route.id ? 'text-[#0f2044] dark:text-[#7ba7e8]' : 'text-gray-700 dark:text-gray-300'}`}>
+                                        {route.name}
+                                    </span>
+                                    <span className="text-xs text-gray-500 font-bold uppercase mt-1">{route.code || '---'}</span>
+                                </div>
+                                {data.route_id === route.id && (
+                                    <div className="w-8 h-8 bg-[#f5b800] rounded-full flex items-center justify-center text-[#0f2044] shadow-sm">
+                                        <Check className="w-4 h-4 font-bold" />
+                                    </div>
+                                )}
                             </button>
-                        </div>
-                        {errors.route_id && <p className="mt-4 text-sm text-red-600 text-center font-bold">{errors.route_id}</p>}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-4 pt-6">
+                        ))}
+                        
                         <button
                             type="button"
-                            onClick={onClose}
-                            className="flex-1 px-8 py-3.5 text-gray-500 font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all rounded-[25px]"
+                            onClick={() => setData('route_id', null)}
+                            className={`p-4 rounded-[20px] border-2 border-dashed transition-all text-sm font-bold ${
+                                data.route_id === null
+                                    ? 'border-gray-400 bg-gray-50 text-gray-600 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
+                                    : 'border-gray-200 text-gray-500 hover:border-gray-300 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-600'
+                            }`}
                         >
-                            {t('Cancel')}
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={processing}
-                            className="flex-1 px-8 py-3.5 bg-[#0e7490] text-white font-bold rounded-[35px] shadow-xl shadow-cyan-900/20 hover:bg-[#155e75] transition-all disabled:opacity-50"
-                        >
-                            {processing ? t('Saving...') : t('Save Assignment')}
+                            {t('Unassign Route')}
                         </button>
                     </div>
-                </form>
-            </div>
-        </div>
+                    {errors.route_id && <p className="mt-4 text-sm text-red-500 text-center font-bold">{errors.route_id}</p>}
+                </div>
+
+                <div className={`flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700 ${isRtl ? 'justify-start' : 'justify-end'}`}>
+                    <button type="button" onClick={onClose} className={DS_cancelBtn}>
+                        {t('Cancel')}
+                    </button>
+                    <button type="submit" disabled={processing} className={DS_submitBtn(processing)}>
+                        {processing ? t('Saving...') : t('Save Assignment')}
+                    </button>
+                </div>
+            </form>
+        </Modal>
     );
 }

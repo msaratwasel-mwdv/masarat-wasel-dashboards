@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useTheme } from "@/Contexts/ThemeContext";
 
 type Lang = "ar" | "en";
 
@@ -25,7 +25,13 @@ const dictionary = {
   View: { ar: "عرض", en: "View" },
   "Loading...": { ar: "جار التحميل...", en: "Loading..." },
   "No Data": { ar: "لا توجد بيانات", en: "No Data Available" },
+  Total: { ar: "الإجمالي", en: "Total" },
+  None: { ar: "لا يوجد", en: "None" },
   "Are you sure?": { ar: "هل أنت متأكد؟", en: "Are you sure?" },
+  "Are you sure you want to delete this? This action cannot be undone.": {
+    ar: "هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.",
+    en: "Are you sure you want to delete this? This action cannot be undone.",
+  },
   "Masarat Wasel": { ar: "مسارات وصل", en: "Masarat Wasel" },
   "Search by National ID": {
     ar: "بحث برقم الهوية",
@@ -43,6 +49,20 @@ const dictionary = {
   "Active Account": { ar: "نشط", en: "Active Account" },
   Classes: { ar: "الفصول", en: "Classes" },
   Routes: { ar: "المسارات", en: "Routes" },
+  "Routes Management": { ar: "إدارة المسارات", en: "Routes Management" },
+  "Total Routes": { ar: "إجمالي المسارات", en: "Total Routes" },
+  "Routes List": { ar: "قائمة المسارات", en: "Routes List" },
+  "Manage your school bus paths": { ar: "إدارة مسارات حافلات المدرسة", en: "Manage your school bus paths" },
+  "Search routes...": { ar: "البحث في المسارات...", en: "Search routes..." },
+  "Add Route": { ar: "إضافة مسار", en: "Add Route" },
+  "Route Name": { ar: "اسم المسار", en: "Route Name" },
+  Code: { ar: "الرمز", en: "Code" },
+  "Create New Route": { ar: "إنشاء مسار جديد", en: "Create New Route" },
+  "Edit Route": { ar: "تعديل المسار", en: "Edit Route" },
+  "Route Code": { ar: "رمز المسار", en: "Route Code" },
+  "Route Location": { ar: "موقع المسار", en: "Route Location" },
+  "Update Route": { ar: "تحديث المسار", en: "Update Route" },
+  "Save Route": { ar: "حفظ المسار", en: "Save Route" },
   "Assigned Paths": { ar: "المسارات المحددة", en: "Assigned Paths" },
   "Scheduled Today": { ar: "المجدولة اليوم", en: "Scheduled Today" },
   "Take Attendance": { ar: "تسجيل الحضور", en: "Take Attendance" },
@@ -51,7 +71,70 @@ const dictionary = {
   Classrooms: { ar: "الفصول الدراسية", en: "Classrooms" },
   Grades: { ar: "المراحل الدراسية", en: "Grades" },
   "Classrooms List": { ar: "قائمة الفصول", en: "Classrooms List" },
+  "Grades List": { ar: "قائمة المراحل", en: "Grades List" },
+  "Add New Class": { ar: "إضافة فصل جديد", en: "Add New Class" },
+  "Add New Grade": { ar: "إضافة مرحلة جديدة", en: "Add New Grade" },
+  "Class Name": { ar: "اسم الفصل", en: "Class Name" },
+  "Grade Name": { ar: "اسم المرحلة", en: "Grade Name" },
+  "Responsible Teacher": { ar: "المعلم المسؤول", en: "Responsible Teacher" },
+  "Edit Class": { ar: "تعديل الفصل", en: "Edit Class" },
+  "Edit Grade": { ar: "تعديل المرحلة", en: "Edit Grade" },
+  "No Teacher Assigned": { ar: "لا يوجد معلم", en: "No Teacher Assigned" },
+  "Select Teacher": { ar: "اختر المعلم", en: "Select Teacher" },
+  "Select Grade": { ar: "اختر المرحلة", en: "Select Grade" },
   Grade: { ar: "المرحلة", en: "Grade" },
+  "Live Tracking": { ar: "التتبع المباشر", en: "Live Tracking" },
+  "Total Trips": { ar: "إجمالي الرحلات", en: "Total Trips" },
+  "Pending Requests": { ar: "طلبات قيد الانتظار", en: "Pending Requests" },
+  "Active Now": { ar: "نشطة حالياً", en: "Active Now" },
+  Finalized: { ar: "منتهية", en: "Finalized" },
+  "Registered Trips": { ar: "الرحلات المسجلة", en: "Registered Trips" },
+  "active requests": { ar: "طلبات نشطة", en: "active requests" },
+  "Global Search...": { ar: "بحث شامل...", en: "Global Search..." },
+  "Live All Status": { ar: "جميع الحالات", en: "Live All Status" },
+  "Pending Verification": { ar: "في انتظار التحقق", en: "Pending Verification" },
+  "Admin Approved": { ar: "معتمدة من الإدارة", en: "Admin Approved" },
+  "Trips In Progress": { ar: "رحلات قيد التنفيذ", en: "Trips In Progress" },
+  "Past Trips": { ar: "رحلات سابقة", en: "Past Trips" },
+  "Request New Trip": { ar: "طلب رحلة جديدة", en: "Request New Trip" },
+  Identity: { ar: "الهوية", en: "Identity" },
+  "Dep. Schedule": { ar: "جدول المغادرة", en: "Dep. Schedule" },
+  "Target Hub": { ar: "الوجهة", en: "Target Hub" },
+  Participants: { ar: "المشاركون", en: "Participants" },
+  Operations: { ar: "العمليات", en: "Operations" },
+  Reason: { ar: "السبب", en: "Reason" },
+  "No Deployment Found": { ar: "لا توجد رحلات", en: "No Deployment Found" },
+  St: { ar: "ط", en: "St" },
+  Tch: { ar: "م", en: "Tch" },
+  "Total Buses": { ar: "إجمالي الحافلات", en: "Total Buses" },
+  "Available Buses": { ar: "الحافلات المتاحة", en: "Available Buses" },
+  "Under Maintenance": { ar: "في الصيانة", en: "Under Maintenance" },
+  "Search by bus number or plate...": { ar: "البحث برقم الحافلة أو اللوحة...", en: "Search by bus number or plate..." },
+  "Search by Bus Number or Plate...": { ar: "البحث برقم الحافلة أو اللوحة...", en: "Search by bus number or plate..." },
+  "All Status": { ar: "كل الحالات", en: "All Status" },
+  "Request Additional Bus": { ar: "طلب حافلة إضافية", en: "Request Additional Bus" },
+  Capacity: { ar: "السعة", en: "Capacity" },
+  Type: { ar: "النوع", en: "Type" },
+  Driver: { ar: "السائق", en: "Driver" },
+  Assistant: { ar: "المشرف", en: "Assistant" },
+  "No Driver": { ar: "بدون سائق", en: "No Driver" },
+  "Not Assigned": { ar: "غير معين", en: "Not Assigned" },
+  "No Buses Found": { ar: "لا يوجد حافلات", en: "No Buses Found" },
+  "Try adjusting your search or filters": { ar: "حاول تعديل البحث أو الفلاتر", en: "Try adjusting your search or filters" },
+  "Bus Number": { ar: "رقم الحافلة", en: "Bus Number" },
+  "Plate Number": { ar: "رقم اللوحة", en: "Plate Number" },
+  "on_route": { ar: "في الطريق", en: "On Route" },
+  "at_school": { ar: "في المدرسة", en: "At School" },
+  "idle": { ar: "متوقفة", en: "Idle" },
+  "active": { ar: "نشطة", en: "Active" },
+  "inactive": { ar: "غير نشطة", en: "Inactive" },
+  "maintenance": { ar: "صيانة", en: "Maintenance" },
+  Status: { ar: "الحالة", en: "Status" },
+  Student: { ar: "طالب", en: "Student" },
+  Permanent: { ar: "دائم", en: "Permanent" },
+  Temporary: { ar: "مؤقت", en: "Temporary" },
+  "Card View": { ar: "عرض البطاقات", en: "Card View" },
+  "Table View": { ar: "عرض الجدول", en: "Table View" },
   All: { ar: "الكل", en: "All" },
   "ID / Code": { ar: "الرقم / الرمز", en: "ID / Code" },
   "Grade Responsible For": { ar: "المرحلة المسؤول عنها", en: "Grade Responsible For" },
@@ -59,9 +142,12 @@ const dictionary = {
   "Teachers Management": { ar: "إدارة المعلمين", en: "Teachers Management" },
   Teachers: { ar: "المعلمين", en: "Teachers" },
   "Total Teachers": { ar: "إجمالي المعلمين", en: "Total Teachers" },
-  "Search name, ID, phone...": { ar: "بحث بالاسم، الرقم، الهاتف...", en: "Search name, ID, phone..." },
+  "Teachers Report": { ar: "تقرير المعلمين", en: "Teachers Report" },
   "No Teachers Yet": { ar: "لا يوجد معلمين بعد", en: "No Teachers Yet" },
+  Teacher: { ar: "المعلم", en: "Teacher" },
   "Register New Teacher": { ar: "تسجيل معلم جديد", en: "Register New Teacher" },
+  "Edit Teacher Details": { ar: "تعديل بيانات المعلم", en: "Edit Teacher Details" },
+  "No Grade Assigned": { ar: "لم يتم تعيين مرحلة", en: "No Grade Assigned" },
   "Personal Details": { ar: "البيانات الشخصية", en: "Personal Details" },
   "Contact & Preferences": { ar: "التواصل والتفضيلات", en: "Contact & Preferences" },
   "Profile Picture": { ar: "صورة الملف الشخصي", en: "Profile Picture" },
@@ -81,6 +167,34 @@ const dictionary = {
   Crew: { ar: "الطاقم", en: "Crew" },
   "Field Supervisor": { ar: "المشرف الميداني", en: "Field Supervisor" },
   "Assign Route": { ar: "تعيين مسار", en: "Assign Route" },
+  "Select Route for this Bus": { ar: "اختر مسار لهذه الحافلة", en: "Select Route for this Bus" },
+  "Unassign Route": { ar: "إلغاء تعيين المسار", en: "Unassign Route" },
+  "Saving...": { ar: "جاري الحفظ...", en: "Saving..." },
+  "Save Assignment": { ar: "حفظ التعيين", en: "Save Assignment" },
+  "My Bus Requests": { ar: "طلبات الحافلات الخاصة بي", en: "My Bus Requests" },
+  "Bus Requests": { ar: "طلبات الحافلات", en: "Bus Requests" },
+  "Back to Buses": { ar: "العودة إلى الحافلات", en: "Back to Buses" },
+  "Pending": { ar: "قيد الانتظار", en: "Pending" },
+  "Approved": { ar: "معتمد", en: "Approved" },
+  "Rejected": { ar: "مرفوض", en: "Rejected" },
+  "Field Trip": { ar: "رحلة ميدانية", en: "Field Trip" },
+  "Submitted": { ar: "تاريخ الطلب", en: "Submitted" },
+  "Required Seats": { ar: "المقاعد المطلوبة", en: "Required Seats" },
+  "Start Date": { ar: "تاريخ البدء", en: "Start Date" },
+  "End Date": { ar: "تاريخ الانتهاء", en: "End Date" },
+  "Purpose": { ar: "السبب", en: "Purpose" },
+  "Details": { ar: "التفاصيل", en: "Details" },
+  "Rejection Reason": { ar: "سبب الرفض", en: "Rejection Reason" },
+  "Approved on": { ar: "تم الاعتماد في", en: "Approved on" },
+  "No Requests Found": { ar: "لا توجد طلبات", en: "No Requests Found" },
+  "You haven't submitted any bus requests yet": { ar: "لم تقم بتقديم أي طلبات حافلات بعد", en: "You haven't submitted any bus requests yet" },
+  "Submit Your First Request": { ar: "قدم طلبك الأول", en: "Submit Your First Request" },
+  "Fill out the form below to submit your request": { ar: "يرجى تعبئة النموذج أدناه لتقديم طلبك", en: "Fill out the form below to submit your request" },
+  "Request Type": { ar: "نوع الطلب", en: "Request Type" },
+  "Explain the purpose of this request...": { ar: "يرجى شرح سبب الطلب...", en: "Explain the purpose of this request..." },
+  "Any special requirements or details...": { ar: "أي متطلبات خاصة أو تفاصيل إضافية...", en: "Any special requirements or details..." },
+  "Submitting...": { ar: "جاري التقديم...", en: "Submitting..." },
+  "Submit Request": { ar: "تقديم الطلب", en: "Submit Request" },
   "Field Trips Logistics": { ar: "لوجستيات الرحلات الميدانية", en: "Field Trips Logistics" },
   "Fleet Management & Deployment Approval": { ar: "إدارة الأسطول وموافقة النشر", en: "Fleet Management & Deployment Approval" },
   "Field Trips Management": { ar: "إدارة الرحلات الميدانية", en: "Field Trips Management" },
@@ -593,6 +707,7 @@ const dictionary = {
     en: "Search buses by number or plate...",
   },
   "Active Only": { ar: "النشطة فقط", en: "Active Only" },
+  Standard: { ar: "خريطة عادية", en: "Standard" },
   Satellite: { ar: "قمر صناعي", en: "Satellite" },
   Hybrid: { ar: "هجين", en: "Hybrid" },
   Legend: { ar: "المفتاح", en: "Legend" },
@@ -1526,51 +1641,65 @@ const dictionary = {
   "Edit Route": { ar: "تعديل المسار", en: "Edit Route" },
   "Static Routes": { ar: "المسارات الثابتة", en: "Static Routes" },
 
+  // Students Management
+  "Civil ID": { ar: "الرقم المدني", en: "Civil ID" },
+  "Students Management": { ar: "إدارة الطلاب", en: "Students Management" },
+  "Students Report": { ar: "تقرير الطلاب", en: "Students Report" },
+  "Student Name": { ar: "اسم الطالب", en: "Student Name" },
+  "Morning Group": { ar: "خط الذهاب", en: "Morning Group" },
+  "Afternoon Group": { ar: "خط العودة", en: "Afternoon Group" },
+  "Guardian Phone": { ar: "هاتف ولي الأمر", en: "Guardian Phone" },
+  "Enroll New Student": { ar: "تسجيل طالب جديد", en: "Enroll New Student" },
+  "Total Students": { ar: "إجمالي الطلاب", en: "Total Students" },
+  "Students List": { ar: "قائمة الطلاب", en: "Students List" },
+  "Search by Name, ID...": { ar: "بحث بالاسم، الرقم المدني...", en: "Search by Name, ID..." },
+  "No students found": { ar: "لا يوجد طلاب مسجلون", en: "No students found" },
+  "Guardian Verification": { ar: "التحقق من ولي الأمر", en: "Guardian Verification" },
+  "Create New Guardian": { ar: "إضافة ولي أمر جديد", en: "Create New Guardian" },
+  "Student Details": { ar: "تفاصيل الطالب", en: "Student Details" },
+  "Enter student details": { ar: "أدخل بيانات الطالب", en: "Enter student details" },
+  "Search Guardian": { ar: "البحث عن ولي الأمر", en: "Search Guardian" },
+  "Search by Civil ID to find existing guardian.": { ar: "ابحث بالرقم المدني للعثور على ولي الأمر الحالي.", en: "Search by Civil ID to find existing guardian." },
+
+
+  // Parents Management
+  "Parents Management": { ar: "إدارة أولياء الأمور", en: "Parents Management" },
+  "Parents": { ar: "أولياء الأمور", en: "Parents" },
+  "Parents Report": { ar: "تقرير أولياء الأمور", en: "Parents Report" },
+  "School name not available": { ar: "اسم المدرسة غير متوفر", en: "School name not available" },
+  "Print Date": { ar: "تاريخ الطباعة", en: "Print Date" },
+  "School Admin": { ar: "إدارة المدرسة", en: "School Admin" },
+  "Total Parents": { ar: "إجمالي أولياء الأمور", en: "Total Parents" },
+  "Principal Signature": { ar: "توقيع مدير المدرسة", en: "Principal Signature" },
+  "Search by name, ID, phone...": { ar: "بحث بالاسم أو الرقم المدني أو الهاتف...", en: "Search by name, ID, phone..." },
+  "Print": { ar: "طباعة", en: "Print" },
+  "+ Add Parent": { ar: "+ إضافة ولي أمر", en: "+ Add Parent" },
+  "Parent": { ar: "ولي الأمر", en: "Parent" },
+  "Children": { ar: "الأبناء", en: "Children" },
+  "No parents found": { ar: "لا يوجد أولياء أمور", en: "No parents found" },
+  "Edit Parent": { ar: "تعديل ولي الأمر", en: "Edit Parent" },
+  "Add New Parent": { ar: "إضافة ولي أمر جديد", en: "Add New Parent" },
+  "Address / House #": { ar: "العنوان / رقم المنزل", en: "Address / House #" },
+  "Saving...": { ar: "جاري الحفظ...", en: "Saving..." },
+  "Save Changes": { ar: "حفظ التغييرات", en: "Save Changes" },
+  "Children of": { ar: "أبناء", en: "Children of" },
+  "student(s)": { ar: "طالب", en: "student(s)" },
+  "No children registered": { ar: "لا يوجد أبناء مسجلون", en: "No children registered" },
+  "Confirm Delete": { ar: "تأكيد الحذف", en: "Confirm Delete" },
+  "The parent will be deactivated. Are you sure?": { ar: "سيتم تعطيل ولي الأمر. هل أنت متأكد؟", en: "The parent will be deactivated. Are you sure?" },
+
 } as Record<string, { ar: string; en: string }>;
 
 export default function useTranslation() {
-  const [lang, setLang] = useState<Lang>("ar"); // Default to Arabic
-
-  useEffect(() => {
-    const storedLang = localStorage.getItem("lang") as Lang;
-    if (storedLang) {
-      setLang(storedLang);
-      document.documentElement.dir = storedLang === "ar" ? "rtl" : "ltr";
-    } else {
-      // Default to Arabic
-      localStorage.setItem("lang", "ar");
-      document.documentElement.dir = "rtl";
-      setLang("ar");
-    }
-
-    // --- THEME ENFORCEMENT ---
-    // Basic enforcement of dark mode preference if not set
-    if (!localStorage.getItem("theme")) {
-      localStorage.setItem("theme", "dark");
-      document.documentElement.classList.add("dark");
-    } else {
-      if (localStorage.getItem("theme") === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
-  }, []);
-
-  const changeLang = (newLang: Lang) => {
-    setLang(newLang);
-    localStorage.setItem("lang", newLang);
-    document.documentElement.dir = newLang === "ar" ? "rtl" : "ltr";
-    window.location.reload();
-  };
+  const { language, isRTL } = useTheme();
 
   const t = (key: string) => {
     if (!dictionary[key]) {
       console.warn(`Missing translation for key: "${key}"`);
       return key;
     }
-    return dictionary[key][lang];
+    return dictionary[key][language];
   };
 
-  return { t, lang, changeLang, isRtl: lang === "ar" };
+  return { t, lang: language, isRtl: isRTL };
 }

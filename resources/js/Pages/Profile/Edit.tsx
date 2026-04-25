@@ -1,467 +1,205 @@
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { PageProps } from "@/types";
-import { Head, usePage, useForm } from "@inertiajs/react";
-import { FormEventHandler, useRef, useState, useEffect } from "react";
-import InputError from "@/Components/InputError";
-import { Transition } from "@headlessui/react";
+import { Head, usePage } from "@inertiajs/react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "@/Contexts/ThemeContext";
+import { 
+    Building2, 
+    User, 
+    Lock, 
+    Bell, 
+    ShieldCheck, 
+    ChevronRight,
+    Smartphone,
+    Globe
+} from "lucide-react";
 
-export default function Edit({
-  mustVerifyEmail,
-  status,
-}: PageProps<{ mustVerifyEmail: boolean; status?: string }>) {
-  const user = usePage().props.auth.user;
-  const { locale } = usePage().props as any;
+import { 
+    DS_card, 
+    DS_pageTitle,
+    DS_divider
+} from "@/lib/DS";
 
-  const Layout =
-    user.role === "school_admin"
-      ? SchoolAuthenticatedLayout
-      : AuthenticatedLayout;
+import UpdateProfileInformationForm from "./Partials/UpdateProfileInformationForm";
+import UpdatePasswordForm from "./Partials/UpdatePasswordForm";
+import UpdateSchoolInformationForm from "./Partials/UpdateSchoolInformationForm";
 
-  // ─── Theme State ───
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== "undefined") {
-      return document.documentElement.classList.contains("dark");
-    }
-    return false;
-  });
+interface Props {
+    mustVerifyEmail: boolean;
+    status?: string;
+    auth: { user: any };
+}
 
-  const toggleTheme = () => {
-    const html = document.documentElement;
-    if (isDark) {
-      html.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    } else {
-      html.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    }
-    setIsDark(!isDark);
-  };
+export default function Edit({ mustVerifyEmail, status, auth }: Props) {
+    const { isRTL: isRtl, theme, language, toggleTheme, toggleLanguage } = useTheme();
+    const [activeTab, setActiveTab] = useState('school'); // 'school' | 'profile' | 'security' | 'preferences'
 
-  // ─── Language State ───
-  const currentLang = (locale as string) || "ar";
-  const isRtl = currentLang === "ar";
+    const tabs = [
+        { id: 'school', label: isRtl ? 'بيانات المدرسة' : 'School Profile', icon: Building2 },
+        { id: 'profile', label: isRtl ? 'الملف الشخصي' : 'Personal Profile', icon: User },
+        { id: 'security', label: isRtl ? 'الأمان' : 'Security', icon: Lock },
+        { id: 'preferences', label: isRtl ? 'التفضيلات' : 'Preferences', icon: Globe },
+    ];
 
-  const switchLanguage = (lang: string) => {
-    window.location.href = `/lang/${lang}`;
-  };
-
-  // ─── Password Form ───
-  const passwordInput = useRef<HTMLInputElement>(null);
-  const currentPasswordInput = useRef<HTMLInputElement>(null);
-
-  const {
-    data,
-    setData,
-    errors,
-    put,
-    reset,
-    processing,
-    recentlySuccessful,
-  } = useForm({
-    current_password: "",
-    password: "",
-    password_confirmation: "",
-  });
-
-  const updatePassword: FormEventHandler = (e) => {
-    e.preventDefault();
-    put(route("password.update"), {
-      preserveScroll: true,
-      onSuccess: () => reset(),
-      onError: (errors) => {
-        if (errors.password) {
-          reset("password", "password_confirmation");
-          passwordInput.current?.focus();
-        }
-        if (errors.current_password) {
-          reset("current_password");
-          currentPasswordInput.current?.focus();
-        }
-      },
-    });
-  };
-
-  // ─── Section Card Component ───
-  const SectionCard = ({
-    icon,
-    title,
-    subtitle,
-    children,
-  }: {
-    icon: React.ReactNode;
-    title: string;
-    subtitle: string;
-    children: React.ReactNode;
-  }) => (
-    <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm overflow-hidden transition-all hover:shadow-md">
-      <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700/50 bg-gradient-to-r from-[#041b3a] to-[#1B3A5C]">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white/10 rounded-xl text-white">{icon}</div>
-          <div>
-            <h3 className="text-base font-bold text-white">{title}</h3>
-            <p className="text-xs text-white/60 mt-0.5">{subtitle}</p>
-          </div>
-        </div>
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
-  );
-
-  return (
-    <Layout user={user}>
-      <Head title={isRtl ? "الإعدادات" : "Settings"} />
-
-      <div className="py-8">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white">
-              {isRtl ? "الإعدادات" : "Settings"}
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              {isRtl
-                ? "إدارة إعدادات حسابك وتخصيص النظام"
-                : "Manage your account settings and customize the system"}
-            </p>
-          </div>
-
-          <div className="space-y-6">
-            {/* ═══════════ 1. THEME SECTION ═══════════ */}
-            <SectionCard
-              icon={
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  {isDark ? (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                    />
-                  ) : (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                    />
-                  )}
-                </svg>
-              }
-              title={isRtl ? "المظهر" : "Appearance"}
-              subtitle={
-                isRtl
-                  ? "تخصيص مظهر الواجهة"
-                  : "Customize the interface appearance"
-              }
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-slate-800 dark:text-white text-sm">
-                    {isRtl ? "الوضع الداكن" : "Dark Mode"}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {isRtl
-                      ? isDark
-                        ? "الوضع الداكن مفعّل حالياً"
-                        : "الوضع الفاتح مفعّل حالياً"
-                      : isDark
-                        ? "Dark mode is currently enabled"
-                        : "Light mode is currently enabled"}
-                  </p>
+    return (
+        <SchoolAuthenticatedLayout
+            user={auth.user}
+            header={
+                <div className="flex items-center gap-3">
+                    <ShieldCheck className="w-6 h-6 text-[#f5b800]" />
+                    <h2 className={DS_pageTitle}>
+                        {(isRtl ? 'إعدادات النظام' : 'System Settings')}
+                    </h2>
                 </div>
-                <button
-                  onClick={toggleTheme}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${isDark ? "bg-blue-600" : "bg-slate-300"
-                    }`}
-                >
-                  <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 ${isDark
-                        ? isRtl
-                          ? "translate-x-1"
-                          : "translate-x-6"
-                        : isRtl
-                          ? "translate-x-6"
-                          : "translate-x-1"
-                      }`}
-                  />
-                </button>
-              </div>
-            </SectionCard>
+            }
+        >
+            <Head title={(isRtl ? 'الإعدادات' : 'Settings')} />
 
-            {/* ═══════════ 2. LANGUAGE SECTION ═══════════ */}
-            <SectionCard
-              icon={
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
-                  />
-                </svg>
-              }
-              title={isRtl ? "اللغة" : "Language"}
-              subtitle={
-                isRtl
-                  ? "اختيار لغة واجهة النظام"
-                  : "Choose the system interface language"
-              }
-            >
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => switchLanguage("ar")}
-                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 font-bold text-sm transition-all duration-200 ${currentLang === "ar"
-                      ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 shadow-sm"
-                      : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                    }`}
-                >
-                  <span className="text-lg">🇸🇦</span>
-                  العربية
-                  {currentLang === "ar" && (
-                    <svg
-                      className="w-4 h-4 text-blue-600"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  )}
-                </button>
-                <button
-                  onClick={() => switchLanguage("en")}
-                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 font-bold text-sm transition-all duration-200 ${currentLang === "en"
-                      ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 shadow-sm"
-                      : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                    }`}
-                >
-                  <span className="text-lg">🇺🇸</span>
-                  English
-                  {currentLang === "en" && (
-                    <svg
-                      className="w-4 h-4 text-blue-600"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </SectionCard>
+            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+                {/* Tabs - Sidebar on Desktop / Horizontal on Mobile */}
+                <aside className="lg:w-72 flex-shrink-0">
+                    <div className={`${DS_card} p-2 lg:sticky lg:top-24`}>
+                        <nav className="flex lg:flex-col overflow-x-auto lg:overflow-visible no-scrollbar p-1 gap-1">
+                            {tabs.map((tab) => {
+                                const Icon = tab.icon;
+                                const isActive = activeTab === tab.id;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`flex-shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs lg:text-sm font-bold transition-all duration-200 group ${
+                                            isActive 
+                                                ? 'bg-[#0f2044] text-[#f5b800] shadow-lg shadow-[#0f2044]/20' 
+                                                : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-[#243460] dark:text-gray-400 hover:text-[#0f2044] dark:hover:text-white'
+                                        }`}
+                                    >
+                                        <div className={`p-1.5 rounded-lg transition-colors ${isActive ? 'bg-[#f5b800]/10 text-[#f5b800]' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-[#243460]'}`}>
+                                            <Icon className="w-3.5 h-3.5 lg:w-4 h-4" />
+                                        </div>
+                                        <span className="whitespace-nowrap flex-1 text-start">{tab.label}</span>
+                                        {isActive && (
+                                            <motion.div layoutId="tab-active-indicator" className="hidden lg:block">
+                                                <ChevronRight className={`w-4 h-4 ${isRtl ? 'rotate-180' : ''}`} />
+                                            </motion.div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </div>
 
-            {/* ═══════════ 3. CHANGE PASSWORD SECTION ═══════════ */}
-            <SectionCard
-              icon={
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                  />
-                </svg>
-              }
-              title={isRtl ? "تغيير كلمة المرور" : "Change Password"}
-              subtitle={
-                isRtl
-                  ? "تأكد من استخدام كلمة مرور قوية وآمنة"
-                  : "Ensure your account uses a strong, secure password"
-              }
-            >
-              <form onSubmit={updatePassword} className="space-y-5">
-                <div>
-                  <label
-                    htmlFor="current_password"
-                    className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5"
-                  >
-                    {isRtl ? "كلمة المرور الحالية" : "Current Password"}
-                  </label>
-                  <input
-                    id="current_password"
-                    ref={currentPasswordInput}
-                    value={data.current_password}
-                    onChange={(e) =>
-                      setData("current_password", e.target.value)
-                    }
-                    type="password"
-                    autoComplete="current-password"
-                    className="block w-full rounded-xl border-0 py-3 px-4 text-slate-800 dark:text-white bg-slate-50 dark:bg-slate-700/50 shadow-sm ring-1 ring-inset ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                    placeholder="••••••••"
-                  />
-                  <InputError
-                    message={errors.current_password}
-                    className="mt-1.5"
-                  />
-                </div>
+                    {/* Helper Info - Hidden on Mobile */}
+                    <div className="hidden lg:block mt-6 p-6 rounded-[20px] bg-gradient-to-br from-[#0f2044] to-[#1B3A5C] text-white shadow-xl relative overflow-hidden">
+                        <div className="relative z-10">
+                            <h4 className="text-sm font-black mb-2">{(isRtl ? 'تحتاج للمساعدة؟' : 'Need Help?')}</h4>
+                            <p className="text-[11px] text-white/70 leading-relaxed">
+                                {(isRtl 
+                                    ? 'إذا واجهت أي مشكلة في تحديث البيانات، يرجى التواصل مع الدعم الفني لمسارات واصل.' 
+                                    : 'If you encounter any issues updating data, please contact Masarat Wasel technical support.')}
+                            </p>
+                            <button className="mt-4 text-[10px] font-bold bg-[#f5b800] text-[#0f2044] px-4 py-2 rounded-lg hover:bg-white transition-colors">
+                                {(isRtl ? 'اتصل بنا' : 'Contact Support')}
+                            </button>
+                        </div>
+                        <Building2 className="absolute -bottom-4 -right-4 w-24 h-24 text-white/5 rotate-12" />
+                    </div>
+                </aside>
 
-                <div>
-                  <label
-                    htmlFor="password"
-                    className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5"
-                  >
-                    {isRtl ? "كلمة المرور الجديدة" : "New Password"}
-                  </label>
-                  <input
-                    id="password"
-                    ref={passwordInput}
-                    value={data.password}
-                    onChange={(e) => setData("password", e.target.value)}
-                    type="password"
-                    autoComplete="new-password"
-                    className="block w-full rounded-xl border-0 py-3 px-4 text-slate-800 dark:text-white bg-slate-50 dark:bg-slate-700/50 shadow-sm ring-1 ring-inset ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                    placeholder="••••••••"
-                  />
-                  <InputError message={errors.password} className="mt-1.5" />
-                </div>
+                {/* Main Content Area */}
+                <div className="flex-1 min-w-0">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={activeTab}
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className={DS_card}
+                        >
+                            <div className="p-5 md:p-8">
+                                {activeTab === 'school' && <UpdateSchoolInformationForm />}
+                                
+                                {activeTab === 'profile' && (
+                                    <UpdateProfileInformationForm 
+                                        mustVerifyEmail={mustVerifyEmail} 
+                                        status={status} 
+                                    />
+                                )}
+                                
+                                {activeTab === 'security' && <UpdatePasswordForm />}
 
-                <div>
-                  <label
-                    htmlFor="password_confirmation"
-                    className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5"
-                  >
-                    {isRtl ? "تأكيد كلمة المرور" : "Confirm Password"}
-                  </label>
-                  <input
-                    id="password_confirmation"
-                    value={data.password_confirmation}
-                    onChange={(e) =>
-                      setData("password_confirmation", e.target.value)
-                    }
-                    type="password"
-                    autoComplete="new-password"
-                    className="block w-full rounded-xl border-0 py-3 px-4 text-slate-800 dark:text-white bg-slate-50 dark:bg-slate-700/50 shadow-sm ring-1 ring-inset ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                    placeholder="••••••••"
-                  />
-                  <InputError
-                    message={errors.password_confirmation}
-                    className="mt-1.5"
-                  />
-                </div>
+                                {activeTab === 'preferences' && (
+                                    <div className="space-y-8">
+                                        <header>
+                                            <h2 className="text-lg font-bold text-[#0f2044] dark:text-white">
+                                                {isRtl ? "تفضيلات النظام" : "System Preferences"}
+                                            </h2>
+                                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                                {isRtl 
+                                                    ? "تخصيص تجربة استخدامك للنظام من حيث المظهر واللغة والتنبيهات."
+                                                    : "Customize your system experience including appearance, language, and notifications."}
+                                            </p>
+                                        </header>
 
-                <div className="flex items-center gap-4 pt-2">
-                  <button
-                    type="submit"
-                    disabled={processing}
-                    className="px-6 py-2.5 bg-gradient-to-r from-[#041b3a] to-[#1B3A5C] hover:from-[#1B3A5C] hover:to-[#244b73] text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50"
-                  >
-                    {isRtl ? "حفظ التغييرات" : "Save Changes"}
-                  </button>
-                  <Transition
-                    show={recentlySuccessful}
-                    enter="transition ease-in-out"
-                    enterFrom="opacity-0"
-                    leave="transition ease-in-out"
-                    leaveTo="opacity-0"
-                  >
-                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                      {isRtl ? "✓ تم الحفظ بنجاح" : "✓ Saved successfully"}
-                    </p>
-                  </Transition>
-                </div>
-              </form>
-            </SectionCard>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {/* Appearance Toggle */}
+                                            <div className="p-6 rounded-2xl bg-gray-50 dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] flex items-center justify-between group hover:border-[#f5b800] transition-all">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="p-3 rounded-xl bg-white dark:bg-[#0f2044] shadow-sm text-[#f5b800]">
+                                                        <Smartphone className="w-6 h-6" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-[#0f2044] dark:text-white">{isRtl ? 'مظهر النظام' : 'System Theme'}</p>
+                                                        <p className="text-[10px] text-gray-500">{theme === 'dark' ? (isRtl ? 'الوضع المظلم مفعّل' : 'Dark Mode Enabled') : (isRtl ? 'الوضع الفاتح مفعّل' : 'Light Mode Enabled')}</p>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={toggleTheme}
+                                                    className={`w-12 h-6 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-[#f5b800]' : 'bg-gray-300'}`}
+                                                >
+                                                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${theme === 'dark' ? (isRtl ? 'right-1' : 'left-7') : (isRtl ? 'right-7' : 'left-1')}`} />
+                                                </button>
+                                            </div>
 
-            {/* ═══════════ 4. ACCOUNT INFO (READ-ONLY) ═══════════ */}
-            <SectionCard
-              icon={
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              }
-              title={isRtl ? "معلومات الحساب" : "Account Information"}
-              subtitle={
-                isRtl
-                  ? "بيانات حسابك — للعرض فقط"
-                  : "Your account details — read only"
-              }
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 border border-slate-100 dark:border-slate-600/30">
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                    {isRtl ? "الاسم" : "Name"}
-                  </p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                    {user.name}
-                  </p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 border border-slate-100 dark:border-slate-600/30">
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                    {isRtl ? "البريد الإلكتروني" : "Email"}
-                  </p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                    {user.email}
-                  </p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 border border-slate-100 dark:border-slate-600/30">
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                    {isRtl ? "الدور" : "Role"}
-                  </p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                    {user.role === "school_admin"
-                      ? isRtl
-                        ? "مدير المدرسة"
-                        : "School Admin"
-                      : user.role === "admin"
-                        ? isRtl
-                          ? "مدير النظام"
-                          : "System Admin"
-                        : user.role}
-                  </p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 border border-slate-100 dark:border-slate-600/30">
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                    {isRtl ? "الهاتف" : "Phone"}
-                  </p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                    {(user as any).phone || (isRtl ? "غير محدد" : "Not set")}
-                  </p>
-                </div>
-              </div>
-            </SectionCard>
+                                            {/* Language Toggle */}
+                                            <div className="p-6 rounded-2xl bg-gray-50 dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] flex items-center justify-between group hover:border-[#f5b800] transition-all">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="p-3 rounded-xl bg-white dark:bg-[#0f2044] shadow-sm text-blue-500">
+                                                        <Globe className="w-6 h-6" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-[#0f2044] dark:text-white">{isRtl ? 'لغة النظام' : 'System Language'}</p>
+                                                        <p className="text-[10px] text-gray-500">{isRtl ? 'اللغة العربية' : 'English Language'}</p>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={toggleLanguage}
+                                                    className="px-4 py-1.5 bg-white dark:bg-[#0f2044] border border-gray-200 dark:border-[#243460] rounded-xl text-xs font-black shadow-sm"
+                                                >
+                                                    {isRtl ? 'English' : 'العربية'}
+                                                </button>
+                                            </div>
+                                        </div>
 
-            {/* ═══════════ 5. SYSTEM VERSION ═══════════ */}
-            <div className="text-center py-4">
-              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                {isRtl ? "مسارات واصل — نظام النقل المدرسي الذكي" : "Masarat Wasel — Smart Transport System"}{" "}
-                · v1.0.0
-              </p>
+                                        <div className={DS_divider} />
+
+                                        {/* Notifications Placeholder */}
+                                        <div className="p-8 text-center bg-[#f5b800]/5 rounded-[20px] border border-dashed border-[#f5b800]/20">
+                                            <Bell className="w-12 h-12 text-[#f5b800] mx-auto mb-4 opacity-40" />
+                                            <h4 className="font-bold text-[#0f2044] dark:text-white">{(isRtl ? 'إعدادات التنبيهات قيد التطوير' : 'Notification Settings coming soon')}</h4>
+                                            <p className="text-xs text-gray-500 mt-2 max-w-sm mx-auto">
+                                                {(isRtl 
+                                                    ? 'سنتمكن قريباً من تخصيص أنواع التنبيهات التي ترغب في استلامها عبر البريد أو المتصفح.' 
+                                                    : 'You will soon be able to customize what types of notifications you receive via email or browser.')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </Layout>
-  );
+        </SchoolAuthenticatedLayout>
+    );
 }

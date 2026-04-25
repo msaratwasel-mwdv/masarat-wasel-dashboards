@@ -3,6 +3,7 @@ import { useForm } from '@inertiajs/react';
 import useTranslation from '@/hooks/useTranslation';
 import FieldTripMapPicker from '@/Components/FieldTripMapPicker';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { DS_inputCls, DS_labelCls, DS_cancelBtn, DS_submitBtn, DS_btnPrimary, DS_btnSecondary } from '@/lib/DS';
 
 interface Teacher {
     id: number;
@@ -38,8 +39,10 @@ interface Props {
 }
 
 export default function CreateFieldTripModal({ show, onClose, teachers = [], classrooms = [] }: Props) {
-    const { t } = useTranslation();
+    const { lang } = useTranslation();
+    const isRtl = lang === 'ar';
     const { isRTL, theme } = useTheme();
+    const t = (en: string, ar?: string) => isRtl && ar ? ar : en;
     const isDark = theme === 'dark';
     const [currentStep, setCurrentStep] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
@@ -100,10 +103,10 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
     if (!show) return null;
 
     const steps = [
-        { id: 1, name: t('Details'), icon: '📝' },
-        { id: 2, name: t('Location'), icon: '📍' },
-        { id: 3, name: t('Students'), icon: '🎓' },
-        { id: 4, name: t('Faculty'), icon: '📋' },
+        { id: 1, name: t('Details', 'التفاصيل'), icon: '📝' },
+        { id: 2, name: t('Location', 'الموقع'), icon: '📍' },
+        { id: 3, name: t('Students', 'الطلاب'), icon: '🎓' },
+        { id: 4, name: t('Faculty', 'المشرفون'), icon: '📋' },
     ];
 
     const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 4));
@@ -136,79 +139,68 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fadeIn" onClick={onClose}>
-            <div className={`bg-white dark:bg-gray-800 rounded-[35px] shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden transform animate-slideUp flex flex-col ${isRTL ? 'rtl' : 'ltr'}`} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#0f2044]/80 backdrop-blur-sm" onClick={onClose}>
+            <div className={`bg-white dark:bg-[#1a2845] rounded-[24px] shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-gray-100 dark:border-[#243460] ${isRTL ? 'rtl' : 'ltr'}`} onClick={e => e.stopPropagation()}>
                 
-                {/* Modern Header */}
-                <div className="relative overflow-hidden bg-gradient-to-r from-brand-navy to-brand-dark p-6 text-white flex-shrink-0">
-                    <div className="relative flex items-center justify-between z-10">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center text-2xl shadow-xl border border-white/20">
-                                {steps.find(s => s.id === currentStep)?.icon || '🎒'}
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-black tracking-tight leading-none">{t('Field Trip Requisition')}</h2>
-                                <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mt-1.5">{t('Educational Excellence Program')}</p>
-                            </div>
+                {/* Header */}
+                <div className="px-6 py-5 bg-[#0f2044] flex items-center justify-between flex-shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-2 h-6 bg-[#f5b800] rounded-full" />
+                        <div className="w-10 h-10 bg-white/10 rounded-[14px] flex items-center justify-center text-xl border border-white/10">
+                            {steps.find(s => s.id === currentStep)?.icon || '🎒'}
                         </div>
-                        <button onClick={onClose} className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border border-white/10">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
+                        <div>
+                            <h2 className="text-base font-bold text-white">{t('Field Trip Requisition', 'طلب رحلة ميدانية')}</h2>
+                            <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mt-0.5">{t('Educational Program', 'برنامج التعليم الميداني')}</p>
+                        </div>
                     </div>
-
-                    {/* Stepper Logic */}
-                    <div className="relative flex items-center justify-between mt-8 max-w-md mx-auto">
-                        {steps.map((step, idx) => (
-                            <div key={step.id} className="flex items-center flex-1 last:flex-none">
-                                <div className="flex flex-col items-center gap-2 relative z-10">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-500 border-2 ${currentStep === step.id
-                                        ? 'bg-brand-yellow text-brand-navy border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.3)]'
-                                        : currentStep > step.id
-                                            ? 'bg-green-400 text-white border-green-400'
-                                            : 'bg-white/10 text-white/40 border-white/10'
-                                        }`}>
-                                        {currentStep > step.id ? '✓' : step.id}
-                                    </div>
-                                    <span className={`text-[9px] uppercase tracking-widest font-black transition-colors ${currentStep === step.id ? 'text-white' : 'text-white/40'}`}>{step.name}</span>
-                                </div>
-                                {idx < steps.length - 1 && (
-                                    <div className="flex-1 h-[2px] mx-3 -mt-5">
-                                        <div className={`h-full transition-all duration-700 ${currentStep > step.id ? 'bg-green-400' : 'bg-white/10'}`} />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-[10px] bg-white/10 text-white hover:bg-white/20 transition-all">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
                 </div>
 
-                <div className="p-8 overflow-y-auto flex-1 custom-scrollbar scroll-smooth">
+                {/* Stepper */}
+                <div className="px-6 py-4 bg-[#0f2044]/5 dark:bg-[#0f2044]/20 border-b border-gray-100 dark:border-[#243460] flex items-center justify-center gap-2">
+                    {steps.map((step, idx) => (
+                        <div key={step.id} className="flex items-center">
+                            <div className="flex flex-col items-center gap-1">
+                                <div className={`w-8 h-8 rounded-[10px] flex items-center justify-center font-bold text-xs transition-all ${
+                                    currentStep === step.id ? 'bg-[#0f2044] text-[#f5b800] shadow' :
+                                    currentStep > step.id ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-[#0f2044]/30 text-gray-400'
+                                }`}>{currentStep > step.id ? '✓' : step.id}</div>
+                                <span className={`text-[9px] font-bold uppercase tracking-wider ${ currentStep === step.id ? 'text-[#0f2044] dark:text-[#f5b800]' : 'text-gray-400'}`}>{step.name}</span>
+                            </div>
+                            {idx < steps.length - 1 && <div className={`w-12 h-0.5 mx-2 mb-4 ${ currentStep > step.id ? 'bg-emerald-400' : 'bg-gray-200 dark:bg-[#243460]'}`} />}
+                        </div>
+                    ))}
+                </div>
+
+                <div className="p-6 overflow-y-auto flex-1">
                     {/* Step 1: Details */}
                     {currentStep === 1 && (
-                        <div className="space-y-6 animate-fadeIn">
+                        <div className="space-y-5">
                             <div>
-                                <label className="block text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2.5 ml-1">{t('Expedition Title')}</label>
-                                <input type="text" value={data.name} onChange={e => setData('name', e.target.value)} className="w-full px-6 py-4 border-2 border-gray-100 dark:border-gray-700/50 rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 text-gray-800 dark:text-white focus:ring-4 focus:ring-brand-navy/10 focus:border-brand-navy transition-all font-bold text-base" placeholder={t('Science Museum Tour...')} />
-                                {errors.name && <p className="text-red-500 text-[10px] mt-2 font-bold">{errors.name}</p>}
+                                <label className={DS_labelCls}>{t('Trip Title', 'عنوان الرحلة')}</label>
+                                <input type="text" value={data.name} onChange={e => setData('name', e.target.value)} className={DS_inputCls} placeholder={t('Science Museum Tour...', 'جولة في متحف العلوم...')} />
+                                {errors.name && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.name}</p>}
                             </div>
-
                             <div>
-                                <label className="block text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2.5 ml-1">{t('Objectives & Description')}</label>
-                                <textarea value={data.description} onChange={e => setData('description', e.target.value)} rows={3} className="w-full px-6 py-4 border-2 border-gray-100 dark:border-gray-700/50 rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 text-gray-800 dark:text-white focus:ring-4 focus:ring-brand-navy/10 focus:border-brand-navy transition-all font-medium text-sm" placeholder={t('Detail the trip purpose...')} />
+                                <label className={DS_labelCls}>{t('Description', 'الوصف والأهداف')}</label>
+                                <textarea value={data.description} onChange={e => setData('description', e.target.value)} rows={3} className={DS_inputCls} placeholder={t('Detail the trip purpose...', 'وصف هدف الرحلة...')} />
                             </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label className="block text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2.5 ml-1">{t('Date')}</label>
-                                    <input type="date" value={data.date} onChange={e => setData('date', e.target.value)} className="w-full px-6 py-4 border-2 border-gray-100 dark:border-gray-700/50 rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 font-bold text-sm" />
+                                    <label className={DS_labelCls}>{t('Date', 'التاريخ')}</label>
+                                    <input type="date" value={data.date} onChange={e => setData('date', e.target.value)} className={DS_inputCls} />
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2.5 ml-1">{t('Departure')}</label>
-                                    <input type="time" value={data.departure_time} onChange={e => setData('departure_time', e.target.value)} className="w-full px-6 py-4 border-2 border-gray-100 dark:border-gray-700/50 rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 font-bold text-sm" />
+                                    <label className={DS_labelCls}>{t('Departure', 'وقت الانطلاق')}</label>
+                                    <input type="time" value={data.departure_time} onChange={e => setData('departure_time', e.target.value)} className={DS_inputCls} />
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2.5 ml-1">{t('Arrival (Est.)')}</label>
-                                    <input type="time" value={data.arrival_time} onChange={e => setData('arrival_time', e.target.value)} className="w-full px-6 py-4 border-2 border-gray-100 dark:border-gray-700/50 rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 font-bold text-sm text-brand-navy dark:text-brand-yellow" />
-                                    {errors.arrival_time && <p className="text-red-500 text-[10px] mt-2 font-bold">{errors.arrival_time}</p>}
+                                    <label className={DS_labelCls}>{t('Arrival (Est.)', 'وقت العودة (تقريبي)')}</label>
+                                    <input type="time" value={data.arrival_time} onChange={e => setData('arrival_time', e.target.value)} className={DS_inputCls} />
+                                    {errors.arrival_time && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.arrival_time}</p>}
                                 </div>
                             </div>
                         </div>
@@ -232,9 +224,9 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                 }}
                             />
                             <div>
-                                <label className="block text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2.5 ml-1">{t('Destination Name')}</label>
-                                <input type="text" value={data.destination_address} onChange={e => setData('destination_address', e.target.value)} className="w-full px-6 py-4 border-2 border-gray-100 dark:border-gray-700/50 rounded-2xl font-bold bg-white dark:bg-gray-900" placeholder={t('Search or enter destination...')} />
-                                {errors.destination_latitude && <p className="text-red-500 text-[10px] mt-3 text-center font-black">⚠️ {t('Geolocation required on map')}</p>}
+                                <label className={DS_labelCls}>{t('Destination Name', 'اسم الوجهة / العنوان')}</label>
+                                <input type="text" value={data.destination_address} onChange={e => setData('destination_address', e.target.value)} className={DS_inputCls} placeholder={t('Search or enter destination...', 'ابحث أو أدخل اسم الوجهة...')} />
+                                {errors.destination_latitude && <p className="text-red-500 text-[10px] mt-3 text-center font-black">⚠️ {t('Geolocation required on map', 'يرجى تحديد الموقع على الخريطة')}</p>}
                             </div>
                         </div>
                     )}
@@ -248,34 +240,34 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                         type="text" 
                                         value={searchTerm} 
                                         onChange={e => setSearchTerm(e.target.value)}
-                                        placeholder={t('Search by student name or code...')}
-                                        className="w-full pl-12 pr-6 py-4 border-2 border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/30 dark:bg-gray-900/30 font-bold text-sm focus:ring-brand-navy"
+                                        placeholder={t('Search by student name or code...', 'ابحث باسم الطالب أو الرقم...')}
+                                        className={`${DS_inputCls} ${isRtl ? 'pr-10' : 'pl-10'}`}
                                     />
-                                    <svg className="w-5 h-5 absolute left-4 top-4.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    <svg className={`w-4 h-4 absolute ${isRtl ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                 </div>
                                 <select 
                                     value={selectedClassroomId} 
                                     onChange={e => setSelectedClassroomId(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-                                    className="px-6 py-4 border-2 border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/30 dark:bg-gray-900/30 font-black text-xs uppercase tracking-widest"
+                                    className={DS_inputCls}
                                 >
-                                    <option value="all">{t('All Classes')}</option>
+                                    <option value="all">{t('All Classes', 'جميع الفصول')}</option>
                                     {classrooms.map(cls => <option key={cls.id} value={cls.id}>{cls.name}</option>)}
                                 </select>
                             </div>
 
                             <div className="flex justify-between items-center px-2">
                                 <div className="flex items-center gap-3">
-                                    <span className="px-4 py-1.5 bg-brand-navy text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">
-                                        {data.student_ids.length} {t('Selected')}
+                                    <span className="px-3 py-1 bg-[#0f2044] text-[#f5b800] rounded-[10px] text-[10px] font-black shadow">
+                                        {data.student_ids.length} {t('Selected', 'محدد')}
                                     </span>
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                        / {filteredStudents.length} {t('Visible')}
+                                    <span className="text-[10px] font-bold text-gray-400">
+                                        / {filteredStudents.length} {t('Visible', 'ظاهر')}
                                     </span>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={selectAllFiltered} type="button" className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-widest hover:underline">{t('Select All')}</button>
+                                    <button onClick={selectAllFiltered} type="button" className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] hover:underline">{t('Select All', 'تحديد الكل')}</button>
                                     <span className="text-gray-300">|</span>
-                                    <button onClick={deselectAllFiltered} type="button" className="text-[10px] font-black text-red-500 uppercase tracking-widest hover:underline">{t('Clear')}</button>
+                                    <button onClick={deselectAllFiltered} type="button" className="text-[10px] font-black text-red-500 hover:underline">{t('Clear', 'مسح')}</button>
                                 </div>
                             </div>
 
@@ -327,8 +319,8 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Internal Teachers */}
                                 <div className="space-y-4">
-                                    <label className="text-[11px] font-black text-brand-navy dark:text-cyan-400 uppercase tracking-widest flex items-center gap-2">
-                                        🏛 {t('Internal Faculty')}
+                                    <label className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-widest flex items-center gap-2">
+                                        🏛 {t('Internal Faculty', 'المعلمون الداخليون')}
                                     </label>
                                     <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                                         {teachers.map(teacher => (
@@ -352,9 +344,9 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
                                         <label className="text-[11px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest flex items-center gap-2">
-                                            👥 {t('External Escorts')}
+                                            👥 {t('External Escorts', 'مرافقون خارجيون')}
                                         </label>
-                                        <button type="button" onClick={() => setShowMemberModal(true)} className="text-[9px] font-black text-purple-600 underline uppercase tracking-widest">+ {t('Add')}</button>
+                                        <button type="button" onClick={() => setShowMemberModal(true)} className="text-[9px] font-black text-purple-600 underline uppercase tracking-widest">+ {t('Add', 'إضافة')}</button>
                                     </div>
                                     <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                                         {data.external_members.map((member, idx) => (
@@ -372,7 +364,7 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                         {data.external_members.length === 0 && (
                                             <div className="h-32 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-2xl flex flex-col items-center justify-center text-gray-300">
                                                 <span className="text-2xl mb-2">👤</span>
-                                                <p className="text-[9px] font-black uppercase tracking-widest">{t('No externals added')}</p>
+                                                <p className="text-[9px] font-black uppercase tracking-widest">{t('No externals added', 'لم يتم إضافة مرافقين')}</p>
                                             </div>
                                         )}
                                     </div>
@@ -380,23 +372,23 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                              </div>
 
                              {/* Final Summary Card */}
-                             <div className="p-6 bg-gray-50 dark:bg-gray-900/50 rounded-[2.5rem] border-2 border-gray-100 dark:border-gray-800 shadow-inner">
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                                    <div className="p-4 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('Students')}</p>
-                                        <p className="text-xl font-black text-brand-navy dark:text-brand-yellow">{data.student_ids.length}</p>
+                             <div className="p-5 bg-[#0f2044]/5 dark:bg-[#0f2044]/20 rounded-[20px] border border-[#0f2044]/10 dark:border-[#243460]">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                                    <div className="p-4 bg-white dark:bg-[#1a2845] rounded-[16px] shadow-sm border border-gray-100 dark:border-[#243460]">
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('Students', 'طلاب')}</p>
+                                        <p className="text-xl font-black text-[#0f2044] dark:text-white">{data.student_ids.length}</p>
                                     </div>
-                                    <div className="p-4 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('Teachers')}</p>
-                                        <p className="text-xl font-black text-cyan-500">{data.teacher_ids.length}</p>
+                                    <div className="p-4 bg-white dark:bg-[#1a2845] rounded-[16px] shadow-sm border border-gray-100 dark:border-[#243460]">
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('Teachers', 'معلمون')}</p>
+                                        <p className="text-xl font-black text-[#0f2044] dark:text-white">{data.teacher_ids.length}</p>
                                     </div>
-                                    <div className="p-4 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('Externals')}</p>
-                                        <p className="text-xl font-black text-purple-500">{data.external_members.length}</p>
+                                    <div className="p-4 bg-white dark:bg-[#1a2845] rounded-[16px] shadow-sm border border-gray-100 dark:border-[#243460]">
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('Externals', 'مرافقون')}</p>
+                                        <p className="text-xl font-black text-purple-600 dark:text-purple-400">{data.external_members.length}</p>
                                     </div>
-                                    <div className="p-4 bg-brand-navy/90 text-white rounded-3xl shadow-xl shadow-brand-navy/20">
-                                        <p className="text-[9px] font-black text-white/50 uppercase tracking-widest mb-1">{t('Departure')}</p>
-                                        <p className="text-xl font-black">{data.departure_time}</p>
+                                    <div className="p-4 bg-[#0f2044] text-white rounded-[16px] shadow">
+                                        <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest mb-1">{t('Departure', 'وقت الانطلاق')}</p>
+                                        <p className="text-xl font-black text-[#f5b800]">{data.departure_time}</p>
                                     </div>
                                 </div>
                              </div>
@@ -404,36 +396,28 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                     )}
                 </div>
 
-                {/* Footer Controls */}
-                <div className="p-6 border-t-2 border-gray-50 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between items-center z-20">
-                    <button onClick={onClose} className="px-8 py-3.5 text-gray-400 hover:text-red-500 font-black uppercase tracking-widest text-[10px] transition-colors">{t('Dismiss')}</button>
-                    
-                    <div className="flex gap-4">
+                {/* Footer */}
+                <div className="px-6 py-4 border-t border-gray-100 dark:border-[#243460] bg-gray-50/50 dark:bg-[#0f2044]/10 flex justify-between items-center">
+                    <button onClick={onClose} className={DS_cancelBtn}>{t('Cancel', 'إلغاء')}</button>
+                    <div className="flex gap-3">
                         {currentStep > 1 && (
-                            <button onClick={prevStep} className="px-8 py-3.5 border-2 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-900 transition-all font-black uppercase tracking-widest text-[10px]">
-                                {t('Previous')}
-                            </button>
+                            <button onClick={prevStep} className={DS_btnSecondary}>{t('Previous', 'السابق')}</button>
                         )}
-                        
                         {currentStep < 4 ? (
-                            <button 
-                                onClick={nextStep} 
+                            <button
+                                onClick={nextStep}
                                 disabled={
                                     (currentStep === 1 && (!data.name || !data.date)) ||
                                     (currentStep === 2 && (!data.destination_address || !data.destination_latitude)) ||
                                     (currentStep === 3 && data.student_ids.length === 0)
                                 }
-                                className="px-12 py-3.5 bg-brand-navy text-white font-black rounded-2xl hover:bg-brand-dark shadow-2xl shadow-brand-navy/30 transition-all uppercase tracking-widest text-[10px] disabled:opacity-30 disabled:grayscale"
+                                className={DS_btnPrimary + " disabled:opacity-30 disabled:cursor-not-allowed"}
                             >
-                                {t('Advance Step')}
+                                {t('Next Step', 'التالي')}
                             </button>
                         ) : (
-                            <button 
-                                onClick={handleSubmit} 
-                                disabled={processing}
-                                className="px-14 py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black rounded-2xl hover:shadow-2xl shadow-emerald-500/30 transition-all uppercase tracking-widest text-[10px] disabled:opacity-50"
-                            >
-                                {processing ? t('Processing...') : t('Finalize & Submit')}
+                            <button onClick={handleSubmit} disabled={processing} className={DS_submitBtn(processing)}>
+                                {processing ? t('Sending...', 'جارٍ الإرسال...') : t('Submit Request', 'إرسال الطلب')}
                             </button>
                         )}
                     </div>
@@ -442,23 +426,23 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                 {/* External Member Sub-Modal */}
                 {showMemberModal && (
                     <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/70 backdrop-blur-xl animate-fadeIn" onClick={() => setShowMemberModal(false)}>
-                        <div className={`bg-white dark:bg-gray-900 rounded-[35px] shadow-2xl max-w-sm w-full p-8 transform animate-slideUp ${isRTL ? 'rtl' : 'ltr'}`} onClick={e => e.stopPropagation()}>
-                            <h3 className="text-xl font-black text-gray-800 dark:text-white mb-6 flex items-center gap-3">
-                                <span className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl text-lg">➕</span>
-                                {t('External Escort')}
+                        <div className={`bg-white dark:bg-[#1a2845] rounded-[24px] shadow-2xl max-w-sm w-full p-6 border border-gray-100 dark:border-[#243460] ${isRTL ? 'rtl' : 'ltr'}`} onClick={e => e.stopPropagation()}>
+                            <h3 className="text-base font-bold text-[#0f2044] dark:text-white mb-5 flex items-center gap-3">
+                                <span className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-[12px] text-lg">➕</span>
+                                {t('External Escort', 'إضافة مرافق خارجي')}
                             </h3>
-                            <div className="space-y-5 mb-8">
+                            <div className="space-y-4 mb-6">
                                 <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">{t('Legal Name')}</label>
-                                    <input type="text" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} className="w-full px-5 py-4 border-2 border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 font-bold text-sm" placeholder={t("Full name...")} />
+                                    <label className={DS_labelCls}>{t('Legal Name', 'الاسم الكامل')}</label>
+                                    <input type="text" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} className={DS_inputCls} placeholder={t('Full name...', 'الاسم الكامل...')} />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">{t('Contact #')}</label>
-                                    <input type="text" value={memberForm.phone || ''} onChange={e => setMemberForm({...memberForm, phone: e.target.value})} className="w-full px-5 py-4 border-2 border-gray-100 dark:border-gray-800 rounded-2xl font-bold text-sm" placeholder={t("05XXXXXXXX")} />
+                                    <label className={DS_labelCls}>{t('Contact #', 'رقم الجوال')}</label>
+                                    <input type="text" value={memberForm.phone || ''} onChange={e => setMemberForm({...memberForm, phone: e.target.value})} className={DS_inputCls} placeholder={t('05XXXXXXXX', '05XXXXXXXX')} />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">{t('ID / Passport')}</label>
-                                    <input type="text" value={memberForm.national_id || ''} onChange={e => setMemberForm({...memberForm, national_id: e.target.value})} className="w-full px-5 py-4 border-2 border-gray-100 dark:border-gray-800 rounded-2xl font-bold text-sm" placeholder={t("ID number...")} />
+                                    <label className={DS_labelCls}>{t('ID / Passport', 'رقم الهوية / جواز السفر')}</label>
+                                    <input type="text" value={memberForm.national_id || ''} onChange={e => setMemberForm({...memberForm, national_id: e.target.value})} className={DS_inputCls} placeholder={t('ID number...', 'رقم الهوية...')} />
                                 </div>
                             </div>
                             <button 
@@ -469,9 +453,9 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                         setMemberForm({name: ''});
                                     }
                                 }}
-                                className="w-full py-4 bg-purple-600 text-white font-black rounded-2xl hover:bg-purple-700 shadow-xl shadow-purple-500/20 transition-all uppercase tracking-widest text-[10px]"
+                                className="w-full py-3 bg-purple-600 text-white font-bold rounded-[14px] hover:bg-purple-700 shadow transition-all text-sm"
                             >
-                                {t('Register Member')}
+                                {t('Register Member', 'إضافة المرافق')}
                             </button>
                         </div>
                     </div>

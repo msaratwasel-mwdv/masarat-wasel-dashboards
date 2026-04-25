@@ -31,6 +31,7 @@ import {
   Search,
   Navigation,
   FileText,
+  Baby,
 } from "lucide-react";
 
 // تعريف عناصر القائمة لإدارة المدرسة
@@ -59,6 +60,11 @@ const getMenuItems = (isRTL: boolean) => [
     label: isRTL ? "الطلاب" : "Students",
     route: "school.students.index",
     icon: "user",
+  },
+  {
+    label: isRTL ? "إدارة أولياء الأمور" : "Parents Management",
+    route: "school.parents.index",
+    icon: "parents",
   },
   {
     label: isRTL ? "الباصات" : "Buses",
@@ -213,6 +219,7 @@ export default function SchoolAuthenticatedLayout({
       case "classes": return <GraduationCap className={baseClass} />;
       case "teacher": return <UserSquare2 className={baseClass} />;
       case "user": return <Users className={baseClass} />;
+      case "parents": return <Baby className={baseClass} />;
       case "bus": return <Bus className={baseClass} />;
       case "route": return <RouteIcon className={baseClass} />;
       case "map": return <Map className={baseClass} />;
@@ -548,7 +555,9 @@ export default function SchoolAuthenticatedLayout({
                 </p>
                 <div className={`flex items-center gap-1.5 ${flexDirection} opacity-50`}>
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  <p className="text-[9px] font-bold uppercase tracking-widest">Online</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest">
+                    {isRTL ? "متصل الآن" : "Online"}
+                  </p>
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-brand-dark dark:bg-gray-700 text-white flex items-center justify-center shadow-lg shrink-0 border-2 border-white dark:border-gray-800">

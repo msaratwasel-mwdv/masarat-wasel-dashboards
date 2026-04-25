@@ -320,6 +320,11 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::post('guardians/search', [StudentController::class, 'searchGuardian'])->name('guardians.search');
         Route::post('guardians', [StudentController::class, 'storeGuardian'])->name('guardians.store');
 
+        // إدارة أولياء الأمور
+        Route::resource('parents', \App\Http\Controllers\School\GuardianController::class)
+            ->parameters(['parents' => 'parent'])
+            ->except(['create', 'edit', 'show']);
+
         // 5. الحضور
         Route::get('students/{student}/attendance', [StudentController::class, 'attendanceHistory'])->name('students.attendance');
 
@@ -368,6 +373,9 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         // Trip Reports
         Route::get('trip-reports', [\App\Http\Controllers\School\TripReportController::class, 'index'])->name('trip-reports.index');
         Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');
+
+        // School Settings
+        Route::post('settings/school', [\App\Http\Controllers\School\SchoolSettingsController::class, 'update'])->name('settings.school.update');
 
     });
 
