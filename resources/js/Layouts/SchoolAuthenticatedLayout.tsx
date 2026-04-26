@@ -3,7 +3,7 @@ import { Link, usePage } from "@inertiajs/react";
 import ApplicationLogo from "@/Components/ApplicationLogo";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { User } from "@/types";
-import { ToastContainer } from "react-toastify";
+import { toast, ToastContainer, Bounce } from "react-toastify";
 import NotificationDropdown from "@/Components/NotificationDropdown";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -68,23 +68,26 @@ const getMenuItems = (isRTL: boolean) => [
   },
   {
     label: isRTL ? "الباصات" : "Buses",
-    route: "school.buses.index",
     icon: "bus",
+    subItems: [
+      {
+        label: isRTL ? "قائمة الحافلات" : "Buses List",
+        route: "school.buses.index",
+      },
+      {
+        label: isRTL ? "طلبات الحافلات" : "Bus Requests",
+        route: "school.bus-requests.index",
+      },
+      {
+        label: isRTL ? "تعيين الطلاب للباص" : "Assign Bus Students",
+        route: "school.buses.students.assign",
+      },
+    ],
   },
   {
     label: isRTL ? "المسارات" : "Routes",
     route: "school.routes.index",
     icon: "route",
-  },
-  {
-    label: isRTL ? "طلبات الحافلات" : "Bus Requests",
-    route: "school.bus-requests.index",
-    icon: "rocket",
-  },
-  {
-    label: isRTL ? "تعيين الطلاب للباص" : "Assign Bus Students",
-    route: "school.buses.students.assign",
-    icon: "users",
   },
   {
     label: isRTL ? "الإشعارات" : "Notifications",
@@ -148,7 +151,34 @@ export default function SchoolAuthenticatedLayout({
     localStorage.setItem("school-sidebar-collapsed", isCollapsed.toString());
   }, [isCollapsed]);
 
+  const { flash } = usePage<any>().props;
   const { theme, language, toggleTheme, toggleLanguage, isRTL } = useTheme();
+
+  useEffect(() => {
+    if (flash?.success) {
+      toast.success(flash.success, {
+        position: "top-center",
+        autoClose: 3000,
+        transition: Bounce,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: theme === 'dark' ? 'dark' : 'light',
+      });
+    }
+    if (flash?.error) {
+      toast.error(flash.error, {
+        position: "top-center",
+        autoClose: 4000,
+        transition: Bounce,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: theme === 'dark' ? 'dark' : 'light',
+      });
+    }
+  }, [flash, theme]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
@@ -267,7 +297,7 @@ export default function SchoolAuthenticatedLayout({
         `}
       >
         {/* Logo Section */}
-        <div className={`h-24 flex items-center border-b border-white/10 dark:border-gray-700 overflow-hidden ${isCollapsed ? "justify-center px-0" : "px-8"}`}>
+        <div className={`h-20 flex items-center border-b border-white/10 dark:border-gray-700 overflow-hidden ${isCollapsed ? "justify-center px-0" : "px-8"}`}>
           <Link
             href="/"
             className={`flex items-center gap-3 group ${flexDirection}`}
@@ -297,7 +327,7 @@ export default function SchoolAuthenticatedLayout({
         <nav
           ref={sidebarNavRef}
           onScroll={handleSidebarScroll}
-          className="flex-1 px-3 space-y-1.5 mt-8 overflow-y-auto custom-scrollbar hide-scrollbar"
+          className="flex-1 px-3 space-y-1.5 mt-8 overflow-y-auto custom-scrollbar"
         >
           {!isCollapsed && (
             <p className={`px-4 text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-4 ${isRTL ? "text-right" : "text-left"}`}>
@@ -314,7 +344,12 @@ export default function SchoolAuthenticatedLayout({
               return (
                 <div key={item.label} className="space-y-1">
                   <button
-                    onClick={() => !isCollapsed && toggleMenu(item.label)}
+                    onClick={() => {
+                      if (isCollapsed) {
+                        setIsCollapsed(false);
+                      }
+                      toggleMenu(item.label);
+                    }}
                     title={isCollapsed ? item.label : ""}
                     className={`
                       w-full relative group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200
@@ -570,20 +605,6 @@ export default function SchoolAuthenticatedLayout({
         {/* Page Content */}
         <div className="p-4 md:p-8 flex-1 bg-gray-50 dark:bg-gray-900">
           <div className="max-w-7xl mx-auto">
-            {/* Flash Messages */}
-            {(usePage().props.flash as any)?.success && (
-              <div className="mb-6 p-5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/50 rounded-3xl flex items-center gap-4 text-emerald-700 dark:text-emerald-400 shadow-sm">
-                <div className="w-10 h-10 bg-emerald-500 text-white rounded-2xl flex items-center justify-center text-lg shadow-lg">✓</div>
-                <div className="flex-1 font-bold text-sm">{(usePage().props.flash as any).success}</div>
-              </div>
-            )}
-            {(usePage().props.flash as any)?.error && (
-              <div className="mb-6 p-5 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 rounded-3xl flex items-center gap-4 text-red-700 dark:text-red-400 shadow-sm">
-                <div className="w-10 h-10 bg-red-500 text-white rounded-2xl flex items-center justify-center text-lg shadow-lg">✕</div>
-                <div className="flex-1 font-bold text-sm">{(usePage().props.flash as any).error}</div>
-              </div>
-            )}
-
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -594,7 +615,12 @@ export default function SchoolAuthenticatedLayout({
           </div>
         </div>
       </main>
-      <ToastContainer />
+      <ToastContainer 
+        theme={theme === 'dark' ? 'dark' : 'light'}
+        limit={3}
+        className="!top-20"
+        hideProgressBar
+      />
     </div>
   );
 }

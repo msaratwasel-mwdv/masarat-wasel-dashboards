@@ -204,6 +204,10 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::put('schools/{school}', [SchoolController::class, 'update'])->name('schools.update');
         Route::delete('schools/{school}', [SchoolController::class, 'destroy'])->name('schools.destroy');
         Route::post('schools/{school}/toggle', [SchoolController::class, 'toggleStatus'])->name('schools.toggle');
+        
+        // مديرو المدارس - قائمة شاملة
+        Route::get('school-admins', [SchoolUserController::class, 'index'])->name('school-admins.index');
+
         Route::get('schools/{school}/admins/create', [SchoolUserController::class, 'create'])->name('schools.users.create');
         Route::post('schools/{school}/admins', [SchoolUserController::class, 'store'])->name('schools.users.store');
         Route::get('schools/{school}/admins/{user}/edit', [SchoolUserController::class, 'edit'])->name('schools.users.edit');

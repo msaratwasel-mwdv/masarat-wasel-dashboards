@@ -102,7 +102,6 @@ export default function SchoolDashboard({
     {
       title: isRtl ? "أسطول الحافلات" : "Bus Fleet",
       value: stats.buses,
-      sub: `${stats.active_buses} ${isRtl ? "نشطة" : "Active"}`,
       icon: Bus,
       accent: "navy" as const,
       link: route("school.buses.index"),
@@ -164,32 +163,32 @@ export default function SchoolDashboard({
         className="space-y-8"
       >
         {/* Welcome Hero Section */}
-        <div className="relative p-8 md:p-12 rounded-[32px] bg-gradient-to-br from-[#0f2044] via-[#162d60] to-[#0f2044] overflow-hidden shadow-2xl">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-[#f5b800]/10 rounded-full blur-[100px] -mr-48 -mt-48" />
+        <div className="relative p-4 md:p-5 rounded-[32px] bg-gradient-to-br from-[#0f2044] via-[#162d60] to-[#0f2044] overflow-hidden shadow-2xl">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#f5b800]/10 rounded-full blur-[100px] -mr-32 -mt-32" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -ml-32 -mb-32" />
             
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className={isRtl ? "text-right" : "text-left"}>
-                    <h1 className="text-3xl md:text-5xl font-black text-white mb-4 leading-tight">
-                        {greeting}، <span className="text-[#f5b800]">{auth.user.name}</span>
+                    <h1 className="text-xl md:text-2xl font-black text-white leading-tight">
+                        {greeting}، <span className="text-[#f5b800]">
+                            {isRtl 
+                                ? `${auth.user.first_name_ar || auth.user.name} ${auth.user.last_name_ar || ''}`.trim()
+                                : `${auth.user.first_name_en || auth.user.name} ${auth.user.last_name_en || ''}`.trim()
+                            }
+                        </span>
                     </h1>
-                    <p className="text-blue-100/70 text-sm md:text-lg max-w-xl leading-relaxed">
-                        {isRtl 
-                            ? 'أهلاً بك مجدداً في مركز القيادة. إليك ملخص لأهم مؤشرات الأداء والنشاطات الحالية في مدرستك اليوم.' 
-                            : 'Welcome back to the Command Center. Here is a summary of the most important performance indicators and current activities in your school today.'}
-                    </p>
                 </div>
                 
-                <div className="flex flex-col items-center justify-center p-6 rounded-[24px] bg-white/5 border border-white/10 backdrop-blur-xl min-w-[240px]">
-                    <div className="flex items-center gap-4 mb-4">
-                        <Calendar className="w-5 h-5 text-[#f5b800]" />
-                        <span className="text-white font-bold">{currentTime.toLocaleDateString(isRtl ? 'ar-SA' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <div className="flex flex-col items-center justify-center p-3 md:p-4 rounded-[20px] bg-white/5 border border-white/10 backdrop-blur-xl min-w-[200px]">
+                    <div className="flex items-center gap-3 mb-2">
+                        <Calendar className="w-3 h-3 text-[#f5b800]" />
+                        <span className="text-white text-xs font-bold">{currentTime.toLocaleDateString(isRtl ? 'ar-SA' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                     </div>
                     <div className="text-center">
-                        <div className="text-4xl font-black text-white mb-1">
+                        <div className="text-2xl md:text-3xl font-black text-white">
                             {currentTime.toLocaleTimeString(isRtl ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </div>
-                        <p className="text-[10px] text-blue-200/50 uppercase tracking-[0.2em] font-bold">
+                        <p className="text-[8px] text-blue-200/50 uppercase tracking-[0.2em] font-bold">
                             {isRtl ? 'التوقيت المحلي الحالي' : 'Current Local Time'}
                         </p>
                     </div>

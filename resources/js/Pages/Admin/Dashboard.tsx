@@ -103,33 +103,31 @@ export default function Dashboard({
         className="space-y-8"
       >
         {/* --- Header Section (Identical to School for Unity) --- */}
-        <div className="relative overflow-hidden p-8 md:p-12 rounded-[32px] bg-[#0f2044] text-white shadow-2xl shadow-[#0f2044]/30 border border-[#f5b800]/10">
+        <div className="relative overflow-hidden p-4 md:p-5 rounded-[32px] bg-[#0f2044] text-white shadow-2xl shadow-[#0f2044]/30 border border-[#f5b800]/10">
            {/* Visual Decor */}
-           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#f5b800]/10 to-transparent blur-[120px] -mr-48 -mt-48 rounded-full pointer-events-none" />
+           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#f5b800]/10 to-transparent blur-[120px] -mr-32 -mt-32 rounded-full pointer-events-none" />
            <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 blur-[80px] -ml-32 -mb-32 rounded-full pointer-events-none" />
            
-           <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-10">
+           <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-4">
               {/* Left Side: Greeting */}
-              <div className="flex-1 space-y-3">
-                  <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
+              <div className="flex-1">
+                  <h1 className="text-xl md:text-2xl lg:text-3xl font-black tracking-tight leading-tight">
                     <span className="text-white opacity-90">{getGreeting()}، </span>
                     <span className="text-[#f5b800] drop-shadow-[0_2px_10px_rgba(245,184,0,0.3)]">
-                        {auth.user.first_name_ar || auth.user.name} {auth.user.last_name_ar || ''}
+                        {isRTL 
+                           ? `${auth.user.first_name_ar || auth.user.name} ${auth.user.last_name_ar || ''}`.trim()
+                           : `${auth.user.first_name_en || auth.user.name} ${auth.user.last_name_en || ''}`.trim()
+                        }
                     </span>
                   </h1>
-                  <p className="text-white/60 text-sm md:text-base lg:text-lg max-w-2xl leading-relaxed font-medium">
-                    {isRTL 
-                      ? "أهلاً بك مجدداً في مركز القيادة. إليك ملخص لأهم مؤشرات الأداء والنشاطات الحالية في نظامك اليوم." 
-                      : "Welcome back to the Command Center. Here is a summary of the most important performance indicators and current activities in your system today."}
-                  </p>
               </div>
 
               {/* Right Side: Digital Time Box (Exactly as in the image) */}
               <div className="flex-shrink-0">
-                  <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[24px] p-6 md:p-8 min-w-[240px] text-center shadow-2xl">
-                      <div className="flex items-center justify-center gap-2 mb-4">
-                          <CalendarIcon className="w-5 h-5 text-[#f5b800]" />
-                          <span className="text-sm font-bold opacity-80 uppercase tracking-tighter">
+                  <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[20px] p-3 md:p-4 min-w-[200px] text-center shadow-2xl">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                          <CalendarIcon className="w-3 h-3 text-[#f5b800]" />
+                          <span className="text-[10px] font-bold opacity-80 uppercase tracking-tighter">
                             {currentTime.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
                                 weekday: 'long',
                                 day: 'numeric',
@@ -139,8 +137,8 @@ export default function Dashboard({
                           </span>
                       </div>
                       
-                      <div className="space-y-1">
-                          <div className="text-4xl md:text-5xl font-black text-white tracking-tighter" dir="ltr">
+                      <div className="space-y-0.5">
+                          <div className="text-2xl md:text-3xl font-black text-white tracking-tighter" dir="ltr">
                             {currentTime.toLocaleTimeString(isRTL ? 'ar-SA' : 'en-US', {
                                 hour: '2-digit',
                                 minute: '2-digit',
@@ -148,7 +146,7 @@ export default function Dashboard({
                                 hour12: true
                             })}
                           </div>
-                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#f5b800] mt-2">
+                          <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#f5b800]">
                              {isRTL ? "التوقيت المحلي الحالي" : "Current Local Time"}
                           </p>
                       </div>

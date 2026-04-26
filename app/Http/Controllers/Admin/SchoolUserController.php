@@ -14,6 +14,29 @@ use Inertia\Inertia;
 
 class SchoolUserController extends Controller
 {
+    // عرض قائمة جميع مدراء المدارس
+    public function index(Request $request)
+    {
+        $query = User::withRole('school_admin')->with('schoolAdmin.school');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('first_name_ar', 'like', "%{$search}%")
+                  ->orWhere('last_name_ar', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->paginate(10)->withQueryString();
+
+        return Inertia::render('Admin/SchoolUsers/Index', [
+            'users' => $users,
+            'filters' => $request->only(['search'])
+        ]);
+    }
+
     // عرض صفحة إضافة مدير لمدرسة معينة
     public function create(School $school)
     {

@@ -36,6 +36,21 @@ class AcademicCalendarController extends Controller
             AcademicCalendar::where('school_id', $request->school_id)->update(['is_active' => false]);
         }
 
+        // Check for overlaps
+        $overlap = AcademicCalendar::where('school_id', $request->school_id)
+            ->where(function ($q) use ($request) {
+                $q->whereBetween('start_date', [$request->start_date, $request->end_date])
+                    ->orWhereBetween('end_date', [$request->start_date, $request->end_date])
+                    ->orWhere(function ($q2) use ($request) {
+                        $q2->where('start_date', '<=', $request->start_date)
+                            ->where('end_date', '>=', $request->end_date);
+                    });
+            })->exists();
+
+        if ($overlap) {
+            return redirect()->back()->withErrors(['start_date' => 'يوجد تقويم دراسي متداخل مع هذه الفترة للمدرسة المختارة']);
+        }
+
         AcademicCalendar::create($validated);
         return redirect()->back()->with('success', 'تم إنشاء التقويم الدراسي بنجاح');
     }
@@ -56,6 +71,22 @@ class AcademicCalendarController extends Controller
             AcademicCalendar::where('school_id', $request->school_id)
                 ->where('id', '!=', $academic_calendar->id)
                 ->update(['is_active' => false]);
+        }
+
+        // Check for overlaps
+        $overlap = AcademicCalendar::where('school_id', $request->school_id)
+            ->where('id', '!=', $academic_calendar->id)
+            ->where(function ($q) use ($request) {
+                $q->whereBetween('start_date', [$request->start_date, $request->end_date])
+                    ->orWhereBetween('end_date', [$request->start_date, $request->end_date])
+                    ->orWhere(function ($q2) use ($request) {
+                        $q2->where('start_date', '<=', $request->start_date)
+                            ->where('end_date', '>=', $request->end_date);
+                    });
+            })->exists();
+
+        if ($overlap) {
+            return redirect()->back()->withErrors(['start_date' => 'يوجد تقويم دراسي متداخل مع هذه الفترة للمدرسة المختارة']);
         }
 
         $academic_calendar->update($validated);

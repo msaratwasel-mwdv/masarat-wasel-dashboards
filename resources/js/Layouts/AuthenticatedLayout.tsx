@@ -3,7 +3,7 @@ import { Link, usePage } from "@inertiajs/react";
 import ApplicationLogo from "@/Components/ApplicationLogo";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { User } from "@/types";
-import { ToastContainer } from "react-toastify";
+import { toast, ToastContainer, Bounce } from "react-toastify";
 import NotificationDropdown from "@/Components/NotificationDropdown";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -42,18 +42,21 @@ const getMenuItems = (isRTL: boolean) => [
   },
   {
     label: isRTL ? "المدارس" : "Schools",
-    route: "admin.schools.index",
     icon: "school",
-  },
-  {
-    label: isRTL ? "التقويم الدراسي" : "Academic Calendar",
-    route: "admin.academic-calendars.index",
-    icon: "calendar",
-  },
-  {
-    label: isRTL ? "إدارة العطل" : "Holidays",
-    route: "admin.holidays.index",
-    icon: "calendar",
+    subItems: [
+      {
+        label: isRTL ? "قائمة المدارس" : "Schools List",
+        route: "admin.schools.index",
+      },
+      {
+        label: isRTL ? "التقويم الدراسي" : "Academic Calendar",
+        route: "admin.academic-calendars.index",
+      },
+      {
+        label: isRTL ? "إدارة العطل" : "Holidays",
+        route: "admin.holidays.index",
+      },
+    ],
   },
   {
     label: isRTL ? "المسارات" : "Routes",
@@ -62,8 +65,21 @@ const getMenuItems = (isRTL: boolean) => [
   },
   {
     label: isRTL ? "الحافلات" : "Buses",
-    route: "admin.buses.index",
     icon: "bus",
+    subItems: [
+      {
+        label: isRTL ? "قائمة الحافلات" : "Buses List",
+        route: "admin.buses.index",
+      },
+      {
+        label: isRTL ? "مصاريف الحافلات" : "Bus Expenses",
+        route: "admin.bus-expenses.index",
+      },
+      {
+        label: isRTL ? "طلبات الحافلات" : "Bus Requests",
+        route: "admin.bus-requests.index",
+      },
+    ],
   },
   {
     label: isRTL ? "الرحلات اليومية" : "Daily Trips",
@@ -71,38 +87,36 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "grid",
   },
   {
-    label: isRTL ? "مصاريف الحافلات" : "Bus Expenses",
-    route: "admin.bus-expenses.index",
-    icon: "clipboard",
-  },
-  {
-    label: isRTL ? "طلبات الحافلات" : "Bus Requests",
-    route: "admin.bus-requests.index",
-    icon: "clipboard",
-  },
-  {
     label: isRTL ? "الرحلات الميدانية" : "Field Trips",
     route: "admin.field-trips.index",
     icon: "map",
   },
   {
-    label: isRTL ? "السائقين" : "Drivers",
-    route: "admin.drivers.index",
+    label: isRTL ? "المستخدمين" : "Users",
     icon: "user",
-  },
-  {
-    label: isRTL ? "المشرفين (المرافقات)" : "Assistants",
-    route: "admin.assistants.index",
-    icon: "teacher",
+    subItems: [
+      {
+        label: isRTL ? "السائقين" : "Drivers",
+        route: "admin.drivers.index",
+      },
+      {
+        label: isRTL ? "مشرفات الحافلات" : "Bus Supervisors",
+        route: "admin.assistants.index",
+      },
+      {
+        label: isRTL ? "المشرفين الميدانيين" : "Field Supervisors",
+        route: "admin.field-supervisors.index",
+      },
+      {
+        label: isRTL ? "مدراء المدارس" : "School Admins",
+        route: "admin.school-admins.index",
+      },
+    ],
   },
   {
     label: isRTL ? "الرقابة الميدانية" : "Field Operations",
     icon: "search",
     subItems: [
-      {
-        label: isRTL ? "المشرفين الميدانيين" : "Field Supervisors",
-        route: "admin.field-supervisors.index",
-      },
       {
         label: isRTL ? "مراقبة الطوارئ" : "Emergency Monitor",
         route: "admin.emergencies.index",
@@ -201,6 +215,33 @@ export default function Authenticated({
     );
   };
 
+  const { flash } = usePage<any>().props;
+
+  useEffect(() => {
+    if (flash?.success) {
+      toast.success(flash.success, {
+        position: "top-center",
+        autoClose: 3000,
+        transition: Bounce,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: theme === 'dark' ? 'dark' : 'light',
+      });
+    }
+    if (flash?.error) {
+      toast.error(flash.error, {
+        position: "top-center",
+        autoClose: 4000,
+        transition: Bounce,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: theme === 'dark' ? 'dark' : 'light',
+      });
+    }
+  }, [flash, theme]);
+
   // Layout calculations
   const rtlClasses = isRTL ? "rtl" : "ltr";
   const flexDirection = "flex-row";
@@ -278,7 +319,7 @@ export default function Authenticated({
         `}
       >
         {/* Logo Section */}
-        <div className={`h-24 flex items-center border-b border-white/10 dark:border-gray-700 overflow-hidden ${isCollapsed ? "justify-center px-0" : "px-8"}`}>
+        <div className={`h-20 flex items-center border-b border-white/10 dark:border-gray-700 overflow-hidden ${isCollapsed ? "justify-center px-0" : "px-8"}`}>
           <Link
             href="/"
             className={`flex items-center gap-3 group ${flexDirection}`}
@@ -308,7 +349,7 @@ export default function Authenticated({
         <nav
           ref={sidebarNavRef}
           onScroll={handleSidebarScroll}
-          className="flex-1 px-3 space-y-1.5 mt-8 overflow-y-auto custom-scrollbar hide-scrollbar"
+          className="flex-1 px-3 space-y-1.5 mt-8 overflow-y-auto custom-scrollbar"
         >
           {!isCollapsed && (
             <p className={`px-4 text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-4 ${isRTL ? "text-right" : "text-left"}`}>
@@ -325,7 +366,12 @@ export default function Authenticated({
               return (
                 <div key={item.label} className="space-y-1">
                   <button
-                    onClick={() => !isCollapsed && toggleMenu(item.label)}
+                    onClick={() => {
+                      if (isCollapsed) {
+                        setIsCollapsed(false);
+                      }
+                      toggleMenu(item.label);
+                    }}
                     title={isCollapsed ? item.label : ""}
                     className={`
                       w-full relative group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200
@@ -584,7 +630,12 @@ export default function Authenticated({
           </div>
         </div>
       </main>
-      <ToastContainer />
+      <ToastContainer 
+        theme={theme === 'dark' ? 'dark' : 'light'}
+        limit={3}
+        className="!top-20"
+        hideProgressBar
+      />
     </div>
   );
 }

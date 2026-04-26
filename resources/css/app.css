@@ -1,10 +1,11 @@
-@import 'leaflet/dist/leaflet.css';
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
+@import "leaflet/dist/leaflet.css";
+@import "react-toastify/dist/ReactToastify.css";
+@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap");
 
 /* resources/css/app.css */
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 /* Custom Animations */
 @keyframes fadeIn {
@@ -52,33 +53,59 @@
 .animate-slideDown {
     animation: slideDown 0.3s ease-out;
 }
-/* Custom scrollbar */
+/* Global Custom Scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+}
+
+.dark ::-webkit-scrollbar-thumb,
+.dark::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover,
+.dark::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: rgba(251, 191, 36, 0.5) !important;
+}
+
+/* Specific Sidebar Overrides */
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 3px;
-}
-
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(156, 163, 175, 0.3);
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(156, 163, 175, 0.5);
-}
-
-/* Global RTL Scrollbar Fix */
-[dir="rtl"] {
-    direction: rtl;
-}
-
-[dir="rtl"] body {
-    direction: rtl;
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 /* Force scrollbar to the left in RTL for most browsers */
@@ -93,12 +120,13 @@ html[dir="rtl"] {
 
 /* Dark mode transitions */
 * {
-    transition: background-color 0.3s ease, border-color 0.3s ease;
+    transition:
+        background-color 0.3s ease,
+        border-color 0.3s ease;
 }
 
 /* Custom animations */
 @keyframes pulse-glow {
-
     0%,
     100% {
         opacity: 1;
@@ -128,8 +156,8 @@ html[dir="rtl"] {
 
 /* Hide scrollbar for IE, Edge and Firefox */
 .hide-scrollbar {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
 }
 
 @media print {
@@ -144,15 +172,78 @@ html[dir="rtl"] {
     }
 }
 
-/* Leaflet map fixes inside modals */
-.leaflet-container {
-    z-index: 1;
-    font-family: 'Cairo', sans-serif;
-}
-.leaflet-control {
-    z-index: 400 !important;
-}
-.leaflet-pane {
-    z-index: 2 !important;
+/* Premium Toastify Styles */
+:root {
+  --toastify-color-success: #10b981;
+  --toastify-color-error: #ef4444;
+  --toastify-font-family: 'Cairo', sans-serif;
+  --toastify-toast-min-height: 48px;
+  --toastify-toast-max-width: 280px;
 }
 
+.Toastify__toast {
+  border-radius: 14px;
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08);
+  padding: 8px 16px;
+}
+
+.Toastify__toast--success {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  color: #065f46 !important;
+}
+
+.dark .Toastify__toast--success {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+/* Accent icon for glassy green */
+.Toastify__toast--success .Toastify__toast-icon svg {
+  fill: #10b981;
+}
+
+.Toastify__toast--error {
+  background: rgba(239, 68, 68, 0.1) !important;
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+  color: #991b1b !important;
+}
+
+.dark .Toastify__toast--error {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+}
+
+.Toastify__progress-bar {
+  height: 3px;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+}
+
+.Toastify__close-button {
+  align-self: center;
+  opacity: 0.6;
+}
+
+.Toastify__toast-body {
+  margin: 0;
+  padding: 0;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.Toastify__toast--success .Toastify__toast-icon {
+  fill: #10b981;
+}
+
+.Toastify__toast--error .Toastify__toast-icon {
+  fill: #ef4444;
+}
+
+[dir="rtl"] .Toastify__toast-body {
+  text-align: right;
+}
