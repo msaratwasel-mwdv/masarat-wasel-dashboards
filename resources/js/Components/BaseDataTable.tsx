@@ -20,6 +20,15 @@ import {
   Search,
   Plus,
 } from "lucide-react";
+import {
+  DS_card,
+  DS_tableWrapper,
+  DS_tableBase,
+  DS_tableHead,
+  DS_tableRow,
+  DS_tableTd,
+  DS_tableTh,
+} from "@/lib/DS";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -370,30 +379,13 @@ export default function BaseDataTable<T extends { id?: number | string }>({
       )}
 
       {/* ── Table Card ── */}
-      <div
-        className={`overflow-hidden rounded-2xl border shadow-sm ${
-          isDark
-            ? "bg-gray-800/80 border-gray-700 shadow-black/30"
-            : "bg-white border-gray-100 shadow-gray-100"
-        }`}
-      >
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
+      <div className={DS_card}>
+        <div className={DS_tableWrapper}>
+          <table className={DS_tableBase}>
             {/* Sticky Header */}
-            <thead
-              className={`sticky top-0 z-10 ${
-                isDark
-                  ? "bg-gray-900/90 backdrop-blur-sm"
-                  : "bg-gray-50/95 backdrop-blur-sm"
-              }`}
-            >
+            <thead className={DS_tableHead}>
               {table.getHeaderGroups().map((headerGroup) => (
-                <tr
-                  key={headerGroup.id}
-                  className={`border-b ${
-                    isDark ? "border-gray-700/80" : "border-gray-200"
-                  }`}
-                >
+                <tr key={headerGroup.id} className="border-b border-gray-100 dark:border-[#243460]">
                   {headerGroup.headers.map((header) => {
                     const canSort = header.column.getCanSort();
                     const sorted = header.column.getIsSorted();
@@ -405,17 +397,15 @@ export default function BaseDataTable<T extends { id?: number | string }>({
                             ? header.column.getToggleSortingHandler()
                             : undefined
                         }
-                        className={`px-4 py-3 text-[11px] font-extrabold uppercase tracking-widest whitespace-nowrap transition-colors ${
-                          isDark ? "text-gray-400" : "text-gray-400"
-                        } ${isRTL ? "text-right" : "text-left"} ${
+                        className={`${DS_tableTh(isRTL)} ${
                           canSort
-                            ? "cursor-pointer select-none hover:text-brand-dark dark:hover:text-white"
+                            ? "cursor-pointer select-none hover:text-[#0f2044] dark:hover:text-white"
                             : ""
                         }`}
                       >
                         <div
                           className={`flex items-center gap-1.5 ${
-                            isRTL ? "flex-row-reverse" : ""
+                            isRTL ? "flex-row-reverse justify-end" : ""
                           }`}
                         >
                           {header.isPlaceholder
@@ -444,13 +434,7 @@ export default function BaseDataTable<T extends { id?: number | string }>({
             </thead>
 
             {/* Table Body */}
-            <tbody
-              className={`divide-y ${
-                isDark
-                  ? "divide-gray-700/60 text-gray-300"
-                  : "divide-gray-100 text-gray-800"
-              }`}
-            >
+            <tbody>
               {/* Skeleton State */}
               {isLoading &&
                 Array.from({ length: 6 }).map((_, i) => (
@@ -473,28 +457,11 @@ export default function BaseDataTable<T extends { id?: number | string }>({
               {!isLoading &&
                 rows.map((row, rowIndex) => (
                   <Fragment key={row.id}>
-                    <tr
-                      className={`
-                        transition-colors duration-150
-                        ${
-                          expandedRowId === row.original.id
-                            ? isDark
-                              ? "bg-brand-dark/20"
-                              : "bg-brand-yellow/5"
-                            : rowIndex % 2 === 0
-                            ? isDark
-                              ? "bg-transparent hover:bg-gray-700/40"
-                              : "bg-white hover:bg-slate-50"
-                            : isDark
-                            ? "bg-gray-700/20 hover:bg-gray-700/40"
-                            : "bg-gray-50/60 hover:bg-slate-50"
-                        }
-                      `}
-                    >
+                    <tr className={DS_tableRow}>
                       {row.getVisibleCells().map((cell) => (
                         <td
                           key={cell.id}
-                          className={`px-4 py-3.5 whitespace-nowrap text-sm ${
+                          className={`${DS_tableTd} ${
                             isRTL ? "text-right" : "text-left"
                           }`}
                         >
@@ -532,13 +499,7 @@ export default function BaseDataTable<T extends { id?: number | string }>({
 
         {/* ── Pagination Footer ── */}
         {pagination && pagination.last_page > 1 && (
-          <div
-            className={`px-5 py-3.5 border-t ${
-              isDark
-                ? "border-gray-700 bg-gray-900/30"
-                : "border-gray-100 bg-gray-50/80"
-            }`}
-          >
+          <div className="px-5 py-3.5 border-t border-gray-100 dark:border-[#243460] bg-[#0f2044]/[0.02] dark:bg-transparent">
             <div
               className={`flex flex-col sm:flex-row items-center justify-between gap-3 ${
                 isRTL ? "sm:flex-row-reverse" : ""

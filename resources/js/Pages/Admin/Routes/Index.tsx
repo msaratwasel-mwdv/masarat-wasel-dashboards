@@ -8,6 +8,24 @@ import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
 import { useTheme } from "@/Contexts/ThemeContext";
+import BaseDataTable, { ActionButton } from "@/Components/BaseDataTable";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Plus, Edit3, Trash2, Map as RouteIcon, X as LucideX } from "lucide-react";
+import {
+    DS_pageTitle,
+    DS_btnGold,
+    DS_btnPrimary,
+    DS_inputCls,
+    DS_labelCls,
+    DS_modalContainer,
+    DS_modalHeader,
+    DS_modalHeaderTitle,
+    DS_modalHeaderAccent,
+    DS_modalClose,
+    DS_modalBody,
+    DS_submitBtn,
+    DS_cancelBtn,
+} from "@/lib/DS";
 
 interface School {
     id: number;
@@ -88,176 +106,181 @@ export default function Index({ routes, schools, auth }: Props) {
         }
     };
 
-    return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex justify-between items-center">
-                    <h2 className={`font-semibold text-xl ${isDark ? "text-gray-200" : "text-gray-800"} leading-tight`}>
-                        {isRTL ? "إدارة المسارات" : "Routes Management"}
-                    </h2>
-                    <PrimaryButton onClick={() => openModal("add")}>
-                        {isRTL ? "إضافة مسار جديد" : "Add New Route"}
-                    </PrimaryButton>
-                </div>
+    // --- 4. Columns ---
+    const columnHelper = createColumnHelper<Route>();
+    const columns = useMemo(() => [
+        columnHelper.accessor("name", {
+            header: isRTL ? "المسار" : "Route",
+            cell: (info) => {
+                const route = info.row.original;
+                return (
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-[#0f2044]/5 dark:bg-white/5 text-[#0f2044] dark:text-[#f5b800] flex items-center justify-center flex-shrink-0">
+                            <RouteIcon className="w-5 h-5" />
+                        </div>
+                        <div className={isRTL ? "text-right" : "text-left"}>
+                            <div className="text-sm font-bold text-[#0f2044] dark:text-white">{route.name}</div>
+                            <div className="text-xs font-mono text-gray-500">{route.code}</div>
+                        </div>
+                    </div>
+                );
             }
-        >
+        }),
+        columnHelper.accessor("school.name", {
+            header: isRTL ? "المدرسة" : "School",
+            cell: (info) => {
+                const schoolName = info.row.original.school?.name;
+                return schoolName ? (
+                    <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#0f2044]/5 text-[#0f2044] dark:bg-white/10 dark:text-gray-300">
+                        {schoolName}
+                    </span>
+                ) : <span className="text-gray-400">—</span>;
+            }
+        }),
+        columnHelper.accessor("buses", {
+            header: isRTL ? "الحافلات" : "Buses",
+            cell: (info) => {
+                const buses = info.row.original.buses;
+                return (
+                    <div className="text-center">
+                        <div className="text-sm font-bold text-gray-700 dark:text-gray-300">{buses?.length || 0}</div>
+                        <div className="text-[10px] text-gray-500 font-mono truncate max-w-[120px] mx-auto">
+                            {buses?.map(b => b.bus_number).join(", ") || "—"}
+                        </div>
+                    </div>
+                );
+            }
+        }),
+        columnHelper.display({
+            id: "students",
+            header: isRTL ? "الطلاب" : "Students",
+            cell: (info) => {
+                const route = info.row.original;
+                return (
+                    <div className="flex flex-col items-center gap-1">
+                        <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded w-full text-center">↗ {route.morning_students_count} {isRTL ? "صباحاً" : "Morning"}</span>
+                        <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded w-full text-center">↙ {route.afternoon_students_count} {isRTL ? "مساءً" : "Afternoon"}</span>
+                    </div>
+                );
+            }
+        }),
+        columnHelper.display({
+            id: "actions",
+            header: isRTL ? "الإجراءات" : "Actions",
+            cell: (info) => {
+                const route = info.row.original;
+                return (
+                    <div className={`flex gap-2 ${isRTL ? "justify-start" : "justify-end"}`}>
+                        <ActionButton label={isRTL ? "تعديل" : "Edit"} icon={<Edit3 className="w-3.5 h-3.5" />} onClick={() => openModal("edit", route)} color="blue" />
+                        <ActionButton label={isRTL ? "حذف" : "Delete"} icon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => openModal("delete", route)} color="red" />
+                    </div>
+                );
+            }
+        })
+    ], [isRTL, isDark]);
+
+    const headerAction = (
+        <button onClick={() => openModal("add")} className={DS_btnGold}>
+            <Plus className="w-4 h-4" />
+            {isRTL ? "إضافة مسار جديد" : "Add New Route"}
+        </button>
+    );
+
+    return (
+        <AuthenticatedLayout>
             <Head title={isRTL ? "المسارات" : "Routes"} />
 
-            <div className={`py-6 dir-${isRTL ? "rtl" : "ltr"}`}>
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className={`${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"} shadow-xl rounded-2xl overflow-hidden border`}>
-                        <div className="overflow-x-auto">
-                            <table className={`min-w-full divide-y ${isDark ? "divide-gray-700" : "divide-gray-200"}`}>
-                                <thead className={`${isDark ? "bg-gray-900/50" : "bg-gray-50"}`}>
-                                    <tr>
-                                        <th className={`px-6 py-4 text-xs font-bold uppercase tracking-wider ${isRTL ? "text-right" : "text-left"} ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                                            {isRTL ? "المسار" : "Route"}
-                                        </th>
-                                        <th className={`px-6 py-4 text-xs font-bold uppercase tracking-wider ${isRTL ? "text-right" : "text-left"} ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                                            {isRTL ? "المدرسة" : "School"}
-                                        </th>
-                                        <th className={`px-6 py-4 text-xs font-bold uppercase tracking-wider text-center ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                                            {isRTL ? "الحافلات" : "Buses"}
-                                        </th>
-                                        <th className={`px-6 py-4 text-xs font-bold uppercase tracking-wider text-center ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                                            {isRTL ? "الطلاب" : "Students"}
-                                        </th>
-                                        <th className={`px-6 py-4 text-xs font-bold uppercase tracking-wider ${isRTL ? "text-left" : "text-right"} ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                                            {isRTL ? "الإجراءات" : "Actions"}
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className={`${isDark ? "bg-gray-800 divide-gray-700" : "bg-white divide-gray-200"} divide-y`}>
-                                    {routes.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
-                                                {isRTL ? "لا توجد مسارات مسجلة." : "No routes registered."}
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        routes.map((route) => (
-                                            <tr key={route.id} className={`${isDark ? "hover:bg-gray-700/50" : "hover:bg-blue-50/30"} transition-colors`}>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center">
-                                                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3 ml-3">
-                                                            <span className="text-xs font-bold">🛣</span>
-                                                        </div>
-                                                        <div className={isRTL ? "text-right" : "text-left"}>
-                                                            <div className={`text-sm font-bold ${isDark ? "text-white" : "text-gray-900"}`}>{route.name}</div>
-                                                            <div className="text-xs text-gray-500 font-mono">{route.code}</div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${isDark ? "bg-purple-900/30 text-purple-400" : "bg-purple-100 text-purple-800"}`}>
-                                                        {route.school?.name || "—"}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                    <div className={`text-sm font-bold ${isDark ? "text-gray-200" : "text-gray-700"}`}>
-                                                        {route.buses?.length || 0}
-                                                    </div>
-                                                    <div className="text-[10px] text-gray-500 font-mono overflow-hidden truncate max-w-[100px]">
-                                                        {route.buses?.map(b => b.bus_number).join(", ") || "—"}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                    <div className="flex flex-col gap-1 items-center">
-                                                        <span className="text-xs text-green-600 font-bold">↗ {route.morning_students_count}</span>
-                                                        <span className="text-xs text-orange-600 font-bold">↙ {route.afternoon_students_count}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <div className={`flex items-center justify-end gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
-                                                        <button onClick={() => openModal("edit", route)} className="text-blue-500 hover:text-blue-700">
-                                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                            </svg>
-                                                        </button>
-                                                        <button onClick={() => openModal("delete", route)} className="text-red-500 hover:text-red-700">
-                                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+            <div className={`pb-8 space-y-6 dir-${isRTL ? "rtl" : "ltr"}`}>
+                
+                {/* ── Page Header ── */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className={DS_pageTitle}>{isRTL ? "إدارة المسارات" : "Routes Management"}</h1>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
+                            {isRTL ? "إدارة مسارات الحافلات وتعيينها للمدارس" : "Manage bus routes and assign them to schools"}
+                        </p>
                     </div>
+                    {headerAction}
                 </div>
+
+                {/* ── Main Table ── */}
+                <BaseDataTable<Route>
+                    columns={columns}
+                    data={routes}
+                    title={isRTL ? "المسارات المسجلة" : "Registered Routes"}
+                    emptyMessage={isRTL ? "لا توجد مسارات" : "No Routes Yet"}
+                    emptyDescription={isRTL ? "لم يتم إضافة أي مسار. انقر على إضافة مسار للبدء." : "No routes added. Click Add New Route to start."}
+                    emptyIcon={<RouteIcon className="w-10 h-10" />}
+                    emptyAction={{ label: isRTL ? "إضافة مسار جديد" : "Add New Route", onClick: () => openModal("add") }}
+                />
             </div>
 
-            {/* Modals */}
-            <Modal show={modalState.type === "add" || modalState.type === "edit"} onClose={closeModal}>
-                <form onSubmit={handleSubmit} className="p-6">
-                    <h2 className={`text-lg font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>
-                        {modalState.type === "add" ? (isRTL ? "إضافة مسار جديد" : "Add New Route") : (isRTL ? "تعديل المسار" : "Edit Route")}
-                    </h2>
-
-                    <div className="space-y-4">
-                        <div>
-                            <InputLabel value={isRTL ? "اسم المسار" : "Route Name"} />
-                            <TextInput value={data.name} onChange={(e) => setData("name", e.target.value)} className="w-full mt-1" required />
-                            <InputError message={errors.name} />
+            {/* ── Modals ── */}
+            <Modal show={modalState.type === "add" || modalState.type === "edit"} onClose={closeModal} maxWidth="2xl">
+                <div className={DS_modalContainer}>
+                    <div className={DS_modalHeader(isRTL)}>
+                        <div className="flex items-center gap-3">
+                            <div className={DS_modalHeaderAccent} />
+                            <h2 className={DS_modalHeaderTitle}>
+                                {modalState.type === "add" ? (isRTL ? "إضافة مسار جديد" : "Add New Route") : (isRTL ? "تعديل بيانات المسار" : "Edit Route")}
+                            </h2>
                         </div>
-
-                        <div>
-                            <InputLabel value={isRTL ? "كود المسار" : "Route Code"} />
-                            <TextInput value={data.code} onChange={(e) => setData("code", e.target.value)} className="w-full mt-1" required />
-                            <InputError message={errors.code} />
-                        </div>
-
-                        <div>
-                            <InputLabel value={isRTL ? "المدرسة" : "School"} />
-                            <select
-                                className={`w-full rounded-lg mt-1 ${isDark ? "bg-gray-800 border-gray-600 text-white" : "border-gray-300"}`}
-                                value={data.school_id}
-                                onChange={(e) => setData("school_id", e.target.value)}
-                                required
-                            >
-                                <option value="">{isRTL ? "-- اختر المدرسة --" : "-- Select School --"}</option>
-                                {schools.map((s) => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
-                                ))}
-                            </select>
-                            <InputError message={errors.school_id} />
-                        </div>
-
-                        <div>
-                            <InputLabel value={isRTL ? "الوصف" : "Description"} />
-                            <textarea
-                                className={`w-full rounded-lg mt-1 ${isDark ? "bg-gray-800 border-gray-600 text-white" : "border-gray-300"}`}
-                                value={data.description}
-                                onChange={(e) => setData("description", e.target.value)}
-                                rows={3}
-                            />
-                            <InputError message={errors.description} />
-                        </div>
+                        <button type="button" onClick={closeModal} className={DS_modalClose}>
+                            <LucideX className="w-5 h-5" />
+                        </button>
                     </div>
 
-                    <div className={`mt-6 flex justify-end gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
-                        <SecondaryButton onClick={closeModal} disabled={processing}>{isRTL ? "إلغاء" : "Cancel"}</SecondaryButton>
-                        <PrimaryButton disabled={processing}>{isRTL ? "حفظ" : "Save"}</PrimaryButton>
-                    </div>
-                </form>
+                    <form onSubmit={handleSubmit} className={DS_modalBody}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="md:col-span-2">
+                                <label className={DS_labelCls}>{isRTL ? "اسم المسار" : "Route Name"}</label>
+                                <input type="text" value={data.name} onChange={e => setData("name", e.target.value)} className={DS_inputCls} required />
+                                <InputError message={errors.name} className="mt-1" />
+                            </div>
+
+                            <div>
+                                <label className={DS_labelCls}>{isRTL ? "كود المسار" : "Route Code"}</label>
+                                <input type="text" value={data.code} onChange={e => setData("code", e.target.value)} className={DS_inputCls} required />
+                                <InputError message={errors.code} className="mt-1" />
+                            </div>
+
+                            <div>
+                                <label className={DS_labelCls}>{isRTL ? "المدرسة" : "School"}</label>
+                                <select value={data.school_id} onChange={e => setData("school_id", e.target.value)} className={DS_inputCls} required>
+                                    <option value="">{isRTL ? "-- اختر المدرسة --" : "-- Select School --"}</option>
+                                    {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                                <InputError message={errors.school_id} className="mt-1" />
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className={DS_labelCls}>{isRTL ? "الوصف" : "Description"}</label>
+                                <textarea value={data.description} onChange={e => setData("description", e.target.value)} className={DS_inputCls} rows={3} />
+                                <InputError message={errors.description} className="mt-1" />
+                            </div>
+                        </div>
+
+                        <div className={`mt-8 pt-5 border-t border-gray-100 dark:border-[#243460] flex gap-3 ${isRTL ? "flex-row-reverse" : "justify-end"}`}>
+                            <button type="button" onClick={closeModal} className={DS_cancelBtn} disabled={processing}>{isRTL ? "إلغاء" : "Cancel"}</button>
+                            <button type="submit" className={DS_submitBtn(processing)} disabled={processing}>{isRTL ? "حفظ البيانات" : "Save Changes"}</button>
+                        </div>
+                    </form>
+                </div>
             </Modal>
 
-            <Modal show={modalState.type === "delete"} onClose={closeModal}>
-                <div className="p-6">
-                    <h2 className={`text-lg font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>
-                        {isRTL ? "حذف المسار" : "Delete Route"}
-                    </h2>
-                    <p className={isDark ? "text-gray-400" : "text-gray-600"}>
+            <Modal show={modalState.type === "delete"} onClose={closeModal} maxWidth="md">
+                <div className="p-8 text-center bg-white dark:bg-[#1a2845] rounded-[22px]">
+                    <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Trash2 className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-xl font-bold text-[#0f2044] dark:text-white mb-2">{isRTL ? "حذف المسار" : "Delete Route"}</h2>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-8 leading-relaxed">
                         {isRTL ? `هل أنت متأكد من حذف المسار (${modalState.route?.name})؟ لا يمكن التراجع عن هذا الإجراء.` : `Are you sure you want to delete the route (${modalState.route?.name})? This action cannot be undone.`}
                     </p>
-                    <div className={`mt-6 flex justify-end gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
-                        <SecondaryButton onClick={closeModal}>{isRTL ? "إلغاء" : "Cancel"}</SecondaryButton>
-                        <button onClick={handleSubmit} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold transition">
-                            {isRTL ? "حذف" : "Delete"}
+                    <div className="flex gap-3 justify-center">
+                        <button onClick={closeModal} className={DS_cancelBtn}>{isRTL ? "إلغاء" : "Cancel"}</button>
+                        <button onClick={handleSubmit} disabled={processing} className="px-6 py-2.5 rounded-[14px] bg-red-500 hover:bg-red-600 text-white text-sm font-bold shadow transition-all">
+                            {isRTL ? "تأكيد الحذف" : "Confirm Delete"}
                         </button>
                     </div>
                 </div>

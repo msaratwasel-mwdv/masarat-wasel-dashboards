@@ -203,7 +203,7 @@ export default function Authenticated({
 
   // Layout calculations
   const rtlClasses = isRTL ? "rtl" : "ltr";
-  const flexDirection = isRTL ? "flex-row-reverse" : "flex-row";
+  const flexDirection = "flex-row";
   const paddingSide = isRTL ? "pr-12" : "pl-12";
   const sidebarPosition = isRTL ? "right-0" : "left-0";
 

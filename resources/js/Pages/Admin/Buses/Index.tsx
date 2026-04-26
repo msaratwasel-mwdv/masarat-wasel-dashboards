@@ -31,7 +31,17 @@ import {
   AlertTriangle,
   FileText,
   Smartphone,
+  Plus,
 } from "lucide-react";
+import {
+  DS_pageTitle,
+  DS_btnGold,
+  DS_btnPrimary,
+  DS_statCard,
+  DS_statIcon,
+  DS_statLabel,
+  DS_statValue2,
+} from "@/lib/DS";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -504,25 +514,33 @@ export default function Index({
   };
 
   const headerAction = (
-    <PrimaryButton
-      onClick={() => openModal("add")}
-      className="bg-brand-yellow text-brand-dark hover:bg-yellow-500"
-    >
-      {isRTL ? "+ تسجيل حافلة جديدة" : "+ Register New Bus"}
-    </PrimaryButton>
+    <button onClick={() => openModal("add")} className={DS_btnGold}>
+      <Plus className="w-4 h-4" />
+      {isRTL ? "تسجيل حافلة جديدة" : "Register New Bus"}
+    </button>
   );
 
   return (
-    <AuthenticatedLayout
-      header={
-        <h2 className={`font-bold text-xl ${isDark ? "text-gray-200" : "text-gray-800"}`}>
-          {isRTL ? "إدارة أسطول الحافلات" : "Bus Fleet Management"}
-        </h2>
-      }
-    >
-      <Head title={isRTL ? "الحافلات" : "Buses"} />
+    <AuthenticatedLayout>
+      <Head title={isRTL ? "إدارة أسطول الحافلات" : "Bus Fleet Management"} />
 
       <div className={`pb-8 space-y-6 dir-${isRTL ? "rtl" : "ltr"}`}>
+
+        {/* ── Page Header ── */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className={DS_pageTitle}>{isRTL ? "إدارة أسطول الحافلات" : "Bus Fleet Management"}</h1>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
+              {isRTL
+                ? `${counts.all} حافلة — ${counts.active} نشطة — ${counts.maintenance} في الصيانة — ${counts.out_of_service} خارج الخدمة`
+                : `${counts.all} total — ${counts.active} active — ${counts.maintenance} maintenance — ${counts.out_of_service} out of service`}
+            </p>
+          </div>
+          <button onClick={() => openModal("add")} className={DS_btnGold}>
+            <Plus className="w-4 h-4" />
+            {isRTL ? "تسجيل حافلة جديدة" : "Register New Bus"}
+          </button>
+        </div>
 
         {/* ── Stats Header Panel ── */}
         <motion.div
@@ -536,28 +554,34 @@ export default function Index({
               label: isRTL ? "إجمالي الحافلات" : "Total Buses",
               value: counts.all,
               icon: <BusIcon className="w-5 h-5" />,
-              color: "blue" as const,
+              accent: "navy" as const,
             },
             {
               label: isRTL ? "نشطة" : "Active",
               value: counts.active,
               icon: <CheckCircle2 className="w-5 h-5" />,
-              color: "green" as const,
+              accent: "green" as const,
             },
             {
               label: isRTL ? "في الصيانة" : "Maintenance",
               value: counts.maintenance,
               icon: <Wrench className="w-5 h-5" />,
-              color: "yellow" as const,
+              accent: "gold" as const,
             },
             {
               label: isRTL ? "خارج الخدمة" : "Out of Service",
               value: counts.out_of_service,
               icon: <XCircle className="w-5 h-5" />,
-              color: "red" as const,
+              accent: "red" as const,
             },
           ].map((stat, i) => (
-            <BusStatCard key={i} {...stat} isDark={isDark} isRTL={isRTL} />
+            <motion.div key={i} whileHover={{ y: -2 }} className={DS_statCard(stat.accent)}>
+              <div className={DS_statIcon(stat.accent)}>{stat.icon}</div>
+              <div>
+                <p className={DS_statLabel}>{stat.label}</p>
+                <p className={DS_statValue2(stat.accent)}>{stat.value}</p>
+              </div>
+            </motion.div>
           ))}
         </motion.div>
 
@@ -1037,83 +1061,5 @@ export default function Index({
   );
 }
 
-// ─── BusStatCard ──────────────────────────────────────────────────
+// ─── BusStatCard removed — replaced by DS.ts tokens inline ───────
 
-const statColorMap = {
-  blue: {
-    bg: "bg-blue-50 dark:bg-blue-900/20",
-    icon: "text-blue-500",
-    value: "text-blue-700 dark:text-blue-300",
-    border: "border-blue-100 dark:border-blue-900/30",
-  },
-  green: {
-    bg: "bg-emerald-50 dark:bg-emerald-900/20",
-    icon: "text-emerald-500",
-    value: "text-emerald-700 dark:text-emerald-300",
-    border: "border-emerald-100 dark:border-emerald-900/30",
-  },
-  yellow: {
-    bg: "bg-amber-50 dark:bg-amber-900/20",
-    icon: "text-amber-500",
-    value: "text-amber-700 dark:text-amber-300",
-    border: "border-amber-100 dark:border-amber-900/30",
-  },
-  red: {
-    bg: "bg-rose-50 dark:bg-rose-900/20",
-    icon: "text-rose-500",
-    value: "text-rose-700 dark:text-rose-300",
-    border: "border-rose-100 dark:border-rose-900/30",
-  },
-};
-
-function BusStatCard({
-  label,
-  value,
-  icon,
-  color,
-  isDark,
-  isRTL,
-}: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  color: keyof typeof statColorMap;
-  isDark: boolean;
-  isRTL: boolean;
-}) {
-  const scheme = statColorMap[color];
-  return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      className={`relative flex items-center gap-4 p-4 rounded-2xl border transition-all ${
-        isDark
-          ? `bg-gray-800/80 border-gray-700 hover:bg-gray-800`
-          : `bg-white ${scheme.border} hover:shadow-md shadow-sm`
-      } ${isRTL ? "flex-row-reverse" : ""}`}
-    >
-      <div
-        className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
-          isDark ? "bg-gray-700" : scheme.bg
-        }`}
-      >
-        <span className={scheme.icon}>{icon}</span>
-      </div>
-      <div className={isRTL ? "text-right" : "text-left"}>
-        <p
-          className={`text-[11px] font-bold uppercase tracking-wide ${
-            isDark ? "text-gray-500" : "text-gray-400"
-          }`}
-        >
-          {label}
-        </p>
-        <p
-          className={`text-2xl font-black mt-0.5 ${
-            isDark ? "text-white" : "text-gray-900"
-          }`}
-        >
-          {value}
-        </p>
-      </div>
-    </motion.div>
-  );
-}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   APIProvider, 
   Map, 
-  AdvancedMarker, 
+  Marker, 
   InfoWindow,
   ControlPosition,
   useMap
@@ -43,7 +43,6 @@ export default function GoogleMapContainer({ apiKey, data, isDark, isRTL }: Goog
         <Map
           defaultCenter={center}
           defaultZoom={13}
-          mapId={isDark ? "7d9c6c547846f49d" : "light_map_id"} // Consider using a real Map ID if you have advanced styles in Console
           styles={isDark ? deepBlackStyles : []}
           mapTypeId={mapType}
           disableDefaultUI={true}
@@ -55,26 +54,19 @@ export default function GoogleMapContainer({ apiKey, data, isDark, isRTL }: Goog
           {/* Markers */}
           {data.map((bus) => (
             <React.Fragment key={bus.id}>
-              <AdvancedMarker
+              <Marker
                 position={{ lat: bus.lat, lng: bus.lng }}
                 onClick={() => setSelectedBusId(bus.id)}
-              >
-                <motion.div 
-                  whileHover={{ scale: 1.2 }}
-                  className="relative cursor-pointer flex flex-col items-center group"
-                >
-                  <div className={`p-1.5 rounded-full border-2 border-white shadow-xl ${
-                    bus.status === 'moving' ? 'bg-emerald-500' : 'bg-amber-500'
-                  }`}>
-                    <Navigation className={`w-3 h-3 text-white transform transition-transform ${bus.status === 'moving' ? 'animate-pulse' : ''}`} />
-                  </div>
-                  
-                  {/* Miniature Label */}
-                  <div className={`absolute -bottom-6 bg-slate-900/90 text-white text-[8px] font-black px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg`}>
-                    {bus.code}
-                  </div>
-                </motion.div>
-              </AdvancedMarker>
+                title={bus.code}
+                icon={{
+                   path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
+                   fillColor: bus.status === 'moving' ? '#10b981' : '#f59e0b',
+                   fillOpacity: 1,
+                   strokeWeight: 2,
+                   strokeColor: "#ffffff",
+                   scale: 1.5,
+                }}
+              />
 
               {/* Info Window */}
               {selectedBusId === bus.id && (

@@ -9,8 +9,10 @@ import {
   Activity, AlertTriangle, ShieldCheck, TrendingUp, 
   Map as MapIcon, Plus, FileText, Settings, 
   Navigation, CheckCircle2, Clock, ArrowUpRight,
-  Info, Bell, Zap
+  Info, Bell, Zap, Sun, Moon, Calendar as CalendarIcon, Sparkles
 } from "lucide-react";
+import { usePage } from "@inertiajs/react";
+import { DS_card, DS_pageTitle, DS_statLabel, DS_statValue, DS_btnGold, DS_btnPrimary } from "@/lib/DS";
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -49,7 +51,29 @@ export default function Dashboard({
   recentActivities,
 }: DashboardProps) {
   const { isRTL, theme } = useTheme();
+  const { auth } = usePage().props as any;
   const isDark = theme === "dark";
+
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getGreeting = () => {
+    const hour = currentTime.getHours();
+    if (hour < 12) return isRTL ? "صباح الخير" : "Good Morning";
+    if (hour < 18) return isRTL ? "مساء الخير" : "Good Afternoon";
+    return isRTL ? "طاب مساؤك" : "Good Evening";
+  };
+
+  const formattedDate = currentTime.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
 
   const [isTrackingEnabled, setIsTrackingEnabled] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState<string>("");
@@ -78,26 +102,57 @@ export default function Dashboard({
         variants={containerVariants}
         className="space-y-8"
       >
-        {/* --- Header Section --- */}
-        <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4`}>
-           <div className={isRTL ? 'text-right' : 'text-left'}>
-              <h1 className={`text-4xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {isRTL ? "مرحباً بك في مسارات" : "Welcome to Masarat"}
-              </h1>
-              <p className={`mt-2 text-lg ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                {isRTL ? "نظرة شاملة على أداء الأسطول والعمليات الحالية." : "A comprehensive look at fleet performance and current operations."}
-              </p>
-           </div>
+        {/* --- Header Section (Identical to School for Unity) --- */}
+        <div className="relative overflow-hidden p-8 md:p-12 rounded-[32px] bg-[#0f2044] text-white shadow-2xl shadow-[#0f2044]/30 border border-[#f5b800]/10">
+           {/* Visual Decor */}
+           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#f5b800]/10 to-transparent blur-[120px] -mr-48 -mt-48 rounded-full pointer-events-none" />
+           <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 blur-[80px] -ml-32 -mb-32 rounded-full pointer-events-none" />
            
-           <div className="flex items-center gap-3">
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border backdrop-blur-md shadow-sm transition-all ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white/80 border-slate-200'}`}>
-                 <div className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                 </div>
-                 <span className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                    {isRTL ? "النظام متصل" : "System Online"}
-                 </span>
+           <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-10">
+              {/* Left Side: Greeting */}
+              <div className="flex-1 space-y-3">
+                  <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
+                    <span className="text-white opacity-90">{getGreeting()}، </span>
+                    <span className="text-[#f5b800] drop-shadow-[0_2px_10px_rgba(245,184,0,0.3)]">
+                        {auth.user.first_name_ar || auth.user.name} {auth.user.last_name_ar || ''}
+                    </span>
+                  </h1>
+                  <p className="text-white/60 text-sm md:text-base lg:text-lg max-w-2xl leading-relaxed font-medium">
+                    {isRTL 
+                      ? "أهلاً بك مجدداً في مركز القيادة. إليك ملخص لأهم مؤشرات الأداء والنشاطات الحالية في نظامك اليوم." 
+                      : "Welcome back to the Command Center. Here is a summary of the most important performance indicators and current activities in your system today."}
+                  </p>
+              </div>
+
+              {/* Right Side: Digital Time Box (Exactly as in the image) */}
+              <div className="flex-shrink-0">
+                  <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[24px] p-6 md:p-8 min-w-[240px] text-center shadow-2xl">
+                      <div className="flex items-center justify-center gap-2 mb-4">
+                          <CalendarIcon className="w-5 h-5 text-[#f5b800]" />
+                          <span className="text-sm font-bold opacity-80 uppercase tracking-tighter">
+                            {currentTime.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+                                weekday: 'long',
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric'
+                            })}
+                          </span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                          <div className="text-4xl md:text-5xl font-black text-white tracking-tighter" dir="ltr">
+                            {currentTime.toLocaleTimeString(isRTL ? 'ar-SA' : 'en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: true
+                            })}
+                          </div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#f5b800] mt-2">
+                             {isRTL ? "التوقيت المحلي الحالي" : "Current Local Time"}
+                          </p>
+                      </div>
+                  </div>
               </div>
            </div>
         </div>
@@ -109,7 +164,7 @@ export default function Dashboard({
             value={stats.buses.total}
             icon={<Bus className="w-6 h-6" />}
             trend="+12%"
-            color="yellow"
+            color="gold"
             isDark={isDark}
             isRTL={isRTL}
           />
@@ -127,7 +182,7 @@ export default function Dashboard({
             value={stats.drivers.total}
             icon={<Users className="w-6 h-6" />}
             trend="+8%"
-            color="emerald"
+            color="gold"
             isDark={isDark}
             isRTL={isRTL}
           />
@@ -198,7 +253,7 @@ export default function Dashboard({
               {/* Fleet Distribution */}
               <div className={`p-6 rounded-3xl border backdrop-blur-md ${isDark ? 'bg-slate-800/40 border-slate-700 shadow-xl' : 'bg-white border-slate-100 shadow-sm shadow-slate-200/50'}`}>
                  <h3 className={`text-lg font-bold mb-6 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''} ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    <Activity className="w-5 h-5 text-amber-500" />
+                    <Settings className="w-5 h-5 text-[#f5b800]" />
                     {isRTL ? "توزيع الأسطول" : "Fleet Distribution"}
                  </h3>
                  <div className="h-[230px] w-full flex items-center justify-center relative">
@@ -212,7 +267,7 @@ export default function Dashboard({
                           dataKey="value"
                         >
                           {fleetDistribution.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
+                            <Cell key={`cell-${index}`} fill={index === 0 ? '#f5b800' : entry.color} />
                           ))}
                         </Pie>
                         <RechartsTooltip />
@@ -251,7 +306,7 @@ export default function Dashboard({
                     <select 
                       value={selectedSchool}
                       onChange={(e) => setSelectedSchool(e.target.value)}
-                      className={`text-sm rounded-xl py-2 px-4 appearance-none focus:ring-2 ring-blue-500/50 border-0 ${isDark ? 'bg-slate-700 text-white' : 'bg-slate-50 text-slate-600'}`}
+                      className={`text-xs font-black rounded-xl py-2 px-6 appearance-none focus:ring-2 ring-[#f5b800]/50 border-0 ${isDark ? 'bg-slate-700 text-white' : 'bg-gray-100 text-slate-900'}`}
                     >
                       <option value="">{isRTL ? "كل المدارس" : "All Schools"}</option>
                       {filterSchools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -259,13 +314,13 @@ export default function Dashboard({
 
                     <button 
                       onClick={() => setIsTrackingEnabled(!isTrackingEnabled)}
-                      className={`text-sm font-black px-5 py-2 rounded-xl transition-all shadow-lg ${
+                      className={`text-xs font-black px-6 py-2 rounded-xl transition-all shadow-xl ${
                         isTrackingEnabled 
                           ? 'bg-red-500 text-white shadow-red-500/30' 
-                          : 'bg-emerald-500 text-white shadow-emerald-500/30'
+                          : 'bg-[#0f2044] text-[#f5b800] shadow-[#0f2044]/20'
                       }`}
                     >
-                      {isTrackingEnabled ? (isRTL ? "إغلاق الخريطة" : "Pause") : (isRTL ? "فتح الخريطة" : "Track Live")}
+                      {isTrackingEnabled ? (isRTL ? "إغلاق الخريطة" : "Pause Tracking") : (isRTL ? "بدء الرصد" : "Start Tracking")}
                     </button>
                  </div>
                </div>
@@ -280,12 +335,26 @@ export default function Dashboard({
                         exit={{ opacity: 0 }}
                         className="absolute inset-0"
                       >
-                         <GoogleMapContainer 
-                           apiKey={GOOGLE_MAPS_API_KEY}
-                           data={filteredMapData} // Use the filtered data
-                           isDark={isDark}
-                           isRTL={isRTL}
-                         />
+                         {GOOGLE_MAPS_API_KEY ? (
+                           <GoogleMapContainer 
+                             apiKey={GOOGLE_MAPS_API_KEY}
+                             data={filteredMapData}
+                             isDark={isDark}
+                             isRTL={isRTL}
+                           />
+                         ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-white p-8 text-center">
+                                <AlertTriangle className="w-12 h-12 text-[#f5b800] mb-4" />
+                                <h5 className="font-black mb-2 text-[#f5b800] uppercase tracking-tighter">
+                                    {isRTL ? "مفتاح الخرائط مفقود" : "API KEY MISSING"}
+                                </h5>
+                                <p className="text-[10px] text-white/40 max-w-[200px] leading-relaxed font-bold">
+                                    {isRTL 
+                                        ? "يرجى تفعيل VITE_GOOGLE_MAPS_API_KEY في ملف الإعدادات." 
+                                        : "Please enable VITE_GOOGLE_MAPS_API_KEY in your settings."}
+                                </p>
+                            </div>
+                         )}
                       </motion.div>
                     ) : (
                       <motion.div 
@@ -305,13 +374,13 @@ export default function Dashboard({
                            <h4 className={`text-xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{isRTL ? "نظام التتبع في وضع الاستعداد" : "Tracking System on Standby"}</h4>
                            <p className={`text-sm max-w-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isRTL ? "تم إيقاف تفعيل الخريطة لتسريع تحميل الصفحة وتوفير موارد النظام. قم بتفعيلها لمراقبة حركة الأسطول في صنعاء." : "Map tracking is disabled to optimize performance. Enable it to monitor real-time fleet movement in Sana'a."}</p>
                          </div>
-                         <button 
-                           onClick={() => setIsTrackingEnabled(true)}
-                           className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-sm tracking-widest uppercase transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center gap-3"
-                         >
-                            <Zap className="w-5 h-5 fill-current" />
-                            {isRTL ? "تفعيل الرصد المباشر الآن" : "Enable Live Tracking Now"}
-                         </button>
+                          <button 
+                            onClick={() => setIsTrackingEnabled(true)}
+                            className="px-10 py-4 bg-[#f5b800] hover:bg-[#0f2044] hover:text-[#f5b800] text-[#0f2044] rounded-[22px] font-black text-sm tracking-widest uppercase transition-all shadow-2xl shadow-[#f5b800]/20 active:scale-95 flex items-center gap-3"
+                          >
+                             <Zap className="w-5 h-5 fill-current" />
+                             {isRTL ? "تفعيل الرصد المباشر الآن" : "Enable Live Tracking"}
+                          </button>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -319,37 +388,57 @@ export default function Dashboard({
             </div>
           </div>
 
-          {/* RIGHT: Quick Actions & Alerts (4 cols) */}
+          {/* RIGHT: Operations Control Center (4 cols) */}
           <div className="lg:col-span-4 space-y-8">
-            
-            {/* Quick Actions Panel */}
-            <div className={`p-6 rounded-3xl border backdrop-blur-md ${isDark ? 'bg-slate-800/40 border-slate-700 shadow-xl' : 'bg-white border-slate-100 shadow-sm shadow-slate-200/50'}`}>
-               <h3 className={`text-lg font-bold mb-6 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''} ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  <Settings className="w-5 h-5 text-indigo-500" />
-                  {isRTL ? "وصول سريع" : "Quick Access"}
-               </h3>
+            <div className={`p-8 rounded-[32px] border backdrop-blur-md ${isDark ? 'bg-slate-800/40 border-[#243460] shadow-2xl' : 'bg-white border-gray-100 shadow-sm shadow-slate-200/50'}`}>
+               <div className="flex items-center gap-3 mb-8">
+                  <div className="w-12 h-12 rounded-2xl bg-[#f5b800]/10 text-[#f5b800] flex items-center justify-center shadow-lg">
+                     <Zap className="w-6 h-6 fill-current" />
+                  </div>
+                  <div>
+                    <h3 className={`text-xl font-black leading-tight ${isDark ? 'text-white' : 'text-[#0f2044]'}`}>
+                        {isRTL ? "مركز التحكم والعمليات" : "Operations Control Center"}
+                    </h3>
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-1">
+                        {isRTL ? "إدارة الموارد والأنظمة الفورية" : "Immediate Resource & System Management"}
+                    </p>
+                  </div>
+               </div>
+
                <div className="grid grid-cols-2 gap-4">
                   <QuickActionItem 
-                    icon={<Plus className="w-5 h-5" />}
-                    label={isRTL ? "إضافة حافلة" : "Add Bus"}
-                    link={route('admin.buses.create')}
-                    color="blue"
+                    icon={<SchoolIcon className="w-5 h-5" />}
+                    label={isRTL ? "إضافة مدرسة جديدة" : "Add New School"}
+                    link={route('admin.schools.create')}
+                    color="navy"
                   />
                   <QuickActionItem 
-                    icon={<Plus className="w-5 h-5" />}
-                    label={isRTL ? "إضافة مدرسة" : "Add School"}
-                    link={route('admin.schools.create')}
-                    color="emerald"
+                    icon={<Bus className="w-5 h-5" />}
+                    label={isRTL ? "إضافة حافلة" : "Add New Bus"}
+                    link={route('admin.buses.create')}
+                    color="gold"
+                  />
+                  <QuickActionItem 
+                    icon={<Users className="w-5 h-5" />}
+                    label={isRTL ? "إدارة السائقين" : "Drivers Hub"}
+                    link={route('admin.drivers.index')}
+                    color="navy"
+                  />
+                  <QuickActionItem 
+                    icon={<Bell className="w-5 h-5" />}
+                    label={isRTL ? "طلبات الباصات" : "Bus Requests"}
+                    link={route('admin.bus-requests.index')}
+                    color="gold"
                   />
                   <QuickActionItem 
                     icon={<FileText className="w-5 h-5" />}
                     label={isRTL ? "سجل التعيينات" : "Assignment Log"}
                     link={route('admin.assignmentHistory')}
-                    color="amber"
+                    color="navy"
                   />
                   <QuickActionItem 
                     icon={<AlertTriangle className="w-5 h-5" />}
-                    label={isRTL ? "البلاغات/الحوادث" : "Emergencies"}
+                    label={isRTL ? "البلاغات النشطة" : "Active Alerts"}
                     link={route('admin.emergencies.index')}
                     color="red"
                   />
@@ -384,15 +473,13 @@ export default function Dashboard({
                </div>
 
                <div className="mt-6">
-                  <Link 
-                    href={route('admin.daily-trips.auto-create')}
-                    method="post"
-                    as="button"
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-brand-yellow hover:bg-yellow-500 text-slate-900 rounded-2xl font-black text-sm transition-all shadow-lg shadow-yellow-500/20 active:scale-95"
+                   <button 
+                    onClick={() => router.post(route('admin.daily-trips.auto-create'))}
+                    className="w-full flex items-center justify-center gap-2 py-4 bg-[#0f2044] hover:bg-[#1a2845] text-[#f5b800] rounded-2xl font-black text-sm transition-all shadow-xl shadow-[#0f2044]/20 active:scale-95 border border-[#f5b800]/30"
                   >
-                    <Zap className="w-4 h-4" />
+                    <Zap className="w-4 h-4 fill-current" />
                     {isRTL ? "توليد الرحلات اليومية آلياً" : "Auto-Create Daily Trips"}
-                  </Link>
+                  </button>
                   <p className={`text-[9px] text-center mt-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                     {isRTL ? "* يقوم بإنشاء رحلات لليوم بناءً على مسارات الحافلات النشطة" : "* Generates trips for today based on active bus routes"}
                   </p>
@@ -475,6 +562,8 @@ export default function Dashboard({
 
 function StatCard({ title, value, icon, trend, color, isDark, isRTL }: any) {
   const colorSchemes = {
+    navy: "text-[#7ba7e8] bg-[#0f2044]/10",
+    gold: "text-[#f5b800] bg-[#f5b800]/10",
     blue: "text-blue-500 bg-blue-500/10",
     green: "text-emerald-500 bg-emerald-500/10",
     emerald: "text-emerald-500 bg-emerald-500/10",
@@ -486,18 +575,18 @@ function StatCard({ title, value, icon, trend, color, isDark, isRTL }: any) {
   return (
     <motion.div 
       whileHover={{ y: -5 }}
-      className={`p-6 rounded-3xl border backdrop-blur-md relative overflow-hidden transition-all ${
-        isDark ? 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/60 shadow-xl' : 'bg-white border-slate-100 hover:bg-slate-50/50 shadow-sm shadow-slate-200/50 hover:shadow-lg'
+      className={`p-6 rounded-[28px] border backdrop-blur-md relative overflow-hidden transition-all duration-300 ${
+        isDark ? 'bg-slate-800/40 border-[#243460] hover:bg-slate-800/60 shadow-xl' : 'bg-white border-gray-100 hover:bg-slate-50/50 shadow-sm shadow-slate-200/50 hover:shadow-2xl'
       }`}
     >
-      <div className={`relative z-10 flex flex-col gap-2 ${isRTL ? 'items-end' : 'items-start'}`}>
-         <div className={`p-3 rounded-2xl mb-2 ${colorSchemes[color]}`}>
+      <div className={`relative z-10 flex flex-col gap-3 ${isRTL ? 'items-end' : 'items-start'}`}>
+         <div className={`p-4 rounded-2xl mb-2 ${colorSchemes[color]}`}>
             {icon}
          </div>
-         <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>{title}</p>
+         <p className={DS_statLabel}>{title}</p>
          <div className={`flex items-baseline gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <h4 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{value}</h4>
-            <span className={`text-[9px] font-black py-0.5 px-1.5 rounded-lg ${trend.startsWith('+') ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}`}>
+            <h4 className={DS_statValue}>{value}</h4>
+            <span className={`text-[9px] font-black py-0.5 px-2 rounded-full ${trend.startsWith('+') ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}`}>
                {trend}
             </span>
          </div>
@@ -510,6 +599,8 @@ function StatCard({ title, value, icon, trend, color, isDark, isRTL }: any) {
 
 function QuickActionItem({ icon, label, link, color }: any) {
   const bgColors = {
+    navy: "bg-[#0f2044] text-[#f5b800] shadow-[#0f2044]/20 border border-[#f5b800]/20",
+    gold: "bg-[#f5b800] text-[#0f2044] shadow-[#f5b800]/20",
     blue: "bg-blue-500 shadow-blue-500/20 hover:bg-blue-600",
     emerald: "bg-emerald-500 shadow-emerald-500/20 hover:bg-emerald-600",
     amber: "bg-amber-500 shadow-amber-500/20 hover:bg-amber-600",
@@ -519,10 +610,12 @@ function QuickActionItem({ icon, label, link, color }: any) {
   return (
     <Link 
       href={link}
-      className={`flex flex-col items-center justify-center p-5 rounded-2xl text-white font-black text-[10px] gap-2 transition-all hover:-translate-y-1 active:scale-95 shadow-lg ${bgColors[color]}`}
+      className={`flex flex-col items-center justify-center p-6 rounded-[22px] font-black text-xs gap-3 transition-all hover:-translate-y-2 active:scale-95 shadow-2xl ${bgColors[color]}`}
     >
-      {icon}
-      <span className="text-center leading-tight">{label}</span>
+      <div className="p-2 rounded-xl bg-white/10">
+        {icon}
+      </div>
+      <span className="text-center leading-tight uppercase tracking-tighter">{label}</span>
     </Link>
   );
 }
