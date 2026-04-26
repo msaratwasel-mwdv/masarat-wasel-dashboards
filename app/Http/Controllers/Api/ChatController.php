@@ -63,12 +63,12 @@ class ChatController extends Controller
                             $contacts->push($assistant);
                         }
 
-                        // 3. المشرف الميداني
-                        if ($bus->fieldSupervisor) {
-                            $fieldSv = clone $bus->fieldSupervisor;
-                            $fieldSv->chat_description = "المشرف الميداني ({$bus->bus_number}) - الطالب: " . $studentsNames;
-                            $contacts->push($fieldSv);
-                        }
+                        // 3. المشرف الميداني (تم الإخفاء بناء على طلب العميل لقطع التواصل)
+                        // if ($bus->fieldSupervisor) {
+                        //     $fieldSv = clone $bus->fieldSupervisor;
+                        //     $fieldSv->chat_description = "المشرف الميداني ({$bus->bus_number}) - الطالب: " . $studentsNames;
+                        //     $contacts->push($fieldSv);
+                        // }
                     }
                 }
                 break;

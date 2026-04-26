@@ -125,6 +125,7 @@ class BusLocationController extends Controller
             'latitude' => (double) $bus->latitude,
             'longitude' => (double) $bus->longitude,
             'trip_status' => $bus->trip_status,
+            'trip_type' => \App\Models\Trip::where('bus_id', $bus->id)->whereDate('trip_date', today())->where('status', 'in_progress')->value('type'),
             'last_update' => $bus->last_location_update ? $bus->last_location_update->toIso8601String() : null,
             'bus_number' => $bus->bus_number,
             'plate_number' => $bus->plate_number,
@@ -185,7 +186,7 @@ class BusLocationController extends Controller
                 (float) $guardian->home_latitude, (float) $guardian->home_longitude
             );
 
-            $alertDistance = $guardian->proximity_alert_distance ?? 1000;
+            $alertDistance = $guardian->proximity_alert_distance ?? 2000;
 
             if ($distance <= $alertDistance) {
                 // تجنب إرسال إشعار مكرر (كل 10 دقائق كحد أدنى)
@@ -204,13 +205,13 @@ class BusLocationController extends Controller
                 
                 $direction = ($activeTrip?->type === 'forth') ? 'to_school' : 'to_home';
                 
-                // SCRUM-85 & SCRUM-88: التنبيه عند اقتراب الحافلة (مسافة + زمن تقديري)
+                // SCRUM-85 & SCRUM-88: التنبيه عند اقتراب الحافلة (مسافة 2 كم + زمن تقديري دقيقتين)
                 if ($direction === 'to_school') {
                     $title = "الحافلة تقترب لاستلام {$student->full_name}";
-                    $message = "الحافلة على بعد {$distanceText} من منزلك، ستصل خلال 5 دقائق تقريباً. يرجى تجهيز الطالب للركوب.";
+                    $message = "الحافلة على بعد {$distanceText} من منزلك، ستصل خلال دقيقتين تقريباً. يرجى تجهيز الطالب للركوب.";
                 } else {
-                    $title = "طالبك {$student->full_name} سيصل خلال 5 دقائق";
-                    $message = "الحافلة على بعد {$distanceText} من منزلك، ستصل خلال 5 دقائق تقريباً. يرجى الاستعداد لاستلام الطالب.";
+                    $title = "طالبك {$student->full_name} سيصل خلال دقيقتين";
+                    $message = "الحافلة على بعد {$distanceText} من منزلك، ستصل خلال دقيقتين تقريباً. يرجى الاستعداد لاستلام الطالب.";
                 }
 
                 $this->notificationService->notifyStudentGuardian(
@@ -225,7 +226,7 @@ class BusLocationController extends Controller
                         'distance_text' => $distanceText,
                         'bus_latitude' => $busLat,
                         'bus_longitude' => $busLon,
-                        'eta_minutes' => 5,
+                        'eta_minutes' => 2,
                         'direction' => $direction,
                     ]
                 );

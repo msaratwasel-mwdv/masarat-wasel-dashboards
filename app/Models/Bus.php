@@ -296,14 +296,16 @@ class Bus extends Model
     {
         $supervisorId = $this->field_supervisor_id;
         $driverId = $this->driver_id;
+        $assistantId = $this->assistant_id;
 
-        $isCrew = ($supervisorId == $userId || $driverId == $userId);
+        $isCrew = ($supervisorId == $userId || $driverId == $userId || $assistantId == $userId);
 
         if (!$isCrew) {
             \Illuminate\Support\Facades\Log::warning("Unauthorized access attempt to Bus {$this->id}", [
                 'user_id' => $userId,
                 'assigned_supervisor' => $supervisorId,
-                'assigned_driver' => $driverId
+                'assigned_driver' => $driverId,
+                'assigned_assistant' => $assistantId,
             ]);
         }
 

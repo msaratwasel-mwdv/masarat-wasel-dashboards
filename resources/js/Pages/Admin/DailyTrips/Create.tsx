@@ -29,11 +29,17 @@ export default function Create({ auth, buses, routes }: Props) {
     const { isRTL } = useTheme();
     const { flash } = usePage().props as any;
 
+    const getLocalDate = () => {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().split('T')[0];
+    };
+
     const { data, setData, post, processing, errors } = useForm({
         bus_id: '',
         route_id: '',
         type: 'forth',
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDate(),
     });
 
     useEffect(() => {

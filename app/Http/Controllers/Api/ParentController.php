@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class ParentController extends Controller
 {
@@ -112,18 +113,17 @@ class ParentController extends Controller
                 'backBus.driver.user',
                 'forthBus.assistant',
                 'backBus.assistant',
-                'lastBusLog',
+                'lastTripAttendance',
                 'currentEnrollment.classroom.school'
             ])
             ->get();
 
         $data = $students->map(function (Student $student) use ($user) {
             // بيانات الباص الصباحي والمسائي
-            $morningBus = $student->morningGroup?->bus;
-            $eveningBus = $student->afternoonGroup?->bus ?? $morningBus;
+            $morningBus = $student->forthBus;
+            $eveningBus = $student->backBus ?? $morningBus;
 
             // تحديد الباص النشط بناءً على حالة الرحلة
-            // إذا كان الباص المسائي في رحلة نشطة، نعرضه. وإلا نعرض الصباحي.
             $activeBus = $morningBus; // الافتراضي
             if ($eveningBus && in_array($eveningBus->trip_status, ['to_home', 'on_route']) && now()->hour >= 11) {
                 $activeBus = $eveningBus;
@@ -147,13 +147,16 @@ class ParentController extends Controller
                 : 0;
 
             // تحديد الحالة الحالية للطالب
-            $lastLog = $student->lastBusLog;
+            $lastLog = $student->lastTripAttendance;
             $studentStatus = 'atHome';
             if ($lastLog) {
-                if ($lastLog->type === 'boarding') {
+                if ($lastLog->status === 'boarded' || $lastLog->status === 'present') {
                     $studentStatus = 'onBus';
-                } elseif ($lastLog->type === 'alighting') {
-                    $studentStatus = ($lastLog->direction === 'to_school') ? 'atSchool' : 'atHome';
+                } elseif ($lastLog->status === 'alighted' || $lastLog->status === 'dropped_off') {
+                    $tripType = $lastLog->trip?->type ?? 'morning';
+                    $studentStatus = ($tripType === 'morning') ? 'atSchool' : 'atHome';
+                } elseif ($lastLog->status === 'absent') {
+                    $studentStatus = 'atHome';
                 }
             }
 
@@ -315,7 +318,7 @@ class ParentController extends Controller
 
         // ── إرسال إشعار فوري وتفصيلي (إدارة + طاقم) ──
         try {
-            $student->load(['school', 'forthBus.driver', 'forthBus.assistant', 'backBus.driver', 'backBus.assistant']);
+            $student->load(['currentEnrollment.classroom.school', 'forthBus.driver', 'forthBus.assistant', 'backBus.driver', 'backBus.assistant']);
             $staffUserIds = [];
 
             // 1. جلب مديري المدرسة (School Admins)
@@ -365,7 +368,7 @@ class ParentController extends Controller
                 );
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('[Absence Notification] Detail Error: ' . $e->getMessage());
+            Log::error('[Absence Notification] Detail Error: ' . $e->getMessage());
         }
 
         return response()->json([

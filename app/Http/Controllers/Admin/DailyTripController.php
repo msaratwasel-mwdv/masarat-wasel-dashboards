@@ -9,6 +9,8 @@ use App\Models\Route;
 use App\Services\TripService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\App;
 use Inertia\Inertia;
 
 class DailyTripController extends Controller
@@ -21,11 +23,12 @@ class DailyTripController extends Controller
     {
         $query = Trip::with(['bus'])
             ->whereIn('type', ['forth', 'back'])
-            ->orderByDesc('departure_time');
+            ->orderByDesc('trip_date')
+            ->orderByDesc('id');
 
         // Optional date filter
         if ($request->filled('date')) {
-            $query->whereDate('departure_time', $request->date);
+            $query->whereDate('trip_date', $request->date);
         }
 
         // Optional status filter
@@ -61,21 +64,21 @@ class DailyTripController extends Controller
      */
     public function store(Request $request)
     {
-        \Illuminate\Support\Facades\Log::info('[DailyTrips] Manual creation attempt', $request->all());
+        Log::info('[DailyTrips] Manual creation attempt', $request->all());
         $request->validate([
             'bus_id'   => 'required|exists:buses,id',
             'route_id' => 'required|exists:routes,id',
             'type'     => 'required|in:forth,back',
-            'date'     => 'required|date',
+            'date'     => 'required|date_format:Y-m-d',
         ]);
 
         $bus = Bus::findOrFail($request->bus_id);
-        $date = Carbon::parse($request->date);
+        $date = Carbon::createFromFormat('Y-m-d', $request->date)->startOfDay();
 
-        [$trip, $reason] = $this->tripService->createDailyTrip($bus, $request->type, $date, (int)$request->route_id);
+        [$trip, $reason] = $this->tripService->createDailyTrip($bus, $request->type, $date);
 
         if (!$trip) {
-            \Illuminate\Support\Facades\Log::warning('[DailyTrips] Manual creation failed', ['reason' => $reason, 'bus' => $bus->id]);
+            Log::warning('[DailyTrips] Manual creation failed', ['reason' => $reason, 'bus' => $bus->id]);
             return back()->with('error', "Could not create trip: " . str_replace('_', ' ', $reason));
         }
 
@@ -112,6 +115,8 @@ class DailyTripController extends Controller
             'departure_time' => now(),
         ]);
 
+        $trip->bus->update(['trip_status' => 'in_progress']);
+
         return redirect()->route('admin.daily-trips.show', $trip->id)->with('success', 'تم تأكيد الرحلة بنجاح وبدأت الآن.');
     }
 
@@ -124,7 +129,7 @@ class DailyTripController extends Controller
             'route_id'     => 'required|exists:routes,id',
             'driver_id'    => 'nullable|exists:users,id',
             'assistant_id' => 'nullable|exists:users,id',
-            'status'       => 'required|in:pending,ongoing,completed,cancelled',
+            'status'       => 'required|in:pending,in_progress,completed,cancelled,awaiting_confirmation',
             'departure_time' => 'required|date',
             'arrival_time'   => 'nullable|date',
         ]);
@@ -169,7 +174,7 @@ class DailyTripController extends Controller
         $result = $this->tripService->autoCreateDailyTrips($date);
 
         if (isset($result['status']) && $result['status'] === 'skipped') {
-            $reason = \Illuminate\Support\Facades\App::getLocale() === 'ar' ? ($result['reason_ar'] ?? $result['reason']) : ($result['reason'] ?? 'No schools are active for this date.');
+            $reason = App::getLocale() === 'ar' ? ($result['reason_ar'] ?? $result['reason']) : ($result['reason'] ?? 'No schools are active for this date.');
             return back()->with('error', $reason);
         }
 

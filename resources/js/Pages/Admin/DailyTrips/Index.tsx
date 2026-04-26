@@ -70,7 +70,13 @@ export default function Index({ auth, trips, filters }: Props) {
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
     const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-    const [autoCreateDate, setAutoCreateDate] = useState(new Date().toISOString().split('T')[0]);
+    const [autoCreateDate, setAutoCreateDate] = useState(() => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    });
     const [dateValidation, setDateValidation] = useState<{ status: string; message: string; message_ar: string; is_working: boolean } | null>(null);
 
     useEffect(() => {
@@ -272,9 +278,14 @@ export default function Index({ auth, trips, filters }: Props) {
                                                     {(trips.current_page - 1) * trips.per_page + index + 1}
                                                 </td>
                                                 <td className="px-6 py-4 text-center font-medium text-gray-800 dark:text-gray-200">
-                                                    {new Date(trip.trip_date).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
-                                                        year: 'numeric', month: 'short', day: 'numeric'
-                                                    })}
+                                                    {(() => {
+                                                        if (!trip.trip_date) return '—';
+                                                        const d = new Date(trip.trip_date);
+                                                        if (isNaN(d.getTime())) return trip.trip_date;
+                                                        return d.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+                                                            year: 'numeric', month: 'short', day: 'numeric'
+                                                        });
+                                                    })()}
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${isForte

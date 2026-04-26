@@ -3,13 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Bus;
-use App\Models\TripAttendance;
-use App\Models\Student;
-use App\Services\NotificationService;
-use App\Events\StudentStatusUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use App\Models\Trip;
+use App\Models\TripAttendance;
+use App\Models\Student;
+use App\Models\Bus;
+use App\Services\NotificationService;
+use App\Events\StudentStatusUpdated;
+use Carbon\Carbon;
 
 class DailyTripApiController extends Controller
 {
@@ -26,6 +30,7 @@ class DailyTripApiController extends Controller
      */
     public function markBoarded(Request $request, Bus $bus)
     {
+        /** @var Bus $bus */
         $request->validate([
             'student_id' => 'required|exists:students,id',
             'latitude'   => 'nullable|numeric',
@@ -169,6 +174,7 @@ class DailyTripApiController extends Controller
      */
     public function groupBoard(Request $request, Bus $bus)
     {
+        /** @var Bus $bus */
         $request->validate([
             'student_ids' => 'required|array',
             'student_ids.*' => 'exists:students,id',
@@ -228,6 +234,7 @@ class DailyTripApiController extends Controller
      */
     public function markDropped(Request $request, Bus $bus)
     {
+        /** @var Bus $bus */
         $request->validate([
             'student_id' => 'required|exists:students,id',
             'latitude'   => 'nullable|numeric',
@@ -351,6 +358,7 @@ class DailyTripApiController extends Controller
      */
     public function groupAlight(Request $request, Bus $bus)
     {
+        /** @var Bus $bus */
         $request->validate([
             'student_ids' => 'required|array',
             'student_ids.*' => 'exists:students,id',
@@ -410,7 +418,8 @@ class DailyTripApiController extends Controller
 
             // 🔔 بث التحديث الفوري
             try {
-                broadcast(new StudentStatusUpdated($studentId, $bus, 'alight', $direction));
+                $student = Student::find($studentId);
+                broadcast(new StudentStatusUpdated($student, $bus, 'alight', $direction));
             } catch (\Exception $e) {
                 Log::error("Broadcast error (groupAlight): " . $e->getMessage());
             }
@@ -428,6 +437,7 @@ class DailyTripApiController extends Controller
      */
     public function arrive(Request $request, Bus $bus)
     {
+        /** @var Bus $bus */
         $user = $request->user();
         if (!$bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك.'], 403);
@@ -493,10 +503,12 @@ class DailyTripApiController extends Controller
      */
     public function passengers(Request $request, Bus $bus)
     {
+        /** @var Bus $bus */
         // تحديد نوع الرحلة المقترح حسب الرحلة النشطة أو المعلقة لهذا اليوم
-        $activeTrip = \App\Models\Trip::where('bus_id', $bus->id)
+        /** @var Trip|null $activeTrip */
+        $activeTrip = Trip::where('bus_id', $bus->id)
             ->whereDate('trip_date', today())
-            ->whereIn('status', ['pending', 'in_progress'])
+            ->whereIn('status', ['pending', 'in_progress', 'awaiting_confirmation'])
             ->orderByRaw("CASE WHEN type = 'forth' THEN 1 WHEN type = 'back' THEN 2 ELSE 3 END")
             ->first();
         $suggestedTripType = $activeTrip?->type === 'back' ? 'afternoon' : 'morning';
@@ -504,7 +516,7 @@ class DailyTripApiController extends Controller
         // السماح بطلب نوع رحلة محدد عبر Query Param
         $filterTripType = $request->query('trip_type', $suggestedTripType);
 
-        $query = \App\Models\Student::where('is_active', true)
+        $query = Student::where('is_active', true)
             ->with(['lastTripAttendance.trip', 'guardian', 'absenceRequests' => function($q) {
                 $q->whereDate('date', today())->where('status', '!=', 'rejected');
             }]);
@@ -579,7 +591,7 @@ class DailyTripApiController extends Controller
                 'parentName' => $student->guardian->first()?->name ?? 'غير محدد',
                 'parentPhone' => $student->guardian->first()?->phone ?? 'غير محدد',
                 'parentUserId' => (string) $student->guardian->first()?->id,
-                'photoUrl' => $student->image ? (str_starts_with($student->image, 'http') ? $student->image : url(\Illuminate\Support\Facades\Storage::url($student->image))) : null,
+                'photoUrl' => $student->image ? (str_starts_with($student->image, 'http') ? $student->image : url(Storage::url($student->image))) : null,
                 'status' => $studentStatus, // atHome, onBus, atSchool, absent
                 'isOnBus' => ($studentStatus === 'onBus'),
                 'isAbsent' => ($studentStatus === 'absent'),
@@ -599,7 +611,7 @@ class DailyTripApiController extends Controller
                 'bus_number' => $bus->bus_number,
                 'plate_number' => $bus->plate_number,
                 'trip_type' => $suggestedTripType,
-                'trip_status' => $activeTrip && $activeTrip->status === 'in_progress' ? 'in_progress' : 'idle',
+                'trip_status' => $activeTrip ? $activeTrip->status : 'idle',
                 'has_active_trip' => $activeTrip !== null,
                 'trip_id' => $activeTrip?->id,
             ],
@@ -617,7 +629,7 @@ class DailyTripApiController extends Controller
     {
         $user = $request->user();
         
-        \Log::info('myTrips: starting for user ' . $user->id);
+        Log::info('myTrips: starting for user ' . $user->id);
         
         // Find the bus the user is assigned to (driver or assistant)
         $bus = Bus::where('driver_id', $user->id)
@@ -625,17 +637,17 @@ class DailyTripApiController extends Controller
                   ->first();
 
         if (!$bus) {
-            \Log::info('myTrips: no bus found');
+            Log::info('myTrips: no bus found');
             return response()->json(['message' => 'لا يوجد حافلة معينة لك.'], 404);
         }
 
-        \Log::info('myTrips: found bus ' . $bus->id);
+        Log::info('myTrips: found bus ' . $bus->id);
 
         // We fetch today's trips, or tomorrow's if none exist for today (in case of night generation)
         $date = today();
-        \Log::info('myTrips: fetching trips for date ' . $date->toDateString());
+        Log::info('myTrips: fetching trips for date ' . $date->toDateString());
         
-        $trips = \App\Models\Trip::with('route')
+        $trips = Trip::with('route')
             ->withCount(['attendances as total_students', 'attendances as excused_count' => function ($query) {
                 $query->where('status', 'excused');
             }])
@@ -645,9 +657,9 @@ class DailyTripApiController extends Controller
             ->get();
 
         if ($trips->isEmpty()) {
-            \Log::info('myTrips: no trips for today, checking tomorrow');
-            $date = \Carbon\Carbon::tomorrow();
-            $trips = \App\Models\Trip::with('route')
+            Log::info('myTrips: no trips for today, checking tomorrow');
+            $date = Carbon::tomorrow();
+            $trips = Trip::with('route')
                 ->withCount(['attendances as total_students', 'attendances as excused_count' => function ($query) {
                     $query->where('status', 'excused');
                 }])
@@ -657,7 +669,7 @@ class DailyTripApiController extends Controller
                 ->get();
         }
 
-        \Log::info('myTrips: found ' . $trips->count() . ' trips');
+        Log::info('myTrips: found ' . $trips->count() . ' trips');
 
         $formattedTrips = $trips->map(function ($trip) {
             return [
@@ -676,7 +688,7 @@ class DailyTripApiController extends Controller
             ];
         });
 
-        \Log::info('myTrips: returning response');
+        Log::info('myTrips: returning response');
 
         return response()->json([
 
@@ -710,7 +722,7 @@ class DailyTripApiController extends Controller
         $endDate = $request->query('end_date', now()->addDays(30)->toDateString());
         $status = $request->query('status');
 
-        $query = \App\Models\Trip::with('route')
+        $query = Trip::with('route')
             ->withCount('attendances as total_students')
             ->where('bus_id', $bus->id)
             ->whereBetween('trip_date', [$startDate, $endDate])
@@ -762,19 +774,30 @@ class DailyTripApiController extends Controller
      */
     public function startTrip(Request $request, Bus $bus)
     {
+        /** @var Bus $bus */
         $user = $request->user();
         if (!$bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
         // البحث عن أول رحلة غير منتهية لهذا اليوم (ذهاب أولاً)
-        $trip = \App\Models\Trip::where('bus_id', $bus->id)
+        $trip = Trip::where('bus_id', $bus->id)
             ->whereDate('trip_date', today())
-            ->whereIn('status', ['pending', 'in_progress'])
+            ->where('status', 'pending')
             ->orderByRaw("CASE WHEN type = 'forth' THEN 1 WHEN type = 'back' THEN 2 ELSE 3 END")
             ->first();
 
         if (!$trip) {
+            // Check if there is already an active or awaiting trip
+            $active = Trip::where('bus_id', $bus->id)
+                ->whereDate('trip_date', today())
+                ->whereIn('status', ['in_progress', 'awaiting_confirmation'])
+                ->exists();
+
+            if ($active) {
+                return response()->json(['message' => 'هناك رحلة نشطة بالفعل أو بانتظار التأكيد.'], 422);
+            }
+
             return response()->json(['message' => 'لا توجد رحلة معلقة لبدءها اليوم.'], 404);
         }
 
@@ -808,6 +831,7 @@ class DailyTripApiController extends Controller
      */
     public function confirmTrip(Request $request, Bus $bus)
     {
+        /** @var Bus $bus */
         $user = $request->user();
         if (!$bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك.'], 403);
@@ -817,7 +841,7 @@ class DailyTripApiController extends Controller
             'trip_id' => 'required|exists:trips,id',
         ]);
 
-        $trip = \App\Models\Trip::where('id', $request->trip_id)
+        $trip = Trip::where('id', $request->trip_id)
             ->where('bus_id', $bus->id)
             ->firstOrFail();
 
@@ -829,6 +853,8 @@ class DailyTripApiController extends Controller
             'status' => 'in_progress',
             'departure_time' => now(),
         ]);
+
+        $bus->update(['trip_status' => 'in_progress']);
 
         Log::info('confirmTrip: Trip confirmed by assistant', ['bus_id' => $bus->id, 'trip_id' => $trip->id, 'confirmed_by' => $user->id]);
 
@@ -845,6 +871,7 @@ class DailyTripApiController extends Controller
      */
     public function endTrip(Request $request, Bus $bus)
     {
+        /** @var Bus $bus */
         $user = $request->user();
         if (!$bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك.'], 403);
@@ -864,7 +891,7 @@ class DailyTripApiController extends Controller
         $expectedStart = "FRONT-" . $bus->id;
         $expectedEnd = "BACK-" . $bus->id;
 
-        \Illuminate\Support\Facades\Log::info('QR Validation Debug:', [
+        Log::info('QR Validation Debug:', [
             'bus_id' => $bus->id,
             'received_start' => $startQr,
             'received_end' => $endQr,
@@ -878,7 +905,7 @@ class DailyTripApiController extends Controller
                 return response()->json(['message' => 'بيانات كود QR غير صحيحة لهذه الحافلة.'], 422);
             }
             // ⚠️ في التطوير: تحذير فقط والمتابعة
-            \Illuminate\Support\Facades\Log::warning('QR MISMATCH (DEV MODE - SKIPPED)', [
+            Log::warning('QR MISMATCH (DEV MODE - SKIPPED)', [
                 'received' => [$startQr, $endQr],
                 'expected' => [$expectedStart, $expectedEnd],
             ]);
@@ -891,7 +918,8 @@ class DailyTripApiController extends Controller
 
         // Find the latest trip for this bus that needs video verification
         // Supports: awaiting_video (new flow), in_progress (mid-trip), finished (legacy/arrive already called)
-        $trip = \App\Models\Trip::where('bus_id', $bus->id)
+        /** @var Trip|null $trip */
+        $trip = Trip::where('bus_id', $bus->id)
             ->whereIn('status', ['awaiting_video', 'in_progress', 'finished'])
             ->whereDate('trip_date', today())
             ->latest()
@@ -935,6 +963,7 @@ class DailyTripApiController extends Controller
      */
     private function getStudentCurrentStatus(Student $student): string
     {
+        /** @var TripAttendance|null $lastAttendance */
         $lastAttendance = $student->lastTripAttendance;
 
         if (!$lastAttendance) {
@@ -950,7 +979,8 @@ class DailyTripApiController extends Controller
 
     private function getActiveTrip(Bus $bus)
     {
-        return \App\Models\Trip::where('bus_id', $bus->id)
+        /** @var Bus $bus */
+        return Trip::where('bus_id', $bus->id)
             ->whereDate('trip_date', today())
             ->where('status', 'in_progress')
             ->first();
