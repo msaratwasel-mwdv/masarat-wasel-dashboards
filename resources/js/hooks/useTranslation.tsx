@@ -1681,7 +1681,6 @@ const dictionary = {
   "Add New Parent": { ar: "إضافة ولي أمر جديد", en: "Add New Parent" },
   "Address / House #": { ar: "العنوان / رقم المنزل", en: "Address / House #" },
   "Saving...": { ar: "جاري الحفظ...", en: "Saving..." },
-  "Save Changes": { ar: "حفظ التغييرات", en: "Save Changes" },
   "Children of": { ar: "أبناء", en: "Children of" },
   "student(s)": { ar: "طالب", en: "student(s)" },
   "No children registered": { ar: "لا يوجد أبناء مسجلون", en: "No children registered" },

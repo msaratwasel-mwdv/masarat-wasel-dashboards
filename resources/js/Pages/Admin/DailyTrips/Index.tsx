@@ -1,11 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Head, router, usePage, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { toast } from 'react-toastify';
 import Modal from '@/Components/Modal';
-import SecondaryButton from '@/Components/SecondaryButton';
-import { Video, ShieldCheck, Play, X, Eye, Edit2, Trash2, CheckCircle2 } from 'lucide-react';
+import BaseDataTable, { ActionButton, StatusBadge, type FilterTab, type PaginationMeta } from '@/Components/BaseDataTable';
+import PrintReportHeader from "@/Components/PrintReportHeader";
+import { 
+    DS_pageWrapper, 
+    DS_statCard, 
+    DS_statIcon, 
+    DS_statLabel, 
+    DS_statValue, 
+    DS_modalContainer, 
+    DS_modalHeader, 
+    DS_modalHeaderTitle, 
+    DS_modalHeaderAccent, 
+    DS_modalClose, 
+    DS_modalBody,
+    DS_btnSecondary,
+    DS_inputCls,
+    DS_labelCls
+} from "@/lib/DS";
+import { 
+    Video, 
+    ShieldCheck, 
+    Play, 
+    X, 
+    Eye, 
+    Edit2, 
+    Trash2, 
+    CheckCircle2,
+    Printer,
+    ArrowUpRight,
+    ArrowDownLeft,
+    Zap,
+    Search,
+    Clock3,
+    Bus as BusIcon,
+    MapPin,
+    Calendar,
+    AlertCircle
+} from 'lucide-react';
+import { createColumnHelper } from '@tanstack/react-table';
 import { AnimatePresence, motion } from 'framer-motion';
 import axios from 'axios';
 
@@ -53,6 +90,8 @@ interface Props {
         date?: string;
         status?: string;
     };
+    buses: Bus[];
+    routes: Route[];
 }
 
 const statusConfig: Record<string, { label: string; labelAr: string; class: string }> = {
@@ -63,13 +102,14 @@ const statusConfig: Record<string, { label: string; labelAr: string; class: stri
     cancelled: { label: 'Cancelled', labelAr: 'ملغاة', class: 'bg-red-100    text-red-800    dark:bg-red-900/40    dark:text-red-300' },
 };
 
-export default function Index({ auth, trips, filters }: Props) {
+export default function Index({ auth, trips, filters, buses, routes }: Props) {
     const { isRTL, isDarkMode } = useTheme();
     const { flash } = usePage().props as any;
     const [dateFilter, setDateFilter] = useState(filters.date || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
     const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [autoCreateDate, setAutoCreateDate] = useState(() => {
         const now = new Date();
         const year = now.getFullYear();
@@ -78,6 +118,45 @@ export default function Index({ auth, trips, filters }: Props) {
         return `${year}-${month}-${day}`;
     });
     const [dateValidation, setDateValidation] = useState<{ status: string; message: string; message_ar: string; is_working: boolean } | null>(null);
+
+    // Manual Create Form
+    const { data: createData, setData: setCreateData, post: postCreate, processing: processingCreate, errors: createErrors, reset: resetCreate } = useForm({
+        bus_id: '',
+        route_id: '',
+        type: 'forth',
+        date: autoCreateDate,
+    });
+
+    useEffect(() => {
+        if (createData.bus_id) {
+            const bus = buses.find(b => b.id === parseInt(createData.bus_id));
+            if (bus && bus.route_id) {
+                setCreateData('route_id', bus.route_id.toString());
+            }
+        }
+    }, [createData.bus_id]);
+
+    const handleCreateSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        postCreate(route('admin.daily-trips.store'), {
+            onSuccess: () => {
+                setIsCreateModalOpen(false);
+                resetCreate();
+            }
+        });
+    };
+
+    const handlePrint = () => window.print();
+
+    const PRINT_STYLES = `
+    @media print {
+      body * { visibility: hidden !important; }
+      main { margin: 0 !important; position: static !important; }
+      #trip-print-area, #trip-print-area * { visibility: visible !important; }
+      #trip-print-area { position: absolute; inset: 0; width: 100%; padding: 20px; background: white; }
+      @page { size: landscape; margin: 1cm; }
+    }
+    `;
 
     useEffect(() => {
         if (!autoCreateDate) {
@@ -111,47 +190,216 @@ export default function Index({ auth, trips, filters }: Props) {
         router.get(route('admin.daily-trips.index'));
     };
 
-    const getStatus = (status: string) => statusConfig[status] || { label: status, labelAr: status, class: 'bg-gray-100 text-gray-700' };
+    const getStatus = (status: string) => statusConfig[status] || { 
+        label: status, 
+        labelAr: status, 
+        class: 'bg-gray-100 text-gray-700',
+        icon: Clock3
+    };
+
+    const pagination: PaginationMeta = {
+        links: (trips as any).links || [],
+        current_page: trips.current_page,
+        last_page: trips.last_page,
+        per_page: trips.per_page,
+        total: trips.total,
+        from: (trips as any).from,
+        to: (trips as any).to,
+    };
+
+    const filterTabs: FilterTab[] = [
+        { key: 'all', label: isRTL ? 'الكل' : 'All', count: trips.total },
+        { key: 'pending', label: isRTL ? 'انتظار' : 'Pending', dotColor: 'bg-yellow-400' },
+        { key: 'in_progress', label: isRTL ? 'جارية' : 'In Progress', dotColor: 'bg-blue-400' },
+        { key: 'completed', label: isRTL ? 'مكتملة' : 'Completed', dotColor: 'bg-green-400' },
+    ];
+
+    const columnHelper = createColumnHelper<Trip>();
+    const columns = useMemo(() => [
+        columnHelper.display({
+            id: 'index',
+            header: '#',
+            cell: (info) => (trips.current_page - 1) * trips.per_page + info.row.index + 1,
+        }),
+        columnHelper.accessor('trip_date', {
+            header: isRTL ? 'التاريخ' : 'Date',
+            cell: (info) => {
+                const d = new Date(info.getValue());
+                return d.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            }
+        }),
+        columnHelper.accessor('type', {
+            header: isRTL ? 'الاتجاه' : 'Direction',
+            cell: (info) => {
+                const isForte = info.getValue() === 'forth';
+                return (
+                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold ${isForte
+                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20'
+                        : 'bg-orange-50 text-orange-600 dark:bg-orange-900/20'
+                        }`}>
+                        {isForte ? <ArrowUpRight size={10} /> : <ArrowDownLeft size={10} />}
+                        {isForte ? (isRTL ? 'ذهاب' : 'Forth') : (isRTL ? 'إياب' : 'Back')}
+                    </span>
+                );
+            }
+        }),
+        columnHelper.accessor('bus.bus_number', {
+            header: isRTL ? 'الحافلة' : 'Bus',
+            cell: (info) => <span className="font-bold">{info.getValue() || '—'}</span>
+        }),
+        columnHelper.accessor('status', {
+            header: isRTL ? 'الحالة' : 'Status',
+            cell: (info) => {
+                const cfg = getStatus(info.getValue());
+                return <StatusBadge label={isRTL ? cfg.labelAr : cfg.label} variant={info.getValue() === 'completed' ? 'green' : info.getValue() === 'pending' ? 'yellow' : 'blue'} />;
+            }
+        }),
+        columnHelper.accessor('video_path', {
+            header: isRTL ? 'التوثيق' : 'Verification',
+            cell: (info) => info.getValue() ? (
+                <button onClick={() => { setSelectedVideo(info.getValue()); setIsVideoModalOpen(true); }} className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                    <Video size={16} />
+                </button>
+            ) : <span className="text-gray-300">—</span>
+        }),
+        columnHelper.display({
+            id: 'actions',
+            header: isRTL ? 'الإجراءات' : 'Actions',
+            cell: (info) => {
+                const trip = info.row.original;
+                return (
+                    <div className="flex justify-center gap-1">
+                        {trip.status === 'awaiting_confirmation' && (
+                            <ActionButton label={isRTL ? 'تأكيد' : 'Confirm'} onClick={() => { if (confirm(isRTL ? 'تأكيد بدء هذه الرحلة؟' : 'Confirm starting this trip?')) router.post(route('admin.daily-trips.confirm', trip.id)); }} color="indigo" icon={<CheckCircle2 size={14} />} />
+                        )}
+                        <ActionButton label={isRTL ? 'عرض' : 'View'} onClick={() => router.get(route('admin.daily-trips.show', trip.id))} color="green" icon={<Eye size={14} />} />
+                        <ActionButton label={isRTL ? 'تعديل' : 'Edit'} onClick={() => router.get(route('admin.daily-trips.edit', trip.id))} color="blue" icon={<Edit2 size={14} />} />
+                        <ActionButton label={isRTL ? 'حذف' : 'Delete'} onClick={() => { if (confirm(isRTL ? 'هل أنت متأكد من الحذف؟' : 'Are you sure you want to delete?')) router.delete(route('admin.daily-trips.destroy', trip.id)); }} color="red" icon={<Trash2 size={14} />} />
+                    </div>
+                );
+            }
+        })
+    ], [isRTL, trips]);
 
     return (
         <AuthenticatedLayout user={auth.user}>
             <Head title={isRTL ? 'الرحلات اليومية' : 'Daily Trips'} />
+            <style>{PRINT_STYLES}</style>
 
-            <div className="space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
+            {/* ── Print Area ── */}
+            <div id="trip-print-area" className="hidden print:block bg-white text-black w-full" dir={isRTL ? "rtl" : "ltr"}>
+                <PrintReportHeader
+                    title={isRTL ? "تقرير الرحلات اليومية" : "Daily Trips Report"}
+                    schoolName={isRTL ? "إدارة شركة مسارات واصل" : "Masarat Wasel Company"}
+                    printDate={`${isRTL ? "تاريخ التقرير" : "Report Date"}: ${new Date().toLocaleDateString(isRTL ? "ar-SA" : "en-US")}`}
+                    schoolAdminText={isRTL ? "إدارة العمليات" : "Operations Dept"}
+                />
+                <div className="px-4 mt-6">
+                    <table className="w-full border-collapse border border-gray-300 text-[10px]">
+                        <thead className="bg-gray-100">
+                            <tr>
+                                <th className="border border-gray-300 p-2">#</th>
+                                <th className="border border-gray-300 p-2">{isRTL ? 'التاريخ' : 'Date'}</th>
+                                <th className="border border-gray-300 p-2">{isRTL ? 'الاتجاه' : 'Direction'}</th>
+                                <th className="border border-gray-300 p-2">{isRTL ? 'الحافلة' : 'Bus'}</th>
+                                <th className="border border-gray-300 p-2">{isRTL ? 'السائق' : 'Driver'}</th>
+                                <th className="border border-gray-300 p-2">{isRTL ? 'الحالة' : 'Status'}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {trips.data.map((trip, i) => (
+                                <tr key={trip.id}>
+                                    <td className="border border-gray-300 p-2 text-center">{i + 1}</td>
+                                    <td className="border border-gray-300 p-2 text-center">{trip.trip_date}</td>
+                                    <td className="border border-gray-300 p-2 text-center">{trip.type === 'forth' ? (isRTL ? 'ذهاب' : 'Forth') : (isRTL ? 'إياب' : 'Back')}</td>
+                                    <td className="border border-gray-300 p-2 text-center">{trip.bus?.bus_number}</td>
+                                    <td className="border border-gray-300 p-2">{trip.driver?.name || '—'}</td>
+                                    <td className="border border-gray-300 p-2 text-center">{isRTL ? getStatus(trip.status).labelAr : getStatus(trip.status).label}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div className={`${DS_pageWrapper} space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12`} dir={isRTL ? 'rtl' : 'ltr'}>
+                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2 border-b border-gray-100 dark:border-[#243460]">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                            {isRTL ? '🚌 الرحلات اليومية' : '🚌 Daily Trips'}
+                        <h1 className="text-3xl font-black text-[#0f2044] dark:text-white flex items-center gap-4">
+                            <div className="w-12 h-12 bg-[#0f2044] rounded-2xl flex items-center justify-center text-white shadow-xl shadow-[#0f2044]/20">
+                                <Zap size={24} fill="#f5b800" className="text-[#f5b800]" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span>{isRTL ? 'الرحلات اليومية' : 'Daily Trips'}</span>
+                                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mt-1">
+                                    {isRTL ? 'إدارة ومتابعة الرحلات المجدولة' : 'Operational Schedule Management'}
+                                </span>
+                            </div>
                         </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            {isRTL
-                                ? 'رحلات الذهاب والعودة المُنشأة تلقائياً يومياً'
-                                : 'Auto-generated forth & back trips for each school day'}
-                        </p>
+                    </div>
+                </div>
+
+                {/* Premium Statistics Grid */}
+                <div className="relative group/stats">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-[#0f2044]/5 to-[#f5b800]/5 rounded-[32px] blur-xl opacity-50 group-hover/stats:opacity-100 transition-duration-500" />
+                    <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className={`${DS_statCard("blue")} hover:shadow-2xl hover:shadow-[#0f2044]/10 transition-all duration-300 group/card border-b-4 border-b-[#0f2044]/20`}>
+                            <div className={`${DS_statIcon("blue")} group-hover/card:scale-110 transition-transform`}><Zap size={24} /></div>
+                            <div>
+                                <p className={DS_statLabel}>{isRTL ? 'إجمالي الرحلات' : 'Total Trips'}</p>
+                                <p className={DS_statValue}>{trips?.total || 0}</p>
+                            </div>
+                        </div>
+                        <div className={`${DS_statCard("gold")} hover:shadow-2xl hover:shadow-[#f5b800]/10 transition-all duration-300 group/card border-b-4 border-b-[#f5b800]/20`}>
+                            <div className={`${DS_statIcon("gold")} group-hover/card:scale-110 transition-transform`}><Search size={24} /></div>
+                            <div>
+                                <p className={DS_statLabel}>{isRTL ? 'قيد الانتظار' : 'Pending'}</p>
+                                <p className={DS_statValue}>{(trips as any)?.pending_count || 0}</p>
+                            </div>
+                        </div>
+                        <div className={`${DS_statCard("green")} hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 group/card border-b-4 border-b-emerald-500/20`}>
+                            <div className={`${DS_statIcon("green")} group-hover/card:scale-110 transition-transform`}><CheckCircle2 size={24} /></div>
+                            <div>
+                                <p className={DS_statLabel}>{isRTL ? 'المكتملة' : 'Completed'}</p>
+                                <p className={DS_statValue}>{(trips as any)?.completed_count || 0}</p>
+                            </div>
+                        </div>
+                        <div className={`${DS_statCard("blue")} bg-white dark:bg-[#1a2845] hover:shadow-2xl hover:shadow-[#0f2044]/10 transition-all duration-300 group/card border border-white/10 dark:border-white/5`}>
+                            <div className={`${DS_statIcon("blue")} group-hover/card:scale-110 transition-transform`}><Play size={24} /></div>
+                            <div>
+                                <p className={DS_statLabel}>{isRTL ? 'جارية حالياً' : 'In Progress'}</p>
+                                <p className={DS_statValue}>{(trips as any)?.in_progress_count || 0}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Premium Command Center */}
+                <div className="bg-white/80 dark:bg-[#1a2845]/80 backdrop-blur-xl p-4 rounded-[28px] border border-white/20 dark:border-white/5 shadow-2xl shadow-[#0f2044]/5 flex flex-col md:flex-row items-center gap-6">
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="relative overflow-hidden inline-flex items-center gap-4 px-10 py-4 bg-[#0f2044] text-white rounded-[22px] text-sm font-black shadow-2xl shadow-[#0f2044]/20 transition-all active:scale-95 group"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-[#f5b800]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="relative w-8 h-8 bg-[#f5b800] rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all shadow-lg shadow-[#f5b800]/20">
+                                <Zap size={16} className="text-[#0f2044]" fill="currentColor" />
+                            </div>
+                            <span className="relative">{isRTL ? 'إضافة رحلة جديدة' : 'Add New Trip'}</span>
+                        </button>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl px-4 py-2 mr-2">
-                            <span className="text-blue-600 dark:text-blue-400 text-sm font-semibold">
-                                {isRTL ? `الإجمالي: ${trips.total} رحلة` : `Total: ${trips.total} trips`}
-                            </span>
-                        </div>
+                    <div className="h-12 w-px bg-gray-100 dark:bg-white/5 hidden md:block" />
 
-                        <button
-                            onClick={() => router.get(route('admin.daily-trips.create'))}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold shadow-sm transition-all"
-                        >
-                            <span>➕</span>
-                            {isRTL ? 'إنشاء يدوي' : 'Manual Create'}
-                        </button>
-
-                        <div className="flex flex-col gap-1 items-start">
-                            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-1 shadow-sm">
+                    <div className="flex-1 flex flex-col md:flex-row items-center justify-between gap-6 w-full">
+                        <div className="flex items-center gap-4 w-full md:w-auto">
+                            <div className="flex items-center gap-3 bg-white dark:bg-[#0f2044]/40 border border-gray-200 dark:border-white/10 rounded-[22px] p-2 pr-6 group transition-all focus-within:ring-2 focus-within:ring-[#f5b800]/30 shadow-sm hover:border-[#f5b800]/50">
+                                <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 group-hover:text-[#f5b800] transition-colors">
+                                    <Calendar size={18} />
+                                </div>
                                 <input
                                     type="date"
-                                    id="autoCreateDate"
-                                    className="bg-transparent border-none focus:ring-0 text-sm dark:text-white px-2 py-1"
+                                    className="bg-transparent border-none focus:ring-0 text-xs dark:text-white p-0 font-black w-32 tracking-wider"
                                     value={autoCreateDate}
                                     onChange={(e) => setAutoCreateDate(e.target.value)}
                                 />
@@ -161,302 +409,282 @@ export default function Index({ auth, trips, filters }: Props) {
                                             router.post(route('admin.daily-trips.auto-create'), { date: autoCreateDate });
                                         }
                                     }}
-                                    className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all"
+                                    className="px-8 py-2.5 bg-[#f5b800] hover:bg-[#e5ac00] text-[#0f2044] rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-[#f5b800]/10 active:scale-95"
                                 >
-                                    🚀 {isRTL ? 'توليد تلقائي' : 'Auto-Create'}
+                                    {isRTL ? 'توليد تلقائي' : 'Auto-Generate'}
                                 </button>
                             </div>
+
                             {dateValidation && (
-                                <div className={`text-[10px] px-2 font-semibold max-w-[250px] leading-tight ${dateValidation.is_working ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                    {isRTL ? dateValidation.message_ar : dateValidation.message}
+                                <div className={`flex flex-col gap-2 p-3.5 rounded-[22px] border transition-all animate-in zoom-in-95 duration-500 shadow-sm min-w-[280px] max-w-[450px] ${
+                                    dateValidation.is_working 
+                                    ? 'bg-emerald-50/80 border-emerald-200 dark:bg-emerald-500/5 dark:border-emerald-500/10' 
+                                    : 'bg-amber-50/80 border-amber-200 dark:bg-amber-500/5 dark:border-amber-500/10'
+                                }`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="relative">
+                                            <div className={`w-2 h-2 rounded-full ${dateValidation.is_working ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                            <div className={`absolute -inset-1 rounded-full ${dateValidation.is_working ? 'bg-emerald-500/30' : 'bg-amber-500/30'} animate-ping`} />
+                                        </div>
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${dateValidation.is_working ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                            {dateValidation.is_working ? (isRTL ? 'حالة التوليد' : 'Generation Status') : (isRTL ? 'ملاحظات التوليد' : 'Generation Notes')}
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-1.5 pl-4">
+                                        {(isRTL ? dateValidation.message_ar : dateValidation.message).split('.').filter(t => t.trim()).map((line, idx) => {
+                                            const parts = line.split(':');
+                                            return (
+                                                <div key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
+                                                    <AlertCircle size={12} className={`mt-0.5 flex-shrink-0 ${dateValidation.is_working ? 'text-emerald-500' : 'text-amber-500'}`} />
+                                                    <div className={dateValidation.is_working ? 'text-emerald-900/80 dark:text-emerald-400' : 'text-amber-900/80 dark:text-amber-400'}>
+                                                        {parts.length > 1 ? (
+                                                            <>
+                                                                <span className="font-black underline decoration-[#0f2044]/10">{parts[0]}:</span>
+                                                                <span className="opacity-90"> {parts[1]}</span>
+                                                            </>
+                                                        ) : (
+                                                            <span className="font-bold">{line}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             )}
                         </div>
+
+                        <div className="flex items-center gap-2">
+                             {/* Placeholder for any future right-side quick actions */}
+                        </div>
                     </div>
                 </div>
 
-                {/* Filters */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-                    <div className="flex flex-wrap gap-4 items-end">
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                                {isRTL ? 'التاريخ' : 'Date'}
-                            </label>
-                            <input
-                                type="date"
-                                value={dateFilter}
-                                onChange={e => setDateFilter(e.target.value)}
-                                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                                {isRTL ? 'الحالة' : 'Status'}
-                            </label>
-                            <select
-                                value={statusFilter}
-                                onChange={e => setStatusFilter(e.target.value)}
-                                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="">{isRTL ? 'كل الحالات' : 'All Statuses'}</option>
-                                {Object.entries(statusConfig).map(([key, val]) => (
-                                    <option key={key} value={key}>{isRTL ? val.labelAr : val.label}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <button
-                            onClick={applyFilters}
-                            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                        >
-                            {isRTL ? 'تطبيق' : 'Apply'}
-                        </button>
-
-                        {(dateFilter || statusFilter) && (
-                            <button
-                                onClick={clearFilters}
-                                className="px-5 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-semibold rounded-lg transition-colors"
-                            >
-                                {isRTL ? 'مسح الفلاتر' : 'Clear'}
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Table */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm" dir={isRTL ? 'rtl' : 'ltr'}>
-                            <thead>
-                                <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">#</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">
-                                        {isRTL ? 'التاريخ' : 'Date'}
-                                    </th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">
-                                        {isRTL ? 'الاتجاه' : 'Direction'}
-                                    </th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">
-                                        {isRTL ? 'الحافلة' : 'Bus'}
-                                    </th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">
-                                        {isRTL ? 'الحالة' : 'Status'}
-                                    </th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">
-                                        {isRTL ? 'التوثيق' : 'Verification'}
-                                    </th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-500 dark:text-gray-400 text-center">
-                                        {isRTL ? 'إجراءات' : 'Actions'}
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                                {trips.data.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={7} className="px-6 py-20 text-center text-gray-400 dark:text-gray-500">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <span className="text-5xl">🚌</span>
-                                                <p className="text-base font-medium">
-                                                    {isRTL ? 'لا توجد رحلات يومية بعد' : 'No daily trips found'}
-                                                </p>
-                                                <p className="text-xs">
-                                                    {isRTL
-                                                        ? 'سيتم إنشاؤها تلقائياً عند تشغيل الجدولة'
-                                                        : 'They will be auto-created by the scheduler at 01:00 AM'}
-                                                </p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    trips.data.map((trip, index) => {
-                                        const st = getStatus(trip.status);
-                                        const isForte = trip.type === 'forth';
-                                        return (
-                                            <tr key={trip.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                                <td className="px-6 py-4 text-center text-gray-500 dark:text-gray-400 font-mono text-xs">
-                                                    {(trips.current_page - 1) * trips.per_page + index + 1}
-                                                </td>
-                                                <td className="px-6 py-4 text-center font-medium text-gray-800 dark:text-gray-200">
-                                                    {(() => {
-                                                        if (!trip.trip_date) return '—';
-                                                        const d = new Date(trip.trip_date);
-                                                        if (isNaN(d.getTime())) return trip.trip_date;
-                                                        return d.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
-                                                            year: 'numeric', month: 'short', day: 'numeric'
-                                                        });
-                                                    })()}
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${isForte
-                                                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                                                        : 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
-                                                        }`}>
-                                                        {isForte ? '↗' : '↙'} {isForte
-                                                            ? (isRTL ? 'ذهاب' : 'Forth')
-                                                            : (isRTL ? 'إياب' : 'Back')}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-center text-gray-700 dark:text-gray-300 font-medium">
-                                                    {trip.bus?.bus_number || '—'}
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${st.class}`}>
-                                                        {isRTL ? st.labelAr : st.label}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    {trip.video_path ? (
-                                                        <button 
-                                                            onClick={() => {
-                                                                setSelectedVideo(trip.video_path);
-                                                                setIsVideoModalOpen(true);
-                                                            }}
-                                                            className="flex items-center justify-center gap-1.5 mx-auto px-2.5 py-1 bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 rounded-full text-[10px] font-bold border border-indigo-500/20 transition-all"
-                                                        >
-                                                            <Play size={12} fill="currentColor" />
-                                                            {isRTL ? 'تشغيل' : 'Play'}
-                                                        </button>
-                                                    ) : (
-                                                        <span className="text-[10px] text-gray-400 italic">
-                                                            {isRTL ? 'لا يوجد فديو' : 'No video'}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className="flex justify-center gap-2">
-                                                        {trip.status === 'awaiting_confirmation' && (
-                                                            <button
-                                                                onClick={() => {
-                                                                    if (confirm(isRTL ? 'تأكيد بدء هذه الرحلة؟' : 'Confirm starting this trip?')) {
-                                                                        router.post(route('admin.daily-trips.confirm', trip.id));
-                                                                    }
-                                                                }}
-                                                                className="p-1.5 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-colors border border-transparent hover:border-purple-100"
-                                                                title={isRTL ? 'تأكيد الرحلة' : 'Confirm Trip'}
-                                                            >
-                                                                <CheckCircle2 size={18} />
-                                                            </button>
-                                                        )}
-                                                        <button
-                                                            onClick={() => router.get(route('admin.daily-trips.show', trip.id))}
-                                                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors border border-transparent hover:border-emerald-100"
-                                                            title={isRTL ? 'عرض التفاصيل' : 'View Details'}
-                                                        >
-                                                            <Eye size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => router.get(route('admin.daily-trips.edit', trip.id))}
-                                                            className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors border border-transparent hover:border-blue-100"
-                                                            title={isRTL ? 'تعديل' : 'Edit'}
-                                                        >
-                                                            <Edit2 size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                if (confirm(isRTL ? 'هل أنت متأكد من الحذف؟' : 'Are you sure you want to delete?')) {
-                                                                    router.delete(route('admin.daily-trips.destroy', trip.id));
-                                                                }
-                                                            }}
-                                                            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                                                            title={isRTL ? 'حذف' : 'Delete'}
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Pagination */}
-                    {trips.last_page > 1 && (
-                        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-gray-700">
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                                {isRTL
-                                    ? `الصفحة ${trips.current_page} من ${trips.last_page}`
-                                    : `Page ${trips.current_page} of ${trips.last_page}`}
-                            </span>
-                            <div className="flex gap-2">
-                                {trips.current_page > 1 && (
-                                    <button
-                                        onClick={() => router.get(route('admin.daily-trips.index'), { ...filters, page: trips.current_page - 1 })}
-                                        className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                    >
-                                        {isRTL ? 'السابق' : 'Prev'}
-                                    </button>
-                                )}
-                                {trips.current_page < trips.last_page && (
-                                    <button
-                                        onClick={() => router.get(route('admin.daily-trips.index'), { ...filters, page: trips.current_page + 1 })}
-                                        className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                    >
-                                        {isRTL ? 'التالي' : 'Next'}
-                                    </button>
-                                )}
+                <div className="w-full">
+                    <BaseDataTable<Trip>
+                        columns={columns}
+                        data={trips.data}
+                        pagination={pagination}
+                        exportEnabled={true}
+                        headerAction={
+                            <div className="flex items-center gap-2">
+                                <button onClick={handlePrint} className={DS_btnSecondary}>
+                                    <Printer size={16} />
+                                    {isRTL ? 'طباعة اليومية' : 'Print Log'}
+                                </button>
                             </div>
-                        </div>
-                    )}
+                        }
+                        filterTabs={filterTabs}
+                        activeFilter={statusFilter || 'all'}
+                        onFilterChange={(key) => setStatusFilter(key === 'all' ? '' : key)}
+                        searchPlaceholder={isRTL ? 'بحث عن حافلة...' : 'Search bus...'}
+                        emptyMessage={isRTL ? 'لا توجد رحلات لهذا اليوم' : 'No trips found for this date'}
+                    />
                 </div>
             </div>
 
             {/* Video Verification Modal */}
             <Modal show={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} maxWidth="2xl">
-                <div className={`p-0 overflow-hidden ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
-                    <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-                        <div className="flex items-center gap-2 font-bold text-indigo-600">
-                            <Video size={20} />
-                            {isRTL ? 'فيديو توثيق الرحلة' : 'Trip Verification Video'}
+                <div className={`bg-white dark:bg-[#1a2845] w-full ${DS_modalContainer}`}>
+                    <div className={DS_modalHeader(isRTL)}>
+                        <div className="flex items-center gap-3">
+                            <div className={DS_modalHeaderAccent} />
+                            <div className="flex items-center gap-2">
+                                <Video className="w-5 h-5 text-[#f5b800]" />
+                                <h2 className={DS_modalHeaderTitle}>
+                                    {isRTL ? 'فيديو توثيق الرحلة' : 'Trip Verification Video'}
+                                </h2>
+                            </div>
                         </div>
-                        <button onClick={() => setIsVideoModalOpen(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+                        <button onClick={() => setIsVideoModalOpen(false)} className={DS_modalClose}>
                             <X size={20} />
                         </button>
                     </div>
                     
-                    <div className="aspect-video bg-black flex items-center justify-center relative group">
-                        <AnimatePresence mode="wait">
-                            {selectedVideo ? (
-                                <video
-                                    key={selectedVideo}
-                                    src={`/storage/${selectedVideo}`}
-                                    controls
-                                    autoPlay
-                                    className="w-full h-full object-contain"
-                                />
-                            ) : (
-                                <div className="text-white flex flex-col items-center gap-3">
-                                    <Video size={48} className="opacity-40 animate-pulse" />
-                                    <span className="opacity-60 italic text-sm">{isRTL ? 'جاري تحميل الفيديو...' : 'Loading video...'}</span>
+                    <div className={DS_modalBody}>
+                        <div className="aspect-video bg-black rounded-2xl overflow-hidden relative group shadow-2xl">
+                            <AnimatePresence mode="wait">
+                                {selectedVideo ? (
+                                    <video
+                                        key={selectedVideo}
+                                        src={`/storage/${selectedVideo}`}
+                                        controls
+                                        autoPlay
+                                        className="w-full h-full object-contain"
+                                    />
+                                ) : (
+                                    <div className="text-white flex flex-col items-center justify-center h-full gap-3">
+                                        <Video size={48} className="opacity-40 animate-pulse" />
+                                        <span className="opacity-60 italic text-sm">{isRTL ? 'جاري تحميل الفيديو...' : 'Loading video...'}</span>
+                                    </div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                        
+                        <div className="mt-6 p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
+                            <div className="flex items-start gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                    <ShieldCheck size={24} />
                                 </div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-
-                    <div className="p-6 bg-emerald-500/5">
-                        <div className="flex items-start gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                                <ShieldCheck size={24} />
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-lg mb-1">{isRTL ? 'تم التحقق أمنياً' : 'Security Verified'}</h4>
-                                <p className="text-sm opacity-70 leading-relaxed">
-                                    {isRTL 
-                                        ? 'هذا الفيديو تم تسجيله بواسطة السائق لتوثيق خلو الحافلة تماماً من الركاب بعد انتهاء الرحلة.'
-                                        : 'This video was recorded by the driver to document that the bus is completely empty after the trip finished.'}
-                                </p>
+                                <div>
+                                    <h4 className="font-extrabold text-[#0f2044] dark:text-white mb-1">{isRTL ? 'تم التحقق أمنياً' : 'Security Verified'}</h4>
+                                    <p className="text-xs font-bold text-[#0f2044]/60 dark:text-[#7ba7e8]/60 leading-relaxed">
+                                        {isRTL 
+                                            ? 'هذا الفيديو تم تسجيله بواسطة السائق لتوثيق خلو الحافلة تماماً من الركاب بعد انتهاء الرحلة.'
+                                            : 'This video was recorded by the driver to document that the bus is completely empty after the trip finished.'}
+                                    </p>
+                                </div>
                             </div>
                         </div>
+
+                        <div className={`mt-6 flex ${isRTL ? 'flex-row-reverse' : 'justify-end'}`}>
+                            <button onClick={() => setIsVideoModalOpen(false)} className="px-8 py-2.5 bg-[#0f2044] text-white rounded-xl font-bold hover:bg-[#1a2845] transition-all">
+                                {isRTL ? 'إغلاق' : 'Close'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+            {/* Manual Create Modal */}
+            <Modal show={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} maxWidth="2xl">
+                <div className={`bg-white dark:bg-[#1a2845] w-full ${DS_modalContainer}`}>
+                    <div className={DS_modalHeader(isRTL)}>
+                        <div className="flex items-center gap-3">
+                            <div className={DS_modalHeaderAccent} />
+                            <div className="flex items-center gap-2">
+                                <Zap className="w-5 h-5 text-[#f5b800]" fill="currentColor" />
+                                <h2 className={DS_modalHeaderTitle}>
+                                    {isRTL ? 'إضافة رحلة جديدة' : 'Add New Trip'}
+                                </h2>
+                            </div>
+                        </div>
+                        <button onClick={() => setIsCreateModalOpen(false)} className={DS_modalClose}>
+                            <X size={20} />
+                        </button>
                     </div>
 
-                    <div className="p-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
-                        <SecondaryButton onClick={() => setIsVideoModalOpen(false)}>
-                            {isRTL ? 'إغلاق' : 'Close'}
-                        </SecondaryButton>
-                    </div>
+                    <form onSubmit={handleCreateSubmit}>
+                        <div className={DS_modalBody}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Bus Selection */}
+                                <div>
+                                    <label className={DS_labelCls}>
+                                        <BusIcon className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
+                                        {isRTL ? 'الحافلة' : 'Bus'}
+                                    </label>
+                                    <select
+                                        value={createData.bus_id}
+                                        onChange={e => setCreateData('bus_id', e.target.value)}
+                                        className={DS_inputCls}
+                                        required
+                                    >
+                                        <option value="">{isRTL ? 'اختر الحافلة' : 'Select Bus'}</option>
+                                        {buses.map(bus => {
+                                            const isMissingInfo = !bus.driver_id || !bus.supervisor_id;
+                                            return (
+                                                <option key={bus.id} value={bus.id}>
+                                                    {bus.bus_number} ({bus.plate_number})
+                                                    {isMissingInfo ? (isRTL ? ' - تفاصيل ناقصة' : ' - Missing Info') : ''}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                    {createErrors.bus_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.bus_id}</p>}
+                                </div>
+
+                                {/* Route Selection */}
+                                <div>
+                                    <label className={DS_labelCls}>
+                                        <MapPin className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
+                                        {isRTL ? 'المسار' : 'Route'}
+                                    </label>
+                                    <select
+                                        value={createData.route_id}
+                                        onChange={e => setCreateData('route_id', e.target.value)}
+                                        className={DS_inputCls}
+                                        required
+                                    >
+                                        <option value="">{isRTL ? 'اختر المسار' : 'Select Route'}</option>
+                                        {routes.map(route => {
+                                            const selectedBus = buses.find(b => b.id === parseInt(createData.bus_id));
+                                            const isDefault = selectedBus?.route_id === route.id;
+                                            return (
+                                                <option key={route.id} value={route.id}>
+                                                    {route.name} {isDefault ? (isRTL ? '(المسار الافتراضي)' : '(Bus Default)') : ''}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                    {createErrors.route_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.route_id}</p>}
+                                </div>
+
+                                {/* Date */}
+                                <div>
+                                    <label className={DS_labelCls}>
+                                        <Calendar className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
+                                        {isRTL ? 'التاريخ' : 'Date'}
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={createData.date}
+                                        onChange={e => setCreateData('date', e.target.value)}
+                                        className={DS_inputCls}
+                                        required
+                                    />
+                                    {createErrors.date && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.date}</p>}
+                                </div>
+
+                                {/* Trip Type */}
+                                <div>
+                                    <label className={DS_labelCls}>
+                                        <Zap className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
+                                        {isRTL ? 'نوع الرحلة' : 'Trip Type'}
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setCreateData('type', 'forth')}
+                                            className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all border-2 ${createData.type === 'forth'
+                                                ? 'bg-[#0f2044] border-[#0f2044] text-white shadow-lg'
+                                                : 'bg-gray-50 dark:bg-[#243460] border-transparent text-gray-500 dark:text-[#7ba7e8]/60 hover:bg-gray-100'
+                                                }`}
+                                        >
+                                            ↗ {isRTL ? 'ذهاب' : 'Forth'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCreateData('type', 'back')}
+                                            className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all border-2 ${createData.type === 'back'
+                                                ? 'bg-[#f5b800] border-[#f5b800] text-[#0f2044] shadow-lg'
+                                                : 'bg-gray-50 dark:bg-[#243460] border-transparent text-gray-500 dark:text-[#7ba7e8]/60 hover:bg-gray-100'
+                                                }`}
+                                        >
+                                            ↙ {isRTL ? 'إياب' : 'Back'}
+                                        </button>
+                                    </div>
+                                    {createErrors.type && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.type}</p>}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-gray-100 dark:border-[#243460] flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setIsCreateModalOpen(false)}
+                                className="px-6 py-2.5 text-xs font-black text-gray-400 dark:text-[#7ba7e8]/40 hover:text-gray-600 transition-colors uppercase tracking-widest"
+                            >
+                                {isRTL ? 'إلغاء' : 'Cancel'}
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={processingCreate}
+                                className="px-10 py-2.5 bg-[#f5b800] hover:bg-[#e5ac00] text-[#0f2044] rounded-xl text-xs font-black shadow-lg shadow-[#f5b800]/20 transition-all disabled:opacity-50 active:scale-95"
+                            >
+                                {processingCreate ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'إضافة الرحلة' : 'Add Trip')}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </Modal>
         </AuthenticatedLayout>

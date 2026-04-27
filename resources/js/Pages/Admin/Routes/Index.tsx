@@ -10,11 +10,12 @@ import SecondaryButton from "@/Components/SecondaryButton";
 import { useTheme } from "@/Contexts/ThemeContext";
 import BaseDataTable, { ActionButton } from "@/Components/BaseDataTable";
 import { createColumnHelper } from "@tanstack/react-table";
-import { Plus, Edit3, Trash2, Map as RouteIcon, X as LucideX } from "lucide-react";
+import { Plus, Edit3, Trash2, Map as RouteIcon, X as LucideX, Printer } from "lucide-react";
 import {
     DS_pageTitle,
     DS_btnGold,
     DS_btnPrimary,
+    DS_btnSecondary,
     DS_inputCls,
     DS_labelCls,
     DS_modalContainer,
@@ -26,6 +27,17 @@ import {
     DS_submitBtn,
     DS_cancelBtn,
 } from "@/lib/DS";
+import PrintReportHeader from "@/Components/PrintReportHeader";
+
+// ─── Print CSS ──────────────────────────────────────────────────
+const PRINT_STYLES = `
+@media print {
+  body * { visibility: hidden !important; }
+  main { margin: 0 !important; position: static !important; }
+  #route-print-area, #route-print-area * { visibility: visible !important; }
+  #route-print-area { position: absolute; inset: 0; width: 100%; padding: 20px; background: white; }
+}
+`;
 
 interface School {
     id: number;
@@ -179,35 +191,83 @@ export default function Index({ routes, schools, auth }: Props) {
         })
     ], [isRTL, isDark]);
 
-    const headerAction = (
-        <button onClick={() => openModal("add")} className={DS_btnGold}>
-            <Plus className="w-4 h-4" />
-            {isRTL ? "إضافة مسار جديد" : "Add New Route"}
-        </button>
-    );
+    const handlePrint = () => window.print();
 
     return (
         <AuthenticatedLayout>
             <Head title={isRTL ? "المسارات" : "Routes"} />
+            <style>{PRINT_STYLES}</style>
+
+            {/* ── Print Area (hidden on screen, visible on print) ── */}
+            <div id="route-print-area" className="hidden print:block bg-white font-sans text-black w-full" dir={isRTL ? "rtl" : "ltr"}>
+                <PrintReportHeader
+                    title={isRTL ? "تقرير مسارات الحافلات" : "Bus Routes Report"}
+                    schoolName={isRTL ? "إدارة شركة مسارات واصل" : "Masarat Wasel Company"}
+                    schoolLogo={null}
+                    printDate={`${isRTL ? "تاريخ الطباعة" : "Print Date"}: ${new Date().toLocaleDateString(isRTL ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric" })}`}
+                    schoolAdminText={isRTL ? "إدارة الشركة" : "Company Admin"}
+                />
+                <div className="px-4">
+                    <table className="w-full border-collapse border border-gray-300 text-[10px]">
+                        <thead>
+                            <tr className="bg-gray-100">
+                                <th className="border border-gray-300 p-1.5 text-right font-bold w-8 text-black">#</th>
+                                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "المسار" : "Route"}</th>
+                                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الكود" : "Code"}</th>
+                                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "المدرسة" : "School"}</th>
+                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "عدد الحافلات" : "Buses"}</th>
+                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "طلاب الصباح" : "Morning"}</th>
+                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "طلاب المساء" : "Afternoon"}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {routes.map((route, i) => (
+                                <tr key={route.id} className="border-b border-gray-300">
+                                    <td className="border border-gray-300 p-1.5 text-center text-gray-700 font-semibold">{i + 1}</td>
+                                    <td className="border border-gray-300 p-1.5 font-bold text-gray-900">{route.name}</td>
+                                    <td className="border border-gray-300 p-1.5 font-mono text-gray-700">{route.code}</td>
+                                    <td className="border border-gray-300 p-1.5 text-gray-700 font-bold uppercase tracking-wider">{route.school?.name || "—"}</td>
+                                    <td className="border border-gray-300 p-1.5 text-center font-bold text-gray-800">{route.buses?.length || 0}</td>
+                                    <td className="border border-gray-300 p-1.5 text-center text-emerald-700 font-bold">{route.morning_students_count}</td>
+                                    <td className="border border-gray-300 p-1.5 text-center text-amber-700 font-bold">{route.afternoon_students_count}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <div className="mt-8 flex justify-between items-center text-sm font-bold text-gray-800">
+                        <p>{isRTL ? "إجمالي المسارات" : "Total Routes"}: {routes.length}</p>
+                        <p>{isRTL ? "توقيع مدير الشركة" : "Company Manager Signature"}: ............................</p>
+                    </div>
+                </div>
+            </div>
 
             <div className={`pb-8 space-y-6 dir-${isRTL ? "rtl" : "ltr"}`}>
                 
-                {/* ── Page Header ── */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className={DS_pageTitle}>{isRTL ? "إدارة المسارات" : "Routes Management"}</h1>
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
-                            {isRTL ? "إدارة مسارات الحافلات وتعيينها للمدارس" : "Manage bus routes and assign them to schools"}
-                        </p>
-                    </div>
-                    {headerAction}
+                {/* ── Page Header (title only — matches school pages) ── */}
+                <div className={isRTL ? "text-right" : "text-left"}>
+                    <h1 className={DS_pageTitle}>{isRTL ? "إدارة المسارات" : "Routes Management"}</h1>
+                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mt-0.5">
+                        {isRTL ? `إجمالي ${routes.length} مسار مسجل` : `${routes.length} registered routes`}
+                    </p>
                 </div>
 
                 {/* ── Main Table ── */}
                 <BaseDataTable<Route>
                     columns={columns}
                     data={routes}
-                    title={isRTL ? "المسارات المسجلة" : "Registered Routes"}
+                    exportEnabled={true}
+                    headerAction={
+                        <div className={`flex gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+                            <button onClick={handlePrint} className={DS_btnSecondary}>
+                                <Printer className="w-4 h-4" />
+                                {isRTL ? "طباعة" : "Print"}
+                            </button>
+                            <button onClick={() => openModal("add")} className={DS_btnGold}>
+                                <Plus className="w-4 h-4" />
+                                {isRTL ? "إضافة مسار" : "New Route"}
+                            </button>
+                        </div>
+                    }
                     emptyMessage={isRTL ? "لا توجد مسارات" : "No Routes Yet"}
                     emptyDescription={isRTL ? "لم يتم إضافة أي مسار. انقر على إضافة مسار للبدء." : "No routes added. Click Add New Route to start."}
                     emptyIcon={<RouteIcon className="w-10 h-10" />}

@@ -11,8 +11,61 @@ import BaseDataTable, {
   type FilterTab,
 } from "@/Components/BaseDataTable";
 import { createColumnHelper } from "@tanstack/react-table";
-import { motion } from "framer-motion";
-import { Users, CheckCircle2, XCircle, MapPin } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+    Users, 
+    CheckCircle2, 
+    XCircle, 
+    MapPin, 
+    Plus, 
+    Eye, 
+    Edit2, 
+    Trash2, 
+    X, 
+    ArrowLeft, 
+    ChevronRight,
+    Phone,
+    Mail,
+    CreditCard,
+    AlertCircle,
+    Printer,
+    Briefcase,
+    ShieldCheck
+} from "lucide-react";
+import { 
+    DS_pageWrapper, 
+    DS_card, 
+    DS_pageTitle,
+    DS_statCard,
+    DS_statIcon,
+    DS_statLabel,
+    DS_statValue2,
+    DS_btnGold,
+    DS_btnSecondary,
+    DS_modalContainer,
+    DS_modalHeader,
+    DS_modalHeaderTitle,
+    DS_modalHeaderAccent,
+    DS_modalClose,
+    DS_modalBody,
+    DS_modalFooter,
+    DS_input,
+    DS_label,
+    DS_btnPrimary,
+    DS_btnDanger,
+    DS_btnEdit
+} from "@/lib/DS";
+import PrintReportHeader from "@/Components/PrintReportHeader";
+
+// ─── Print CSS ──────────────────────────────────────────────────
+const PRINT_STYLES = `
+@media print {
+  body * { visibility: hidden !important; }
+  main { margin: 0 !important; position: static !important; }
+  #field-print-area, #field-print-area * { visibility: visible !important; }
+  #field-print-area { position: absolute; inset: 0; width: 100%; padding: 20px; background: white; }
+}
+`;
 
 interface FieldSupervisor {
   id: number;
@@ -37,8 +90,10 @@ interface FieldSupervisor {
 type FilterType = "all" | "active" | "inactive";
 
 export default function FieldSupervisorsIndex({
+  auth,
   supervisors,
 }: {
+  auth: any;
   supervisors: FieldSupervisor[];
 }) {
   const { isRTL, theme } = useTheme();
@@ -51,6 +106,8 @@ export default function FieldSupervisorsIndex({
   const [search, setSearch] = useState("");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedSupervisor, setSelectedSupervisor] = useState<FieldSupervisor | null>(null);
 
   const { data, setData, post, processing, errors, reset, clearErrors } =
     useForm({
@@ -113,6 +170,11 @@ export default function FieldSupervisorsIndex({
     setIsModalOpen(true);
   };
 
+  const openDetailsModal = (sup: FieldSupervisor) => {
+    setSelectedSupervisor(sup);
+    setShowDetailsModal(true);
+  };
+
   const closeModal = () => {
     setIsModalOpen(false);
     setPreviewImage(null);
@@ -143,10 +205,12 @@ export default function FieldSupervisorsIndex({
   };
 
   const deleteSupervisor = (id: number) => {
-    if (confirm(isRTL ? "هل أنت متأكد؟" : "Are you sure?")) {
+    if (confirm(isRTL ? "هل أنت متأكد من حذف هذا المشرف؟" : "Are you sure?")) {
       router.delete(route("admin.field-supervisors.destroy", id));
     }
   };
+
+  const handlePrint = () => window.print();
 
   const filtered = useMemo(() => {
     let list = supervisors;
@@ -198,12 +262,8 @@ export default function FieldSupervisorsIndex({
         cell: (info) => {
           const sup = info.row.original;
           return (
-            <div
-              className={`flex items-center gap-3 ${
-                isRTL ? "flex-row-reverse" : ""
-              }`}
-            >
-              <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm overflow-hidden ring-2 ring-offset-1 ring-brand-dark/10">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-[#0f2044]/10 dark:bg-[#0f2044]/40 text-[#0f2044] dark:text-[#f5b800] flex items-center justify-center font-black text-sm overflow-hidden shadow-sm border border-gray-100 dark:border-white/5">
                 {sup.image ? (
                   <img
                     src={`/storage/${sup.image}`}
@@ -214,22 +274,14 @@ export default function FieldSupervisorsIndex({
                   sup.name.charAt(0)
                 )}
               </div>
-              <div className={isRTL ? "text-right" : "text-left"}>
-                <div
-                  className={`text-sm font-semibold ${
-                    isDark ? "text-white" : "text-gray-900"
-                  }`}
-                >
+              <div className="flex flex-col">
+                <span className={`text-sm font-black ${isDark ? "text-white" : "text-[#0f2044]"} tracking-tight`}>
                   {sup.name}
-                </div>
+                </span>
                 {sup.name_en && (
-                  <div
-                    className={`text-xs ${
-                      isDark ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
+                  <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
                     {sup.name_en}
-                  </div>
+                  </span>
                 )}
               </div>
             </div>
@@ -241,21 +293,13 @@ export default function FieldSupervisorsIndex({
         cell: (info) => {
           const sup = info.row.original;
           return (
-            <div className={isRTL ? "text-right" : "text-left"}>
-              <div
-                className={`text-sm font-mono font-medium ${
-                  isDark ? "text-gray-300" : "text-gray-800"
-                }`}
-              >
+            <div className="flex flex-col">
+              <span className={`text-sm font-black ${isDark ? "text-gray-300" : "text-[#0f2044]"} font-mono`}>
                 {sup.national_id || "—"}
-              </div>
-              <div
-                className={`text-xs ${
-                  isDark ? "text-gray-500" : "text-gray-400"
-                }`}
-              >
+              </span>
+              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 tracking-widest uppercase">
                 {sup.user_code}
-              </div>
+              </span>
             </div>
           );
         },
@@ -265,21 +309,13 @@ export default function FieldSupervisorsIndex({
         cell: (info) => {
           const sup = info.row.original;
           return (
-            <div className={isRTL ? "text-right" : "text-left"}>
-              <div
-                className={`text-sm font-mono ${
-                  isDark ? "text-gray-300" : "text-gray-800"
-                }`}
-              >
+            <div className="flex flex-col">
+              <span className={`text-sm font-black ${isDark ? "text-gray-300" : "text-[#0f2044]"} font-mono`}>
                 {sup.phone}
-              </div>
-              <div
-                className={`text-xs truncate max-w-[160px] ${
-                  isDark ? "text-gray-500" : "text-gray-400"
-                }`}
-              >
+              </span>
+              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 truncate max-w-[160px]">
                 {sup.email}
-              </div>
+              </span>
             </div>
           );
         },
@@ -287,13 +323,8 @@ export default function FieldSupervisorsIndex({
       columnHelper.accessor("is_active", {
         header: isRTL ? "الحالة" : "Status",
         cell: (info) => {
-          const isActive = info.getValue();
-          return (
-            <StatusBadge
-              label={statusLabel(isActive)}
-              variant={isActive ? "green" : "red"}
-            />
-          );
+            const isActive = info.getValue();
+            return <StatusBadge status={isActive ? "active" : "inactive"} />;
         },
       }),
       columnHelper.display({
@@ -302,21 +333,28 @@ export default function FieldSupervisorsIndex({
         cell: (info) => {
           const sup = info.row.original;
           return (
-            <div
-              className={`flex gap-2 ${
-                isRTL ? "justify-start" : "justify-end"
-              }`}
-            >
-              <ActionButton
-                label={isRTL ? "تعديل" : "Edit"}
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => openDetailsModal(sup)}
+                className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                title={isRTL ? "عرض" : "View"}
+              >
+                <Eye size={16} />
+              </button>
+              <button 
                 onClick={() => openEditModal(sup)}
-                color="indigo"
-              />
-              <ActionButton
-                label={isRTL ? "حذف" : "Delete"}
+                className={DS_btnEdit}
+                title={isRTL ? "تعديل" : "Edit"}
+              >
+                <Edit2 size={14} />
+              </button>
+              <button 
                 onClick={() => deleteSupervisor(sup.id)}
-                color="red"
-              />
+                className={DS_btnDanger}
+                title={isRTL ? "حذف" : "Delete"}
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
           );
         },
@@ -342,674 +380,407 @@ export default function FieldSupervisorsIndex({
   ];
 
   return (
-    <AuthenticatedLayout
-      header={
-        <h2
-          className={`font-bold text-xl ${
-            isDark ? "text-gray-200" : "text-gray-800"
-          }`}
-        >
-          {isRTL ? "إدارة المشرفين الميدانيين" : "Field Supervisors Management"}
-        </h2>
-      }
-    >
-      <Head title={isRTL ? "المشرفين الميدانيين" : "Field Supervisors"} />
+    <AuthenticatedLayout user={auth.user}>
+      <Head title={isRTL ? "إدارة المشرفين الميدانيين" : "Field Supervisors Management"} />
+      <style>{PRINT_STYLES}</style>
 
-      <div className={`pb-8 space-y-6 dir-${isRTL ? "rtl" : "ltr"}`}>
-        {/* Stats Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="grid grid-cols-3 gap-4"
-        >
-          {[
-            {
-              label: isRTL ? "إجمالي" : "Total",
-              value: counts.all,
-              icon: <Users className="w-5 h-5" />,
-              color: "blue" as const,
-            },
-            {
-              label: isRTL ? "نشط" : "Active",
-              value: counts.active,
-              icon: <CheckCircle2 className="w-5 h-5" />,
-              color: "green" as const,
-            },
-            {
-              label: isRTL ? "غير نشط" : "Inactive",
-              value: counts.inactive,
-              icon: <XCircle className="w-5 h-5" />,
-              color: "red" as const,
-            },
-          ].map((stat, i) => (
-            <FSStatCard key={i} {...stat} isDark={isDark} isRTL={isRTL} />
-          ))}
-        </motion.div>
-
-        {/* Main Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.15 }}
-        >
-          <BaseDataTable<FieldSupervisor>
-            columns={columns}
-            data={filtered}
-            title={isRTL ? "المشرفون الميدانيون" : "Field Supervisors"}
-            /*             subtitle={
-              isRTL
-                ? `${counts.all} مشرف — ${counts.active} نشط — ${counts.inactive} غير نشط`
-                : `${counts.all} total — ${counts.active} active — ${counts.inactive} inactive`
-            } */
-            headerAction={
-              <PrimaryButton
-                onClick={openAddModal}
-                className="bg-brand-yellow text-brand-dark hover:bg-yellow-500"
-              >
-                {isRTL ? "+ إضافة مشرف ميداني" : "+ Add Field Supervisor"}
-              </PrimaryButton>
-            }
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder={
-              isRTL
-                ? "بحث بالاسم، الهوية، الجوال..."
-                : "Search name, ID, phone..."
-            }
-            filterTabs={filterTabs}
-            activeFilter={filter}
-            onFilterChange={(key) => setFilter(key as FilterType)}
-            emptyMessage={
-              isRTL ? "لا يوجد مشرفون ميدانيون" : "No Field Supervisors Yet"
-            }
-            emptyDescription={
-              isRTL
-                ? "لم يتم تسجيل أي مشرف ميداني بعد."
-                : "No field supervisors registered yet."
-            }
-            emptyIcon={<MapPin className="w-10 h-10" />}
-            emptyAction={
-              filter === "all"
-                ? {
-                    label: isRTL ? "+ إضافة مشرف" : "+ Add Supervisor",
-                    onClick: openAddModal,
-                  }
-                : undefined
-            }
-          />
-        </motion.div>
+      {/* ── Print Area (Unified System) ── */}
+      <div id="field-print-area" className="hidden print:block bg-white font-sans text-black w-full" dir={isRTL ? "rtl" : "ltr"}>
+        <PrintReportHeader
+          title={isRTL ? "تقرير بيانات المشرفين الميدانيين" : "Field Supervisors Operational Report"}
+          schoolName={isRTL ? "إدارة شركة مسارات واصل" : "Masarat Wasel Company"}
+          schoolLogo={null}
+          printDate={`${isRTL ? "تاريخ الطباعة" : "Print Date"}: ${new Date().toLocaleDateString(isRTL ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric" })}`}
+          schoolAdminText={isRTL ? "إدارة الشركة" : "Company Admin"}
+        />
+        <div className="px-4">
+          <table className="w-full border-collapse border border-gray-300 text-[10px]">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 p-1.5 text-right font-bold w-8 text-black">#</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "المشرف الميداني" : "Field Supervisor"}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "رقم الهوية" : "ID"}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الجوال" : "Phone"}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "البريد الإلكتروني" : "Email"}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الحالة" : "Status"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((sup, i) => (
+                <tr key={sup.id} className="border-b border-gray-300">
+                  <td className="border border-gray-300 p-1.5 text-center text-gray-700">{i + 1}</td>
+                  <td className="border border-gray-300 p-1.5 font-bold text-gray-900">{sup.name}</td>
+                  <td className="border border-gray-300 p-1.5 font-mono text-gray-700">{sup.national_id}</td>
+                  <td className="border border-gray-300 p-1.5 text-gray-700">{sup.phone}</td>
+                  <td className="border border-gray-300 p-1.5 text-gray-700">{sup.email}</td>
+                  <td className="border border-gray-300 p-1.5 text-gray-700">{sup.is_active ? (isRTL ? "نشط" : "Active") : (isRTL ? "غير نشط" : "Inactive")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-8 flex justify-between items-center text-sm font-bold text-gray-800">
+            <p>{isRTL ? "إجمالي الكادر" : "Total Force"}: {filtered.length}</p>
+            <p>{isRTL ? "التوقيع الرسمي" : "Official Signature"}: ............................</p>
+          </div>
+        </div>
       </div>
 
-      <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
-        <div
-          className={`relative ${
-            isDark ? "bg-gray-900 border border-gray-700" : "bg-white"
-          } rounded-2xl overflow-hidden shadow-2xl`}
-        >
-          <button
-            type="button"
-            onClick={closeModal}
-            className={`absolute top-6 ${
-              isRTL ? "left-6" : "right-6"
-            } p-2 rounded-full hover:bg-gray-100 transition-colors ${
-              isDark ? "hover:bg-gray-800 text-gray-400" : "text-gray-500"
-            }`}
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-
-          <div
-            className={`px-8 pt-8 pb-6 border-b ${
-              isDark ? "border-gray-800" : "border-gray-100"
-            }`}
-          >
-            <h2
-              className={`text-2xl font-bold ${
-                isDark ? "text-white" : "text-brand-navy"
-              }`}
-            >
-              {isEditing
-                ? isRTL
-                  ? "تعديل بيانات المشرف الميداني"
-                  : "Edit Field Supervisor"
-                : isRTL
-                ? "تسجيل مشرف ميداني جديد"
-                : "New Field Supervisor"}
-            </h2>
-            <div className="mt-6 relative flex items-center justify-between px-10">
-              <div className="absolute left-10 right-10 top-1/2 -translate-y-1/2 h-1 bg-gray-200 rounded-full z-0"></div>
-              <div
-                className="absolute left-10 top-1/2 -translate-y-1/2 h-1 bg-brand-yellow rounded-full z-0 transition-all duration-300"
-                style={{ width: currentStep === 1 ? "0%" : "100%" }}
-              ></div>
-              <div
-                className={`relative w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow z-10 ${
-                  currentStep >= 1
-                    ? "bg-brand-yellow text-brand-dark"
-                    : "bg-gray-200 text-gray-500"
-                }`}
-              >
-                1
-              </div>
-              <div
-                className={`relative w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow z-10 ${
-                  currentStep >= 2
-                    ? "bg-brand-yellow text-brand-dark"
-                    : "bg-gray-200 text-gray-500"
-                }`}
-              >
-                2
-              </div>
-            </div>
-            <div className="flex justify-between px-4 mt-2 text-xs font-bold text-gray-500">
-              <span>{isRTL ? "البيانات الشخصية" : "Personal Details"}</span>
-              <span>{isRTL ? "بيانات الاتصال" : "Contact Details"}</span>
-            </div>
-          </div>
-
-          <form onSubmit={submit} className="flex flex-col">
-            <div className="p-8 space-y-8">
-              {currentStep === 1 && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                  <div
-                    className={`flex items-start gap-6 ${
-                      isRTL ? "flex-row-reverse" : ""
-                    }`}
-                  >
-                    <div className="relative w-24 h-24 rounded-2xl bg-gray-100 flex items-center justify-center border border-gray-200 flex-shrink-0 overflow-visible">
-                      <div className="w-full h-full rounded-2xl overflow-hidden flex items-center justify-center bg-gray-50">
-                        {data.image ? (
-                          <img
-                            src={URL.createObjectURL(data.image)}
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : previewImage ? (
-                          <img
-                            src={previewImage}
-                            alt="Current"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <svg
-                            className="w-10 h-10 text-gray-300"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                    <div
-                      className={`flex-1 ${isRTL ? "text-right" : "text-left"}`}
-                    >
-                      <h4
-                        className={`font-bold ${
-                          isDark ? "text-gray-200" : "text-gray-800"
-                        }`}
-                      >
-                        {isRTL ? "صورة الملف الشخصي" : "Profile Image"}
-                      </h4>
-                      <div
-                        className={`flex gap-3 mt-3 ${
-                          isRTL ? "flex-row-reverse justify-end" : ""
-                        }`}
-                      >
-                        <label
-                          className={`cursor-pointer px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                            isDark
-                              ? "bg-brand-navy border border-gray-600 text-white hover:bg-gray-800"
-                              : "bg-brand-navy text-white hover:bg-opacity-90"
-                          }`}
-                        >
-                          {isRTL ? "رفع صورة" : "Upload Photo"}
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept="image/*"
-                            onChange={(e) =>
-                              setData("image", e.target.files?.[0] || null)
-                            }
-                          />
-                        </label>
-                      </div>
-                      <InputError message={errors.image} className="mt-2" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4
-                      className={`text-sm font-bold border-b pb-2 mb-4 ${
-                        isDark
-                          ? "border-gray-700 text-gray-300"
-                          : "border-gray-200 text-gray-600"
-                      } ${isRTL ? "text-right" : "text-left"}`}
-                    >
-                      {isRTL
-                        ? "الاسم بناءً على الهوية (عربي)"
-                        : "Name as per ID (Arabic)"}
-                    </h4>
-                    <div
-                      className={`grid grid-cols-2 lg:grid-cols-4 gap-4 ${
-                        isRTL ? "rtl" : "ltr"
-                      }`}
-                    >
-                      {[
-                        {
-                          key: "first_name_ar",
-                          label: isRTL ? "الاسم الأول" : "First Name",
-                        },
-                        {
-                          key: "second_name_ar",
-                          label: isRTL ? "اسم الأب" : "Second Name",
-                        },
-                        {
-                          key: "third_name_ar",
-                          label: isRTL ? "اسم الجد" : "Third Name",
-                        },
-                        {
-                          key: "last_name_ar",
-                          label: isRTL ? "الاسم الأخير" : "Last Name",
-                        },
-                      ].map((field) => (
-                        <div key={field.key}>
-                          <label
-                            className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${
-                              isDark ? "text-gray-400" : "text-gray-600"
-                            }`}
-                          >
-                            {field.label}
-                          </label>
-                          <input
-                            type="text"
-                            value={(data as any)[field.key]}
-                            onChange={(e) =>
-                              setData(field.key as any, e.target.value)
-                            }
-                            dir="rtl"
-                            required={
-                              field.key === "first_name_ar" ||
-                              field.key === "last_name_ar"
-                            }
-                            className={`w-full rounded-lg px-3 py-2 text-sm outline-none transition-all ${
-                              isDark
-                                ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow"
-                                : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"
-                            }`}
-                          />
-                          <InputError
-                            message={(errors as any)[field.key]}
-                            className="mt-1"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4
-                      className={`text-sm font-bold border-b pb-2 mb-4 ${
-                        isDark
-                          ? "border-gray-700 text-gray-300"
-                          : "border-gray-200 text-gray-600"
-                      } ${isRTL ? "text-right" : "text-left"}`}
-                    >
-                      {isRTL
-                        ? "الاسم بناءً على الهوية (إنجليزي)"
-                        : "Name as per ID (English)"}
-                    </h4>
-                    <div
-                      className={`grid grid-cols-2 lg:grid-cols-4 gap-4 ${
-                        isRTL ? "rtl" : "ltr"
-                      }`}
-                    >
-                      {[
-                        {
-                          key: "first_name_en",
-                          label: isRTL ? "الاسم الأول" : "First Name",
-                        },
-                        {
-                          key: "second_name_en",
-                          label: isRTL ? "اسم الأب" : "Second Name",
-                        },
-                        {
-                          key: "third_name_en",
-                          label: isRTL ? "اسم الجد" : "Third Name",
-                        },
-                        {
-                          key: "last_name_en",
-                          label: isRTL ? "الاسم الأخير" : "Last Name",
-                        },
-                      ].map((field) => (
-                        <div key={field.key}>
-                          <label
-                            className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${
-                              isDark ? "text-gray-400" : "text-gray-600"
-                            }`}
-                          >
-                            {field.label}
-                          </label>
-                          <input
-                            type="text"
-                            value={(data as any)[field.key]}
-                            onChange={(e) =>
-                              setData(field.key as any, e.target.value)
-                            }
-                            dir="ltr"
-                            className={`w-full rounded-lg px-3 py-2 text-sm outline-none transition-all ${
-                              isDark
-                                ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow"
-                                : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"
-                            }`}
-                          />
-                          <InputError
-                            message={(errors as any)[field.key]}
-                            className="mt-1"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+      <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-8`} dir={isRTL ? 'rtl' : 'ltr'}>
+        
+        {/* Modern Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <div className="flex flex-col">
+                <h1 className={DS_pageTitle}>
+                    {isRTL ? "إدارة الأسطول: المشرفين الميدانيين" : "Fleet Management: Field Supervisors"}
+                </h1>
+                <div className="flex items-center gap-2 mt-1">
+                    <div className="w-1.5 h-1.5 bg-[#f5b800] rounded-full" />
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        {supervisors.length} {isRTL ? "مشرف ميداني مسجل" : "Field Supervisors Enrolled"}
+                    </span>
                 </div>
-              )}
-
-              {currentStep === 2 && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-                  <div
-                    className={`grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 ${
-                      isRTL ? "rtl" : "ltr"
-                    }`}
-                  >
-                    <div>
-                      <label
-                        className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${
-                          isDark ? "text-gray-400" : "text-gray-600"
-                        }`}
-                      >
-                        {isRTL
-                          ? "رقم الهوية / الإقامة"
-                          : "National ID / Resident ID"}
-                      </label>
-                      <input
-                        type="text"
-                        value={data.national_id}
-                        onChange={(e) => setData("national_id", e.target.value)}
-                        dir="ltr"
-                        required
-                        className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all font-mono ${
-                          isDark
-                            ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow"
-                            : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"
-                        }`}
-                      />
-                      <InputError
-                        message={errors.national_id}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${
-                          isDark ? "text-gray-400" : "text-gray-600"
-                        }`}
-                      >
-                        {isRTL ? "رقم الجوال" : "Phone Number"}
-                      </label>
-                      <input
-                        type="text"
-                        value={data.phone}
-                        onChange={(e) => setData("phone", e.target.value)}
-                        dir="ltr"
-                        placeholder="5X XXX XXXX"
-                        required
-                        className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all font-mono ${
-                          isDark
-                            ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow"
-                            : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"
-                        }`}
-                      />
-                      <InputError message={errors.phone} className="mt-1" />
-                    </div>
-                    <div>
-                      <label
-                        className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${
-                          isDark ? "text-gray-400" : "text-gray-600"
-                        }`}
-                      >
-                        {isRTL ? "البريد الإلكتروني" : "Email Address"}
-                      </label>
-                      <input
-                        type="email"
-                        value={data.email}
-                        onChange={(e) => setData("email", e.target.value)}
-                        dir="ltr"
-                        required
-                        className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${
-                          isDark
-                            ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow"
-                            : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"
-                        }`}
-                      />
-                      <InputError message={errors.email} className="mt-1" />
-                    </div>
-                    <div>
-                      <label
-                        className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${
-                          isDark ? "text-gray-400" : "text-gray-600"
-                        }`}
-                      >
-                        {isRTL ? "الحالة" : "Status"}
-                      </label>
-                      <select
-                        value={data.status}
-                        onChange={(e) => setData("status", e.target.value)}
-                        required
-                        className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${
-                          isDark
-                            ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow"
-                            : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"
-                        }`}
-                      >
-                        <option value="Active">
-                          {isRTL ? "نشط" : "Active"}
-                        </option>
-                        <option value="Inactive">
-                          {isRTL ? "غير نشط" : "Inactive"}
-                        </option>
-                      </select>
-                      <InputError message={errors.status} className="mt-1" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label
-                        className={`block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${
-                          isDark ? "text-gray-400" : "text-gray-600"
-                        }`}
-                      >
-                        {isRTL ? "العنوان" : "Address"}
-                      </label>
-                      <input
-                        type="text"
-                        value={data.address}
-                        onChange={(e) => setData("address", e.target.value)}
-                        className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all ${
-                          isDark
-                            ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow"
-                            : "bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-navy"
-                        }`}
-                      />
-                      <InputError message={errors.address} className="mt-1" />
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
-
-            <div
-              className={`px-8 py-5 border-t flex justify-between items-center ${
-                isDark
-                  ? "bg-gray-800/50 border-gray-800"
-                  : "bg-gray-50 border-gray-100"
-              } ${isRTL ? "flex-row-reverse" : ""}`}
-            >
-              {currentStep === 1 ? (
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className={`text-sm font-semibold transition-colors ${
-                    isDark
-                      ? "text-gray-400 hover:text-white"
-                      : "text-gray-500 hover:text-gray-800"
-                  }`}
-                >
-                  {isRTL ? "إلغاء" : "Cancel"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(1)}
-                  className={`text-sm font-semibold transition-colors ${
-                    isDark
-                      ? "text-gray-400 hover:text-white"
-                      : "text-gray-500 hover:text-gray-800"
-                  }`}
-                >
-                  {isRTL ? "السابق" : "Previous"}
-                </button>
-              )}
-              <div
-                className={`flex items-center gap-4 ${
-                  isRTL ? "flex-row-reverse" : ""
-                }`}
-              >
-                {currentStep === 1 ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setCurrentStep(2);
-                    }}
-                    className={`px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-opacity ${
-                      isDark
-                        ? "bg-brand-navy text-white hover:opacity-90"
-                        : "bg-brand-navy text-white hover:opacity-90"
-                    }`}
-                  >
-                    {isRTL ? "التالي" : "Next"}
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={processing}
-                    className={`px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-opacity disabled:opacity-50 ${
-                      isDark
-                        ? "bg-brand-yellow text-brand-dark hover:opacity-90"
-                        : "bg-brand-yellow text-brand-dark hover:opacity-90"
-                    }`}
-                  >
-                    {isEditing
-                      ? isRTL
-                        ? "حفظ التعديلات"
-                        : "Save Changes"
-                      : isRTL
-                      ? "إضافة المشرف الميداني"
-                      : "Add Field Supervisor"}
-                  </button>
-                )}
-              </div>
-            </div>
-          </form>
         </div>
-      </Modal>
+
+        {/* Intelligence Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className={DS_statCard('blue')}>
+                <div className={DS_statIcon('blue')}><Users size={20} /></div>
+                <div>
+                    <p className={DS_statLabel}>{isRTL ? "إجمالي المشرفين" : "Total Supervisors"}</p>
+                    <p className={DS_statValue2('blue')}>{counts.all}</p>
+                </div>
+            </div>
+            <div className={DS_statCard('green')}>
+                <div className={DS_statIcon('green')}><CheckCircle2 size={20} /></div>
+                <div>
+                    <p className={DS_statLabel}>{isRTL ? "النشطون" : "Active Units"}</p>
+                    <p className={DS_statValue2('green')}>{counts.active}</p>
+                </div>
+            </div>
+            <div className={DS_statCard('red')}>
+                <div className={DS_statIcon('red')}><XCircle size={20} /></div>
+                <div>
+                    <p className={DS_statLabel}>{isRTL ? "غير النشطين" : "Inactive Units"}</p>
+                    <p className={DS_statValue2('red')}>{counts.inactive}</p>
+                </div>
+            </div>
+        </div>
+
+        {/* Action Button Section */}
+        <div className="flex justify-end mb-4">
+            <button 
+                onClick={openAddModal}
+                className={DS_btnGold}
+            >
+                <Plus size={18} />
+                <span>{isRTL ? "إضافة مشرف ميداني" : "Enroll New Supervisor"}</span>
+            </button>
+        </div>
+
+        {/* Main Operational Table */}
+        <div className={DS_card}>
+            <BaseDataTable<FieldSupervisor>
+                columns={columns}
+                data={filtered}
+                pagination={null as any}
+                searchValue={search}
+                onSearchChange={setSearch}
+                searchPlaceholder={isRTL ? "البحث في ملفات المشرفين..." : "Search supervisor dossiers..."}
+                filterTabs={filterTabs}
+                activeFilter={filter}
+                onFilterChange={(key) => setFilter(key as FilterType)}
+                exportEnabled={true}
+                headerAction={
+                    <button onClick={handlePrint} className={DS_btnSecondary}>
+                        <Printer size={16} />
+                        <span>{isRTL ? "طباعة التقارير" : "Print Dossiers"}</span>
+                    </button>
+                }
+            />
+        </div>
+
+        {/* --- High-End Details Modal --- */}
+        <AnimatePresence>
+            {showDetailsModal && selectedSupervisor && (
+                <Modal show={showDetailsModal} onClose={() => setShowDetailsModal(false)} maxWidth="3xl">
+                    <div className={DS_modalContainer}>
+                        {/* Dossier Header */}
+                        <div className="relative h-48 bg-[#0f2044] overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-transparent z-10" />
+                            <div className="absolute top-6 inset-x-6 flex justify-between items-center z-20">
+                                <span className="px-3 py-1 bg-[#f5b800] text-[#0f2044] rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
+                                    {isRTL ? "رقم الملف" : "Dossier ID"}: #{selectedSupervisor.user_code}
+                                </span>
+                                <button onClick={() => setShowDetailsModal(false)} className={DS_modalClose}>
+                                    <X size={18} />
+                                </button>
+                            </div>
+                            
+                            {/* Visual ID */}
+                            <div className="absolute -bottom-10 left-10 w-32 h-32 rounded-[2rem] border-4 border-white dark:border-[#1a2845] bg-white dark:bg-[#0f2044] shadow-2xl overflow-hidden z-20">
+                                {selectedSupervisor.image ? (
+                                    <img src={`/storage/${selectedSupervisor.image}`} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-4xl font-black text-[#0f2044] dark:text-[#f5b800] bg-gray-50">
+                                        {selectedSupervisor.name.charAt(0)}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="pt-16 pb-10 px-10">
+                            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-gray-100 dark:border-[#243460] pb-8">
+                                <div className="space-y-1">
+                                    <h2 className="text-3xl font-black text-[#0f2044] dark:text-white tracking-tighter">
+                                        {selectedSupervisor.name}
+                                    </h2>
+                                    <p className="text-lg font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                                        {selectedSupervisor.name_en || (isRTL ? "غير محدد" : "UNSPECIFIED")}
+                                    </p>
+                                    <div className="flex gap-2 mt-4">
+                                        <StatusBadge status={selectedSupervisor.is_active ? "active" : "inactive"} />
+                                        <span className="px-3 py-1 bg-[#0f2044]/5 dark:bg-[#0f2044]/40 rounded-full text-[10px] font-black text-gray-500 uppercase tracking-tighter">
+                                            {isRTL ? "الصفة: مشرف ميداني" : "Role: Field Supervisor"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-10">
+                                {/* Section: Personal */}
+                                <div className="space-y-6">
+                                    <h3 className="text-xs font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <Users size={16} className="text-[#f5b800]" /> {isRTL ? "الهوية الشخصية" : "Personal Identity"}
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <InfoRow icon={<CreditCard size={14} />} label={isRTL ? "رقم الهوية" : "National ID"} value={selectedSupervisor.national_id} isDark={isDark} />
+                                        <InfoRow icon={<Phone size={14} />} label={isRTL ? "رقم الجوال" : "Primary Phone"} value={selectedSupervisor.phone} isDark={isDark} />
+                                        <InfoRow icon={<Mail size={14} />} label={isRTL ? "البريد الإلكتروني" : "Email Address"} value={selectedSupervisor.email} isDark={isDark} />
+                                        <InfoRow icon={<MapPin size={14} />} label={isRTL ? "العنوان" : "Registered Address"} value={selectedSupervisor.address || "—"} isDark={isDark} />
+                                    </div>
+                                </div>
+
+                                {/* Section: Operational */}
+                                <div className="space-y-6">
+                                    <h3 className="text-xs font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <Briefcase size={16} className="text-[#f5b800]" /> {isRTL ? "البيانات التشغيلية" : "Operational Data"}
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div className="p-4 bg-gray-50 dark:bg-[#0f2044]/30 rounded-2xl border border-gray-100 dark:border-[#243460]">
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isRTL ? "كود المستخدم" : "Internal Code"}</p>
+                                            <p className="text-sm font-bold text-[#0f2044] dark:text-gray-300 font-mono">
+                                                {selectedSupervisor.user_code}
+                                            </p>
+                                        </div>
+                                        <div className="p-4 bg-[#f5b800]/5 rounded-2xl border border-[#f5b800]/10">
+                                            <p className="text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase tracking-widest mb-1">{isRTL ? "الوصول للنظام" : "System Access"}</p>
+                                            <p className="text-sm font-bold text-[#0f2044] dark:text-gray-300">
+                                                {selectedSupervisor.is_active ? (isRTL ? "مصرح له بالدخول" : "Authorized Access") : (isRTL ? "ممنوع من الدخول" : "Revoked Access")}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+        </AnimatePresence>
+
+        {/* --- Enrollment / Edit Modal --- */}
+        <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
+            <div className={DS_modalContainer}>
+                <div className={DS_modalHeader(isRTL)}>
+                    <div className="flex items-center gap-3">
+                        <div className={DS_modalHeaderAccent} />
+                        <h3 className={DS_modalHeaderTitle}>
+                            {isEditing ? (isRTL ? "تحديث ملف المشرف" : "Update Supervisor Dossier") : (isRTL ? "تسجيل مشرف ميداني جديد" : "Enroll New Field Supervisor")}
+                        </h3>
+                    </div>
+                    <button onClick={closeModal} className={DS_modalClose}>
+                        <ArrowLeft size={18} className={isRTL ? 'rotate-180' : ''} />
+                    </button>
+                </div>
+
+                {/* Tactical Stepper */}
+                <div className="bg-[#0f2044]/5 dark:bg-[#0f2044]/30 px-10 py-6 border-b border-gray-100 dark:border-[#243460]">
+                    <div className="relative flex items-center justify-between">
+                        <div className="absolute inset-x-10 top-1/2 -translate-y-1/2 h-0.5 bg-gray-200 dark:bg-[#243460]" />
+                        <div className={`absolute left-10 top-1/2 -translate-y-1/2 h-0.5 bg-[#f5b800] transition-all duration-500`} style={{ width: currentStep === 1 ? '0%' : '100%' }} />
+                        
+                        <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg transition-all ${currentStep >= 1 ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] text-gray-400'}`}>1</div>
+                        <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg transition-all ${currentStep >= 2 ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] text-gray-400'}`}>2</div>
+                    </div>
+                    <div className="flex justify-between mt-3 px-4">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-[#0f2044] dark:text-[#f5b800]">{isRTL ? "الهوية الشخصية" : "Personal Identity"}</span>
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${currentStep === 2 ? 'text-[#0f2044] dark:text-[#f5b800]' : 'text-gray-400'}`}>{isRTL ? "بيانات الاتصال" : "Contact Details"}</span>
+                    </div>
+                </div>
+
+                <form onSubmit={submit}>
+                    <div className={DS_modalBody}>
+                        {currentStep === 1 && (
+                            <motion.div initial={{ opacity: 0, x: isRTL ? 20 : -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                                {/* Photo Upload */}
+                                <div className="flex items-center gap-6">
+                                    <div className="w-24 h-24 rounded-3xl bg-gray-100 dark:bg-[#0f2044]/40 border-2 border-dashed border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden">
+                                        {data.image ? (
+                                            <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
+                                        ) : previewImage ? (
+                                            <img src={previewImage} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <Users size={32} className="text-gray-300" />
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{isRTL ? "الصورة الشخصية" : "Supervisor Visual ID"}</label>
+                                        <label className="cursor-pointer px-4 py-2 bg-[#0f2044] text-white rounded-xl text-xs font-black hover:bg-[#1a3a7a] transition-all">
+                                            {isRTL ? "رفع صورة" : "Upload Dossier Photo"}
+                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => setData("image", e.target.files?.[0] || null)} />
+                                        </label>
+                                        <InputError message={errors.image} />
+                                    </div>
+                                </div>
+
+                                {/* Names Grid - Arabic */}
+                                <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
+                                        {isRTL ? "البيانات الرسمية (بالعربية)" : "Official Dossier Name (Arabic)"}
+                                    </h4>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"}</label>
+                                            <input type="text" value={data.first_name_ar} onChange={(e) => setData("first_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "اسم الأب" : "Father Name"}</label>
+                                            <input type="text" value={data.second_name_ar} onChange={(e) => setData("second_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "اسم الجد" : "Grandfather Name"}</label>
+                                            <input type="text" value={data.third_name_ar} onChange={(e) => setData("third_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label>
+                                            <input type="text" value={data.last_name_ar} onChange={(e) => setData("last_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Names Grid - English */}
+                                <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
+                                        {isRTL ? "الاسم بناءً على الهوية (إنجليزي)" : "Official Dossier Name (English)"}
+                                    </h4>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"}</label>
+                                            <input type="text" value={data.first_name_en} onChange={(e) => setData("first_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "اسم الأب" : "Father Name"}</label>
+                                            <input type="text" value={data.second_name_en} onChange={(e) => setData("second_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "اسم الجد" : "Grandfather Name"}</label>
+                                            <input type="text" value={data.third_name_en} onChange={(e) => setData("third_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label>
+                                            <input type="text" value={data.last_name_en} onChange={(e) => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {currentStep === 2 && (
+                            <motion.div initial={{ opacity: 0, x: isRTL ? -20 : 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-1.5">
+                                        <label className={DS_label}>{isRTL ? "رقم الهوية / الإقامة" : "National Serial ID"}</label>
+                                        <input type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
+                                        <InputError message={errors.national_id} />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className={DS_label}>{isRTL ? "رقم الجوال" : "Primary Phone"}</label>
+                                        <input type="text" value={data.phone} onChange={(e) => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" placeholder="5X XXX XXXX" required />
+                                        <InputError message={errors.phone} />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className={DS_label}>{isRTL ? "البريد الإلكتروني" : "Primary Email"}</label>
+                                        <input type="email" value={data.email} onChange={(e) => setData("email", e.target.value)} className={DS_input} dir="ltr" required />
+                                        <InputError message={errors.email} />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className={DS_label}>{isRTL ? "الحالة" : "Operational Status"}</label>
+                                        <select value={data.status} onChange={(e) => setData("status", e.target.value)} className={DS_input} required>
+                                            <option value="Active">{isRTL ? "نشط" : "Active"}</option>
+                                            <option value="Inactive">{isRTL ? "غير نشط" : "Inactive"}</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className={DS_label}>{isRTL ? "العنوان" : "Registered Address"}</label>
+                                    <input type="text" value={data.address} onChange={(e) => setData("address", e.target.value)} className={DS_input} />
+                                </div>
+                            </motion.div>
+                        )}
+                    </div>
+
+                    <div className={DS_modalFooter(isRTL)}>
+                        {currentStep === 2 && (
+                            <button type="button" onClick={() => setCurrentStep(1)} className={DS_btnSecondary}>
+                                {isRTL ? "رجوع" : "Back"}
+                            </button>
+                        )}
+                        <div className="ml-auto flex items-center gap-3">
+                            <button type="button" onClick={closeModal} className="text-xs font-bold text-gray-400 hover:text-[#0f2044] transition-colors">
+                                {isRTL ? "إلغاء" : "Cancel"}
+                            </button>
+                            {currentStep === 1 ? (
+                                <button type="button" onClick={() => setCurrentStep(2)} className={DS_btnPrimary}>
+                                    {isRTL ? "متابعة" : "Continue"} <ChevronRight size={16} />
+                                </button>
+                            ) : (
+                                <button type="submit" disabled={processing} className={DS_btnGold}>
+                                    {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل المشرف" : "Enroll Supervisor")}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </Modal>
+
+      </div>
     </AuthenticatedLayout>
   );
 }
 
-// ─── FSStatCard ───────────────────────────────────────
+// ─── Sub-Components ───────────────────────────────────────
 
-const fsStatColors = {
-  blue: {
-    bg: "bg-blue-50 dark:bg-blue-900/20",
-    icon: "text-blue-500",
-    border: "border-blue-100 dark:border-blue-900/30",
-  },
-  green: {
-    bg: "bg-emerald-50 dark:bg-emerald-900/20",
-    icon: "text-emerald-500",
-    border: "border-emerald-100 dark:border-emerald-900/30",
-  },
-  red: {
-    bg: "bg-rose-50 dark:bg-rose-900/20",
-    icon: "text-rose-500",
-    border: "border-rose-100 dark:border-rose-900/30",
-  },
-};
+function FSStatCard({ label, value, icon, color, isDark, isRTL }: any) {
+  return null; // Removed in favor of DS_statCard
+}
 
-function FSStatCard({
-  label,
-  value,
-  icon,
-  color,
-  isDark,
-  isRTL,
-}: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  color: keyof typeof fsStatColors;
-  isDark: boolean;
-  isRTL: boolean;
-}) {
-  const scheme = fsStatColors[color];
+function InfoRow({ icon, label, value, isDark, highlight = false }: any) {
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
-        isDark
-          ? "bg-gray-800/80 border-gray-700 hover:bg-gray-800"
-          : `bg-white ${scheme.border} hover:shadow-md shadow-sm`
-      } ${isRTL ? "flex-row-reverse" : ""}`}
-    >
-      <div
-        className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
-          isDark ? "bg-gray-700" : scheme.bg
-        }`}
-      >
-        <span className={scheme.icon}>{icon}</span>
-      </div>
-      <div className={isRTL ? "text-right" : "text-left"}>
-        <p
-          className={`text-[11px] font-bold uppercase tracking-wide ${
-            isDark ? "text-gray-500" : "text-gray-400"
-          }`}
-        >
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className={`p-1.5 rounded-lg ${highlight ? "bg-rose-500/10 text-rose-500" : isDark ? "bg-gray-800 text-gray-500" : "bg-[#0f2044]/5 text-[#0f2044]"}`}>
+          {icon}
+        </div>
+        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
           {label}
-        </p>
-        <p
-          className={`text-2xl font-black mt-0.5 ${
-            isDark ? "text-white" : "text-gray-900"
-          }`}
-        >
-          {value}
-        </p>
+        </span>
       </div>
-    </motion.div>
+      <span className={`text-xs font-black ${highlight ? "text-rose-500" : isDark ? "text-gray-200" : "text-[#0f2044]"} font-mono`}>
+        {value}
+      </span>
+    </div>
   );
 }
+

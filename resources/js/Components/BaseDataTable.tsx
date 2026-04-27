@@ -267,35 +267,24 @@ export default function BaseDataTable<T extends { id?: number | string }>({
             }`}
           >
             {exportEnabled && (
-              <div className="flex gap-2">
-                <a
-                  href={getExportUrl("csv")}
-                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
-                    isDark
-                      ? "bg-emerald-900/20 text-emerald-400 border-emerald-900/50 hover:bg-emerald-900/40"
-                      : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                  }`}
-                >
-                  <FileDown className="w-3.5 h-3.5" />
-                  {isRTL ? "إكسل" : "Excel"}
-                </a>
-                <a
-                  href={getExportUrl("pdf")}
-                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
-                    isDark
-                      ? "bg-rose-900/20 text-rose-400 border-rose-900/50 hover:bg-rose-900/40"
-                      : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  PDF
-                </a>
-              </div>
+              <a
+                href={getExportUrl("csv")}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
+                  isDark
+                    ? "bg-emerald-900/20 text-emerald-400 border-emerald-900/50 hover:bg-emerald-900/40"
+                    : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                }`}
+              >
+                <FileDown className="w-3.5 h-3.5" />
+                {isRTL ? "إكسيل" : "Excel"}
+              </a>
             )}
             {headerAction}
           </div>
         </div>
       )}
+
+
 
       {/* ── Controls: Filter Tabs + Search ── */}
       {(filterTabs || onSearchChange) && (

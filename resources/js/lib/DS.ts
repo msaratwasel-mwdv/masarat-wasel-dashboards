@@ -32,7 +32,7 @@ export const DS_btnSecondary = "flex items-center gap-2 px-4 py-2 rounded-[14px]
 export const DS_btnEdit = "px-3 py-1.5 rounded-[10px] bg-[#0f2044]/[0.06] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8] text-xs font-bold hover:bg-[#0f2044]/[0.12] dark:hover:bg-[#0f2044]/50 transition-all";
 export const DS_btnDanger = "px-3 py-1.5 rounded-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-all";
 
-export const DS_modalContainer = "overflow-hidden";
+export const DS_modalContainer = "rounded-[22px] shadow-2xl overflow-hidden";
 export const DS_modalHeaderTitle = "text-lg font-bold text-white";
 export const DS_modalHeaderAccent = "w-2 h-6 bg-[#f5b800] rounded-full flex-shrink-0";
 export const DS_modalClose = "p-1.5 rounded-[10px] bg-white/10 text-white hover:bg-white/20 transition-all";
@@ -40,6 +40,9 @@ export const DS_modalBody = "p-6 space-y-4";
 
 export const DS_inputCls = "w-full rounded-[18px] px-4 py-2.5 text-sm bg-[#0f2044]/[0.05] dark:bg-[#0f2044]/30 border border-[#0f2044]/[0.10] dark:border-[#243460] text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#f5b800] transition-all placeholder-gray-400";
 export const DS_labelCls = "block text-[10px] font-bold uppercase tracking-wider mb-1.5 text-[#0f2044]/60 dark:text-[#7ba7e8]/70";
+export const DS_input = DS_inputCls;
+export const DS_select = DS_inputCls;
+export const DS_label = DS_labelCls;
 export const DS_cancelBtn = "px-5 py-2.5 rounded-[14px] bg-[#0f2044]/[0.07] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-gray-300 text-sm font-bold hover:bg-[#0f2044]/[0.14] transition-all";
 
 export const DS_childAvatar = "w-10 h-10 rounded-full bg-[#f5b800]/20 text-[#8a6b00] dark:text-[#f5b800] flex items-center justify-center font-bold overflow-hidden flex-shrink-0";
@@ -82,6 +85,10 @@ export function DS_tableTh(isRtl: boolean): string {
 
 export function DS_modalHeader(isRtl: boolean): string {
   return `px-6 py-5 bg-[#0f2044] flex items-center justify-between`;
+}
+
+export function DS_modalFooter(isRtl: boolean): string {
+  return `px-6 py-5 bg-gray-50/50 dark:bg-[#0f2044]/20 border-t border-gray-100 dark:border-[#243460] flex items-center justify-end gap-3`;
 }
 
 export function DS_sectionHeader(isRtl: boolean): string {

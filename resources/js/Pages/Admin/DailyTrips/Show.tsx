@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { 
@@ -20,6 +20,11 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
+import { 
+    DS_pageWrapper, 
+    DS_modalContainer,
+    DS_labelCls
+} from "@/lib/DS";
 
 interface Student {
     id: number;
@@ -86,30 +91,34 @@ export default function Show({ auth, trip }: Props) {
         <AuthenticatedLayout user={auth.user}>
             <Head title={isRTL ? `تفاصيل الرحلة #${trip.id}` : `Trip Details #${trip.id}`} />
 
-            <div className="space-y-6">
-                {/* Header with Back Button */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 pt-6 pb-12`}>
+                {/* Unified Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                     <div className="flex items-center gap-4">
-                        <Link
-                            href={route('admin.daily-trips.index')}
-                            className="p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-500 hover:text-blue-600 transition-colors shadow-sm"
+                        <button
+                            onClick={() => router.get(route('admin.daily-trips.index'))}
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-[#1a2845] rounded-xl transition-all"
                         >
-                            <ArrowLeft className={isRTL ? 'rotate-180' : ''} size={20} />
-                        </Link>
+                            <ArrowLeft className={`w-5 h-5 text-gray-400 ${isRTL ? 'rotate-180' : ''}`} />
+                        </button>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                🚌 {isRTL ? 'تفاصيل الرحلة' : 'Trip Details'} 
-                                <span className="text-gray-400 font-normal ml-2">#{trip.id}</span>
-                            </h1>
-                            <div className="flex items-center gap-3 mt-1">
-                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${st.class}`}>
-                                    <st.icon size={12} />
+                            <div className="flex items-center gap-3">
+                                <h1 className="text-2xl font-extrabold text-[#0f2044] dark:text-white">
+                                    {isRTL ? 'تفاصيل الرحلة' : 'Trip Details'}
+                                </h1>
+                                <span className="px-3 py-1 bg-gray-100 dark:bg-[#243460] rounded-lg text-[10px] font-black text-gray-400 dark:text-[#7ba7e8]/60 uppercase tracking-widest">
+                                    #{trip.id}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3 mt-1.5 ml-0.5">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm ${st.class}`}>
+                                    <st.icon size={10} />
                                     {isRTL ? st.labelAr : st.label}
                                 </span>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm ${
                                     trip.type === 'forth' 
-                                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20' 
-                                    : 'bg-orange-50 text-orange-600 dark:bg-orange-900/20'
+                                    ? 'bg-[#0f2044] text-white' 
+                                    : 'bg-[#f5b800] text-[#0f2044]'
                                 }`}>
                                     {trip.type === 'forth' ? (isRTL ? 'رحلة الذهاب' : 'Forth Trip') : (isRTL ? 'رحلة العودة' : 'Back Trip')}
                                 </span>
@@ -120,9 +129,9 @@ export default function Show({ auth, trip }: Props) {
                     {trip.video_path && (
                         <button
                             onClick={() => setIsVideoModalOpen(true)}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/20 transition-all"
+                            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0f2044] hover:bg-[#1a2845] text-white rounded-xl text-xs font-black shadow-lg shadow-[#0f2044]/10 transition-all active:scale-95 border border-[#243460]"
                         >
-                            <Play size={18} fill="currentColor" />
+                            <Video size={14} />
                             {isRTL ? 'مشاهدة فيديو التوثيق' : 'Watch Verification Video'}
                         </button>
                     )}
@@ -132,8 +141,8 @@ export default function Show({ auth, trip }: Props) {
                     {/* Left Column: Stats & Info */}
                     <div className="lg:col-span-1 space-y-6">
                         {/* Bus & Route Card */}
-                        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                            <h3 className="text-sm font-bold opacity-40 uppercase tracking-widest mb-4">
+                        <div className="bg-white dark:bg-[#1a2845] rounded-[22px] shadow-2xl shadow-[#0f2044]/5 border border-gray-100 dark:border-[#243460] p-8">
+                            <h3 className="text-[10px] font-black text-gray-400 dark:text-[#7ba7e8]/40 uppercase tracking-widest mb-6 border-b border-gray-100 dark:border-[#243460] pb-2">
                                 {isRTL ? 'معلومات الحافلة والمسار' : 'Bus & Route Information'}
                             </h3>
                             <div className="space-y-4">
@@ -160,8 +169,8 @@ export default function Show({ auth, trip }: Props) {
                         </div>
 
                         {/* Staff Card */}
-                        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                            <h3 className="text-sm font-bold opacity-40 uppercase tracking-widest mb-4">
+                        <div className="bg-white dark:bg-[#1a2845] rounded-[22px] shadow-2xl shadow-[#0f2044]/5 border border-gray-100 dark:border-[#243460] p-8">
+                            <h3 className="text-[10px] font-black text-gray-400 dark:text-[#7ba7e8]/40 uppercase tracking-widest mb-6 border-b border-gray-100 dark:border-[#243460] pb-2">
                                 {isRTL ? 'طاقم الرحلة' : 'Trip Crew'}
                             </h3>
                             <div className="space-y-4">
@@ -187,8 +196,8 @@ export default function Show({ auth, trip }: Props) {
                         </div>
 
                         {/* Timing Stats */}
-                        <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl shadow-lg p-6 text-white">
-                            <h3 className="text-sm font-bold opacity-80 uppercase tracking-widest mb-4">
+                        <div className="bg-gradient-to-br from-[#0f2044] to-[#1a2845] rounded-[22px] shadow-xl p-8 text-white">
+                            <h3 className="text-[10px] font-black text-[#7ba7e8]/60 uppercase tracking-widest mb-6 border-b border-white/10 pb-2">
                                 {isRTL ? 'الجدول الزمني' : 'Trip Timeline'}
                             </h3>
                             <div className="space-y-4">
@@ -224,11 +233,11 @@ export default function Show({ auth, trip }: Props) {
 
                     {/* Right Column: Attendance List */}
                     <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                            <div className="p-6 border-b border-gray-50 dark:border-gray-700 flex items-center justify-between">
+                        <div className="bg-white dark:bg-[#1a2845] rounded-[22px] shadow-2xl shadow-[#0f2044]/5 border border-gray-100 dark:border-[#243460] overflow-hidden">
+                            <div className="p-8 border-b border-gray-50 dark:border-[#243460] flex items-center justify-between">
                                 <div>
-                                    <h2 className="text-xl font-bold">{isRTL ? 'قائمة تحضير الطلاب' : 'Student Attendance List'}</h2>
-                                    <p className="text-xs text-gray-400 mt-0.5">
+                                    <h2 className="text-xl font-extrabold text-[#0f2044] dark:text-white">{isRTL ? 'قائمة تحضير الطلاب' : 'Student Attendance List'}</h2>
+                                    <p className="text-[10px] font-bold text-gray-400 dark:text-[#7ba7e8]/40 uppercase tracking-widest mt-1">
                                         {isRTL ? `إجمالي ${trip.attendances.length} طالب مخصصين لهذه الرحلة` : `Total ${trip.attendances.length} students assigned to this trip`}
                                     </p>
                                 </div>
@@ -309,14 +318,14 @@ export default function Show({ auth, trip }: Props) {
 
             {/* Video Verification Modal */}
             <Modal show={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} maxWidth="2xl">
-                <div className={`p-0 overflow-hidden ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
-                    <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-                        <div className="flex items-center gap-2 font-bold text-indigo-600">
-                            <Video size={20} />
+                <div className={DS_modalContainer}>
+                    <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-[#243460]">
+                        <div className="flex items-center gap-3 font-black text-[#0f2044] dark:text-white uppercase tracking-widest text-xs">
+                            <Video size={16} className="text-[#f5b800]" />
                             {isRTL ? 'فيديو توثيق الرحلة' : 'Trip Verification Video'}
                         </div>
-                        <button onClick={() => setIsVideoModalOpen(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
-                            <X size={20} />
+                        <button onClick={() => setIsVideoModalOpen(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-[#1a2845] rounded-xl transition-colors">
+                            <X size={18} className="text-gray-400" />
                         </button>
                     </div>
                     

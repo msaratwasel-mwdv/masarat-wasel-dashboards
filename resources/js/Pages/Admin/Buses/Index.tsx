@@ -32,16 +32,29 @@ import {
   FileText,
   Smartphone,
   Plus,
+  Printer,
 } from "lucide-react";
 import {
   DS_pageTitle,
   DS_btnGold,
   DS_btnPrimary,
+  DS_btnSecondary,
   DS_statCard,
   DS_statIcon,
   DS_statLabel,
   DS_statValue2,
 } from "@/lib/DS";
+import PrintReportHeader from "@/Components/PrintReportHeader";
+
+// ─── Print CSS ──────────────────────────────────────────────────
+const PRINT_STYLES = `
+@media print {
+  body * { visibility: hidden !important; }
+  main { margin: 0 !important; position: static !important; }
+  #bus-print-area, #bus-print-area * { visibility: visible !important; }
+  #bus-print-area { position: absolute; inset: 0; width: 100%; padding: 20px; background: white; }
+}
+`;
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -513,71 +526,96 @@ export default function Index({
     to: buses.to,
   };
 
-  const headerAction = (
-    <button onClick={() => openModal("add")} className={DS_btnGold}>
-      <Plus className="w-4 h-4" />
-      {isRTL ? "تسجيل حافلة جديدة" : "Register New Bus"}
-    </button>
-  );
+  const handlePrint = () => window.print();
+
 
   return (
     <AuthenticatedLayout>
       <Head title={isRTL ? "إدارة أسطول الحافلات" : "Bus Fleet Management"} />
+      <style>{PRINT_STYLES}</style>
+
+      {/* ── Print Area (hidden on screen, visible on print) ── */}
+      <div id="bus-print-area" className="hidden print:block bg-white font-sans text-black w-full" dir={isRTL ? "rtl" : "ltr"}>
+        <PrintReportHeader
+          title={isRTL ? "تقرير أسطول الحافلات" : "Bus Fleet Report"}
+          schoolName={isRTL ? "إدارة شركة مسارات واصل" : "Masarat Wasel Company"}
+          schoolLogo={null}
+          printDate={`${isRTL ? "تاريخ الطباعة" : "Print Date"}: ${new Date().toLocaleDateString(isRTL ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric" })}`}
+          schoolAdminText={isRTL ? "إدارة الشركة" : "Company Admin"}
+        />
+        {/* Print Table */}
+        <div className="px-4">
+          <table className="w-full border-collapse border border-gray-300 text-[10px]">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 p-1.5 text-right font-bold w-8 text-black">#</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "رقم الحافلة" : "Bus No."}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "رقم اللوحة" : "Plate"}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الموديل / السنة" : "Model / Year"}</th>
+                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "السعة" : "Capacity"}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "السائق" : "Driver"}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "المسار" : "Route"}</th>
+                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "الحالة" : "Status"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {buses.data.map((bus, i) => (
+                <tr key={bus.id} className="border-b border-gray-300">
+                  <td className="border border-gray-300 p-1.5 text-center text-gray-700 font-semibold">{i + 1}</td>
+                  <td className="border border-gray-300 p-1.5 font-bold text-gray-900">{bus.bus_number}</td>
+                  <td className="border border-gray-300 p-1.5 font-mono text-gray-700">{bus.plate_number}</td>
+                  <td className="border border-gray-300 p-1.5 text-gray-700">{bus.model} {bus.year}</td>
+                  <td className="border border-gray-300 p-1.5 text-center font-bold text-gray-800">{bus.capacity}</td>
+                  <td className="border border-gray-300 p-1.5 text-gray-700">{bus.driver?.name || "—"}</td>
+                  <td className="border border-gray-300 p-1.5 text-gray-700">{bus.route?.name || "—"}</td>
+                  <td className="border border-gray-300 p-1.5 text-center">
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
+                      bus.status === "active" ? "bg-gray-100 text-black border-gray-400"
+                      : bus.status === "maintenance" ? "bg-gray-50 text-gray-600 border-gray-300"
+                      : "bg-gray-50 text-gray-400 border-gray-200"
+                    }`}>
+                      {bus.status === "active" ? (isRTL ? "نشطة" : "Active")
+                        : bus.status === "maintenance" ? (isRTL ? "صيانة" : "Maintenance")
+                        : (isRTL ? "خارج الخدمة" : "Out of Service")}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-8 flex justify-between items-center text-sm font-bold text-gray-800">
+            <p>{isRTL ? "إجمالي الحافلات" : "Total Buses"}: {buses.data.length}</p>
+            <p>{isRTL ? "توقيع مدير الشركة" : "Company Manager Signature"}: ............................</p>
+          </div>
+        </div>
+      </div>
 
       <div className={`pb-8 space-y-6 dir-${isRTL ? "rtl" : "ltr"}`}>
 
-        {/* ── Page Header ── */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className={DS_pageTitle}>{isRTL ? "إدارة أسطول الحافلات" : "Bus Fleet Management"}</h1>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
-              {isRTL
-                ? `${counts.all} حافلة — ${counts.active} نشطة — ${counts.maintenance} في الصيانة — ${counts.out_of_service} خارج الخدمة`
-                : `${counts.all} total — ${counts.active} active — ${counts.maintenance} maintenance — ${counts.out_of_service} out of service`}
-            </p>
-          </div>
-          <button onClick={() => openModal("add")} className={DS_btnGold}>
-            <Plus className="w-4 h-4" />
-            {isRTL ? "تسجيل حافلة جديدة" : "Register New Bus"}
-          </button>
+        {/* ── Page Header (title only — matches school pages) ── */}
+        <div className={isRTL ? "text-right" : "text-left"}>
+          <h1 className={DS_pageTitle}>{isRTL ? "إدارة أسطول الحافلات" : "Bus Fleet Management"}</h1>
+          <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mt-0.5">
+            {isRTL ? `إجمالي ${counts.all} حافلة في النظام` : `${counts.all} buses in the system`}
+          </p>
         </div>
 
-        {/* ── Stats Header Panel ── */}
+        {/* ── Stat Cards ── */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, staggerChildren: 0.08 }}
+          transition={{ duration: 0.4 }}
           className="grid grid-cols-2 lg:grid-cols-4 gap-4"
         >
           {[
-            {
-              label: isRTL ? "إجمالي الحافلات" : "Total Buses",
-              value: counts.all,
-              icon: <BusIcon className="w-5 h-5" />,
-              accent: "navy" as const,
-            },
-            {
-              label: isRTL ? "نشطة" : "Active",
-              value: counts.active,
-              icon: <CheckCircle2 className="w-5 h-5" />,
-              accent: "green" as const,
-            },
-            {
-              label: isRTL ? "في الصيانة" : "Maintenance",
-              value: counts.maintenance,
-              icon: <Wrench className="w-5 h-5" />,
-              accent: "gold" as const,
-            },
-            {
-              label: isRTL ? "خارج الخدمة" : "Out of Service",
-              value: counts.out_of_service,
-              icon: <XCircle className="w-5 h-5" />,
-              accent: "red" as const,
-            },
+            { label: isRTL ? "إجمالي الحافلات" : "Total Buses",     value: counts.all,            icon: <BusIcon className="w-5 h-5" />,      accent: "navy"  as const },
+            { label: isRTL ? "نشطة"            : "Active",           value: counts.active,         icon: <CheckCircle2 className="w-5 h-5" />, accent: "green" as const },
+            { label: isRTL ? "في الصيانة"      : "Maintenance",      value: counts.maintenance,    icon: <Wrench className="w-5 h-5" />,       accent: "gold"  as const },
+            { label: isRTL ? "خارج الخدمة"     : "Out of Service",   value: counts.out_of_service, icon: <XCircle className="w-5 h-5" />,      accent: "red"   as const },
           ].map((stat, i) => (
-            <motion.div key={i} whileHover={{ y: -2 }} className={DS_statCard(stat.accent)}>
+            <motion.div key={i} whileHover={{ y: -2 }} className={`${DS_statCard(stat.accent)} ${isRTL ? "flex-row-reverse" : ""}`}>
               <div className={DS_statIcon(stat.accent)}>{stat.icon}</div>
-              <div>
+              <div className={isRTL ? "text-right" : "text-left"}>
                 <p className={DS_statLabel}>{stat.label}</p>
                 <p className={DS_statValue2(stat.accent)}>{stat.value}</p>
               </div>
@@ -595,33 +633,39 @@ export default function Index({
             columns={columns}
             data={buses.data}
             pagination={pagination}
-            title={isRTL ? "أسطول الحافلات" : "Fleet Vehicles"}
-            subtitle={
-              isRTL
-                ? `${counts.all} حافلة — ${counts.active} نشطة — ${counts.maintenance} صيانة — ${counts.out_of_service} خارج الخدمة`
-                : `${counts.all} total — ${counts.active} active — ${counts.maintenance} maintenance — ${counts.out_of_service} out of service`
-            }
-            headerAction={headerAction}
             exportEnabled={true}
+            headerAction={
+              <div className={`flex gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+                <button onClick={handlePrint} className={DS_btnSecondary}>
+                  <Printer className="w-4 h-4" />
+                  {isRTL ? "طباعة" : "Print"}
+                </button>
+                <button onClick={() => openModal("add")} className={DS_btnGold}>
+                  <Plus className="w-4 h-4" />
+                  {isRTL ? "تسجيل حافلة جديدة" : "Register New Bus"}
+                </button>
+              </div>
+            }
             searchValue={search}
             onSearchChange={handleSearch}
-            searchPlaceholder={isRTL ? "بحث بالكود، اللوحة، المدرسة، السائق..." : "Search code, plate, school, driver..."}
+            searchPlaceholder={isRTL ? "بحث بالكود أو اللوحة أو السائق..." : "Search by code, plate, driver..."}
             filterTabs={filterTabs}
             activeFilter={filters.status}
             onFilterChange={handleFilterChange}
             emptyMessage={isRTL ? "لا توجد حافلات" : "No Buses Yet"}
             emptyDescription={
               isRTL
-                ? "لم يتم تسجيل أي حافلة في النظام بعد، ابدأ بإضافة أول حافلة."
-                : "No buses have been registered yet. Start by adding your first bus."
+                ? "لم يتم تسجيل أي حافلة. ابدأ بإضافة أول حافلة."
+                : "No buses registered. Start by adding your first bus."
             }
             emptyIcon={<BusIcon className="w-10 h-10" />}
             emptyAction={
-              filters.status === "all" || !filters.status
-                ? { label: isRTL ? "+ تسجيل حافلة جديدة" : "+ Register New Bus", onClick: () => openModal("add") }
+              !filters.status || filters.status === "all"
+                ? { label: isRTL ? "تسجيل حافلة جديدة" : "Register New Bus", onClick: () => openModal("add") }
                 : undefined
             }
           />
+
 
           {/* ==================== MODALS ==================== */}
 

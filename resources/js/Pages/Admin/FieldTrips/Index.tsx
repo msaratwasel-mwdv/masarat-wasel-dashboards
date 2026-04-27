@@ -1,9 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTheme } from '@/Contexts/ThemeContext';
 import useTranslation from '@/hooks/useTranslation';
 import AdminFieldTripDetailsModal from './Partials/AdminFieldTripDetailsModal';
+import PrintReportHeader from "@/Components/PrintReportHeader";
+import BaseDataTable from '@/Components/BaseDataTable';
+import Modal from '@/Components/Modal';
+import { 
+    Zap, 
+    Search, 
+    CheckCircle2, 
+    Play, 
+    Printer, 
+    X, 
+    MapPin, 
+    Calendar, 
+    Users, 
+    Bus as BusIcon,
+    Coins,
+    ShieldCheck,
+    Eye,
+    Check,
+    Ban
+} from 'lucide-react';
+import { createColumnHelper } from '@tanstack/react-table';
+import { 
+    DS_pageWrapper, 
+    DS_statCard, 
+    DS_statIcon, 
+    DS_statLabel, 
+    DS_statValue, 
+    DS_btnPrimary, 
+    DS_btnSecondary,
+    DS_modalContainer,
+    DS_modalHeader,
+    DS_modalHeaderTitle,
+    DS_modalHeaderAccent,
+    DS_modalClose,
+    DS_modalBody,
+    DS_modalFooter,
+    DS_input,
+    DS_select,
+    DS_label
+} from '@/lib/DS';
 
 interface School {
     id: number;
@@ -44,9 +84,19 @@ interface Props {
     buses: Bus[];
 }
 
-export default function Index({ auth, fieldTrips, buses }: Props) {
+export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
     const { isRTL } = useTheme();
     const { t } = useTranslation();
+    
+    const PRINT_STYLES = `
+    @media print {
+      body * { visibility: hidden !important; }
+      main { margin: 0 !important; position: static !important; }
+      #field-trip-print-area, #field-trip-print-area * { visibility: visible !important; }
+      #field-trip-print-area { position: absolute; inset: 0; width: 100%; padding: 20px; background: white; }
+      @page { size: landscape; margin: 1cm; }
+    }
+    `;
     
     // Detailed View Logic
     const [viewTripId, setViewTripId] = useState<number | null>(null);
@@ -113,196 +163,210 @@ export default function Index({ auth, fieldTrips, buses }: Props) {
         });
     };
 
-    const getStatusStyles = (status: string) => {
-        switch (status) {
-            case 'pending':
-                return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200";
-            case 'approved':
-                return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200";
-            case 'cancelled':
-            case 'rejected':
-                return "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200";
-            default:
-                return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200";
-        }
-    };
-
-    return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    // Table Setup
+    const columnHelper = createColumnHelper<FieldTrip>();
+    const columns = useMemo(() => [
+        columnHelper.accessor('name', {
+            header: isRTL ? 'بيانات الرحلة' : 'Trip Identity',
+            cell: info => (
+                <div className="flex items-center gap-4 py-1">
+                    <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-[#0f2044]/40 flex items-center justify-center text-xl shadow-inner border border-gray-100 dark:border-white/5 transition-transform group-hover:rotate-6">
+                        🚚
+                    </div>
                     <div>
-                        <h2 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight flex items-center gap-3">
-                            <span className="p-2 bg-brand-yellow/10 rounded-2xl animate-pulse">🚚</span>
-                            {t('Field Trips Logistics')}
-                        </h2>
-                        <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] mt-1 ml-1">
-                            {t('Fleet Management & Deployment Approval')}
-                        </p>
+                        <div className="font-black text-[#0f2044] dark:text-white text-sm leading-tight group-hover:text-[#f5b800] transition-colors">
+                            {info.getValue()}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500">{info.row.original.school?.name}</span>
+                        </div>
                     </div>
                 </div>
+            )
+        }),
+        columnHelper.accessor('destination_address', {
+            header: isRTL ? 'الوجهة' : 'Destination',
+            cell: info => (
+                <div className="flex items-center gap-2 text-xs font-bold text-gray-600 dark:text-gray-300">
+                    <MapPin size={14} className="text-[#f5b800]" />
+                    <span className="max-w-[150px] truncate">{info.getValue()}</span>
+                </div>
+            )
+        }),
+        columnHelper.accessor('date', {
+            header: isRTL ? 'التوقيت' : 'Schedule',
+            cell: info => (
+                <div className="flex flex-col gap-1">
+                    <div className="text-xs font-black text-[#0f2044] dark:text-gray-100 flex items-center gap-1.5">
+                        <Calendar size={13} className="text-gray-400" />
+                        {(info.getValue() as any)?.split('T')[0] || info.getValue() || '---'}
+                    </div>
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-5">
+                        {info.row.original.departure_time}
+                    </div>
+                </div>
+            )
+        }),
+        columnHelper.accessor('students_count', {
+            header: isRTL ? 'المشاركون' : 'Pax',
+            cell: info => (
+                <div className="flex items-center gap-3">
+                    <div className="flex flex-col items-center">
+                        <span className="text-sm font-black text-[#0f2044] dark:text-white leading-none">{info.getValue()}</span>
+                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">{t('Students')}</span>
+                    </div>
+                    <div className="w-px h-6 bg-gray-100 dark:bg-gray-800" />
+                    <div className="flex flex-col items-center">
+                        <span className="text-sm font-black text-[#f5b800] leading-none">{info.row.original.internal_teachers_count}</span>
+                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">{t('Staff')}</span>
+                    </div>
+                </div>
+            )
+        }),
+        columnHelper.accessor('bus', {
+            header: isRTL ? 'اللوجستيات' : 'Logistics',
+            cell: info => {
+                const bus = info.getValue();
+                const costVal = info.row.original.cost;
+                return bus ? (
+                    <div className="flex flex-col gap-1.5">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#0f2044] text-white rounded-lg text-[9px] font-black shadow-lg shadow-[#0f2044]/10">
+                            <BusIcon size={10} className="text-[#f5b800]" />
+                            {bus.bus_number}
+                        </div>
+                        {costVal && (
+                            <div className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                <Coins size={12} />
+                                {costVal} {isRTL ? 'ر.س' : 'SAR'}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="text-[9px] font-black text-amber-500 uppercase tracking-[0.2em] animate-pulse flex items-center gap-2">
+                        <Zap size={10} />
+                        {t('Pending')}
+                    </div>
+                );
             }
-        >
+        }),
+        columnHelper.accessor('status', {
+            header: isRTL ? 'الحالة' : 'Status',
+            cell: info => {
+                const status = info.getValue();
+                const config: any = {
+                    pending: { label: 'Pending', labelAr: 'قيد الانتظار', class: 'bg-amber-50 text-amber-600 border-amber-200' },
+                    approved: { label: 'Approved', labelAr: 'تمت الموافقة', class: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+                    rejected: { label: 'Rejected', labelAr: 'مرفوض', class: 'bg-rose-50 text-rose-600 border-rose-200' },
+                    cancelled: { label: 'Cancelled', labelAr: 'ملغي', class: 'bg-gray-50 text-gray-500 border-gray-200' }
+                };
+                const s = config[status] || { label: status, labelAr: status, class: 'bg-blue-50 text-blue-600' };
+                return (
+                    <span className={`px-4 py-1.5 text-[9px] font-black rounded-xl border uppercase tracking-widest ${s.class}`}>
+                        {isRTL ? s.labelAr : s.label}
+                    </span>
+                );
+            }
+        }),
+        columnHelper.display({
+            id: 'actions',
+            header: isRTL ? 'العمليات' : 'Ops',
+            cell: info => (
+                <div className="flex items-center justify-center gap-2">
+                    <button
+                        onClick={() => openDetails(info.row.original.id)}
+                        className="p-2.5 bg-gray-50 dark:bg-[#0f2044]/40 text-gray-500 hover:bg-[#0f2044] hover:text-white rounded-xl transition-all shadow-sm"
+                        title={t('Inspect')}
+                    >
+                        <Eye size={16} />
+                    </button>
+                    {info.row.original.status === 'pending' && (
+                        <>
+                            <button
+                                onClick={() => openApproveModal(info.row.original)}
+                                className="p-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-xl transition-all shadow-sm"
+                                title={t('Approve')}
+                            >
+                                <Check size={16} />
+                            </button>
+                            <button
+                                onClick={() => openRejectModal(info.row.original)}
+                                className="p-2.5 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm"
+                                title={t('Reject')}
+                            >
+                                <Ban size={16} />
+                            </button>
+                        </>
+                    )}
+                </div>
+            )
+        })
+    ], [isRTL, t]);
+
+    const handlePrint = () => window.print();
+
+    const stats = [
+        { label: t('Total Requests'), val: fieldTrips.length, icon: <Zap size={24} />, color: 'blue' },
+        { label: t('Pending Review'), val: fieldTrips.filter(t => t.status === 'pending').length, icon: <Search size={24} />, color: 'gold' },
+        { label: t('Approved Fleet'), val: fieldTrips.filter(t => t.status === 'approved').length, icon: <CheckCircle2 size={24} />, color: 'green' },
+        { label: t('Active/Past'), val: fieldTrips.filter(t => !['pending', 'approved'].includes(t.status)).length, icon: <Play size={24} />, color: 'blue' },
+    ];
+
+    return (
+        <AuthenticatedLayout user={auth.user}>
             <Head title={t('Field Trips Management')} />
 
-            <div className={`mt-8 ${isRTL ? 'rtl font-cairo' : 'ltr'}`}>
+            <div className={`${DS_pageWrapper} space-y-8 px-4 sm:px-6 lg:px-8 pt-8 pb-12`} dir={isRTL ? 'rtl' : 'ltr'}>
                 
-                {/* Statistics - Premium Design */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-                    {[
-                        { label: t('Total Requests'), val: fieldTrips.length, icon: '📊', color: 'bg-white' },
-                        { label: t('Pending Review'), val: fieldTrips.filter(t => t.status === 'pending').length, icon: '⏳', color: 'bg-amber-50' },
-                        { label: t('Approved Fleet'), val: fieldTrips.filter(t => t.status === 'approved').length, icon: '✅', color: 'bg-emerald-50' },
-                        { label: t('Active/Past'), val: fieldTrips.filter(t => !['pending', 'approved'].includes(t.status)).length, icon: '🏁', color: 'bg-blue-50' },
-                    ].map((stat, i) => (
-                        <div key={i} className={`${stat.color} dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-gray-700 transition-all hover:shadow-xl hover:-translate-y-1 group`}>
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-3xl group-hover:scale-125 transition-transform duration-500">{stat.icon}</span>
-                                <div className="h-2 w-12 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                     <div className="h-full bg-brand-navy rounded-full w-2/3"></div>
+                {/* Premium Header */}
+                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2 border-b border-gray-100 dark:border-[#243460]">
+                    <div>
+                        <h1 className="text-3xl font-black text-[#0f2044] dark:text-white flex items-center gap-4">
+                            <div className="w-12 h-12 bg-[#0f2044] rounded-2xl flex items-center justify-center text-white shadow-xl shadow-[#0f2044]/20">
+                                <Zap size={24} fill="#f5b800" className="text-[#f5b800]" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span>{isRTL ? 'الرحلات الميدانية' : 'Field Trips Logistics'}</span>
+                                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mt-1">
+                                    {isRTL ? 'إدارة وتفويض الرحلات اللوجستية' : 'Fleet Deployment & Quote Management'}
+                                </span>
+                            </div>
+                        </h1>
+                    </div>
+                </div>
+
+                {/* Premium Statistics Grid */}
+                <div className="relative group/stats">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-[#0f2044]/5 to-[#f5b800]/5 rounded-[32px] blur-xl opacity-50 group-hover/stats:opacity-100 transition-duration-500" />
+                    <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {stats.map((s, i) => (
+                            <div key={i} className={`${DS_statCard(s.color as any)} hover:shadow-2xl hover:shadow-[#0f2044]/10 transition-all duration-300 group/card border-b-4 border-b-[#0f2044]/20`}>
+                                <div className={`${DS_statIcon(s.color as any)} group-hover/card:scale-110 transition-transform`}>{s.icon}</div>
+                                <div>
+                                    <p className={DS_statLabel}>{s.label}</p>
+                                    <p className={DS_statValue}>{s.val}</p>
                                 </div>
                             </div>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
-                            <p className="text-4xl font-black text-gray-800 dark:text-white">{stat.val}</p>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
 
                 {/* Table Section */}
-                <div className="bg-white dark:bg-gray-800 rounded-[3rem] shadow-2xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden">
-                    <div className="p-8 border-b border-gray-50 dark:border-gray-700 flex justify-between items-center bg-gray-50/30 dark:bg-gray-900/30">
-                        <h3 className="text-xl font-black text-gray-800 dark:text-white flex items-center gap-3">
-                            <span className="w-2 h-8 bg-brand-yellow rounded-full"></span>
-                            {t('Logistics Pipeline')}
-                        </h3>
-                        <div className="flex gap-2">
-                             <div className="px-4 py-2 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-black text-gray-400 uppercase tracking-widest shadow-inner">
-                                {t('Operational View')}
-                             </div>
-                        </div>
-                    </div>
-
-                    <div className="overflow-x-auto custom-scrollbar">
-                        <table className="w-full text-start border-collapse">
-                            <thead>
-                                <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
-                                    <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-start">{t('Identity')}</th>
-                                    <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-start">{t('Schedule')}</th>
-                                    <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('Pax & Faculty')}</th>
-                                    <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('Assets & Quote')}</th>
-                                    <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('Status')}</th>
-                                    <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('Ops')}</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                                {fieldTrips.length > 0 ? fieldTrips.map((trip) => (
-                                    <tr key={trip.id} className="group hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition-all">
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-xl shadow-inner group-hover:bg-brand-navy group-hover:text-white transition-all transform group-hover:rotate-6">
-                                                     🏢
-                                                </div>
-                                                <div>
-                                                    <div className="font-black text-gray-800 dark:text-white text-base leading-tight">
-                                                        {trip.name}
-                                                    </div>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <span className="text-[10px] font-bold text-brand-navy dark:text-brand-yellow">{trip.school?.name}</span>
-                                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                                        <span className="text-[10px] text-gray-400 font-bold truncate max-w-[150px]">📍 {trip.destination_address}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="text-sm font-black text-gray-800 dark:text-gray-200">
-                                                    📅 {(trip.date as any).split('T')[0]}
-                                                </div>
-                                                <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                    <span className="p-1 bg-gray-100 dark:bg-gray-900 rounded-md">🕐</span>
-                                                    {trip.departure_time} {trip.arrival_time ? `→ ${trip.arrival_time}` : ''}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-6 text-center">
-                                            <div className="inline-flex items-center gap-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-lg font-black text-gray-800 dark:text-white leading-none">{trip.students_count}</span>
-                                                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('Students')}</span>
-                                                </div>
-                                                <div className="w-px h-6 bg-gray-200 dark:bg-gray-700"></div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-lg font-black text-purple-600 dark:text-purple-400 leading-none">{trip.internal_teachers_count}</span>
-                                                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('Staff')}</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-6 text-center">
-                                            {trip.bus ? (
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <div className="px-3 py-1 bg-brand-navy text-white rounded-full text-[10px] font-black shadow-lg">
-                                                        🚌 {trip.bus.bus_number}
-                                                    </div>
-                                                    <div className="text-[11px] font-black text-emerald-600">
-                                                        {trip.cost} ر.س
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest animate-pulse">
-                                                    --- {t('Pending Logistics')} ---
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-8 py-6 text-center">
-                                            <span className={`px-4 py-1.5 text-[9px] font-black rounded-xl border uppercase tracking-widest ${getStatusStyles(trip.status)}`}>
-                                                {t(trip.status.charAt(0).toUpperCase() + trip.status.slice(1))}
-                                            </span>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => openDetails(trip.id)}
-                                                    className="p-3 bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 rounded-2xl hover:bg-brand-navy hover:text-white transition-all shadow-sm group-hover:shadow-lg"
-                                                    title={t('Inspect Request')}
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                                </button>
-
-                                                {trip.status === 'pending' && (
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => openApproveModal(trip)}
-                                                            className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black rounded-2xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
-                                                        >
-                                                            {t('Quote & Assign')}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => openRejectModal(trip)}
-                                                            className="p-3 bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm"
-                                                            title={t('Decline Request')}
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={6} className="px-8 py-20 text-center">
-                                            <div className="flex flex-col items-center">
-                                                <div className="w-20 h-20 bg-gray-50 dark:bg-gray-900 rounded-[2rem] flex items-center justify-center text-4xl mb-4 grayscale opacity-50">📫</div>
-                                                <p className="text-sm font-black text-gray-300 dark:text-gray-600 uppercase tracking-widest">{t('Logistics pipeline is empty')}</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                <div className="w-full">
+                    <BaseDataTable<FieldTrip>
+                        columns={columns}
+                        data={fieldTrips}
+                        exportEnabled={true}
+                        headerAction={
+                            <div className="flex items-center gap-2">
+                                <button onClick={handlePrint} className={DS_btnSecondary}>
+                                    <Printer size={16} />
+                                    {isRTL ? 'طباعة اللوجستيات' : 'Print Report'}
+                                </button>
+                            </div>
+                        }
+                        searchPlaceholder={isRTL ? 'بحث عن رحلة...' : 'Search trip...'}
+                        emptyMessage={isRTL ? 'لا توجد رحلات ميدانية حالياً' : 'No field trips in the pipeline'}
+                    />
                 </div>
             </div>
 
@@ -313,146 +377,215 @@ export default function Index({ auth, fieldTrips, buses }: Props) {
                 tripId={viewTripId}
             />
 
-            {/* Premium Approval Modal */}
-            {isApproveModalOpen && selectedTrip && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur-xl p-4 animate-fadeIn">
-                    <div className="bg-white dark:bg-gray-800 rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden transform animate-slideUp border border-gray-100 dark:border-gray-700" dir={isRTL ? 'rtl' : 'ltr'}>
-                        <div className="p-10 bg-gradient-to-br from-emerald-500 to-emerald-700 text-white relative">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-                            <h3 className="text-3xl font-black tracking-tight leading-none mb-2">
-                                {t('Finalize Logistics')}
-                            </h3>
-                            <p className="text-emerald-100/60 text-xs font-bold uppercase tracking-widest">
-                                {selectedTrip.name} • {selectedTrip.school?.name}
-                            </p>
+            {/* Standardized Approval Modal */}
+            <Modal show={isApproveModalOpen} onClose={() => setIsApproveModalOpen(false)} maxWidth="lg">
+                <div className={`bg-white dark:bg-[#1a2845] w-full ${DS_modalContainer}`} dir={isRTL ? 'rtl' : 'ltr'}>
+                    <div className={DS_modalHeader(isRTL)}>
+                        <div className="flex items-center gap-3">
+                            <div className={DS_modalHeaderAccent} />
+                            <div className="flex items-center gap-2">
+                                <ShieldCheck className="w-5 h-5 text-[#f5b800]" />
+                                <h2 className={DS_modalHeaderTitle}>
+                                    {isRTL ? 'الموافقة وتخصيص الموارد' : 'Finalize Logistics'}
+                                </h2>
+                            </div>
                         </div>
+                        <button onClick={() => setIsApproveModalOpen(false)} className={DS_modalClose}>
+                            <X size={20} />
+                        </button>
+                    </div>
 
-                        <form onSubmit={handleApprove} className="p-10 space-y-8">
+                    <form onSubmit={handleApprove}>
+                        <div className={DS_modalBody}>
+                            <div className="mb-6 p-4 bg-gray-50 dark:bg-[#0f2044]/40 rounded-2xl border border-gray-100 dark:border-white/5">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('Trip Identity')}</p>
+                                <p className="text-sm font-black text-[#0f2044] dark:text-white">{selectedTrip?.name}</p>
+                                <p className="text-[11px] font-bold text-[#f5b800] mt-1">{selectedTrip?.school?.name}</p>
+                            </div>
+
                             <div className="space-y-6">
-                                <div className="group">
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1 transition-colors group-focus-within:text-emerald-500">
-                                        {t('Service Quote (SAR)')}
-                                    </label>
+                                <div>
+                                    <label className={DS_label}>{t('Service Quote (SAR)')}</label>
                                     <div className="relative">
-                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 font-black">SAR</span>
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                                            <Coins size={18} />
+                                        </div>
                                         <input
                                             type="number"
-                                            min="0"
-                                            step="0.01"
                                             required
                                             value={cost}
                                             onChange={(e) => setCost(e.target.value)}
-                                            className="w-full bg-gray-50/50 dark:bg-gray-900/50 border-2 border-gray-100 dark:border-gray-800 rounded-[1.5rem] pl-16 pr-6 py-5 focus:border-emerald-500 focus:ring-0 text-lg font-black transition-all outline-none"
+                                            className={`${DS_input} pl-12`}
                                             placeholder="0.00"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="group">
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1 transition-colors group-focus-within:text-emerald-500">
-                                        {t('Asset Deployment')}
-                                    </label>
-                                    <select
-                                        required
-                                        value={selectedBus}
-                                        onChange={(e) => setSelectedBus(e.target.value)}
-                                        className="w-full bg-gray-50/50 dark:bg-gray-900/50 border-2 border-gray-100 dark:border-gray-800 rounded-[1.5rem] px-6 py-5 focus:border-emerald-500 focus:ring-0 text-sm font-black transition-all outline-none appearance-none cursor-pointer"
-                                    >
-                                        <option value="" disabled>{t('--- Select Heavy Asset ---')}</option>
-                                        {buses.map(bus => (
-                                            <option key={bus.id} value={bus.id}>
-                                                {bus.bus_number} 📡 {bus.plate_number} ({bus.capacity} {t('seats')})
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <div className="mt-3 flex items-center gap-2 px-1">
-                                         <span className="p-1 bg-gray-100 dark:bg-gray-700 rounded text-[8px]">⚠️</span>
-                                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                                            {t('Operational limit:')} {selectedTrip.students_count} {t('requested seats')}
-                                         </p>
+                                <div>
+                                    <label className={DS_label}>{t('Asset Deployment')}</label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                            <BusIcon size={18} />
+                                        </div>
+                                        <select
+                                            required
+                                            value={selectedBus}
+                                            onChange={(e) => setSelectedBus(e.target.value)}
+                                            className={`${DS_select} pl-12`}
+                                        >
+                                            <option value="" disabled>{t('--- Select Heavy Asset ---')}</option>
+                                            {buses.map(bus => (
+                                                <option key={bus.id} value={bus.id}>
+                                                    {bus.bus_number} | {bus.plate_number} ({bus.capacity} {t('seats')})
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
+                                    <p className="mt-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2 px-1">
+                                        <Users size={12} className="text-amber-500" />
+                                        {t('Required Seats:')} {selectedTrip?.students_count}
+                                    </p>
                                 </div>
                             </div>
-
-                            <div className="flex gap-4 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsApproveModalOpen(false)}
-                                    className="flex-1 py-5 bg-gray-50 dark:bg-gray-900 text-gray-400 font-black rounded-[1.5rem] hover:bg-gray-100 transition-all uppercase tracking-widest text-[10px]"
-                                >
-                                    {t('Abort')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="flex-[2] py-5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-[1.5rem] transition-all flex justify-center items-center gap-3 shadow-2xl shadow-emerald-500/30 disabled:opacity-50 uppercase tracking-widest text-[10px]"
-                                >
-                                    {isSubmitting ? (
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    ) : (
-                                        <>
-                                            <span>{t('Confirm Deployment')}</span>
-                                            <span className="text-lg leading-none">🚀</span>
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Premium Rejection Modal */}
-            {isRejectModalOpen && selectedTrip && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur-xl p-4 animate-fadeIn">
-                    <div className="bg-white dark:bg-gray-800 rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden transform animate-slideUp border border-gray-100 dark:border-gray-700" dir={isRTL ? 'rtl' : 'ltr'}>
-                        <div className="p-8 border-b border-gray-50 dark:border-gray-700 flex items-center justify-between">
-                            <div>
-                                <h3 className="text-xl font-black text-gray-800 dark:text-white leading-none mb-1">
-                                    {t('Decline Requisition')}
-                                </h3>
-                                <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest italic">
-                                    {selectedTrip.name}
-                                </p>
-                            </div>
-                            <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center text-lg">🚫</div>
                         </div>
 
-                        <form onSubmit={handleRejectSubmit} className="p-8">
-                            <div className="mb-8">
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">
-                                    {t('Official Reason (Optional)')}
-                                </label>
+                        <div className={DS_modalFooter(isRTL)}>
+                            <button
+                                type="button"
+                                onClick={() => setIsApproveModalOpen(false)}
+                                className={DS_btnSecondary}
+                            >
+                                {t('Abort')}
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className={DS_btnPrimary}
+                            >
+                                {isSubmitting ? (
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                ) : (
+                                    <>
+                                        <ShieldCheck size={16} />
+                                        {t('Confirm Deployment')}
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
+
+            {/* Standardized Rejection Modal */}
+            <Modal show={isRejectModalOpen} onClose={() => setIsRejectModalOpen(false)} maxWidth="md">
+                <div className={`bg-white dark:bg-[#1a2845] w-full ${DS_modalContainer}`} dir={isRTL ? 'rtl' : 'ltr'}>
+                    <div className={DS_modalHeader(isRTL)}>
+                        <div className="flex items-center gap-3">
+                            <div className="w-1.5 h-8 bg-rose-500 rounded-full" />
+                            <div className="flex items-center gap-2">
+                                <Ban className="w-5 h-5 text-rose-500" />
+                                <h2 className={DS_modalHeaderTitle}>
+                                    {isRTL ? 'رفض الطلب' : 'Decline Requisition'}
+                                </h2>
+                            </div>
+                        </div>
+                        <button onClick={() => setIsRejectModalOpen(false)} className={DS_modalClose}>
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleRejectSubmit}>
+                        <div className={DS_modalBody}>
+                            <div className="mb-6">
+                                <label className={DS_label}>{t('Official Reason')}</label>
                                 <textarea
+                                    required
                                     rows={4}
                                     value={rejectionReason}
                                     onChange={(e) => setRejectionReason(e.target.value)}
-                                    className="w-full bg-gray-50/50 dark:bg-gray-900/50 border-2 border-gray-100 dark:border-gray-800 rounded-2xl px-5 py-4 focus:border-rose-500 focus:ring-0 text-sm font-bold transition-all resize-none outline-none"
+                                    className={DS_input}
                                     placeholder={t('Detail why this request cannot be fulfilled...')}
                                 />
                             </div>
+                        </div>
 
-                            <div className="flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsRejectModalOpen(false)}
-                                    className="flex-1 py-4 bg-gray-50 dark:bg-gray-900 text-gray-400 font-black rounded-2xl text-[10px] uppercase tracking-widest"
-                                >
-                                    {t('Back')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="flex-[2] py-4 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-rose-600/20 disabled:opacity-50 text-[10px] uppercase tracking-widest"
-                                >
-                                    {isSubmitting ? t('Processing...') : t('Final Rejection')}
-                                </button>
-                            </div>
-                        </form>
+                        <div className={DS_modalFooter(isRTL)}>
+                            <button
+                                type="button"
+                                onClick={() => setIsRejectModalOpen(false)}
+                                className={DS_btnSecondary}
+                            >
+                                {t('Back')}
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="inline-flex items-center gap-2 px-8 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-lg shadow-rose-600/20 transition-all active:scale-95 disabled:opacity-50"
+                            >
+                                {isSubmitting ? t('Processing...') : t('Final Rejection')}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
+
+            {/* ── Print Area (Standardized) ── */}
+            <style>{PRINT_STYLES}</style>
+            <div id="field-trip-print-area" className="hidden print:block bg-white text-black w-full" dir={isRTL ? "rtl" : "ltr"}>
+                <PrintReportHeader
+                    title={isRTL ? "تقرير الرحلات الميدانية" : "Field Trips Report"}
+                    schoolName={isRTL ? "إدارة شركة مسارات واصل" : "Masarat Wasel Admin"}
+                    schoolLogo={null}
+                    printDate={`${isRTL ? "تاريخ الطباعة" : "Print Date"}: ${new Date().toLocaleDateString(isRTL ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric" })}`}
+                    schoolAdminText={isRTL ? "إدارة العمليات" : "Operations Dept"}
+                />
+                
+                <div className="px-4">
+                    <table className="w-full border-collapse border border-gray-300 text-[10px]">
+                        <thead>
+                            <tr className="bg-gray-100">
+                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black w-8">#</th>
+                                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "اسم الرحلة" : "Trip Name"}</th>
+                                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "المدرسة" : "School"}</th>
+                                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الوجهة" : "Destination"}</th>
+                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "التاريخ" : "Date"}</th>
+                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "الحافلة" : "Bus"}</th>
+                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "التكلفة" : "Cost"}</th>
+                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "الحالة" : "Status"}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {fieldTrips.map((trip, i) => (
+                                <tr key={trip.id} className="border-b border-gray-300">
+                                    <td className="border border-gray-300 p-1.5 text-center font-bold">{i + 1}</td>
+                                    <td className="border border-gray-300 p-1.5 font-bold">{trip.name}</td>
+                                    <td className="border border-gray-300 p-1.5">{trip.school?.name}</td>
+                                    <td className="border border-gray-300 p-1.5">{trip.destination_address}</td>
+                                    <td className="border border-gray-300 p-1.5 text-center">{trip.date}</td>
+                                    <td className="border border-gray-300 p-1.5 text-center">{trip.bus?.bus_number || '---'}</td>
+                                    <td className="border border-gray-300 p-1.5 text-center font-bold">{trip.cost || '---'} ر.س</td>
+                                    <td className="border border-gray-300 p-1.5 text-center">
+                                        <span className="px-2 py-0.5 border border-gray-400 rounded text-[8px] font-black uppercase">
+                                            {trip.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    
+                    <div className="mt-12 flex justify-between items-end text-xs font-black text-gray-800">
+                        <div className="space-y-1">
+                            <p>{isRTL ? "إجمالي الرحلات:" : "Total Trips:"} {fieldTrips.length}</p>
+                            <p>{isRTL ? "الموافق عليها:" : "Approved:"} {fieldTrips.filter(t => t.status === 'approved').length}</p>
+                        </div>
+                        <div className="text-center pb-2">
+                            <div className="w-48 h-px bg-gray-300 mb-2" />
+                            <p>{isRTL ? "توقيع مدير العمليات" : "Operations Manager Signature"}</p>
+                        </div>
                     </div>
                 </div>
-            )}
-
+            </div>
         </AuthenticatedLayout>
     );
 }

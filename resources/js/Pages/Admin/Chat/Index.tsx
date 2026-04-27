@@ -1,7 +1,33 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, router } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
+import useTranslation from "@/hooks/useTranslation";
+import BaseDataTable from "@/Components/BaseDataTable";
+import { createColumnHelper } from "@tanstack/react-table";
+import { 
+    MessageSquare, 
+    Search, 
+    Users, 
+    School as SchoolIcon, 
+    Clock, 
+    Eye,
+    MessageCircle,
+    User,
+    ShieldCheck,
+    Zap,
+    Navigation
+} from "lucide-react";
+import { 
+    DS_pageWrapper, 
+    DS_statCard, 
+    DS_statIcon, 
+    DS_statLabel, 
+    DS_statValue, 
+    DS_btnSecondary,
+    DS_select,
+    DS_input
+} from "@/lib/DS";
 
 interface Participant {
   id: number;
@@ -32,6 +58,7 @@ interface SchoolFilter {
 }
 
 interface Props {
+  auth: any;
   conversations: {
     data: ConversationItem[];
     current_page: number;
@@ -45,8 +72,9 @@ interface Props {
   };
 }
 
-export default function Index({ conversations, schools, filters }: Props) {
+export default function Index({ auth, conversations, schools, filters }: Props) {
   const { isRTL, theme } = useTheme();
+  const { t } = useTranslation();
   const isDark = theme === "dark";
 
   const [search, setSearch] = useState(filters.search || "");
@@ -65,36 +93,20 @@ export default function Index({ conversations, schools, filters }: Props) {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case "parent":
-        return isDark
-          ? "bg-blue-900/40 text-blue-300 border-blue-700"
-          : "bg-blue-100 text-blue-800 border-blue-200";
-      case "driver":
-        return isDark
-          ? "bg-green-900/40 text-green-300 border-green-700"
-          : "bg-green-100 text-green-800 border-green-200";
-      case "supervisor":
-        return isDark
-          ? "bg-purple-900/40 text-purple-300 border-purple-700"
-          : "bg-purple-100 text-purple-800 border-purple-200";
-      default:
-        return isDark
-          ? "bg-gray-700 text-gray-300 border-gray-600"
-          : "bg-gray-100 text-gray-800 border-gray-200";
+      case "parent": return "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800";
+      case "driver": return "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800";
+      case "supervisor": return "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800";
+      default: return "bg-gray-50 text-gray-600 border-gray-100 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700";
     }
   };
 
   const getRoleLabel = (role: string) => {
     if (!isRTL) return role;
     switch (role) {
-      case "parent":
-        return "ولي أمر";
-      case "driver":
-        return "سائق";
-      case "supervisor":
-        return "مشرفة";
-      default:
-        return role;
+      case "parent": return "ولي أمر";
+      case "driver": return "سائق";
+      case "supervisor": return "مشرفة";
+      default: return role;
     }
   };
 
@@ -108,485 +120,225 @@ export default function Index({ conversations, schools, filters }: Props) {
     if (hours < 1) return isRTL ? "الآن" : "Just now";
     if (hours < 24) return isRTL ? `منذ ${hours} ساعة` : `${hours}h ago`;
     if (days < 7) return isRTL ? `منذ ${days} يوم` : `${days}d ago`;
-    return d.toLocaleDateString(isRTL ? "ar-SA" : "en-US", {
-      month: "short",
-      day: "numeric",
-    });
+    return d.toLocaleDateString(isRTL ? "ar-SA" : "en-US", { month: "short", day: "numeric" });
   };
 
-  // Stats
-  const stats = useMemo(() => {
-    return {
-      total: conversations.total,
-      active: conversations.data.filter((c) => c.last_message).length,
-    };
-  }, [conversations]);
+  // Table Setup
+  const columnHelper = createColumnHelper<ConversationItem>();
+  const columns = useMemo(() => [
+    columnHelper.accessor('participants', {
+      header: isRTL ? 'أطراف المحادثة' : 'Participants',
+      cell: info => (
+        <div className="flex flex-col gap-2 py-1">
+          {info.getValue().map((p) => (
+            <div key={p.id} className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shadow-inner ${
+                p.role === "parent" ? "bg-blue-500" : p.role === "driver" ? "bg-emerald-500" : "bg-purple-500"
+              } text-white`}>
+                {p.name.charAt(0)}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-black text-[#0f2044] dark:text-white truncate leading-tight">{p.name}</span>
+                <span className={`inline-flex px-1.5 py-0.5 text-[8px] font-black rounded uppercase tracking-tighter w-fit mt-0.5 border ${getRoleBadge(p.role)}`}>
+                  {getRoleLabel(p.role)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    }),
+    columnHelper.accessor('school', {
+      header: isRTL ? 'المدرسة' : 'Educational Unit',
+      cell: info => info.getValue() ? (
+        <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gray-50 dark:bg-[#0f2044]/40 rounded-lg flex items-center justify-center text-[#f5b800] border border-gray-100 dark:border-white/5 shadow-sm">
+                <SchoolIcon size={14} />
+            </div>
+            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{info.getValue()?.name}</span>
+        </div>
+      ) : <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">— {t('Global Channel')} —</span>
+    }),
+    columnHelper.accessor('last_message', {
+      header: isRTL ? 'آخر نشاط' : 'Intel Summary',
+      cell: info => {
+        const msg = info.getValue();
+        return msg ? (
+          <div className="max-w-[200px] flex flex-col gap-1">
+            <p className="text-xs font-black text-[#0f2044] dark:text-gray-100 truncate">
+              <span className="text-[#f5b800]">{msg.sender}:</span> {msg.body}
+            </p>
+            <div className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+              <Clock size={10} />
+              {formatDate(msg.created_at)}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-[10px] font-black text-gray-300 uppercase tracking-widest italic">
+            <Zap size={12} className="opacity-30" />
+            {t('Radio Silence')}
+          </div>
+        );
+      }
+    }),
+    columnHelper.accessor('messages_count', {
+      header: isRTL ? 'إجمالي الرسائل' : 'Traffic',
+      cell: info => (
+        <div className="flex flex-col items-center gap-1">
+            <span className="px-3 py-1 bg-[#0f2044] text-[#f5b800] rounded-lg text-[10px] font-black shadow-lg shadow-[#0f2044]/10">
+                {info.getValue()}
+            </span>
+            <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">{t('Units')}</span>
+        </div>
+      )
+    }),
+    columnHelper.display({
+      id: 'actions',
+      header: isRTL ? 'الإجراءات' : 'Ops',
+      cell: info => (
+        <div className="flex items-center justify-center">
+            <Link
+                href={route("admin.chat.show", info.row.original.id)}
+                className="p-3 bg-gray-50 dark:bg-[#0f2044]/40 text-gray-500 hover:bg-[#0f2044] hover:text-white rounded-xl transition-all shadow-sm group"
+                title={t('Live Intercept')}
+            >
+                <Eye size={18} className="group-hover:scale-110 transition-transform" />
+            </Link>
+        </div>
+      )
+    })
+  ], [isRTL, t, isDark]);
+
+  const statsGrid = [
+    { label: t('Total Channels'), val: conversations.total, icon: <MessageSquare size={24} />, color: 'blue' },
+    { label: t('Active Traffic'), val: conversations.data.filter((c) => c.last_message).length, icon: <Zap size={24} />, color: 'gold' },
+    { label: t('Educational Units'), val: schools.length, icon: <SchoolIcon size={24} />, color: 'navy' },
+  ];
 
   return (
-    <AuthenticatedLayout
-      header={
-        <h2
-          className={`font-semibold text-xl ${
-            isDark ? "text-gray-200" : "text-gray-800"
-          } leading-tight`}
-        >
-          {isRTL ? "مراقبة المحادثات" : "Conversation Monitor"}
-        </h2>
-      }
-    >
-      <Head title={isRTL ? "المحادثات" : "Conversations"} />
+    <AuthenticatedLayout user={auth.user}>
+      <Head title={t('Conversation Monitor')} />
 
-      <div className={`py-6 dir-${isRTL ? "rtl" : "ltr"}`}>
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          {/* --- Stats --- */}
-          <div
-            className={`grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 ${
-              isRTL ? "rtl" : ""
-            }`}
-          >
-            {[
-              {
-                title: isRTL ? "إجمالي المحادثات" : "Total Conversations",
-                value: stats.total,
-                gradient:
-                  "shadow-indigo-500/30 bg-gradient-to-br from-indigo-400 to-indigo-600",
-                icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z",
-              },
-              {
-                title: isRTL ? "محادثات نشطة" : "Active Chats",
-                value: stats.active,
-                gradient:
-                  "shadow-green-500/30 bg-gradient-to-br from-green-400 to-green-600",
-                icon: "M13 10V3L4 14h7v7l9-11h-7z",
-              },
-              {
-                title: isRTL ? "المدارس" : "Schools",
-                value: schools.length,
-                gradient:
-                  "shadow-amber-500/30 bg-gradient-to-br from-amber-400 to-amber-600",
-                icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
-              },
-            ].map((stat, idx) => (
-              <div
-                key={idx}
-                className={`${
-                  isDark
-                    ? "bg-gray-800 border-gray-700"
-                    : "bg-white border-gray-200"
-                } p-4 rounded-2xl shadow-sm border flex items-center justify-between transition-all hover:shadow-md`}
-              >
-                <div>
-                  <p
-                    className={`text-xs font-bold uppercase tracking-wider mb-1 ${
-                      isDark ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    {stat.title}
-                  </p>
-                  <p
-                    className={`text-2xl font-extrabold ${
-                      isDark ? "text-white" : "text-gray-800"
-                    }`}
-                  >
-                    {stat.value}
-                  </p>
+      <div className={`${DS_pageWrapper} space-y-8 px-4 sm:px-6 lg:px-8 pt-8 pb-12`} dir={isRTL ? 'rtl' : 'ltr'}>
+        
+        {/* Premium Command Header */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2 border-b border-gray-100 dark:border-[#243460]">
+            <div className="flex items-center gap-5">
+                <div className="w-14 h-14 bg-[#0f2044] rounded-[1.25rem] flex items-center justify-center text-white shadow-2xl shadow-[#0f2044]/30 relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <MessageCircle size={28} fill="#f5b800" className="text-[#f5b800] relative z-10" />
                 </div>
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg ${stat.gradient}`}
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d={stat.icon}
-                    />
-                  </svg>
+                <div className="flex flex-col">
+                    <h1 className="text-3xl font-black text-[#0f2044] dark:text-white tracking-tight">
+                        {isRTL ? 'مراقب المحادثات' : 'Communication Relay'}
+                    </h1>
+                    <div className="flex items-center gap-2 mt-1">
+                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                        <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">
+                            {isRTL ? 'رصد وتحليل تدفق البيانات الحي' : 'Live Intercept & Network Oversight'}
+                        </span>
+                    </div>
                 </div>
-              </div>
-            ))}
-          </div>
-
-          {/* --- Filters --- */}
-          <div
-            className={`flex flex-col md:flex-row justify-between items-center mb-6 gap-4 ${
-              isRTL ? "md:flex-row-reverse" : ""
-            }`}
-          >
-            {/* Search */}
-            <div className="relative w-full md:w-96">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && applyFilters()}
-                placeholder={isRTL ? "البحث بالاسم..." : "Search by name..."}
-                className={`w-full ${
-                  isRTL ? "pr-10 pl-4" : "pl-10 pr-4"
-                } py-2 rounded-lg border focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition ${
-                  isDark
-                    ? "bg-gray-800 border-gray-700 text-white placeholder-gray-500"
-                    : "bg-white border-gray-300 text-gray-900"
-                }`}
-              />
-              <svg
-                className={`w-5 h-5 absolute top-2.5 ${
-                  isRTL ? "right-3" : "left-3"
-                } text-gray-400`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
             </div>
-
-            {/* School Filter */}
-            <select
-              value={schoolFilter}
-              onChange={(e) => {
-                setSchoolFilter(e.target.value);
-                router.get(
-                  route("admin.chat.index"),
-                  {
-                    search: search || undefined,
-                    school_id: e.target.value || undefined,
-                  },
-                  { preserveState: true, replace: true }
-                );
-              }}
-              className={`px-4 py-2 rounded-lg border focus:ring-2 focus:ring-indigo-500 transition ${
-                isDark
-                  ? "bg-gray-800 border-gray-700 text-white"
-                  : "bg-white border-gray-300 text-gray-900"
-              }`}
-            >
-              <option value="">{isRTL ? "كل المدارس" : "All Schools"}</option>
-              {schools.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* --- Conversations Table --- */}
-          <div
-            className={`${
-              isDark
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-100"
-            } shadow-xl rounded-2xl overflow-hidden border`}
-          >
-            <div className="overflow-x-auto">
-              <table
-                className={`min-w-full divide-y ${
-                  isDark ? "divide-gray-700" : "divide-gray-200"
-                }`}
-              >
-                <thead
-                  className={`${isDark ? "bg-gray-900/50" : "bg-gray-50"}`}
-                >
-                  <tr>
-                    <th
-                      className={`px-6 py-4 text-xs font-bold ${
-                        isDark ? "text-gray-400" : "text-gray-500"
-                      } uppercase tracking-wider ${
-                        isRTL ? "text-right" : "text-left"
-                      }`}
-                    >
-                      {isRTL ? "المشاركون" : "Participants"}
-                    </th>
-                    <th
-                      className={`px-6 py-4 text-xs font-bold ${
-                        isDark ? "text-gray-400" : "text-gray-500"
-                      } uppercase tracking-wider ${
-                        isRTL ? "text-right" : "text-left"
-                      }`}
-                    >
-                      {isRTL ? "المدرسة" : "School"}
-                    </th>
-                    <th
-                      className={`px-6 py-4 text-xs font-bold ${
-                        isDark ? "text-gray-400" : "text-gray-500"
-                      } uppercase tracking-wider ${
-                        isRTL ? "text-right" : "text-left"
-                      }`}
-                    >
-                      {isRTL ? "آخر رسالة" : "Last Message"}
-                    </th>
-                    <th
-                      className={`px-6 py-4 text-xs font-bold ${
-                        isDark ? "text-gray-400" : "text-gray-500"
-                      } uppercase tracking-wider text-center`}
-                    >
-                      {isRTL ? "الرسائل" : "Messages"}
-                    </th>
-                    <th
-                      className={`px-6 py-4 text-xs font-bold ${
-                        isDark ? "text-gray-400" : "text-gray-500"
-                      } uppercase tracking-wider ${
-                        isRTL ? "text-left" : "text-right"
-                      }`}
-                    >
-                      {isRTL ? "الإجراءات" : "Actions"}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody
-                  className={`${
-                    isDark
-                      ? "bg-gray-800 divide-gray-700"
-                      : "bg-white divide-gray-200"
-                  } divide-y`}
-                >
-                  {conversations.data.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center">
-                        <div className="flex flex-col items-center justify-center text-gray-400">
-                          <svg
-                            className="w-16 h-16 mb-4 opacity-30"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={1}
-                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                            />
-                          </svg>
-                          <p className="text-sm font-medium">
-                            {isRTL
-                              ? "لا توجد محادثات حتى الآن."
-                              : "No conversations found."}
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    conversations.data.map((conv) => (
-                      <tr
-                        key={conv.id}
-                        className={`${
-                          isDark
-                            ? "hover:bg-gray-700/50"
-                            : "hover:bg-indigo-50/30"
-                        } transition-colors duration-200`}
-                      >
-                        {/* Participants */}
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col gap-1.5">
-                            {conv.participants.map((p) => (
-                              <div
-                                key={p.id}
-                                className={`flex items-center gap-2 ${
-                                  isRTL ? "flex-row-reverse" : ""
-                                }`}
-                              >
-                                <div
-                                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                                    p.role === "parent"
-                                      ? "bg-blue-500"
-                                      : p.role === "driver"
-                                      ? "bg-green-500"
-                                      : "bg-purple-500"
-                                  } text-white`}
-                                >
-                                  {p.name.charAt(0)}
-                                </div>
-                                <div
-                                  className={isRTL ? "text-right" : "text-left"}
-                                >
-                                  <span
-                                    className={`text-sm font-semibold block ${
-                                      isDark ? "text-white" : "text-gray-900"
-                                    }`}
-                                  >
-                                    {p.name}
-                                  </span>
-                                  <span
-                                    className={`inline-block px-1.5 py-0.5 text-[10px] font-bold rounded border ${getRoleBadge(
-                                      p.role
-                                    )}`}
-                                  >
-                                    {getRoleLabel(p.role)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-
-                        {/* School */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {conv.school ? (
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                isDark
-                                  ? "bg-amber-900/30 text-amber-300"
-                                  : "bg-amber-100 text-amber-800"
-                              }`}
-                            >
-                              {conv.school.name}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-400">—</span>
-                          )}
-                        </td>
-
-                        {/* Last Message */}
-                        <td className="px-6 py-4">
-                          {conv.last_message ? (
-                            <div className="max-w-xs">
-                              <p
-                                className={`text-sm truncate ${
-                                  isDark ? "text-gray-300" : "text-gray-700"
-                                }`}
-                              >
-                                <span className="font-semibold">
-                                  {conv.last_message.sender}:
-                                </span>{" "}
-                                {conv.last_message.body}
-                              </p>
-                              <p
-                                className={`text-xs mt-0.5 ${
-                                  isDark ? "text-gray-500" : "text-gray-400"
-                                }`}
-                              >
-                                {formatDate(conv.last_message.created_at)}
-                              </p>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-400 italic">
-                              {isRTL ? "لا توجد رسائل" : "No messages"}
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Messages Count */}
-                        <td className="px-6 py-4 text-center">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                              isDark
-                                ? "bg-gray-700 text-gray-300"
-                                : "bg-gray-100 text-gray-700"
-                            }`}
-                          >
-                            {conv.messages_count}
-                          </span>
-                        </td>
-
-                        {/* Actions */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div
-                            className={`flex items-center justify-end gap-2 ${
-                              isRTL ? "flex-row-reverse" : ""
-                            }`}
-                          >
-                            <Link
-                              href={route("admin.chat.show", conv.id)}
-                              className={`p-2 rounded-lg transition ${
-                                isDark
-                                  ? "text-gray-400 hover:text-indigo-400 hover:bg-gray-700"
-                                  : "text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
-                              }`}
-                              title={
-                                isRTL ? "عرض المحادثة" : "View Conversation"
-                              }
-                            >
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                />
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                />
-                              </svg>
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            {conversations.last_page > 1 && (
-              <div
-                className={`px-6 py-4 border-t flex items-center justify-between ${
-                  isDark ? "border-gray-700" : "border-gray-200"
-                }`}
-              >
-                <p
-                  className={`text-sm ${
-                    isDark ? "text-gray-400" : "text-gray-600"
-                  }`}
-                >
-                  {isRTL
-                    ? `صفحة ${conversations.current_page} من ${conversations.last_page}`
-                    : `Page ${conversations.current_page} of ${conversations.last_page}`}
-                </p>
-                <div className="flex gap-2">
-                  {conversations.current_page > 1 && (
-                    <Link
-                      href={route("admin.chat.index", {
-                        page: conversations.current_page - 1,
-                        ...filters,
-                      })}
-                      className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
-                        isDark
-                          ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {isRTL ? "السابق" : "Prev"}
-                    </Link>
-                  )}
-                  {conversations.current_page < conversations.last_page && (
-                    <Link
-                      href={route("admin.chat.index", {
-                        page: conversations.current_page + 1,
-                        ...filters,
-                      })}
-                      className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
-                        isDark
-                          ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {isRTL ? "التالي" : "Next"}
-                    </Link>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
+
+        {/* Intelligence Statistics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {statsGrid.map((s, i) => (
+                <div key={i} className={`${DS_statCard(s.color as any)} group/card hover:shadow-2xl transition-all duration-500 relative overflow-hidden border-b-4 border-[#0f2044]/20`}>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50/50 dark:bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover/card:scale-150 transition-transform duration-700" />
+                    <div className={`${DS_statIcon(s.color as any)} group-hover/card:rotate-12 transition-transform`}>{s.icon}</div>
+                    <div className="relative z-10">
+                        <p className={DS_statLabel}>{s.label}</p>
+                        <p className={DS_statValue}>{s.val}</p>
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        {/* Deployment Matrix (Table) */}
+        <div className="relative">
+            <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/5 to-[#f5b800]/5 rounded-[2.5rem] blur-2xl opacity-50" />
+            <div className="relative">
+                <BaseDataTable<ConversationItem>
+                    columns={columns}
+                    data={conversations.data}
+                    exportEnabled={true}
+                    headerAction={
+                        <div className="flex flex-col md:flex-row items-center gap-3">
+                            <div className="relative">
+                                <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && applyFilters()}
+                                    className={`${DS_input} pl-10 min-w-[240px] h-10`}
+                                    placeholder={isRTL ? "البحث عن مشارك..." : "Search operative..."}
+                                />
+                            </div>
+                            <div className="relative">
+                                <Navigation size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                <select
+                                    value={schoolFilter}
+                                    onChange={(e) => {
+                                        setSchoolFilter(e.target.value);
+                                        router.get(
+                                            route("admin.chat.index"),
+                                            {
+                                                search: search || undefined,
+                                                school_id: e.target.value || undefined,
+                                            },
+                                            { preserveState: true, replace: true }
+                                        );
+                                    }}
+                                    className={`${DS_select} pl-10 h-10`}
+                                >
+                                    <option value="">{isRTL ? "جميع الوحدات التعليمية" : "All Operational Units"}</option>
+                                    {schools.map((s) => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    }
+                    emptyMessage={isRTL ? 'لم يتم رصد أي نشاط في الشبكة' : 'No network activity detected'}
+                />
+            </div>
+        </div>
+
+        {/* Global Network Footer */}
+        <div className="flex flex-col md:flex-row items-center justify-between p-8 bg-[#0f2044] rounded-[2rem] shadow-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#f5b800]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative z-10 space-y-2">
+                <h4 className="text-xl font-black text-white">{isRTL ? 'الشبكة التشغيلية الموحدة' : 'Unified Operational Network'}</h4>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">{isRTL ? 'إدارة قنوات الاتصال بين المدارس، السائقين، وأولياء الأمور' : 'Overseeing channels between Schools, Logistics, & Guardians'}</p>
+            </div>
+            <div className="relative z-10 mt-6 md:mt-0 flex gap-10">
+                <div className="text-center">
+                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{t('Parent Node')}</p>
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                        <span className="text-xs font-black text-white">Active</span>
+                    </div>
+                </div>
+                <div className="text-center">
+                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{t('Logistics Node')}</p>
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                        <span className="text-xs font-black text-white">Active</span>
+                    </div>
+                </div>
+                <div className="text-center">
+                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{t('Control Node')}</p>
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
+                        <span className="text-xs font-black text-white">Active</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
       </div>
     </AuthenticatedLayout>
   );

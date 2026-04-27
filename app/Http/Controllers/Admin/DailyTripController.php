@@ -37,10 +37,14 @@ class DailyTripController extends Controller
         }
 
         $trips = $query->paginate(50)->withQueryString();
+        $buses = Bus::with(['driver.user', 'assistant'])->get();
+        $routes = Route::all();
 
         return Inertia::render('Admin/DailyTrips/Index', [
             'trips'   => $trips,
             'filters' => $request->only('date', 'status'),
+            'buses'   => $buses,
+            'routes'  => $routes,
         ]);
     }
 

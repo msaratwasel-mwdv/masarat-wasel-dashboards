@@ -14,7 +14,53 @@ import {
   Mail,
   Phone,
   UserCheck,
+  Eye,
+  Printer,
+  X,
+  MapPin,
+  CreditCard,
+  Briefcase,
+  ShieldCheck,
+  ShieldAlert,
+  ArrowLeft,
+  ChevronRight
 } from "lucide-react";
+import { 
+    DS_pageWrapper, 
+    DS_card, 
+    DS_pageTitle,
+    DS_statCard,
+    DS_statIcon,
+    DS_statLabel,
+    DS_statValue2,
+    DS_btnGold,
+    DS_btnSecondary,
+    DS_modalContainer,
+    DS_modalHeader,
+    DS_modalHeaderTitle,
+    DS_modalHeaderAccent,
+    DS_modalClose,
+    DS_modalBody,
+    DS_modalFooter,
+    DS_input,
+    DS_label,
+    DS_btnPrimary,
+    DS_btnDanger,
+    DS_btnEdit
+} from "@/lib/DS";
+import PrintReportHeader from "@/Components/PrintReportHeader";
+import { AnimatePresence } from "framer-motion";
+import Modal from "@/Components/Modal";
+
+// ─── Print CSS ──────────────────────────────────────────────────
+const PRINT_STYLES = `
+@media print {
+  body * { visibility: hidden !important; }
+  main { margin: 0 !important; position: static !important; }
+  #school-print-area, #school-print-area * { visibility: visible !important; }
+  #school-print-area { position: absolute; inset: 0; width: 100%; padding: 20px; background: white; }
+}
+`;
 
 interface User {
   id: number;
@@ -44,12 +90,15 @@ interface Props {
   filters: {
     search: string;
   };
+  auth: any;
 }
 
-export default function SchoolUsersIndex({ users, filters }: Props) {
+export default function SchoolUsersIndex({ users, filters, auth }: Props) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
   const [search, setSearch] = useState(filters.search);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   const debouncedSearch = useMemo(
     () =>
@@ -68,40 +117,80 @@ export default function SchoolUsersIndex({ users, filters }: Props) {
     debouncedSearch(value);
   };
 
+  const openDetailsModal = (user: User) => {
+    setSelectedUser(user);
+    setShowDetailsModal(true);
+  };
+
+  const handlePrint = () => window.print();
+
   const columnHelper = createColumnHelper<User>();
 
   const columns = useMemo(
     () => [
       columnHelper.accessor("name", {
-        header: isRTL ? "المدير" : "Admin Name",
-        cell: (info) => (
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-brand-navy/10 flex items-center justify-center font-bold text-sm overflow-hidden">
-              {info.row.original.image ? (
-                <img src={`/storage/${info.row.original.image}`} className="w-full h-full object-cover" />
-              ) : (
-                info.row.original.name.charAt(0)
-              )}
+        header: isRTL ? "مدير المدرسة" : "School Manager",
+        cell: (info) => {
+          const user = info.row.original;
+          return (
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-[#0f2044]/10 dark:bg-[#0f2044]/40 text-[#0f2044] dark:text-[#f5b800] flex items-center justify-center font-black text-sm overflow-hidden shadow-sm border border-gray-100 dark:border-white/5">
+                {user.image ? (
+                  <img
+                    src={`/storage/${user.image}`}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  user.name.charAt(0)
+                )}
+              </div>
+              <div className="flex flex-col">
+                <span className={`text-sm font-black ${isDark ? "text-white" : "text-[#0f2044]"} tracking-tight`}>
+                  {user.name}
+                </span>
+                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 truncate max-w-[150px]">
+                  {user.email}
+                </span>
+              </div>
             </div>
-            <div>
-              <div className="font-bold">{info.row.original.name}</div>
-              <div className="text-xs text-gray-500">{info.row.original.email}</div>
-            </div>
-          </div>
-        ),
+          );
+        },
       }),
       columnHelper.accessor("phone", {
         header: isRTL ? "الجوال" : "Phone",
       }),
       columnHelper.accessor("school_admin.school.name", {
-        header: isRTL ? "المدرسة" : "School",
+        header: isRTL ? "المؤسسة التعليمية" : "Educational Institution",
         cell: (info) => (
           <div className="flex items-center gap-2">
-            <School className="w-4 h-4 text-brand-yellow" />
-            <span>{info.getValue() || "—"}</span>
+            <div className="p-1.5 bg-[#f5b800]/10 rounded-lg text-[#f5b800]">
+                <School size={14} />
+            </div>
+            <span className={`text-sm font-bold ${isDark ? "text-gray-300" : "text-[#0f2044]"}`}>
+                {info.getValue() || (isRTL ? "غير مرتبطة" : "UNLINKED")}
+            </span>
           </div>
         ),
       }),
+      columnHelper.display({
+        id: "actions",
+        header: isRTL ? "الإجراءات" : "Actions",
+        cell: (info) => {
+            const user = info.row.original;
+            return (
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => openDetailsModal(user)}
+                        className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                        title={isRTL ? "عرض الملف" : "View Dossier"}
+                    >
+                        <Eye size={16} />
+                    </button>
+                </div>
+            );
+        }
+      })
     ],
     [isRTL]
   );
@@ -117,23 +206,197 @@ export default function SchoolUsersIndex({ users, filters }: Props) {
   };
 
   return (
-    <AuthenticatedLayout
-      header={<h2 className="font-bold text-xl">{isRTL ? "مدراء المدارس" : "School Admins"}</h2>}
-    >
-      <Head title={isRTL ? "مدراء المدارس" : "School Admins"} />
+    <AuthenticatedLayout user={auth.user}>
+      <Head title={isRTL ? "إدارة مدراء المدارس" : "School Managers Management"} />
+      <style>{PRINT_STYLES}</style>
 
-      <div className="space-y-6">
-        <BaseDataTable<User>
-          columns={columns}
-          data={users.data}
-          pagination={pagination}
-          searchValue={search}
-          onSearchChange={handleSearch}
-          searchPlaceholder={isRTL ? "بحث بالاسم، البريد..." : "Search name, email..."}
-          emptyMessage={isRTL ? "لا يوجد مدراء مدارس" : "No School Admins found"}
-          emptyIcon={<UserCheck className="w-10 h-10" />}
+      {/* ── Print Area (Unified System) ── */}
+      <div id="school-print-area" className="hidden print:block bg-white font-sans text-black w-full" dir={isRTL ? "rtl" : "ltr"}>
+        <PrintReportHeader
+          title={isRTL ? "تقرير بيانات مدراء المدارس" : "School Managers Operational Report"}
+          schoolName={isRTL ? "إدارة شركة مسارات واصل" : "Masarat Wasel Company"}
+          schoolLogo={null}
+          printDate={`${isRTL ? "تاريخ الطباعة" : "Print Date"}: ${new Date().toLocaleDateString(isRTL ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric" })}`}
+          schoolAdminText={isRTL ? "إدارة الشركة" : "Company Admin"}
         />
+        <div className="px-4">
+          <table className="w-full border-collapse border border-gray-300 text-[10px]">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 p-1.5 text-right font-bold w-8 text-black">#</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "المدير" : "Manager"}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "المدرسة" : "School"}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الجوال" : "Phone"}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "البريد الإلكتروني" : "Email"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.data.map((user, i) => (
+                <tr key={user.id} className="border-b border-gray-300">
+                  <td className="border border-gray-300 p-1.5 text-center text-gray-700">{i + 1}</td>
+                  <td className="border border-gray-300 p-1.5 font-bold text-gray-900">{user.name}</td>
+                  <td className="border border-gray-300 p-1.5 text-gray-700">{user.school_admin?.school.name || "—"}</td>
+                  <td className="border border-gray-300 p-1.5 text-gray-700">{user.phone}</td>
+                  <td className="border border-gray-300 p-1.5 text-gray-700">{user.email}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-8`} dir={isRTL ? 'rtl' : 'ltr'}>
+        
+        {/* Modern Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <div className="flex flex-col">
+                <h1 className={DS_pageTitle}>
+                    {isRTL ? "إدارة مدراء المدارس" : "School Managers Oversight"}
+                </h1>
+                <div className="flex items-center gap-2 mt-1">
+                    <div className="w-1.5 h-1.5 bg-[#f5b800] rounded-full" />
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        {users.total} {isRTL ? "مدير مفوض حالياً" : "Authorized Managers Currently"}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        {/* Intelligence Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className={DS_statCard('blue')}>
+                <div className={DS_statIcon('blue')}><Users size={20} /></div>
+                <div>
+                    <p className={DS_statLabel}>{isRTL ? "إجمالي المدراء" : "Total Managers"}</p>
+                    <p className={DS_statValue2('blue')}>{users.total}</p>
+                </div>
+            </div>
+            <div className={DS_statCard('green')}>
+                <div className={DS_statIcon('green')}><School size={20} /></div>
+                <div>
+                    <p className={DS_statLabel}>{isRTL ? "المدارس المرتبطة" : "Linked Schools"}</p>
+                    <p className={DS_statValue2('green')}>{users.data.filter(u => u.school_admin?.school).length}</p>
+                </div>
+            </div>
+            <div className={DS_statCard('red')}>
+                <div className={DS_statIcon('red')}><ShieldAlert size={20} /></div>
+                <div>
+                    <p className={DS_statLabel}>{isRTL ? "صلاحيات الوصول" : "Access Level"}</p>
+                    <p className={DS_statValue2('red')}>{isRTL ? "مدير نظام" : "Admin Level"}</p>
+                </div>
+            </div>
+        </div>
+
+        {/* Main Operational Table */}
+        <div className={DS_card}>
+            <BaseDataTable<User>
+                columns={columns}
+                data={users.data}
+                pagination={pagination}
+                searchValue={search}
+                onSearchChange={handleSearch}
+                searchPlaceholder={isRTL ? "البحث في سجلات المدراء..." : "Search manager records..."}
+                exportEnabled={true}
+                headerAction={
+                    <button onClick={handlePrint} className={DS_btnSecondary}>
+                        <Printer size={16} />
+                        <span>{isRTL ? "طباعة التقارير" : "Print Reports"}</span>
+                    </button>
+                }
+            />
+        </div>
+
+        {/* --- Manager Dossier Details Modal --- */}
+        <AnimatePresence>
+            {showDetailsModal && selectedUser && (
+                <Modal show={showDetailsModal} onClose={() => setShowDetailsModal(false)} maxWidth="2xl">
+                    <div className={DS_modalContainer}>
+                        {/* Dossier Header */}
+                        <div className="relative h-40 bg-[#0f2044] overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-transparent z-10" />
+                            <div className="absolute top-6 inset-x-6 flex justify-between items-center z-20">
+                                <span className="px-3 py-1 bg-[#f5b800] text-[#0f2044] rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
+                                    {isRTL ? "رتبة: مدير مدرسة" : "Role: School Manager"}
+                                </span>
+                                <button onClick={() => setShowDetailsModal(false)} className={DS_modalClose}>
+                                    <X size={18} />
+                                </button>
+                            </div>
+                            
+                            {/* Visual ID */}
+                            <div className="absolute -bottom-8 left-10 w-24 h-24 rounded-2xl border-4 border-white dark:border-[#1a2845] bg-white dark:bg-[#0f2044] shadow-2xl overflow-hidden z-20">
+                                {selectedUser.image ? (
+                                    <img src={`/storage/${selectedUser.image}`} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-3xl font-black text-[#0f2044] dark:text-[#f5b800] bg-gray-50">
+                                        {selectedUser.name.charAt(0)}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="pt-12 pb-8 px-10">
+                            <div className="border-b border-gray-100 dark:border-[#243460] pb-6">
+                                <h2 className="text-2xl font-black text-[#0f2044] dark:text-white tracking-tighter">
+                                    {selectedUser.name}
+                                </h2>
+                                <div className="flex gap-2 mt-2">
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
+                                        <Mail size={12} /> {selectedUser.email}
+                                    </div>
+                                    <div className="w-1 h-1 bg-gray-300 rounded-full mt-2" />
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
+                                        <Phone size={12} /> {selectedUser.phone}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                                <div className="space-y-6">
+                                    <h3 className="text-[10px] font-black text-gray-400 dark:text-[#7ba7e8] uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <School size={14} className="text-[#f5b800]" /> {isRTL ? "المدرسة المرتبطة" : "Affiliated School"}
+                                    </h3>
+                                    <div className="p-4 bg-[#0f2044]/5 dark:bg-[#0f2044]/30 rounded-2xl border border-gray-100 dark:border-[#243460]">
+                                        <p className="text-sm font-black text-[#0f2044] dark:text-gray-300">
+                                            {selectedUser.school_admin?.school.name || (isRTL ? "غير مرتبطة" : "UNLINKED")}
+                                        </p>
+                                        <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase">
+                                            {isRTL ? "بيانات المؤسسة التعليمية" : "Institution Records"}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <h3 className="text-[10px] font-black text-gray-400 dark:text-[#7ba7e8] uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <ShieldCheck size={14} className="text-[#f5b800]" /> {isRTL ? "الحالة النظامية" : "System Status"}
+                                    </h3>
+                                    <div className="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 flex items-center justify-between">
+                                        <span className="text-xs font-black text-emerald-600 uppercase tracking-widest">{isRTL ? "نشط" : "Active"}</span>
+                                        <UserCheck size={16} className="text-emerald-500" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+        </AnimatePresence>
+
       </div>
     </AuthenticatedLayout>
   );
+}
+
+function InfoRow({ icon, label, value, isDark }: any) {
+    return (
+        <div className="flex items-center justify-between py-2 border-b border-gray-50 dark:border-[#243460] last:border-0">
+            <div className="flex items-center gap-3">
+                <div className={`p-1.5 rounded-lg ${isDark ? "bg-gray-800 text-gray-500" : "bg-[#0f2044]/5 text-[#0f2044]"}`}>
+                    {icon}
+                </div>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</span>
+            </div>
+            <span className={`text-xs font-bold ${isDark ? "text-gray-200" : "text-[#0f2044]"}`}>{value}</span>
+        </div>
+    );
 }

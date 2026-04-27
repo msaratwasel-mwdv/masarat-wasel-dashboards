@@ -4,6 +4,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { 
+    DS_pageWrapper, 
+    DS_inputCls, 
+    DS_labelCls, 
+    DS_submitBtn, 
+    DS_cancelBtn 
+} from "@/lib/DS";
+import { Edit3, Calendar, Bus as BusIcon, MapPin, ArrowLeft, Clock, Activity } from 'lucide-react';
 
 interface User {
     id: number;
@@ -79,116 +87,129 @@ export default function Edit({ auth, trip, routes, buses }: Props) {
         <AuthenticatedLayout user={auth.user}>
             <Head title={isRTL ? 'تعديل الرحلة' : 'Edit Trip'} />
 
-            <div className="max-w-2xl mx-auto space-y-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                        {isRTL ? '✏️ تعديل الرحلة' : '✏️ Edit Trip'}
-                    </h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        {isRTL
-                            ? `تعديل تفاصيل رحلة حافلة ${trip.bus?.bus_number || '---'}`
-                            : `Editing trip details for bus ${trip.bus?.bus_number || '---'}`}
-                    </p>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                    <form onSubmit={handleSubmit} className="space-y-5">
-
-                        {/* Route Selection */}
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                {isRTL ? 'المسار' : 'Route'}
-                            </label>
-                            <select
-                                value={data.route_id}
-                                onChange={e => setData('route_id', e.target.value)}
-                                className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                                required
-                            >
-                                <option value="">{isRTL ? 'اختر المسار' : 'Select Route'}</option>
-                                {routes.map(route => {
-                                    const isDefault = trip.bus?.route_id === route.id;
-                                    return (
-                                        <option key={route.id} value={route.id}>
-                                            {route.name} {isDefault ? (isRTL ? '(المسار الافتراضي)' : '(Bus Default)') : ''}
-                                        </option>
-                                    );
-                                })}
-                            </select>
-                            {errors.route_id && <p className="text-red-500 text-xs mt-1">{errors.route_id}</p>}
-                        </div>
-
-                        {/* Status */}
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                {isRTL ? 'حالة الرحلة' : 'Trip Status'}
-                            </label>
-                            <select
-                                value={data.status}
-                                onChange={e => setData('status', e.target.value)}
-                                className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                                required
-                            >
-                                {statusOptions.map(opt => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {isRTL ? opt.labelAr : opt.label}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors.status && <p className="text-red-500 text-xs mt-1">{errors.status}</p>}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            {/* Departure Time */}
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                    {isRTL ? 'وقت التحرك' : 'Departure Time'}
-                                </label>
-                                <input
-                                    type="datetime-local"
-                                    value={data.departure_time}
-                                    onChange={e => setData('departure_time', e.target.value)}
-                                    className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                                    required
-                                />
-                                {errors.departure_time && <p className="text-red-500 text-xs mt-1">{errors.departure_time}</p>}
-                            </div>
-
-                            {/* Arrival Time */}
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                    {isRTL ? 'وقت الوصول' : 'Arrival Time'}
-                                </label>
-                                <input
-                                    type="datetime-local"
-                                    value={data.arrival_time}
-                                    onChange={e => setData('arrival_time', e.target.value)}
-                                    className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                                />
-                                {errors.arrival_time && <p className="text-red-500 text-xs mt-1">{errors.arrival_time}</p>}
-                            </div>
-                        </div>
-
-                        {/* Note: In a real "full control" scenario, we might want to change drivers here as well.
-                            For now, we'll keep it focused on the trip status and times. */}
-
-                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                            <button
-                                type="button"
+            <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 pt-6 pb-12`}>
+                <div className="max-w-3xl mx-auto">
+                    {/* Unified Header */}
+                    <div className="mb-8">
+                        <div className="flex items-center gap-3 mb-2">
+                            <button 
                                 onClick={() => router.get(route('admin.daily-trips.index'))}
-                                className="px-6 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-[#1a2845] rounded-xl transition-all"
                             >
-                                {isRTL ? 'إلغاء' : 'Cancel'}
+                                <ArrowLeft className={`w-5 h-5 text-gray-400 ${isRTL ? 'rotate-180' : ''}`} />
                             </button>
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="px-8 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/30 transition-all disabled:opacity-50"
-                            >
-                                {processing ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'تحديث الرحلة' : 'Update Trip')}
-                            </button>
+                            <h1 className="text-2xl font-extrabold text-[#0f2044] dark:text-white">
+                                {isRTL ? 'تعديل بيانات الرحلة' : 'Edit Trip Details'}
+                            </h1>
                         </div>
-                    </form>
+                        <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider ml-12">
+                            {isRTL
+                                ? `تعديل تفاصيل رحلة حافلة ${trip.bus?.bus_number || '---'}`
+                                : `Editing trip details for bus ${trip.bus?.bus_number || '---'}`}
+                        </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#1a2845] rounded-[22px] shadow-2xl shadow-[#0f2044]/5 border border-gray-100 dark:border-[#243460] overflow-hidden">
+                        <div className="p-8">
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Route Selection */}
+                                    <div>
+                                        <label className={DS_labelCls}>
+                                            <MapPin className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
+                                            {isRTL ? 'المسار' : 'Route'}
+                                        </label>
+                                        <select
+                                            value={data.route_id}
+                                            onChange={e => setData('route_id', e.target.value)}
+                                            className={DS_inputCls}
+                                            required
+                                        >
+                                            <option value="">{isRTL ? 'اختر المسار' : 'Select Route'}</option>
+                                            {routes.map(route => {
+                                                const isDefault = trip.bus?.route_id === route.id;
+                                                return (
+                                                    <option key={route.id} value={route.id}>
+                                                        {route.name} {isDefault ? (isRTL ? '(المسار الافتراضي)' : '(Bus Default)') : ''}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
+                                        {errors.route_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.route_id}</p>}
+                                    </div>
+
+                                    {/* Status */}
+                                    <div>
+                                        <label className={DS_labelCls}>
+                                            <Activity className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
+                                            {isRTL ? 'حالة الرحلة' : 'Trip Status'}
+                                        </label>
+                                        <select
+                                            value={data.status}
+                                            onChange={e => setData('status', e.target.value)}
+                                            className={DS_inputCls}
+                                            required
+                                        >
+                                            {statusOptions.map(opt => (
+                                                <option key={opt.value} value={opt.value}>
+                                                    {isRTL ? opt.labelAr : opt.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.status && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.status}</p>}
+                                    </div>
+
+                                    {/* Departure Time */}
+                                    <div>
+                                        <label className={DS_labelCls}>
+                                            <Clock className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
+                                            {isRTL ? 'وقت التحرك' : 'Departure Time'}
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            value={data.departure_time}
+                                            onChange={e => setData('departure_time', e.target.value)}
+                                            className={DS_inputCls}
+                                            required
+                                        />
+                                        {errors.departure_time && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.departure_time}</p>}
+                                    </div>
+
+                                    {/* Arrival Time */}
+                                    <div>
+                                        <label className={DS_labelCls}>
+                                            <Clock className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
+                                            {isRTL ? 'وقت الوصول' : 'Arrival Time'}
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            value={data.arrival_time}
+                                            onChange={e => setData('arrival_time', e.target.value)}
+                                            className={DS_inputCls}
+                                        />
+                                        {errors.arrival_time && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.arrival_time}</p>}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-end gap-4 pt-8 border-t border-gray-100 dark:border-[#243460]">
+                                    <button
+                                        type="button"
+                                        onClick={() => router.get(route('admin.daily-trips.index'))}
+                                        className="px-8 py-2.5 text-xs font-black text-gray-400 dark:text-[#7ba7e8]/40 hover:text-gray-600 transition-colors uppercase tracking-widest"
+                                    >
+                                        {isRTL ? 'إلغاء' : 'Cancel'}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="px-10 py-2.5 bg-[#f5b800] hover:bg-[#e5ac00] text-[#0f2044] rounded-xl text-xs font-black shadow-lg shadow-[#f5b800]/20 transition-all disabled:opacity-50 active:scale-95"
+                                    >
+                                        {processing ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'تحديث البيانات' : 'Update Trip')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>

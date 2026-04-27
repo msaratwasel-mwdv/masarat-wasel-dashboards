@@ -1,8 +1,38 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, router, useForm } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
 import Modal from "@/Components/Modal";
+import useTranslation from "@/hooks/useTranslation";
+import { 
+    ChevronRight, 
+    ChevronLeft, 
+    ShieldAlert, 
+    Trash2, 
+    Clock, 
+    MessageCircle, 
+    Users,
+    School as SchoolIcon,
+    AlertTriangle,
+    Zap,
+    Info,
+    ArrowLeft
+} from "lucide-react";
+import { 
+    DS_pageWrapper, 
+    DS_card, 
+    DS_modalContainer, 
+    DS_modalHeader, 
+    DS_modalHeaderTitle, 
+    DS_modalHeaderAccent, 
+    DS_modalClose, 
+    DS_modalBody, 
+    DS_modalFooter,
+    DS_btnSecondary,
+    DS_btnPrimary,
+    DS_label,
+    DS_input
+} from "@/lib/DS";
 
 interface Participant {
   id: number;
@@ -32,6 +62,7 @@ interface ConversationDetail {
 }
 
 interface Props {
+  auth: any;
   conversation: ConversationDetail;
   messages: {
     data: MessageItem[];
@@ -41,84 +72,56 @@ interface Props {
   };
 }
 
-export default function Show({ conversation, messages }: Props) {
+export default function Show({ auth, conversation, messages }: Props) {
   const { isRTL, theme } = useTheme();
+  const { t } = useTranslation();
   const isDark = theme === "dark";
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState<MessageItem | null>(
-    null
-  );
+  const [selectedMessage, setSelectedMessage] = useState<MessageItem | null>(null);
   const [selectedUser, setSelectedUser] = useState<Participant | null>(null);
 
   const alertForm = useForm({ alert_message: "" });
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case "parent":
-        return "bg-blue-500";
-      case "driver":
-        return "bg-green-500";
-      case "supervisor":
-        return "bg-purple-500";
-      default:
-        return "bg-gray-500";
+      case "parent": return "bg-blue-500";
+      case "driver": return "bg-emerald-500";
+      case "supervisor": return "bg-purple-500";
+      default: return "bg-gray-500";
     }
   };
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case "parent":
-        return isDark
-          ? "bg-blue-900/40 text-blue-300"
-          : "bg-blue-100 text-blue-700";
-      case "driver":
-        return isDark
-          ? "bg-green-900/40 text-green-300"
-          : "bg-green-100 text-green-700";
-      case "supervisor":
-        return isDark
-          ? "bg-purple-900/40 text-purple-300"
-          : "bg-purple-100 text-purple-700";
-      default:
-        return isDark
-          ? "bg-gray-700 text-gray-300"
-          : "bg-gray-100 text-gray-700";
+      case "parent": return "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-300";
+      case "driver": return "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300";
+      case "supervisor": return "bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-300";
+      default: return "bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
     }
   };
 
   const getRoleLabel = (role: string) => {
     if (!isRTL) return role;
     switch (role) {
-      case "parent":
-        return "ولي أمر";
-      case "driver":
-        return "سائق";
-      case "supervisor":
-        return "مشرفة";
-      default:
-        return role;
+      case "parent": return "ولي أمر";
+      case "driver": return "سائق";
+      case "supervisor": return "مشرفة";
+      default: return role;
     }
   };
 
   const formatTimestamp = (dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleString(isRTL ? "ar-SA" : "en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
     });
   };
 
   const formatTimeOnly = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleTimeString(isRTL ? "ar-SA" : "en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return d.toLocaleTimeString(isRTL ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" });
   };
 
   const handleDeleteMessage = () => {
@@ -160,508 +163,297 @@ export default function Show({ conversation, messages }: Props) {
   });
 
   return (
-    <AuthenticatedLayout
-      header={
-        <div
-          className={`flex items-center gap-4 ${
-            isRTL ? "flex-row-reverse" : ""
-          }`}
-        >
-          <Link
-            href={route("admin.chat.index")}
-            className={`p-2 rounded-lg transition ${
-              isDark
-                ? "hover:bg-gray-700 text-gray-400"
-                : "hover:bg-gray-100 text-gray-600"
-            }`}
-          >
-            <svg
-              className={`w-5 h-5 ${isRTL ? "" : "rotate-180"}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </Link>
-          <h2
-            className={`font-semibold text-xl ${
-              isDark ? "text-gray-200" : "text-gray-800"
-            } leading-tight`}
-          >
-            {isRTL ? "تفاصيل المحادثة" : "Conversation Details"}
-          </h2>
+    <AuthenticatedLayout user={auth.user}>
+      <Head title={t('Conversation Intercept')} />
+
+      <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-8`} dir={isRTL ? 'rtl' : 'ltr'}>
+        
+        {/* Intelligence Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 pb-6 border-b border-gray-100 dark:border-[#243460]">
+            <div className="flex items-center gap-4">
+                <Link
+                    href={route("admin.chat.index")}
+                    className="w-10 h-10 rounded-xl bg-white dark:bg-[#0f2044] shadow-sm border border-gray-100 dark:border-white/5 flex items-center justify-center text-[#0f2044] dark:text-[#f5b800] hover:scale-105 transition-all"
+                >
+                    {isRTL ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+                </Link>
+                <div className="flex flex-col">
+                    <h1 className="text-2xl font-black text-[#0f2044] dark:text-white tracking-tight">
+                        {isRTL ? 'رصد المحادثة' : 'Relay Intercept'}
+                    </h1>
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-[#f5b800] rounded-full animate-pulse" />
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                            ID: #{conversation.id} • {t('Live Monitoring')}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {conversation.school && (
+                <div className="flex items-center gap-3 bg-[#0f2044]/5 dark:bg-[#0f2044]/40 px-4 py-2.5 rounded-[1.25rem] border border-[#0f2044]/10 dark:border-white/5">
+                    <div className="w-8 h-8 bg-[#0f2044] text-[#f5b800] rounded-lg flex items-center justify-center shadow-lg">
+                        <SchoolIcon size={16} />
+                    </div>
+                    <span className="text-sm font-black text-[#0f2044] dark:text-gray-300">
+                        {conversation.school.name}
+                    </span>
+                </div>
+            )}
         </div>
-      }
-    >
-      <Head title={isRTL ? "تفاصيل المحادثة" : "Conversation Details"} />
 
-      <div className={`py-6 dir-${isRTL ? "rtl" : "ltr"}`}>
-        <div className="max-w-5xl mx-auto sm:px-6 lg:px-8">
-          {/* --- Conversation Info Header --- */}
-          <div
-            className={`${
-              isDark
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            } rounded-2xl shadow-lg border mb-6 p-6`}
-          >
-            <div
-              className={`flex items-start justify-between ${
-                isRTL ? "flex-row-reverse" : ""
-              }`}
-            >
-              {/* Participants */}
-              <div>
-                <h3
-                  className={`text-xs font-bold uppercase tracking-wider mb-3 ${
-                    isDark ? "text-gray-500" : "text-gray-400"
-                  }`}
-                >
-                  {isRTL ? "المشاركون" : "Participants"}
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  {conversation.participants.map((p) => (
-                    <div
-                      key={p.id}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl ${
-                        isDark ? "bg-gray-700/50" : "bg-gray-50"
-                      } ${isRTL ? "flex-row-reverse" : ""}`}
-                    >
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${getRoleColor(
-                          p.role
-                        )}`}
-                      >
-                        {p.name.charAt(0)}
-                      </div>
-                      <div className={isRTL ? "text-right" : "text-left"}>
-                        <span
-                          className={`text-sm font-semibold block ${
-                            isDark ? "text-white" : "text-gray-900"
-                          }`}
-                        >
-                          {p.name}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getRoleBadge(
-                            p.role
-                          )}`}
-                        >
-                          {getRoleLabel(p.role)}
-                        </span>
-                      </div>
-
-                      {/* Alert Button */}
-                      <button
-                        onClick={() => {
-                          setSelectedUser(p);
-                          setShowAlertModal(true);
-                        }}
-                        className={`p-1.5 rounded-lg transition ${
-                          isDark
-                            ? "text-gray-500 hover:text-yellow-400 hover:bg-gray-600"
-                            : "text-gray-400 hover:text-yellow-600 hover:bg-yellow-50"
-                        }`}
-                        title={isRTL ? "إرسال تنبيه" : "Send Alert"}
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* School Badge */}
-              {conversation.school && (
-                <div
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                    isDark
-                      ? "bg-amber-900/30 text-amber-300"
-                      : "bg-amber-100 text-amber-800"
-                  }`}
-                >
-                  {conversation.school.name}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* --- Messages --- */}
-          <div
-            className={`${
-              isDark
-                ? "bg-gray-800 border-gray-700"
-                : "bg-white border-gray-200"
-            } rounded-2xl shadow-lg border overflow-hidden`}
-          >
-            {/* Messages Container */}
-            <div
-              className={`p-6 space-y-6 max-h-[60vh] overflow-y-auto ${
-                isDark ? "bg-gray-900/30" : "bg-gray-50/50"
-              }`}
-            >
-              {groupedMessages.length === 0 ? (
-                <div className="text-center py-16 text-gray-400">
-                  <svg
-                    className="w-16 h-16 mx-auto mb-4 opacity-30"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                  <p className="font-medium">
-                    {isRTL
-                      ? "لا توجد رسائل في هذه المحادثة."
-                      : "No messages in this conversation."}
-                  </p>
-                </div>
-              ) : (
-                groupedMessages.map((group, groupIdx) => (
-                  <div key={groupIdx}>
-                    {/* Date Divider */}
-                    <div className="flex items-center justify-center my-4">
-                      <div
-                        className={`px-4 py-1 rounded-full text-xs font-medium ${
-                          isDark
-                            ? "bg-gray-700 text-gray-400"
-                            : "bg-gray-200 text-gray-500"
-                        }`}
-                      >
-                        {group.date}
-                      </div>
-                    </div>
-
-                    {/* Messages */}
-                    <div className="space-y-3">
-                      {group.messages.map((msg) => (
-                        <div
-                          key={msg.id}
-                          className={`group flex items-start gap-3 ${
-                            isRTL ? "flex-row-reverse" : ""
-                          } ${msg.deleted_at ? "opacity-50" : ""}`}
-                        >
-                          {/* Avatar */}
-                          <div
-                            className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white ${getRoleColor(
-                              msg.sender.role
-                            )}`}
-                          >
-                            {msg.sender.name.charAt(0)}
-                          </div>
-
-                          {/* Message Bubble */}
-                          <div className="flex-1 max-w-xl">
-                            <div
-                              className={`flex items-center gap-2 mb-1 ${
-                                isRTL ? "flex-row-reverse" : ""
-                              }`}
-                            >
-                              <span
-                                className={`text-sm font-bold ${
-                                  isDark ? "text-white" : "text-gray-900"
-                                }`}
-                              >
-                                {msg.sender.name}
-                              </span>
-                              <span
-                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getRoleBadge(
-                                  msg.sender.role
-                                )}`}
-                              >
-                                {getRoleLabel(msg.sender.role)}
-                              </span>
-                              <span
-                                className={`text-xs ${
-                                  isDark ? "text-gray-500" : "text-gray-400"
-                                }`}
-                              >
-                                {formatTimeOnly(msg.created_at)}
-                              </span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Main Chat Interface */}
+            <div className="lg:col-span-8 space-y-6">
+                <div className={`${DS_card} flex flex-col h-[70vh] shadow-2xl relative`}>
+                    {/* Glass Overlay for header */}
+                    <div className="p-4 border-b border-gray-100 dark:border-[#243460] bg-gray-50/50 dark:bg-[#0f2044]/20 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="flex -space-x-2">
+                                {conversation.participants.slice(0, 3).map((p, i) => (
+                                    <div key={p.id} className={`w-8 h-8 rounded-full border-2 border-white dark:border-[#1a2845] ${getRoleColor(p.role)} flex items-center justify-center text-white text-[10px] font-black shadow-lg relative z-[${10-i}]`}>
+                                        {p.name.charAt(0)}
+                                    </div>
+                                ))}
                             </div>
-
-                            <div
-                              className={`px-4 py-2.5 rounded-2xl ${
-                                msg.deleted_at
-                                  ? isDark
-                                    ? "bg-red-900/20 border border-red-800/30"
-                                    : "bg-red-50 border border-red-200"
-                                  : isDark
-                                  ? "bg-gray-700"
-                                  : "bg-white shadow-sm border border-gray-100"
-                              }`}
-                            >
-                              {msg.deleted_at ? (
-                                <p
-                                  className={`text-sm italic ${
-                                    isDark ? "text-red-400" : "text-red-500"
-                                  }`}
-                                >
-                                  {isRTL
-                                    ? "🚫 تم حذف هذه الرسالة من قبل الإدارة"
-                                    : "🚫 This message was deleted by admin"}
-                                </p>
-                              ) : (
-                                <p
-                                  className={`text-sm leading-relaxed ${
-                                    isDark ? "text-gray-200" : "text-gray-700"
-                                  }`}
-                                >
-                                  {msg.body}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Delete Action - appears on hover */}
-                          {!msg.deleted_at && (
-                            <button
-                              onClick={() => {
-                                setSelectedMessage(msg);
-                                setShowDeleteModal(true);
-                              }}
-                              className={`opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all ${
-                                isDark
-                                  ? "text-gray-600 hover:text-red-400 hover:bg-gray-700"
-                                  : "text-gray-300 hover:text-red-500 hover:bg-red-50"
-                              }`}
-                              title={isRTL ? "حذف الرسالة" : "Delete Message"}
-                            >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
-                          )}
+                            <span className="text-xs font-black text-[#0f2044] dark:text-gray-300 uppercase tracking-wider">
+                                {conversation.participants.length} {t('Operatives Embedded')}
+                            </span>
                         </div>
-                      ))}
+                        <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-800/30">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">Secure Relay</span>
+                        </div>
                     </div>
-                  </div>
-                ))
-              )}
+
+                    {/* Messages Area */}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar bg-gray-50/30 dark:bg-transparent">
+                        {groupedMessages.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-30">
+                                <MessageCircle size={64} className="text-gray-400" />
+                                <p className="text-sm font-black text-gray-500 uppercase tracking-[0.2em]">{t('No Transmission Recorded')}</p>
+                            </div>
+                        ) : (
+                            groupedMessages.map((group, gIdx) => (
+                                <div key={gIdx} className="space-y-6">
+                                    <div className="flex items-center justify-center">
+                                        <span className="px-5 py-1.5 bg-[#0f2044] text-[#f5b800] rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-xl">
+                                            {group.date}
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        {group.messages.map((msg) => (
+                                            <div key={msg.id} className={`flex items-start gap-4 group ${msg.deleted_at ? 'opacity-40 grayscale' : ''}`}>
+                                                <div className={`w-10 h-10 rounded-[14px] ${getRoleColor(msg.sender.role)} flex items-center justify-center text-white font-black shadow-lg shadow-${msg.sender.role === 'parent' ? 'blue' : 'emerald'}-500/20`}>
+                                                    {msg.sender.name.charAt(0)}
+                                                </div>
+                                                <div className="flex-1 space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-black text-[#0f2044] dark:text-white uppercase tracking-tight">{msg.sender.name}</span>
+                                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase border ${getRoleBadge(msg.sender.role)}`}>
+                                                            {getRoleLabel(msg.sender.role)}
+                                                        </span>
+                                                        <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 ml-auto flex items-center gap-1">
+                                                            <Clock size={10} />
+                                                            {formatTimeOnly(msg.created_at)}
+                                                        </span>
+                                                    </div>
+                                                    <div className={`p-4 rounded-[1.25rem] rounded-tl-none text-sm leading-relaxed relative ${
+                                                        msg.deleted_at 
+                                                        ? 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30' 
+                                                        : 'bg-white dark:bg-[#0f2044]/30 text-gray-700 dark:text-gray-200 shadow-sm border border-gray-100 dark:border-white/5'
+                                                    }`}>
+                                                        {msg.deleted_at ? (
+                                                            <div className="flex items-center gap-2 italic">
+                                                                <Trash2 size={12} />
+                                                                {isRTL ? "تم حذف الرسالة لدواعي أمنية" : "Transmission redacted by Admin"}
+                                                            </div>
+                                                        ) : msg.body}
+
+                                                        {/* Hover Actions */}
+                                                        {!msg.deleted_at && (
+                                                            <button 
+                                                                onClick={() => { setSelectedMessage(msg); setShowDeleteModal(true); }}
+                                                                className="absolute -right-10 top-2 p-2 bg-rose-50 text-rose-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Stats Footer */}
+                    <div className="p-4 bg-gray-50/50 dark:bg-[#0f2044]/40 border-t border-gray-100 dark:border-[#243460] flex items-center justify-between">
+                        <div className="flex items-center gap-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                            <span className="flex items-center gap-1.5"><MessageCircle size={12} /> {messages.total} {t('Packets')}</span>
+                            <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                            <span className="flex items-center gap-1.5"><Users size={12} /> {conversation.participants.length} {t('Nodes')}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {/* Footer with stats */}
-            <div
-              className={`px-6 py-3 border-t ${
-                isDark ? "border-gray-700" : "border-gray-200"
-              }`}
-            >
-              <p
-                className={`text-xs ${
-                  isDark ? "text-gray-500" : "text-gray-400"
-                }`}
-              >
-                {isRTL
-                  ? `إجمالي الرسائل: ${messages.total}`
-                  : `Total messages: ${messages.total}`}
-              </p>
+            {/* Sidebar Controls */}
+            <div className="lg:col-span-4 space-y-6">
+                <div className={`${DS_card} p-6 space-y-6`}>
+                    <div className="flex items-center gap-2 mb-2">
+                        <Users size={18} className="text-[#f5b800]" />
+                        <h3 className="text-sm font-black text-[#0f2044] dark:text-white uppercase tracking-wider">{t('Operative Roster')}</h3>
+                    </div>
+                    
+                    <div className="space-y-4">
+                        {conversation.participants.map((p) => (
+                            <div key={p.id} className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-[#0f2044]/30 border border-transparent hover:border-[#f5b800]/20 transition-all group/user">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-9 h-9 rounded-xl ${getRoleColor(p.role)} flex items-center justify-center text-white font-black shadow-lg`}>
+                                        {p.name.charAt(0)}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-black text-[#0f2044] dark:text-white">{p.name}</span>
+                                        <span className={`text-[9px] font-black uppercase tracking-tighter ${getRoleBadge(p.role)} px-1 rounded w-fit mt-0.5`}>
+                                            {getRoleLabel(p.role)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => { setSelectedUser(p); setShowAlertModal(true); }}
+                                    className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                                    title={t('Signal Alert')}
+                                >
+                                    <ShieldAlert size={16} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-100 dark:border-[#243460] space-y-4">
+                        <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                            <div className="flex items-start gap-3">
+                                <AlertTriangle size={16} className="text-amber-600 mt-0.5" />
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-amber-900 dark:text-amber-400 uppercase tracking-widest">{t('Admin Protocol')}</p>
+                                    <p className="text-[10px] text-amber-700 dark:text-amber-500/80 leading-relaxed font-bold">
+                                        {isRTL 
+                                            ? "بصفتك مسؤولاً، يمكنك رصد كافة المحادثات وحذف أي محتوى مخالف أو إرسال تنبيهات إدارية مباشرة للمشاركين." 
+                                            : "As an admin, you have full visibility. You may redact content or signal direct alerts to operatives."}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
       </div>
 
-      {/* --- Delete Message Modal --- */}
+      {/* --- Delete Message Confirmation Modal --- */}
       <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
-        <div className={`p-6 ${isDark ? "bg-gray-800" : "bg-white"}`}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-red-600 dark:text-red-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                />
-              </svg>
+        <div className={DS_modalContainer}>
+          <div className={DS_modalHeader(isRTL)}>
+            <div className="flex items-center gap-3">
+              <div className={DS_modalHeaderAccent} />
+              <h3 className={DS_modalHeaderTitle}>{t('Redaction Protocol')}</h3>
             </div>
-            <div>
-              <h3
-                className={`text-lg font-bold ${
-                  isDark ? "text-white" : "text-gray-900"
-                }`}
-              >
-                {isRTL ? "حذف الرسالة" : "Delete Message"}
-              </h3>
-              <p
-                className={`text-sm ${
-                  isDark ? "text-gray-400" : "text-gray-500"
-                }`}
-              >
-                {isRTL
-                  ? "هل أنت متأكد من حذف هذه الرسالة؟ سيتم إخفاؤها عن جميع المستخدمين."
-                  : "Are you sure? This message will be hidden from all users."}
-              </p>
+            <button onClick={() => setShowDeleteModal(false)} className={DS_modalClose}>
+              <ArrowLeft size={18} className={isRTL ? 'rotate-180' : ''} />
+            </button>
+          </div>
+          
+          <div className={`${DS_modalBody} text-center py-10`}>
+            <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-rose-500 shadow-inner">
+                <Trash2 size={40} />
             </div>
+            <h4 className="text-xl font-black text-[#0f2044] dark:text-white mb-2">{t('Confirm Redaction?')}</h4>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 max-w-xs mx-auto leading-relaxed">
+                {isRTL 
+                    ? "هل أنت متأكد من حذف هذه الرسالة؟ سيتم استبدال المحتوى بنص إداري تحذيري." 
+                    : "Are you sure you want to redact this transmission? The content will be replaced with an admin placeholder."}
+            </p>
+            
+            {selectedMessage && (
+                <div className="mt-8 p-4 bg-gray-50 dark:bg-[#0f2044]/30 rounded-2xl border border-dashed border-gray-200 dark:border-white/5 text-start">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{selectedMessage.sender.name}</p>
+                    <p className="text-xs font-bold text-gray-700 dark:text-gray-300 italic">{selectedMessage.body}</p>
+                </div>
+            )}
           </div>
 
-          {selectedMessage && (
-            <div
-              className={`p-3 rounded-lg mb-4 ${
-                isDark ? "bg-gray-700" : "bg-gray-50"
-              }`}
-            >
-              <p
-                className={`text-xs font-bold mb-1 ${
-                  isDark ? "text-gray-400" : "text-gray-500"
-                }`}
-              >
-                {selectedMessage.sender.name}
-              </p>
-              <p
-                className={`text-sm ${
-                  isDark ? "text-gray-200" : "text-gray-700"
-                }`}
-              >
-                {selectedMessage.body}
-              </p>
-            </div>
-          )}
-
-          <div
-            className={`flex gap-3 justify-end ${
-              isRTL ? "flex-row-reverse" : ""
-            }`}
-          >
-            <button
-              onClick={() => setShowDeleteModal(false)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                isDark
-                  ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {isRTL ? "إلغاء" : "Cancel"}
+          <div className={DS_modalFooter(isRTL)}>
+            <button onClick={() => setShowDeleteModal(false)} className={DS_btnSecondary}>
+              {t('Abort')}
             </button>
-            <button
-              onClick={handleDeleteMessage}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition"
+            <button 
+                onClick={handleDeleteMessage}
+                className="px-8 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-black shadow-lg shadow-rose-600/20 transition-all active:scale-95"
             >
-              {isRTL ? "حذف الرسالة" : "Delete Message"}
+              {t('Finalize Redaction')}
             </button>
           </div>
         </div>
       </Modal>
 
-      {/* --- Alert User Modal --- */}
+      {/* --- Signal Alert Modal --- */}
       <Modal show={showAlertModal} onClose={() => setShowAlertModal(false)}>
-        <form
-          onSubmit={handleAlertUser}
-          className={`p-6 ${isDark ? "bg-gray-800" : "bg-white"}`}
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-yellow-600 dark:text-yellow-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                />
-              </svg>
+        <div className={DS_modalContainer}>
+          <div className={DS_modalHeader(isRTL)}>
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-6 bg-amber-400 rounded-full" />
+              <h3 className={DS_modalHeaderTitle}>{t('Signal Alert')}</h3>
             </div>
-            <div>
-              <h3
-                className={`text-lg font-bold ${
-                  isDark ? "text-white" : "text-gray-900"
-                }`}
-              >
-                {isRTL ? "إرسال تنبيه" : "Send Alert"}
-              </h3>
-              <p
-                className={`text-sm ${
-                  isDark ? "text-gray-400" : "text-gray-500"
-                }`}
-              >
-                {isRTL
-                  ? `إرسال تنبيه إداري إلى ${selectedUser?.name}`
-                  : `Send admin alert to ${selectedUser?.name}`}
-              </p>
-            </div>
-          </div>
-
-          <textarea
-            value={alertForm.data.alert_message}
-            onChange={(e) => alertForm.setData("alert_message", e.target.value)}
-            rows={3}
-            placeholder={
-              isRTL ? "اكتب رسالة التنبيه هنا..." : "Type alert message here..."
-            }
-            className={`w-full rounded-lg border p-3 text-sm focus:ring-2 focus:ring-yellow-500 transition ${
-              isDark
-                ? "bg-gray-700 border-gray-600 text-white placeholder-gray-500"
-                : "bg-white border-gray-300 text-gray-900"
-            }`}
-          />
-
-          <div
-            className={`flex gap-3 justify-end mt-4 ${
-              isRTL ? "flex-row-reverse" : ""
-            }`}
-          >
-            <button
-              type="button"
-              onClick={() => setShowAlertModal(false)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                isDark
-                  ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {isRTL ? "إلغاء" : "Cancel"}
-            </button>
-            <button
-              type="submit"
-              disabled={alertForm.processing || !alertForm.data.alert_message}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-yellow-500 text-white hover:bg-yellow-600 transition disabled:opacity-50"
-            >
-              {isRTL ? "إرسال التنبيه" : "Send Alert"}
+            <button onClick={() => setShowAlertModal(false)} className={DS_modalClose}>
+                <ArrowLeft size={18} className={isRTL ? 'rotate-180' : ''} />
             </button>
           </div>
-        </form>
+
+          <form onSubmit={handleAlertUser}>
+            <div className={DS_modalBody}>
+                <div className="flex items-center gap-4 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-900/30 mb-4">
+                    <div className={`w-12 h-12 rounded-xl ${getRoleColor(selectedUser?.role || '')} flex items-center justify-center text-white font-black text-lg shadow-lg`}>
+                        {selectedUser?.name.charAt(0)}
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black text-amber-900 dark:text-amber-400 uppercase tracking-widest">{t('Target Operative')}</p>
+                        <p className="text-sm font-black text-[#0f2044] dark:text-white">{selectedUser?.name}</p>
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <label className={DS_label}>{t('Alert Transmission')}</label>
+                    <textarea
+                        value={alertForm.data.alert_message}
+                        onChange={(e) => alertForm.setData("alert_message", e.target.value)}
+                        rows={4}
+                        required
+                        placeholder={isRTL ? "أدخل تفاصيل التنبيه الإداري هنا..." : "Enter transmission details..."}
+                        className={DS_input}
+                    />
+                </div>
+            </div>
+
+            <div className={DS_modalFooter(isRTL)}>
+                <button type="button" onClick={() => setShowAlertModal(false)} className={DS_btnSecondary}>
+                    {t('Cancel')}
+                </button>
+                <button 
+                    type="submit" 
+                    disabled={alertForm.processing}
+                    className="px-8 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-black shadow-lg shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50"
+                >
+                    {alertForm.processing ? t('Syncing...') : t('Broadcast Alert')}
+                </button>
+            </div>
+          </form>
+        </div>
       </Modal>
+
     </AuthenticatedLayout>
   );
 }
