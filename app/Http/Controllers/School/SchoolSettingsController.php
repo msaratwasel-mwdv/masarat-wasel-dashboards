@@ -26,6 +26,8 @@ class SchoolSettingsController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
+            'latitude' => ['nullable', 'numeric'],
+            'longitude' => ['nullable', 'numeric'],
             'logo' => ['nullable', 'image', 'max:2048'],
         ]);
 

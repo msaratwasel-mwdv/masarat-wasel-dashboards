@@ -4,16 +4,20 @@ import { FormEventHandler } from "react";
 import InputError from "@/Components/InputError";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { DS_inputCls, DS_labelCls, DS_submitBtn } from "@/lib/DS";
-import { Building2, MapPin, Upload } from "lucide-react";
+import { Building2, MapPin, Upload, Check } from "lucide-react";
+import FieldTripMapPicker from "@/Components/FieldTripMapPicker";
 
 export default function UpdateSchoolInformationForm() {
-    const { isRTL: isRtl } = useTheme();
+    const { isRTL: isRtl, theme } = useTheme();
+    const isDark = theme === 'dark';
     const user = usePage().props.auth.user as any;
     const school = user.school || {};
 
     const { data, setData, post, errors, processing, recentlySuccessful } = useForm({
         name: school.name || "",
         address: school.address || "",
+        latitude: school.latitude ? Number(school.latitude) : null,
+        longitude: school.longitude ? Number(school.longitude) : null,
         logo: null as File | null,
     });
 
@@ -68,6 +72,37 @@ export default function UpdateSchoolInformationForm() {
                         />
                         <InputError className="mt-2" message={errors.address} />
                     </div>
+                </div>
+
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm font-bold text-[#0f2044] dark:text-white">
+                            {isRtl ? "تحديد الموقع على الخريطة" : "Select Location on Map"}
+                        </p>
+                        {(data.latitude && data.longitude) && (
+                            <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1">
+                                <Check className="w-3 h-3" />
+                                {isRtl ? "تم تحديد الموقع" : "Location Selected"}
+                            </span>
+                        )}
+                    </div>
+                    <div className="h-[300px] rounded-2xl overflow-hidden border-2 border-[#0f2044]/10 dark:border-[#243460] shadow-inner relative z-10">
+                        <FieldTripMapPicker
+                            lat={data.latitude}
+                            lng={data.longitude}
+                            isDark={isDark}
+                            isRtl={isRtl}
+                            onChange={(lat, lng, address) => {
+                                setData(prev => ({
+                                    ...prev,
+                                    latitude: lat,
+                                    longitude: lng,
+                                    address: address || prev.address
+                                }));
+                            }}
+                        />
+                    </div>
+                    <InputError className="mt-2" message={errors.latitude as string} />
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center gap-6 p-6 rounded-2xl bg-[#0f2044]/5 dark:bg-[#0f2044]/20 border border-[#0f2044]/10 dark:border-[#243460]">

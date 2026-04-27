@@ -469,8 +469,20 @@ export default function Authenticated({
         </nav>
 
         {/* User Profile Section */}
-        <div className={`p-4 border-t border-white/10 dark:border-gray-700 bg-brand-navy/30 ${isCollapsed ? "flex justify-center" : ""}`}>
-          <div className={`rounded-xl ${isCollapsed ? "p-1" : "p-3"} flex items-center ${flexDirection} justify-between group hover:bg-white/5 transition-colors`}>
+        <div className={`p-4 border-t border-white/10 dark:border-gray-700 bg-brand-navy/30 ${isCollapsed ? "flex flex-col items-center gap-4" : ""}`}>
+          <div className={`rounded-xl ${isCollapsed ? "p-1" : "p-3"} flex items-center ${flexDirection} justify-between group hover:bg-white/5 transition-colors w-full`}>
+            {!isCollapsed && (
+              <Link
+                method="post"
+                href={route("logout")}
+                as="button"
+                className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-all"
+                title={isRTL ? "تسجيل الخروج" : "Logout"}
+              >
+                <LogOut className="w-4 h-4" />
+              </Link>
+            )}
+
             <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"} ${flexDirection}`}>
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-yellow to-yellow-600 flex items-center justify-center text-white font-bold shadow-lg shrink-0">
                 {user.name.charAt(0).toUpperCase()}
@@ -486,19 +498,19 @@ export default function Authenticated({
                 </div>
               )}
             </div>
-
-            {!isCollapsed && (
-              <Link
-                method="post"
-                href={route("logout")}
-                as="button"
-                className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-all"
-                title={isRTL ? "تسجيل الخروج" : "Logout"}
-              >
-                <LogOut className="w-4 h-4" />
-              </Link>
-            )}
           </div>
+
+          {isCollapsed && (
+            <Link
+              method="post"
+              href={route("logout")}
+              as="button"
+              className="p-3 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-all"
+              title={isRTL ? "تسجيل الخروج" : "Logout"}
+            >
+              <LogOut className="w-5 h-5" />
+            </Link>
+          )}
         </div>
       </motion.aside>
 
@@ -560,6 +572,17 @@ export default function Authenticated({
 
           {/* Right Side Controls */}
           <div className="flex items-center gap-2 md:gap-4">
+            {/* Logout Button (Far Left in RTL) */}
+            <Link
+              method="post"
+              href={route("logout")}
+              as="button"
+              className="p-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all border border-transparent hover:border-red-100 dark:hover:border-red-900/30"
+              title={isRTL ? "تسجيل الخروج" : "Logout"}
+            >
+              <LogOut className="w-5 h-5" />
+            </Link>
+
             {/* Language Toggle */}
             <button
               onClick={toggleLanguage}
