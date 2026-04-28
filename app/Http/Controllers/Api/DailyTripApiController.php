@@ -508,7 +508,7 @@ class DailyTripApiController extends Controller
         /** @var Trip|null $activeTrip */
         $activeTrip = Trip::where('bus_id', $bus->id)
             ->whereDate('trip_date', today())
-            ->whereIn('status', ['pending', 'in_progress', 'awaiting_confirmation'])
+            ->whereIn('status', ['pending', 'in_progress', 'awaiting_confirmation', 'awaiting_video'])
             ->orderByRaw("CASE WHEN type = 'forth' THEN 1 WHEN type = 'back' THEN 2 ELSE 3 END")
             ->first();
         $suggestedTripType = $activeTrip?->type === 'back' ? 'afternoon' : 'morning';
@@ -566,6 +566,8 @@ class DailyTripApiController extends Controller
                             $studentStatus = 'onBus';
                         } elseif ($lastAttendance->status === 'dropped') {
                             $studentStatus = ($activeTrip->type === 'forth') ? 'atSchool' : 'atHome';
+                        } elseif ($lastAttendance->status === 'waiting') {
+                            $studentStatus = 'waiting';
                         }
                     } else {
                         // Attendance is from a previous trip today (e.g. morning trip)
@@ -592,13 +594,15 @@ class DailyTripApiController extends Controller
                 'parentPhone' => $student->guardian->first()?->phone ?? 'غير محدد',
                 'parentUserId' => (string) $student->guardian->first()?->id,
                 'photoUrl' => $student->image ? (str_starts_with($student->image, 'http') ? $student->image : url(Storage::url($student->image))) : null,
-                'status' => $studentStatus, // atHome, onBus, atSchool, absent
+                'status' => $studentStatus, // atHome, onBus, atSchool, absent, waiting
                 'isOnBus' => ($studentStatus === 'onBus'),
                 'isAbsent' => ($studentStatus === 'absent'),
+                'isWaiting' => ($studentStatus === 'waiting'),
+                'waitingSince' => ($studentStatus === 'waiting') ? $lastAttendance->updated_at->toIso8601String() : null,
                 'has_absence_request' => $student->absenceRequests->isNotEmpty(),
-                'behavioralNote' => null, // Placeholder for now
+                'behavioralNote' => null, 
                 'lastEvent' => $lastAttendance ? [
-                    'type' => $lastAttendance->status === 'boarded' ? 'boarding' : 'alighting',
+                    'type' => $lastAttendance->status === 'boarded' ? 'boarding' : ($lastAttendance->status === 'waiting' ? 'proximity' : 'alighting'),
                     'direction' => $lastAttendance->trip?->type === 'forth' ? 'to_school' : 'to_home',
                     'time' => $lastAttendance->updated_at->format('H:i'),
                 ] : null,
@@ -865,6 +869,119 @@ class DailyTripApiController extends Controller
             'departure_time' => $trip->departure_time,
         ]);
     }
+    /**
+     * إرسال إشعار "بجوار المنزل" لولي الأمر
+     * POST /api/bus/{bus}/notify-near-house
+     */
+    public function notifyNearHouse(Request $request, Bus $bus)
+    {
+        /** @var Bus $bus */
+        $request->validate([
+            'student_id' => 'required|exists:students,id',
+        ]);
+
+        $student = Student::findOrFail($request->student_id);
+        $user = $request->user();
+
+        // التحقق من الصلاحية
+        if (!$bus->hasCrewMember($user->id)) {
+            return response()->json(['message' => 'غير مصرح لك بإرسال إشعارات لهذا الباص.'], 403);
+        }
+
+        // 1. تحديث الحالة في قاعدة البيانات إلى "waiting"
+        $trip = $this->getActiveTrip($bus);
+        if ($trip) {
+            TripAttendance::updateOrCreate(
+                ['trip_id' => $trip->id, 'student_id' => $student->id],
+                ['status' => 'waiting']
+            );
+        }
+
+        // 2. إرسال الإشعار لولي الأمر (Push Notification)
+        $this->notificationService->notifyStudentGuardian(
+            studentId: $student->id,
+            type: 'bus_approaching',
+            title: "الحافلة تقترب",
+            message: "الحافلة تقترب الآن من منزل الطالب {$student->full_name}. يرجى التجهيز.",
+            data: [
+                'notification_type' => 'bus_approaching',
+                'bus_id'            => $bus->id,
+                'bus_number'        => $bus->bus_number,
+                'student_id'        => $student->id,
+                'student_name'      => $student->full_name,
+            ],
+        );
+
+        // 3. بث التحديث الفوري (WebSocket) - لإشعار تطبيق المشرفة إذا كان يستمع
+        try {
+            $direction = $trip ? ($trip->type === 'forth' ? 'to_school' : 'to_home') : 'none';
+            broadcast(new StudentStatusUpdated($student, $bus, 'waiting', $direction));
+        } catch (\Exception $e) {
+            Log::error("Broadcast error (nearHouse): " . $e->getMessage());
+        }
+
+        Log::info('notifyNearHouse: Notification sent & status updated to waiting', [
+            'bus_id' => $bus->id,
+            'student_id' => $student->id,
+        ]);
+
+        return response()->json([
+            'message' => 'تم إرسال إشعار الاقتراب لولي الأمر بنجاح وتحديث الحالة لانتظار.',
+        ]);
+    }
+
+    /**
+     * تسجيل غياب طالب
+     * POST /api/bus/{bus}/mark-absent
+     */
+    public function markAbsent(Request $request, Bus $bus)
+    {
+        /** @var Bus $bus */
+        $request->validate([
+            'student_id' => 'required|exists:students,id',
+        ]);
+
+        $user = $request->user();
+        if (!$bus->hasCrewMember($user->id)) {
+            return response()->json(['message' => 'غير مصرح لك.'], 403);
+        }
+
+        $trip = $this->getActiveTrip($bus);
+        if (!$trip) {
+            return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
+        }
+
+        $attendance = TripAttendance::updateOrCreate(
+            ['trip_id' => $trip->id, 'student_id' => $request->student_id],
+            ['status' => 'absent']
+        );
+
+        $student = Student::find($request->student_id);
+        
+        // Notify parent
+        $this->notificationService->notifyStudentGuardian(
+            studentId: $student->id,
+            type: 'student_absent',
+            title: "غياب الطالب {$student->full_name}",
+            message: "تم تسجيل الطالب {$student->full_name} كغائب عن رحلة الحافلة الآن.",
+            data: [
+                'type' => 'student_absent',
+                'student_id' => $student->id,
+            ]
+        );
+
+        try {
+            broadcast(new StudentStatusUpdated($student, $bus, 'absent', $trip->type === 'forth' ? 'to_school' : 'to_home'));
+        } catch (\Exception $e) {
+            Log::error("Broadcast error (absent): " . $e->getMessage());
+        }
+
+        return response()->json([
+            'message' => 'تم تسجيل غياب الطالب بنجاح.',
+            'status' => 'absent',
+        ]);
+    }
+
     /**
      * إنهاء رحلة الحافلة
      * POST /api/bus/{bus}/end-trip

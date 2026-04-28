@@ -97,7 +97,22 @@ class NotificationService
 
         $fcmMessage = CloudMessage::new()
             ->withNotification(FcmNotification::create($title, $message))
-            ->withData($stringData);
+            ->withData($stringData)
+            ->withAndroidConfig([
+                'priority' => 'high',
+                'notification' => [
+                    'sound' => 'default',
+                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+                ],
+            ])
+            ->withApnsConfig([
+                'payload' => [
+                    'aps' => [
+                        'sound' => 'default',
+                        'badge' => 1,
+                    ],
+                ],
+            ]);
 
         Log::info('[FCM] Sending notification via Multicast (Single Token)', [
             'token'   => substr($fcmToken, 0, 20) . '...',

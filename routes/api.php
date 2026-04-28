@@ -60,6 +60,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bus/{bus}/start-trip', [DailyTripApiController::class, 'startTrip']);
     Route::post('/bus/{bus}/confirm-trip', [DailyTripApiController::class, 'confirmTrip']);
     Route::post('/bus/{bus}/arrive', [DailyTripApiController::class, 'arrive']);
+    Route::post('/bus/{bus}/notify-near-house', [DailyTripApiController::class, 'notifyNearHouse']);
+    Route::post('/bus/{bus}/mark-absent', [DailyTripApiController::class, 'markAbsent']);
     Route::post('/bus/{bus}/end-trip', [DailyTripApiController::class, 'endTrip']);
     Route::post('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'store']);
     Route::get('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'index']);
