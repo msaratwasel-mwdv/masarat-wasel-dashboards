@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import debounce from "lodash/debounce";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, useForm, router, Link } from "@inertiajs/react";
+import { Head, useForm, router, Link, usePage } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
 import InputError from "@/Components/InputError";
 import { useTheme } from "@/Contexts/ThemeContext";
@@ -35,7 +35,10 @@ import {
   Edit2,
   Trash2,
   ShieldCheck,
-  Briefcase
+  Briefcase,
+  Upload,
+  Download,
+  Loader2
 } from "lucide-react";
 import { 
     DS_pageWrapper, 
@@ -144,6 +147,9 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
   // --- State ---
   const [search, setSearch] = useState(filters.search);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({ file: null as File | null });
+  const flash = usePage().props.flash as any;
   const [isEditing, setIsEditing] = useState(false);
   const [currentDriverId, setCurrentDriverId] = useState<number | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -555,8 +561,28 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
             </div>
         </div>
 
-        {/* Action Button Section (User Requested Placement) */}
-        <div className="flex justify-end mb-4">
+        {/* Error reporting for import */}
+        {flash?.import_errors && flash.import_errors.length > 0 && (
+            <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl">
+                <h4 className="text-rose-600 font-bold mb-2">أخطاء في عملية الاستيراد:</h4>
+                <ul className="list-disc list-inside text-sm text-rose-500 space-y-1">
+                    {flash.import_errors.map((err: string, i: number) => (
+                        <li key={i}>{err}</li>
+                    ))}
+                </ul>
+            </div>
+        )}
+
+        {/* Action Button Section */}
+        <div className="flex flex-wrap items-center justify-end gap-3 mb-4">
+            <button onClick={() => setIsImportModalOpen(true)} className={DS_btnSecondary}>
+                <Upload size={18} />
+                <span>{isRTL ? "استيراد" : "Import"}</span>
+            </button>
+            <a href={route("admin.drivers.export")} className={DS_btnSecondary}>
+                <Download size={18} />
+                <span>{isRTL ? "تصدير" : "Export"}</span>
+            </a>
             <button 
                 onClick={openAddModal}
                 className={DS_btnGold}
@@ -870,6 +896,79 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                                     {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل السائق" : "Enroll Operative")}
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </Modal>
+
+        {/* --- Import Modal --- */}
+        <Modal show={isImportModalOpen} onClose={() => { setIsImportModalOpen(false); resetImport(); }} maxWidth="md">
+            <div className={DS_modalContainer}>
+                <div className={DS_modalHeader(isRTL)}>
+                    <div className="flex items-center gap-3">
+                        <div className={DS_modalHeaderAccent} />
+                        <h3 className={DS_modalHeaderTitle}>
+                            {isRTL ? "استيراد السائقين (Excel)" : "Import Drivers (Excel)"}
+                        </h3>
+                    </div>
+                    <button onClick={() => { setIsImportModalOpen(false); resetImport(); }} className={DS_modalClose}>
+                        <X size={18} />
+                    </button>
+                </div>
+                <form onSubmit={(e) => {
+                    e.preventDefault();
+                    postImport(route('admin.drivers.import'), {
+                        forceFormData: true,
+                        onSuccess: () => { setIsImportModalOpen(false); resetImport(); }
+                    });
+                }}>
+                    <div className={DS_modalBody}>
+                        <div className="space-y-6">
+                            <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+                                <p className="text-sm font-bold text-[#0f2044]">
+                                    {isRTL ? "يرجى تحميل القالب المخصص وتعبئته بالبيانات ثم إعادة رفعه هنا." : "Please download the template, fill it with data, and upload it here."}
+                                </p>
+                                <a href={route('admin.drivers.template')} className="inline-flex items-center gap-2 mt-3 text-xs font-black text-blue-600 hover:text-blue-800 uppercase tracking-widest underline">
+                                    <Download size={14} /> {isRTL ? "تحميل القالب (Template)" : "Download Template"}
+                                </a>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className={DS_label}>{isRTL ? "ملف الإكسيل" : "Excel File"}</label>
+                                <input 
+                                    type="file" 
+                                    accept=".xlsx,.xls,.csv" 
+                                    onChange={e => setImportData('file', e.target.files ? e.target.files[0] : null)}
+                                    className={DS_input} 
+                                    required 
+                                />
+                                <InputError message={importErrors.file} />
+                            </div>
+                        </div>
+                    </div>
+                    <div className={DS_modalFooter(isRTL)}>
+                        <div className="ml-auto flex items-center gap-3">
+                            <button type="button" onClick={() => { setIsImportModalOpen(false); resetImport(); }} className="text-xs font-bold text-gray-400 hover:text-[#0f2044]">
+                                {isRTL ? "إلغاء" : "Cancel"}
+                            </button>
+                            <button 
+                                type="submit" 
+                                disabled={importProcessing} 
+                                className={`${DS_btnGold} min-w-[120px] flex items-center justify-center gap-2`}
+                            >
+                                {importProcessing ? (
+                                    <>
+                                        <Loader2 size={18} className="animate-spin" />
+                                        <span>{isRTL ? "جاري الرفع..." : "Uploading..."}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload size={18} />
+                                        <span>{isRTL ? "رفع واستيراد" : "Upload & Import"}</span>
+                                    </>
+                                )}
+                            </button>
                         </div>
                     </div>
                 </form>

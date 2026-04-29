@@ -114,6 +114,32 @@ const getMenuItems = (isRTL: boolean) => [
     ],
   },
   {
+    label: isRTL ? "التقارير التحليلية" : "Analytics Hub",
+    icon: "clipboard",
+    subItems: [
+      {
+        label: isRTL ? "لوحة التقارير" : "Reports Dashboard",
+        route: "admin.analytics.index",
+      },
+      {
+        label: isRTL ? "الأداء التشغيلي" : "Operational Reports",
+        route: "admin.analytics.operational",
+      },
+      {
+        label: isRTL ? "تحليلات السائقين" : "Driver Analytics",
+        route: "admin.analytics.drivers",
+      },
+      {
+        label: isRTL ? "التقارير المالية" : "Financial Reports",
+        route: "admin.analytics.financial",
+      },
+      {
+        label: isRTL ? "تحليلات الطلاب" : "Student Insights",
+        route: "admin.analytics.students",
+      },
+    ],
+  },
+  {
     label: isRTL ? "الرقابة الميدانية" : "Field Operations",
     icon: "search",
     subItems: [

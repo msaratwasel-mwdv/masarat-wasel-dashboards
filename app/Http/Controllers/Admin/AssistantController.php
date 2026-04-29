@@ -192,6 +192,26 @@ class AssistantController extends Controller
         $assistant->delete();
         return redirect()->back()->with('success', 'Assistant deleted successfully');
     }
+
+    public function export()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\AssistantsExport(false), 'assistants.xlsx');
+    }
+
+    public function downloadTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\AssistantsExport(true), 'assistants_template.xlsx');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        $import = new \App\Imports\AssistantsImport();
+        \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+        return redirect()->back()->with('success', "تم استيراد {$import->successCount} مشرفة بنجاح وتحديث القائمة.");
+    }
 }
-
-

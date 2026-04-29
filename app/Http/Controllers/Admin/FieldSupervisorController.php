@@ -138,4 +138,26 @@ class FieldSupervisorController extends Controller
         $field_supervisor->delete();
         return redirect()->back()->with('success', 'Field Supervisor deleted successfully');
     }
+
+    public function export()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\FieldSupervisorsExport(false), 'field_supervisors.xlsx');
+    }
+
+    public function downloadTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\FieldSupervisorsExport(true), 'field_supervisors_template.xlsx');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        $import = new \App\Imports\FieldSupervisorsImport();
+        \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+        return redirect()->back()->with('success', "تم استيراد {$import->successCount} مشرف ميداني بنجاح وتحديث القائمة.");
+    }
 }

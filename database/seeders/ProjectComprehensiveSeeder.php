@@ -37,16 +37,26 @@ class ProjectComprehensiveSeeder extends Seeder
             $roles[$name] = Role::firstOrCreate(['name' => $name]);
         }
 
-        // 2. School
-        $school = School::firstOrCreate(
-            ['name' => 'مدرسة مسارات الأهلية'],
-            [
-                'address' => 'الرياض، المملكة العربية السعودية',
-                'status' => 'Active',
-                'has_transport' => true,
-                'has_attendance' => true,
-            ]
-        );
+        // 2. Schools
+        $schoolNames = [
+            'مدرسة مسارات الأهلية',
+            'مدرسة القمة العالمية',
+            'مدارس الرواد المتميزة'
+        ];
+        
+        $schools = [];
+        foreach ($schoolNames as $name) {
+            $schools[] = School::updateOrCreate(
+                ['name' => $name],
+                [
+                    'address' => 'الرياض، المملكة العربية السعودية',
+                    'status' => 'Active',
+                    'has_transport' => true,
+                    'has_attendance' => true,
+                ]
+            );
+        }
+        $school = $schools[0]; // Primary school for the rest of seeding logic
 
         // 3. Grades (المراحل الدراسية)
         $gradeNames = ['المرحلة الابتدائية', 'المرحلة المتوسطة', 'المرحلة الثانوية'];
@@ -77,33 +87,52 @@ class ProjectComprehensiveSeeder extends Seeder
             'شرق الرياض 1', 'شرق الرياض 2', 'غرب الرياض 1', 'غرب الرياض 2',
             'وسط الرياض 1', 'وسط الرياض 2'
         ];
-        foreach ($routeNames as $index => $name) {
-            $routes[] = Route::firstOrCreate([
-                'school_id' => $school->id,
-                'name' => $name,
-                'code' => 'R-' . ($index + 1)
-            ]);
+        foreach ($schoolNames as $sIndex => $sName) {
+            $currentSchool = $schools[$sIndex];
+            foreach ($routeNames as $index => $name) {
+                $routes[] = Route::updateOrCreate(
+                    [
+                        'school_id' => $currentSchool->id,
+                        'code' => 'SCH' . $currentSchool->id . '-R' . ($index + 1)
+                    ],
+                    [
+                        'name' => $name
+                    ]
+                );
+            }
         }
+        $school = $schools[0];
 
         // 6. Users creation helper
         $createSystemUser = function($roleName, $prefix, $index, $nationalId) use ($school, $roles, $fakerAr, $fakerEn) {
-            $user = User::updateOrCreate(
-                ['national_id' => $nationalId],
-                [
-                    'first_name_ar' => $fakerAr->firstName('male'),
-                    'second_name_ar' => $fakerAr->firstName('male'),
-                    'third_name_ar' => $fakerAr->firstName('male'),
-                    'last_name_ar' => $fakerAr->lastName,
-                    'first_name_en' => $fakerEn->firstName('male'),
-                    'second_name_en' => $fakerEn->firstName('male'),
-                    'third_name_en' => $fakerEn->firstName('male'),
-                    'last_name_en' => $fakerEn->lastName,
-                    'email' => "{$prefix}{$index}@wasel.com",
-                    'password' => Hash::make('password'),
-                    'phone' => '966' . substr($nationalId, -9),
-                    'address' => $fakerAr->address,
-                ]
-            );
+            $email = "{$prefix}{$index}@wasel.com";
+            $phone = '966' . substr($nationalId, -9);
+            $user = User::where('national_id', $nationalId)
+                        ->orWhere('email', $email)
+                        ->orWhere('phone', $phone)
+                        ->first();
+            
+            if (!$user) {
+                $user = new User();
+                $user->password = Hash::make('password');
+            }
+
+            $user->fill([
+                'national_id' => $nationalId,
+                'first_name_ar' => $fakerAr->firstName('male'),
+                'second_name_ar' => $fakerAr->firstName('male'),
+                'third_name_ar' => $fakerAr->firstName('male'),
+                'last_name_ar' => $fakerAr->lastName,
+                'first_name_en' => $fakerEn->firstName('male'),
+                'second_name_en' => $fakerEn->firstName('male'),
+                'third_name_en' => $fakerEn->firstName('male'),
+                'last_name_en' => $fakerEn->lastName,
+                'email' => $email,
+                'phone' => '966' . substr($nationalId, -9),
+                'address' => $fakerAr->address,
+            ]);
+            $user->save();
+            
             $user->roles()->syncWithoutDetaching([$roles[$roleName]->id]);
             return $user;
         };
@@ -139,22 +168,33 @@ class ProjectComprehensiveSeeder extends Seeder
         $assistants = [];
         for ($i = 1; $i <= 10; $i++) {
             $nationalId = '12' . str_pad($i, 8, '0', STR_PAD_LEFT);
-            $user = User::updateOrCreate(
-                ['national_id' => $nationalId],
-                [
-                    'first_name_ar' => $fakerAr->firstName('female'),
-                    'second_name_ar' => $fakerAr->firstName('male'),
-                    'third_name_ar' => $fakerAr->firstName('male'),
-                    'last_name_ar' => $fakerAr->lastName,
-                    'first_name_en' => $fakerEn->firstName('female'),
-                    'second_name_en' => $fakerEn->firstName('male'),
-                    'third_name_en' => $fakerEn->firstName('male'),
-                    'last_name_en' => $fakerEn->lastName,
-                    'email' => "assistant{$i}@wasel.com",
-                    'password' => Hash::make('password'),
-                    'phone' => '966' . substr($nationalId, -9),
-                ]
-            );
+            $email = "assistant{$i}@wasel.com";
+            $phone = '966' . substr($nationalId, -9);
+            
+            $user = User::where('national_id', $nationalId)
+                        ->orWhere('email', $email)
+                        ->orWhere('phone', $phone)
+                        ->first();
+            if (!$user) {
+                $user = new User();
+                $user->password = Hash::make('password');
+            }
+
+            $user->fill([
+                'national_id' => $nationalId,
+                'first_name_ar' => $fakerAr->firstName('female'),
+                'second_name_ar' => $fakerAr->firstName('male'),
+                'third_name_ar' => $fakerAr->firstName('male'),
+                'last_name_ar' => $fakerAr->lastName,
+                'first_name_en' => $fakerEn->firstName('female'),
+                'second_name_en' => $fakerEn->firstName('male'),
+                'third_name_en' => $fakerEn->firstName('male'),
+                'last_name_en' => $fakerEn->lastName,
+                'email' => $email,
+                'phone' => '966' . substr($nationalId, -9),
+            ]);
+            $user->save();
+
             $user->roles()->syncWithoutDetaching([$roles['assistant']->id]);
             $assistants[] = Assistant::updateOrCreate(['user_id' => $user->id], ['status' => 'active']);
         }
@@ -185,14 +225,23 @@ class ProjectComprehensiveSeeder extends Seeder
                     'school_id' => $school->id,
                     'assistant_id' => $assistants[$index]->user_id,
                     'field_supervisor_id' => $supervisorUser->id, // All buses linked to the same supervisor
+                    'driver_id' => $user->id, // Set the driver ID here
                     'route_id' => $routes[$index]->id,
                     'status' => 'active',
                 ]
             );
             $buses[] = $bus;
             
-            // Link driver to bus
-            $driver->update(['bus_id' => $bus->id]);
+            // Add some Bus Expenses for each bus
+            for ($j = 1; $j <= 5; $j++) {
+                \App\Models\BusExpense::create([
+                    'bus_id' => $bus->id,
+                    'type' => $fakerAr->randomElement(['وقود', 'صيانة', 'تأمين', 'غسيل', 'إصلاح']),
+                    'amount' => rand(100, 1500),
+                    'date' => now()->subDays(rand(1, 30)),
+                    'extra_info' => 'مصاريف دورية مجدولة',
+                ]);
+            }
         }
 
         // 10. Guardians and Students (At least 10 children per guardian)
@@ -241,18 +290,70 @@ class ProjectComprehensiveSeeder extends Seeder
                         'is_active' => true,
                     ]
                 );
+
+                // Add Attendance for the last 7 days
+                for ($d = 0; $d < 7; $d++) {
+                    $attendanceDate = now()->subDays($d);
+                    if ($attendanceDate->isWeekend()) continue;
+
+                    // Daily Classroom Attendance
+                    \App\Models\Attendance::updateOrCreate(
+                        [
+                            'student_id' => $student->id,
+                            'date' => $attendanceDate->format('Y-m-d'),
+                        ],
+                        [
+                            'classroom_id' => $assignedClass->id,
+                            'status' => (rand(0, 100) > 5) ? 'present' : (rand(0, 1) ? 'absent' : 'late'),
+                        ]
+                    );
+
+                    // Trip Attendance (Morning Trip)
+                    $trip = \App\Models\Trip::updateOrCreate(
+                        [
+                            'bus_id' => $forthBus->id,
+                            'trip_date' => $attendanceDate->format('Y-m-d'),
+                            'type' => 'morning'
+                        ],
+                        [
+                            'driver_id' => $forthBus->driver->user_id ?? $drivers[0]->user_id,
+                            'school_id' => $forthBus->school_id,
+                            'route_id' => $forthBus->route_id,
+                            'status' => 'completed',
+                            'departure_time' => $attendanceDate->copy()->setTime(6, 30),
+                            'arrival_time' => $attendanceDate->copy()->setTime(7, 30),
+                        ]
+                    );
+
+                    \App\Models\TripAttendance::updateOrCreate(
+                        [
+                            'trip_id' => $trip->id,
+                            'student_id' => $student->id,
+                        ],
+                        [
+                            'status' => (rand(0, 100) > 2) ? 'boarded' : 'absent',
+                            'check_in_time' => $attendanceDate->copy()->setTime(6, rand(45, 59)),
+                            'check_out_time' => $attendanceDate->copy()->setTime(7, rand(15, 30)),
+                        ]
+                    );
+                }
             }
         }
 
-        // 11. School Admin
-        $schoolAdminUser = $createSystemUser('school_admin', 'school', '', '15' . str_pad(1, 8, '0', STR_PAD_LEFT));
-        // Remove the trailing empty index part for school email
-        $schoolAdminUser->update(['email' => 'school@wasel.com']);
-        
-        SchoolAdmin::updateOrCreate(
-            ['user_id' => $schoolAdminUser->id],
-            ['school_id' => $school->id, 'status' => 'active']
-        );
+        // 11. School Admins (One for each school)
+        foreach ($schools as $index => $currentSchool) {
+            $schoolAdminUser = $createSystemUser('school_admin', 'school', ($index + 1), '15' . str_pad($index + 1, 8, '0', STR_PAD_LEFT));
+            
+            // Set a fixed email for the first one for easy login
+            if ($index === 0) {
+                $schoolAdminUser->update(['email' => 'school@wasel.com']);
+            }
+            
+            SchoolAdmin::updateOrCreate(
+                ['user_id' => $schoolAdminUser->id],
+                ['school_id' => $currentSchool->id, 'status' => 'active']
+            );
+        }
 
         // 12. Teachers (One for each grade)
         foreach ($grades as $index => $grade) {

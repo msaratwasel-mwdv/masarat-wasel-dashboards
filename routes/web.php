@@ -207,6 +207,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         
         // مديرو المدارس - قائمة شاملة
         Route::get('school-admins', [SchoolUserController::class, 'index'])->name('school-admins.index');
+        Route::get('school-admins/export', [SchoolUserController::class, 'export'])->name('school-admins.export');
+        Route::get('school-admins/template', [SchoolUserController::class, 'downloadTemplate'])->name('school-admins.template');
+        Route::post('school-admins/import', [SchoolUserController::class, 'import'])->name('school-admins.import');
 
         Route::get('schools/{school}/admins/create', [SchoolUserController::class, 'create'])->name('schools.users.create');
         Route::post('schools/{school}/admins', [SchoolUserController::class, 'store'])->name('schools.users.store');
@@ -219,15 +222,24 @@ Route::middleware(['auth', 'verified', 'role:admin'])
 
         // Drivers Routes
         Route::get('drivers', [StaffController::class, 'index'])->name('drivers.index');
+        Route::get('drivers/export', [StaffController::class, 'export'])->name('drivers.export');
+        Route::get('drivers/template', [StaffController::class, 'downloadTemplate'])->name('drivers.template');
+        Route::post('drivers/import', [StaffController::class, 'import'])->name('drivers.import');
         Route::post('drivers', [StaffController::class, 'storeDriver'])->name('drivers.store');
         Route::put('drivers/{driver}', [StaffController::class, 'updateDriver'])->name('drivers.update');
         Route::delete('drivers/{driver}', [StaffController::class, 'destroyDriver'])->name('drivers.destroy');
         Route::get('drivers/{driver}/print', [StaffController::class, 'printCard'])->name('drivers.print');
 
         // المشرفين
+        Route::get('assistants/export', [AssistantController::class, 'export'])->name('assistants.export');
+        Route::get('assistants/template', [AssistantController::class, 'downloadTemplate'])->name('assistants.template');
+        Route::post('assistants/import', [AssistantController::class, 'import'])->name('assistants.import');
         Route::resource('assistants', AssistantController::class)->except(['create', 'edit', 'show']);
 
         // المشرفين الميدانيين
+        Route::get('field-supervisors/export', [\App\Http\Controllers\Admin\FieldSupervisorController::class, 'export'])->name('field-supervisors.export');
+        Route::get('field-supervisors/template', [\App\Http\Controllers\Admin\FieldSupervisorController::class, 'downloadTemplate'])->name('field-supervisors.template');
+        Route::post('field-supervisors/import', [\App\Http\Controllers\Admin\FieldSupervisorController::class, 'import'])->name('field-supervisors.import');
         Route::resource('field-supervisors', \App\Http\Controllers\Admin\FieldSupervisorController::class)
             ->parameters(['field-supervisors' => 'field_supervisor'])
             ->except(['create', 'edit', 'show']);
@@ -292,7 +304,13 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('bus-expenses/reports/export/pdf', [\App\Http\Controllers\Admin\BusReportController::class, 'exportPdf'])->name('bus-expenses.reports.export-pdf');
         Route::get('bus-expenses/reports/export/excel', [\App\Http\Controllers\Admin\BusReportController::class, 'exportExcel'])->name('bus-expenses.reports.export-excel');
         Route::resource('bus-expenses', \App\Http\Controllers\Admin\BusExpenseController::class);
-        
+
+        // التقارير التحليلية (Analytics Hub)
+        Route::get('analytics', [\App\Http\Controllers\Admin\AnalyticsController::class, 'index'])->name('analytics.index');
+        Route::get('analytics/operational', [\App\Http\Controllers\Admin\AnalyticsController::class, 'operational'])->name('analytics.operational');
+        Route::get('analytics/drivers', [\App\Http\Controllers\Admin\AnalyticsController::class, 'driverAnalytics'])->name('analytics.drivers');
+        Route::get('analytics/financial', [\App\Http\Controllers\Admin\AnalyticsController::class, 'financial'])->name('analytics.financial');
+        Route::get('analytics/students', [\App\Http\Controllers\Admin\AnalyticsController::class, 'studentInsights'])->name('analytics.students');
 
     });
 

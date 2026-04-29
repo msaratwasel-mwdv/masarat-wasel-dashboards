@@ -142,6 +142,26 @@ class SchoolUserController extends Controller
         return redirect()->route('admin.schools.show', $school->id)
             ->with('message', 'تم حذف المدير بنجاح');
     }
+
+    public function export()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\SchoolUsersExport(false), 'school_admins.xlsx');
+    }
+
+    public function downloadTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\SchoolUsersExport(true), 'school_admins_template.xlsx');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        $import = new \App\Imports\SchoolUsersImport();
+        \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+        return redirect()->back()->with('success', "تم استيراد مدراء المدارس بنجاح وتحديث القائمة.");
+    }
 }
-
-

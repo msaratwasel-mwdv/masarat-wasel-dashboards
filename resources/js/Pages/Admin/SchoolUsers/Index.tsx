@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import debounce from "lodash/debounce";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, router } from "@inertiajs/react";
+import { Head, router, usePage, useForm } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
 import BaseDataTable, {
   type PaginationMeta,
@@ -23,7 +23,9 @@ import {
   ShieldCheck,
   ShieldAlert,
   ArrowLeft,
-  ChevronRight
+  ChevronRight,
+  Upload,
+  Download
 } from "lucide-react";
 import { 
     DS_pageWrapper, 
@@ -99,6 +101,9 @@ export default function SchoolUsersIndex({ users, filters, auth }: Props) {
   const [search, setSearch] = useState(filters.search);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({ file: null as File | null });
+  const flash = usePage().props.flash as any;
 
   const debouncedSearch = useMemo(
     () =>
@@ -287,6 +292,30 @@ export default function SchoolUsersIndex({ users, filters, auth }: Props) {
             </div>
         </div>
 
+        {/* Error reporting for import */}
+        {flash?.import_errors && flash.import_errors.length > 0 && (
+            <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl">
+                <h4 className="text-rose-600 font-bold mb-2">أخطاء في عملية الاستيراد:</h4>
+                <ul className="list-disc list-inside text-sm text-rose-500 space-y-1">
+                    {flash.import_errors.map((err: string, i: number) => (
+                        <li key={i}>{err}</li>
+                    ))}
+                </ul>
+            </div>
+        )}
+
+        {/* Action Button Section */}
+        <div className="flex flex-wrap justify-end gap-3 mb-4">
+            <button onClick={() => setIsImportModalOpen(true)} className={DS_btnSecondary}>
+                <Upload size={18} />
+                <span>{isRTL ? "استيراد المدراء" : "Import"}</span>
+            </button>
+            <a href={route("admin.school-admins.export")} className={DS_btnSecondary}>
+                <Download size={18} />
+                <span>{isRTL ? "تصدير المدراء" : "Export"}</span>
+            </a>
+        </div>
+
         {/* Main Operational Table */}
         <div className={DS_card}>
             <BaseDataTable<User>
@@ -381,6 +410,65 @@ export default function SchoolUsersIndex({ users, filters, auth }: Props) {
                 </Modal>
             )}
         </AnimatePresence>
+
+        {/* --- Import Modal --- */}
+        <Modal show={isImportModalOpen} onClose={() => { setIsImportModalOpen(false); resetImport(); }} maxWidth="md">
+            <div className={DS_modalContainer}>
+                <div className={DS_modalHeader(isRTL)}>
+                    <div className="flex items-center gap-3">
+                        <div className={DS_modalHeaderAccent} />
+                        <h3 className={DS_modalHeaderTitle}>
+                            {isRTL ? "استيراد مدراء المدارس (Excel)" : "Import School Managers (Excel)"}
+                        </h3>
+                    </div>
+                    <button onClick={() => { setIsImportModalOpen(false); resetImport(); }} className={DS_modalClose}>
+                        <X size={18} />
+                    </button>
+                </div>
+                <form onSubmit={(e) => {
+                    e.preventDefault();
+                    postImport(route('admin.school-admins.import'), {
+                        forceFormData: true,
+                        onSuccess: () => { setIsImportModalOpen(false); resetImport(); }
+                    });
+                }}>
+                    <div className={DS_modalBody}>
+                        <div className="space-y-6">
+                            <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+                                <p className="text-sm font-bold text-[#0f2044]">
+                                    {isRTL ? "يرجى تحميل القالب المخصص وتعبئته بالبيانات ثم إعادة رفعه هنا." : "Please download the template, fill it with data, and upload it here."}
+                                </p>
+                                <a href={route('admin.school-admins.template')} className="inline-flex items-center gap-2 mt-3 text-xs font-black text-blue-600 hover:text-blue-800 uppercase tracking-widest underline">
+                                    <Download size={14} /> {isRTL ? "تحميل القالب (Template)" : "Download Template"}
+                                </a>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className={DS_label}>{isRTL ? "ملف الإكسيل" : "Excel File"}</label>
+                                <input 
+                                    type="file" 
+                                    accept=".xlsx,.xls,.csv" 
+                                    onChange={e => setImportData('file', e.target.files ? e.target.files[0] : null)}
+                                    className={DS_input} 
+                                    required 
+                                />
+                                <InputError message={importErrors.file} />
+                            </div>
+                        </div>
+                    </div>
+                    <div className={DS_modalFooter(isRTL)}>
+                        <div className="ml-auto flex items-center gap-3">
+                            <button type="button" onClick={() => { setIsImportModalOpen(false); resetImport(); }} className="text-xs font-bold text-gray-400 hover:text-[#0f2044]">
+                                {isRTL ? "إلغاء" : "Cancel"}
+                            </button>
+                            <button type="submit" disabled={importProcessing} className={DS_btnGold}>
+                                {isRTL ? "رفع واستيراد" : "Upload & Import"}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </Modal>
 
       </div>
     </AuthenticatedLayout>

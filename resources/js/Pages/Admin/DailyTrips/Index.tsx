@@ -6,30 +6,30 @@ import { toast } from 'react-toastify';
 import Modal from '@/Components/Modal';
 import BaseDataTable, { ActionButton, StatusBadge, type FilterTab, type PaginationMeta } from '@/Components/BaseDataTable';
 import PrintReportHeader from "@/Components/PrintReportHeader";
-import { 
-    DS_pageWrapper, 
-    DS_statCard, 
-    DS_statIcon, 
-    DS_statLabel, 
-    DS_statValue, 
-    DS_modalContainer, 
-    DS_modalHeader, 
-    DS_modalHeaderTitle, 
-    DS_modalHeaderAccent, 
-    DS_modalClose, 
+import {
+    DS_pageWrapper,
+    DS_statCard,
+    DS_statIcon,
+    DS_statLabel,
+    DS_statValue,
+    DS_modalContainer,
+    DS_modalHeader,
+    DS_modalHeaderTitle,
+    DS_modalHeaderAccent,
+    DS_modalClose,
     DS_modalBody,
     DS_btnSecondary,
     DS_inputCls,
     DS_labelCls
 } from "@/lib/DS";
-import { 
-    Video, 
-    ShieldCheck, 
-    Play, 
-    X, 
-    Eye, 
-    Edit2, 
-    Trash2, 
+import {
+    Video,
+    ShieldCheck,
+    Play,
+    X,
+    Eye,
+    Edit2,
+    Trash2,
     CheckCircle2,
     Printer,
     ArrowUpRight,
@@ -190,9 +190,9 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
         router.get(route('admin.daily-trips.index'));
     };
 
-    const getStatus = (status: string) => statusConfig[status] || { 
-        label: status, 
-        labelAr: status, 
+    const getStatus = (status: string) => statusConfig[status] || {
+        label: status,
+        labelAr: status,
         class: 'bg-gray-100 text-gray-700',
         icon: Clock3
     };
@@ -417,8 +417,8 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
 
                             {dateValidation && (
                                 <div className={`flex flex-col gap-2 p-3.5 rounded-[22px] border transition-all animate-in zoom-in-95 duration-500 shadow-sm min-w-[280px] max-w-[450px] ${
-                                    dateValidation.is_working 
-                                    ? 'bg-emerald-50/80 border-emerald-200 dark:bg-emerald-500/5 dark:border-emerald-500/10' 
+                                    dateValidation.is_working
+                                    ? 'bg-emerald-50/80 border-emerald-200 dark:bg-emerald-500/5 dark:border-emerald-500/10'
                                     : 'bg-amber-50/80 border-amber-200 dark:bg-amber-500/5 dark:border-amber-500/10'
                                 }`}>
                                     <div className="flex items-center gap-2 mb-1">
@@ -501,7 +501,7 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                             <X size={20} />
                         </button>
                     </div>
-                    
+
                     <div className={DS_modalBody}>
                         <div className="aspect-video bg-black rounded-2xl overflow-hidden relative group shadow-2xl">
                             <AnimatePresence mode="wait">
@@ -521,7 +521,7 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                                 )}
                             </AnimatePresence>
                         </div>
-                        
+
                         <div className="mt-6 p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
                             <div className="flex items-start gap-4">
                                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
@@ -530,7 +530,7 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                                 <div>
                                     <h4 className="font-extrabold text-[#0f2044] dark:text-white mb-1">{isRTL ? 'تم التحقق أمنياً' : 'Security Verified'}</h4>
                                     <p className="text-xs font-bold text-[#0f2044]/60 dark:text-[#7ba7e8]/60 leading-relaxed">
-                                        {isRTL 
+                                        {isRTL
                                             ? 'هذا الفيديو تم تسجيله بواسطة السائق لتوثيق خلو الحافلة تماماً من الركاب بعد انتهاء الرحلة.'
                                             : 'This video was recorded by the driver to document that the bus is completely empty after the trip finished.'}
                                     </p>

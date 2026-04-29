@@ -185,7 +185,7 @@ class StaffController extends Controller
 
             // Update extension record in drivers table
             $driver_ext = $driver->driver()->firstOrCreate(['user_id' => $driver->id]);
-            
+
             $driverExtData = [
                 'license_number' => $request->license_number,
                 'license_expiry_date' => $request->license_expiry_date,
@@ -225,11 +225,35 @@ class StaffController extends Controller
     public function printCard(User $driver)
     {
         $driver->load(['driver', 'assignedBus.school']);
-        
+
         return Inertia::render('Admin/Drivers/PrintCard', [
             'driver' => $driver
         ]);
     }
+
+    // --- 6. التصدير والاستيراد (Export & Import) ---
+    public function export()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\DriversExport(false), 'drivers.xlsx');
+    }
+
+    public function downloadTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\DriversExport(true), 'drivers_template.xlsx');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        $import = new \App\Imports\DriversImport();
+        \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+        return redirect()->back()->with('success', "تم استيراد {$import->successCount} سائق بنجاح وتحديث القائمة.");
+    }
 }
+
 
 
