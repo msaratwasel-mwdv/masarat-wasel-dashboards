@@ -104,14 +104,22 @@ class ProjectComprehensiveSeeder extends Seeder
         $school = $schools[0];
 
         // 6. Users creation helper
-        $createSystemUser = function($roleName, $prefix, $index, $nationalId) use ($school, $roles, $fakerAr, $fakerEn) {
-            $email = "{$prefix}{$index}@wasel.com";
+        $createSystemUser = function($roleName, $prefix, $index, $nationalId, $customEmail = null) use ($school, $roles, $fakerAr, $fakerEn) {
+            $email = $customEmail ?: "{$prefix}{$index}@demo-wasel.com";
             $phone = '966' . substr($nationalId, -9);
-            $user = User::where('national_id', $nationalId)
-                        ->orWhere('email', $email)
-                        ->orWhere('phone', $phone)
-                        ->first();
             
+            // Try finding by National ID first
+            $user = User::where('national_id', $nationalId)->first();
+            
+            // If not found by National ID, check if email or phone is already taken by ANOTHER user
+            if (!$user) {
+                $existingUser = User::where('email', $email)->orWhere('phone', $phone)->first();
+                if ($existingUser) {
+                    // If email/phone exists, we use this user even if National ID is different, to avoid conflict
+                    $user = $existingUser;
+                }
+            }
+
             if (!$user) {
                 $user = new User();
                 $user->password = Hash::make('password');
@@ -127,10 +135,18 @@ class ProjectComprehensiveSeeder extends Seeder
                 'second_name_en' => $fakerEn->firstName('male'),
                 'third_name_en' => $fakerEn->firstName('male'),
                 'last_name_en' => $fakerEn->lastName,
-                'email' => $email,
-                'phone' => '966' . substr($nationalId, -9),
                 'address' => $fakerAr->address,
             ]);
+
+            // Only update email/phone if they are not taken by anyone else
+            if (!User::where('email', $email)->where('id', '!=', $user->id)->exists()) {
+                $user->email = $email;
+            }
+            $cleanPhone = '966' . substr($nationalId, -9);
+            if (!User::where('phone', $cleanPhone)->where('id', '!=', $user->id)->exists()) {
+                $user->phone = $cleanPhone;
+            }
+
             $user->save();
             
             $user->roles()->syncWithoutDetaching([$roles[$roleName]->id]);
@@ -159,22 +175,22 @@ class ProjectComprehensiveSeeder extends Seeder
         $admin->roles()->syncWithoutDetaching([$roles['admin']->id]);
 
         // 7. Single Field Supervisor (المشرف الميداني الموحد)
-        $supervisorUser = $createSystemUser('field_supervisor', 'supervisor', '', '1100000000');
-        // Standardize email
-        $supervisorUser->update(['email' => 'supervisor@wasel.com']);
+        $supervisorUser = $createSystemUser('field_supervisor', 'supervisor', 'main', '1100000000', 'supervisor_demo@demo-wasel.com');
         $mainSupervisor = FieldSupervisor::updateOrCreate(['user_id' => $supervisorUser->id], ['status' => 'active']);
 
         // 8. Assistants (المشرفات)
         $assistants = [];
         for ($i = 1; $i <= 10; $i++) {
             $nationalId = '12' . str_pad($i, 8, '0', STR_PAD_LEFT);
-            $email = "assistant{$i}@wasel.com";
+            $email = "assistant_demo{$i}@demo-wasel.com";
             $phone = '966' . substr($nationalId, -9);
             
-            $user = User::where('national_id', $nationalId)
-                        ->orWhere('email', $email)
-                        ->orWhere('phone', $phone)
-                        ->first();
+            $user = User::where('national_id', $nationalId)->first();
+            if (!$user) {
+                $existingUser = User::where('email', $email)->orWhere('phone', $phone)->first();
+                if ($existingUser) $user = $existingUser;
+            }
+
             if (!$user) {
                 $user = new User();
                 $user->password = Hash::make('password');
@@ -342,12 +358,8 @@ class ProjectComprehensiveSeeder extends Seeder
 
         // 11. School Admins (One for each school)
         foreach ($schools as $index => $currentSchool) {
-            $schoolAdminUser = $createSystemUser('school_admin', 'school', ($index + 1), '15' . str_pad($index + 1, 8, '0', STR_PAD_LEFT));
-            
-            // Set a fixed email for the first one for easy login
-            if ($index === 0) {
-                $schoolAdminUser->update(['email' => 'school@wasel.com']);
-            }
+            $targetEmail = ($index === 0) ? 'school@wasel.com' : "school" . ($index + 1) . "@demo-wasel.com";
+            $schoolAdminUser = $createSystemUser('school_admin', 'school', ($index + 1), '15' . str_pad($index + 1, 8, '0', STR_PAD_LEFT), $targetEmail);
             
             SchoolAdmin::updateOrCreate(
                 ['user_id' => $schoolAdminUser->id],
