@@ -114,6 +114,20 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "map",
   },
   {
+    label: isRTL ? "الباقات والاشتراكات" : "Plans & Billing",
+    icon: "report",
+    subItems: [
+      {
+        label: isRTL ? "مركز الاشتراكات" : "Subscription Center",
+        route: "school.plans.index",
+      },
+      {
+        label: isRTL ? "الفواتير" : "Invoices",
+        route: "school.invoices.index",
+      },
+    ],
+  },
+  {
     label: isRTL ? "تقرير الحضور اليومي" : "Daily Attendance",
     route: "school.attendance.index",
     icon: "report",

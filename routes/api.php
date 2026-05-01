@@ -48,28 +48,37 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/profile/update', [AuthController::class, 'updateProfile']);    // تحديث البيانات
     Route::post('/auth/profile/avatar', [AuthController::class, 'updateAvatar']);    // تحديث الصورة
 
-    // --- ركوب/نزول الطلاب (للمشرف والسائق) ---
-    Route::get('/driver/my-trips', [DailyTripApiController::class, 'myTrips']);
-    Route::get('/driver/trips-history', [DailyTripApiController::class, 'tripsHistory']);
-    Route::post('/bus/{bus}/mark-boarded', [DailyTripApiController::class, 'markBoarded']);
+    Route::middleware([\App\Http\Middleware\CheckTransportAccess::class])->group(function () {
+        // --- ركوب/نزول الطلاب (للمشرف والسائق) ---
+        Route::get('/driver/my-trips', [DailyTripApiController::class, 'myTrips']);
+        Route::get('/driver/trips-history', [DailyTripApiController::class, 'tripsHistory']);
+        Route::post('/bus/{bus}/mark-boarded', [DailyTripApiController::class, 'markBoarded']);
 
-    Route::post('/bus/{bus}/group-board', [DailyTripApiController::class, 'groupBoard']);
-    Route::post('/bus/{bus}/mark-dropped', [DailyTripApiController::class, 'markDropped']);
-    Route::post('/bus/{bus}/group-alight', [DailyTripApiController::class, 'groupAlight']);
-    Route::get('/bus/{bus}/passengers', [DailyTripApiController::class, 'passengers']);
-    Route::post('/bus/{bus}/start-trip', [DailyTripApiController::class, 'startTrip']);
-    Route::post('/bus/{bus}/confirm-trip', [DailyTripApiController::class, 'confirmTrip']);
-    Route::post('/bus/{bus}/arrive', [DailyTripApiController::class, 'arrive']);
-    Route::post('/bus/{bus}/notify-near-house', [DailyTripApiController::class, 'notifyNearHouse']);
-    Route::post('/bus/{bus}/mark-absent', [DailyTripApiController::class, 'markAbsent']);
-    Route::post('/bus/{bus}/end-trip', [DailyTripApiController::class, 'endTrip']);
-    Route::post('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'store']);
-    Route::get('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'index']);
+        Route::post('/bus/{bus}/group-board', [DailyTripApiController::class, 'groupBoard']);
+        Route::post('/bus/{bus}/mark-dropped', [DailyTripApiController::class, 'markDropped']);
+        Route::post('/bus/{bus}/group-alight', [DailyTripApiController::class, 'groupAlight']);
+        Route::get('/bus/{bus}/passengers', [DailyTripApiController::class, 'passengers']);
+        Route::post('/bus/{bus}/start-trip', [DailyTripApiController::class, 'startTrip']);
+        Route::post('/bus/{bus}/confirm-trip', [DailyTripApiController::class, 'confirmTrip']);
+        Route::post('/bus/{bus}/arrive', [DailyTripApiController::class, 'arrive']);
+        Route::post('/bus/{bus}/notify-near-house', [DailyTripApiController::class, 'notifyNearHouse']);
+        Route::post('/bus/{bus}/mark-absent', [DailyTripApiController::class, 'markAbsent']);
+        Route::post('/bus/{bus}/end-trip', [DailyTripApiController::class, 'endTrip']);
+        Route::post('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'store']);
+        Route::get('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'index']);
 
-    // --- تحديث وجلب موقع الباص ---
-    Route::post('/bus/{bus}/location', [BusLocationController::class, 'update']);
-    Route::get('/bus/{bus}/location', [BusLocationController::class, 'show']);
-
+        // --- تحديث وجلب موقع الباص ---
+        Route::post('/bus/{bus}/location', [BusLocationController::class, 'update']);
+        Route::get('/bus/{bus}/location', [BusLocationController::class, 'show']);
+        
+        // --- المشرف الميداني ---
+        Route::get('/field/buses', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'buses']);
+        Route::get('/field/inspection-items', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'inspectionItems']);
+        Route::post('/field/inspections', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'storeInspection']);
+        Route::post('/field/violations', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'storeViolation']);
+        Route::post('/field/incidents', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'storeIncident']);
+    });
+    
     // --- إشعارات ولي الأمر ---
     Route::get('/guardian/notifications', [GuardianNotificationController::class, 'index']);
     Route::post('/guardian/notifications/{id}/read', [GuardianNotificationController::class, 'markAsRead']);
@@ -84,13 +93,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- طلبات الغياب ---
     Route::post('/parent/absence-requests', [\App\Http\Controllers\Api\ParentController::class, 'storeAbsenceRequest']);
     Route::get('/parent/absence-requests', [\App\Http\Controllers\Api\ParentController::class, 'absenceRequestsHistory']);
-
-    // --- المشرف الميداني ---
-    Route::get('/field/buses', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'buses']);
-    Route::get('/field/inspection-items', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'inspectionItems']);
-    Route::post('/field/inspections', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'storeInspection']);
-    Route::post('/field/violations', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'storeViolation']);
-    Route::post('/field/incidents', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'storeIncident']);
 
     // ═══════════════════════════════════════════════════════════
     // Chat API Routes (Mobile App)
@@ -111,7 +113,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // --- المشرف الميداني (Field Supervisor) ---
-    Route::group(['prefix' => 'field'], function () {
+    Route::group(['prefix' => 'field', 'middleware' => [\App\Http\Middleware\CheckTransportAccess::class]], function () {
         Route::get('/dashboard-stats', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getDashboardStats']);
         Route::get('/staff', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getStaff']);
         Route::get('/buses', [\App\Http\Controllers\Api\FieldSupervisorController::class, 'getBuses']);
@@ -130,7 +132,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // --- المعلم (Teacher) ---
-    Route::group(['prefix' => 'teacher'], function () {
+    // تطبق ميدلوير التحقق من الاشتراك في الحضور على واجهات المعلم
+    Route::group(['prefix' => 'teacher', 'middleware' => [\App\Http\Middleware\CheckAttendanceSubscription::class]], function () {
         Route::get('/classes', [\App\Http\Controllers\Api\TeacherController::class, 'getClasses']);
         Route::get('/classes/{classId}/students', [\App\Http\Controllers\Api\TeacherController::class, 'getStudents']);
         Route::put('/students/{studentId}/attendance', [\App\Http\Controllers\Api\TeacherController::class, 'markAttendance']);
@@ -138,4 +141,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/attendance-history', [\App\Http\Controllers\Api\TeacherController::class, 'getTeacherAttendanceHistory']);
         Route::get('/reports/stats', [\App\Http\Controllers\Api\TeacherController::class, 'getAttendanceStats']);
     });
+
+    // ═══════════════════════════════════════════════════════════
+    // Subscriptions, Plans, and Invoices
+    // ═══════════════════════════════════════════════════════════
+    Route::apiResource('plans', \App\Http\Controllers\Api\PlanController::class);
+    
+    Route::get('/subscriptions/my', [\App\Http\Controllers\Api\SubscriptionController::class, 'mySubscriptions']);
+    Route::post('/subscriptions/attendance', [\App\Http\Controllers\Api\SubscriptionController::class, 'subscribeAttendance']);
+    Route::post('/subscriptions/transport', [\App\Http\Controllers\Api\SubscriptionController::class, 'subscribeTransport']);
+
+    Route::get('/invoices/my', [\App\Http\Controllers\Api\InvoiceController::class, 'myInvoices']);
+    Route::get('/invoices/all', [\App\Http\Controllers\Api\InvoiceController::class, 'allInvoices']);
+    Route::post('/invoices/{invoice}/payment', [\App\Http\Controllers\Api\InvoiceController::class, 'logPayment']);
 });

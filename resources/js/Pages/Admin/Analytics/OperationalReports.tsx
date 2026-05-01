@@ -17,8 +17,8 @@ interface Props {
     auth: any;
     safeTripsTrend: Array<{ date: string; total: number; completed: number; safe: number; cancelled: number }>;
     buses: Array<{
-        id: number; bus_number: string; plate_number: string; capacity: number;
-        students_count: number; utilization: number; completed_trips: number;
+        id: number; bus_number: string; plate_number: string; capacity: number; daily_capacity: number;
+        students_count: number; forth_students: number; back_students: number; utilization: number; completed_trips: number;
         driver_name: string; route_name: string; school_name: string;
     }>;
     onTimePerBus: Array<{ bus_number: string; total: number; on_time: number; percent: number }>;
@@ -95,8 +95,7 @@ export default function OperationalReports({ auth, safeTripsTrend, buses, onTime
                             <tr>
                                 <th className="border border-gray-300 p-1.5">#</th>
                                 <th className="border border-gray-300 p-1.5">{isRTL ? 'الحافلة' : 'Bus'}</th>
-                                <th className="border border-gray-300 p-1.5">{isRTL ? 'السعة' : 'Capacity'}</th>
-                                <th className="border border-gray-300 p-1.5">{isRTL ? 'الطلاب' : 'Students'}</th>
+                                <th className="border border-gray-300 p-1.5">{isRTL ? 'إشغال المقاعد' : 'Seat Occupancy'}</th>
                                 <th className="border border-gray-300 p-1.5">{isRTL ? 'الاستخدام' : 'Usage'}</th>
                                 <th className="border border-gray-300 p-1.5">{isRTL ? 'الرحلات' : 'Trips'}</th>
                                 <th className="border border-gray-300 p-1.5">{isRTL ? 'السائق' : 'Driver'}</th>
@@ -107,8 +106,9 @@ export default function OperationalReports({ auth, safeTripsTrend, buses, onTime
                                 <tr key={bus.id}>
                                     <td className="border border-gray-300 p-1.5 text-center">{i + 1}</td>
                                     <td className="border border-gray-300 p-1.5 font-bold">{bus.bus_number}</td>
-                                    <td className="border border-gray-300 p-1.5 text-center">{bus.capacity}</td>
-                                    <td className="border border-gray-300 p-1.5 text-center">{bus.students_count}</td>
+                                    <td className="border border-gray-300 p-1.5 text-center">
+                                        Forth: {bus.forth_students}/{bus.capacity} <br/> Back: {bus.back_students}/{bus.capacity}
+                                    </td>
                                     <td className="border border-gray-300 p-1.5 text-center font-bold">{bus.utilization}%</td>
                                     <td className="border border-gray-300 p-1.5 text-center">{bus.completed_trips}</td>
                                     <td className="border border-gray-300 p-1.5">{bus.driver_name}</td>
@@ -250,8 +250,7 @@ export default function OperationalReports({ auth, safeTripsTrend, buses, onTime
                                         isRTL ? 'الحافلة' : 'Bus',
                                         isRTL ? 'السائق' : 'Driver',
                                         isRTL ? 'المسار' : 'Route',
-                                        isRTL ? 'السعة' : 'Capacity',
-                                        isRTL ? 'الطلاب' : 'Students',
+                                        isRTL ? 'إشغال المقاعد' : 'Seat Occupancy',
                                         isRTL ? 'الاستخدام' : 'Utilization',
                                         isRTL ? 'الرحلات المكتملة' : 'Completed Trips',
                                     ].map((h, i) => (
@@ -269,8 +268,14 @@ export default function OperationalReports({ auth, safeTripsTrend, buses, onTime
                                         </td>
                                         <td className="px-4 py-3.5 font-bold text-gray-700 dark:text-gray-300">{bus.driver_name}</td>
                                         <td className="px-4 py-3.5 text-gray-500 dark:text-gray-400">{bus.route_name}</td>
-                                        <td className="px-4 py-3.5 font-black text-[#0f2044] dark:text-white">{bus.capacity}</td>
-                                        <td className="px-4 py-3.5 font-black text-[#0f2044] dark:text-white">{bus.students_count}</td>
+                                        <td className="px-4 py-3.5" dir="ltr">
+                                            <span className="font-black text-[#0f2044] dark:text-white block text-xs">
+                                                Forth: {bus.forth_students}/{bus.capacity}
+                                            </span>
+                                            <span className="font-bold text-gray-500 dark:text-gray-400 block text-xs mt-1">
+                                                Back: {bus.back_students}/{bus.capacity}
+                                            </span>
+                                        </td>
                                         <td className="px-4 py-3.5">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex-1 h-2 bg-gray-100 dark:bg-[#0f2044]/30 rounded-full overflow-hidden max-w-[100px]">

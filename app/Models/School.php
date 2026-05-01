@@ -20,6 +20,7 @@ class School extends Model
         'status',
         'has_transport',
         'has_attendance',
+        'transport_status',
     ];
 
     /**

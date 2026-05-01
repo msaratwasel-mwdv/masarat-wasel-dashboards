@@ -57,9 +57,18 @@ class AnalyticsController extends Controller
 
         // ── Fleet Utilization % ──
         $activeBuses = Bus::where('status', 'active')->get();
-        $totalCapacity = $activeBuses->sum('capacity');
-        $totalStudents = Student::where('is_active', true)->count();
-        $utilizationPercent = $totalCapacity > 0 ? round(($totalStudents / $totalCapacity) * 100, 1) : 0;
+        $activeBusIds = $activeBuses->pluck('id');
+        $totalDailyCapacity = $activeBuses->sum('capacity') * 2; // (Forth + Back)
+        
+        $forthStudents = Student::where('is_active', true)
+            ->whereIn('forth_bus_id', $activeBusIds)->count();
+            
+        $backStudents = Student::where('is_active', true)
+            ->whereIn('back_bus_id', $activeBusIds)->count();
+            
+        $totalStudentsAssigned = $forthStudents + $backStudents; 
+        
+        $utilizationPercent = $totalDailyCapacity > 0 ? round(($totalStudentsAssigned / $totalDailyCapacity) * 100, 1) : 0;
 
         // ── Monthly Expenses ──
         $monthlyExpenses = BusExpense::whereBetween('date', [$monthStart, $monthEnd])->sum('amount');
@@ -78,8 +87,8 @@ class AnalyticsController extends Controller
                 'on_time_trips' => $onTimeTrips,
                 'total_with_times' => $tripsWithTimes,
                 'utilization_percent' => $utilizationPercent,
-                'total_students' => $totalStudents,
-                'total_capacity' => $totalCapacity,
+                'total_students' => $totalStudentsAssigned,
+                'total_capacity' => $totalDailyCapacity,
                 'monthly_expenses' => round($monthlyExpenses, 2),
                 'total_trips_month' => $totalTripsMonth,
                 'total_drivers' => $totalDrivers,
@@ -156,15 +165,19 @@ class AnalyticsController extends Controller
                 $tripCount = $tripCounts[$bus->id] ?? 0;
                 $forthCount = $forthCounts[$bus->id] ?? 0;
                 $backCount = $backCounts[$bus->id] ?? 0;
-                $maxStudents = max($forthCount, $backCount);
-                $utilization = $bus->capacity > 0 ? round(($maxStudents / $bus->capacity) * 100, 1) : 0;
+                $totalAssigned = $forthCount + $backCount;
+                $totalCapacity = $bus->capacity * 2;
+                $utilization = $totalCapacity > 0 ? round(($totalAssigned / $totalCapacity) * 100, 1) : 0;
                 
                 return [
                     'id' => $bus->id,
                     'bus_number' => $bus->bus_number,
                     'plate_number' => $bus->plate_number,
                     'capacity' => $bus->capacity,
-                    'students_count' => $maxStudents,
+                    'daily_capacity' => $totalCapacity,
+                    'forth_students' => $forthCount,
+                    'back_students' => $backCount,
+                    'students_count' => $totalAssigned,
                     'utilization' => $utilization,
                     'completed_trips' => $tripCount,
                     'driver_name' => $bus->driver?->user?->name ?? '—',

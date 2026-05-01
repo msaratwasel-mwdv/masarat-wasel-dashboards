@@ -140,6 +140,20 @@ const getMenuItems = (isRTL: boolean) => [
     ],
   },
   {
+    label: isRTL ? "الاشتراكات والمالية" : "Plans & Billing",
+    icon: "clipboard",
+    subItems: [
+      {
+        label: isRTL ? "إدارة الباقات" : "Plans Management",
+        route: "admin.plans.index",
+      },
+      {
+        label: isRTL ? "الفواتير" : "Invoices",
+        route: "admin.invoices.index",
+      },
+    ],
+  },
+  {
     label: isRTL ? "الرقابة الميدانية" : "Field Operations",
     icon: "search",
     subItems: [

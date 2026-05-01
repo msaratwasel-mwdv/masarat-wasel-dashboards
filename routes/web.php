@@ -195,7 +195,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         });
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-        // المدارس
+        // המدارس
         Route::get('/schools', [SchoolController::class, 'index'])->name('schools.index');
         Route::get('/schools/create', [SchoolController::class, 'create'])->name('schools.create');
         Route::post('/schools', [SchoolController::class, 'store'])->name('schools.store');
@@ -205,6 +205,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::delete('schools/{school}', [SchoolController::class, 'destroy'])->name('schools.destroy');
         Route::post('schools/{school}/toggle', [SchoolController::class, 'toggleStatus'])->name('schools.toggle');
         
+        // Plans & Financials
+        Route::resource('plans', \App\Http\Controllers\Admin\PlanController::class);
+        Route::resource('invoices', \App\Http\Controllers\Admin\InvoiceController::class);
+        Route::post('invoices/{invoice}/payment', [\App\Http\Controllers\Admin\InvoiceController::class, 'logPayment'])->name('invoices.payment');
+
         // مديرو المدارس - قائمة شاملة
         Route::get('school-admins', [SchoolUserController::class, 'index'])->name('school-admins.index');
         Route::get('school-admins/export', [SchoolUserController::class, 'export'])->name('school-admins.export');
@@ -362,39 +367,48 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::get('absence-requests', [\App\Http\Controllers\School\AbsenceRequestController::class, 'index'])->name('absence-requests.index');
         Route::post('absence-requests/{absenceRequest}/process', [\App\Http\Controllers\School\AbsenceRequestController::class, 'process'])->name('absence-requests.process');
 
-        // 6. الحافلات والرحلات
-        Route::resource('buses', \App\Http\Controllers\School\BusController::class);
-        Route::post('buses/bulk-destroy', [\App\Http\Controllers\School\BusController::class, 'bulkDestroy'])->name('buses.bulk-destroy');
-        Route::resource('bus-groups', \App\Http\Controllers\School\BusGroupController::class);
+        Route::middleware([\App\Http\Middleware\CheckTransportAccess::class])->group(function () {
+            // 6. الحافلات والرحلات
+            Route::resource('buses', \App\Http\Controllers\School\BusController::class);
+            Route::post('buses/bulk-destroy', [\App\Http\Controllers\School\BusController::class, 'bulkDestroy'])->name('buses.bulk-destroy');
+            Route::resource('bus-groups', \App\Http\Controllers\School\BusGroupController::class);
 
-        Route::get('buses/tracking/api', [\App\Http\Controllers\School\BusController::class, 'trackingApi'])->name('buses.tracking.api');
-        Route::get('live-tracking', [\App\Http\Controllers\School\BusController::class, 'liveTracking'])->name('live-tracking.index');
-        Route::get('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'assignStudentsPage'])->name('buses.students.assign');
-        Route::post('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'saveAssignedStudents'])->name('buses.students.save');
+            Route::get('buses/tracking/api', [\App\Http\Controllers\School\BusController::class, 'trackingApi'])->name('buses.tracking.api');
+            Route::get('live-tracking', [\App\Http\Controllers\School\BusController::class, 'liveTracking'])->name('live-tracking.index');
+            Route::get('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'assignStudentsPage'])->name('buses.students.assign');
+            Route::post('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'saveAssignedStudents'])->name('buses.students.save');
 
-        // طلبات الحافلات
-        Route::get('bus-requests', [\App\Http\Controllers\School\BusRequestController::class, 'index'])->name('bus-requests.index');
-        Route::post('bus-requests', [\App\Http\Controllers\School\BusRequestController::class, 'store'])->name('bus-requests.store');
-        Route::put('bus-requests/{busRequest}', [\App\Http\Controllers\School\BusRequestController::class, 'update'])->name('bus-requests.update');
-        Route::delete('bus-requests/{busRequest}', [\App\Http\Controllers\School\BusRequestController::class, 'destroy'])->name('bus-requests.destroy');
+            // طلبات الحافلات
+            Route::get('bus-requests', [\App\Http\Controllers\School\BusRequestController::class, 'index'])->name('bus-requests.index');
+            Route::post('bus-requests', [\App\Http\Controllers\School\BusRequestController::class, 'store'])->name('bus-requests.store');
+            Route::put('bus-requests/{busRequest}', [\App\Http\Controllers\School\BusRequestController::class, 'update'])->name('bus-requests.update');
+            Route::delete('bus-requests/{busRequest}', [\App\Http\Controllers\School\BusRequestController::class, 'destroy'])->name('bus-requests.destroy');
 
-        // 7. الإشعارات
-        Route::get('notifications/sent', [\App\Http\Controllers\School\NotificationController::class, 'sent'])->name('notifications.sent');
-        Route::get('notifications/received', [\App\Http\Controllers\School\NotificationController::class, 'received'])->name('notifications.received');
-        Route::resource('notifications', \App\Http\Controllers\School\NotificationController::class);
-        Route::post('notifications/preview', [\App\Http\Controllers\School\NotificationController::class, 'preview'])->name('notifications.preview');
+            // 7. الإشعارات
+            Route::get('notifications/sent', [\App\Http\Controllers\School\NotificationController::class, 'sent'])->name('notifications.sent');
+            Route::get('notifications/received', [\App\Http\Controllers\School\NotificationController::class, 'received'])->name('notifications.received');
+            Route::resource('notifications', \App\Http\Controllers\School\NotificationController::class);
+            Route::post('notifications/preview', [\App\Http\Controllers\School\NotificationController::class, 'preview'])->name('notifications.preview');
 
 
-        Route::resource('routes', \App\Http\Controllers\School\RouteController::class);
-        Route::resource('field-trips', \App\Http\Controllers\School\FieldTripController::class);
+            Route::resource('routes', \App\Http\Controllers\School\RouteController::class);
+            Route::resource('field-trips', \App\Http\Controllers\School\FieldTripController::class);
 
-        // Trips Dashboard
-        Route::get('trips-dashboard', [\App\Http\Controllers\School\TripDashboardController::class, 'index'])->name('trips.dashboard');
-        Route::get('trips/{trip}', [\App\Http\Controllers\School\TripDashboardController::class, 'show'])->name('trips.show');
+            // Trips Dashboard
+            Route::get('trips-dashboard', [\App\Http\Controllers\School\TripDashboardController::class, 'index'])->name('trips.dashboard');
+            Route::get('trips/{trip}', [\App\Http\Controllers\School\TripDashboardController::class, 'show'])->name('trips.show');
 
-        // Trip Reports
-        Route::get('trip-reports', [\App\Http\Controllers\School\TripReportController::class, 'index'])->name('trip-reports.index');
-        Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');
+            // Trip Reports
+            Route::get('trip-reports', [\App\Http\Controllers\School\TripReportController::class, 'index'])->name('trip-reports.index');
+            Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');
+        });
+
+        // Subscriptions & Plans
+        Route::get('plans', [\App\Http\Controllers\School\SubscriptionController::class, 'plans'])->name('plans.index');
+        Route::get('subscriptions', [\App\Http\Controllers\School\SubscriptionController::class, 'mySubscriptions'])->name('subscriptions.index');
+        Route::post('subscriptions/attendance', [\App\Http\Controllers\School\SubscriptionController::class, 'subscribeAttendance'])->name('subscriptions.attendance');
+        Route::post('subscriptions/transport', [\App\Http\Controllers\School\SubscriptionController::class, 'subscribeTransport'])->name('subscriptions.transport');
+        Route::get('invoices', [\App\Http\Controllers\School\InvoiceController::class, 'index'])->name('invoices.index');
 
         // School Settings
         Route::post('settings/school', [\App\Http\Controllers\School\SchoolSettingsController::class, 'update'])->name('settings.school.update');
