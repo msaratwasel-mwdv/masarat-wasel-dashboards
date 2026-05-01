@@ -106,7 +106,7 @@ class ProjectComprehensiveSeeder extends Seeder
         // 6. Users creation helper
         $createSystemUser = function($roleName, $prefix, $index, $nationalId, $customEmail = null) use ($school, $roles, $fakerAr, $fakerEn) {
             $email = $customEmail ?: "{$prefix}{$index}@demo-wasel.com";
-            $phone = '966' . substr($nationalId, -9);
+            $phone = '968' . substr($nationalId, -9);
             
             // Try finding by National ID first
             $user = User::where('national_id', $nationalId)->first();
@@ -142,7 +142,7 @@ class ProjectComprehensiveSeeder extends Seeder
             if (!User::where('email', $email)->where('id', '!=', $user->id)->exists()) {
                 $user->email = $email;
             }
-            $cleanPhone = '966' . substr($nationalId, -9);
+            $cleanPhone = '968' . substr($nationalId, -9);
             if (!User::where('phone', $cleanPhone)->where('id', '!=', $user->id)->exists()) {
                 $user->phone = $cleanPhone;
             }
@@ -168,7 +168,7 @@ class ProjectComprehensiveSeeder extends Seeder
                 'last_name_en' => 'Masarat',
                 'national_id' => '1000000000',
                 'password' => Hash::make('password'),
-                'phone' => '966500000000',
+                'phone' => '968500000000',
                 'address' => 'المركز الرئيسي - الرياض',
             ]
         );
@@ -183,7 +183,7 @@ class ProjectComprehensiveSeeder extends Seeder
         for ($i = 1; $i <= 10; $i++) {
             $nationalId = '12' . str_pad($i, 8, '0', STR_PAD_LEFT);
             $email = "assistant_demo{$i}@demo-wasel.com";
-            $phone = '966' . substr($nationalId, -9);
+            $phone = '968' . substr($nationalId, -9);
             
             $user = User::where('national_id', $nationalId)->first();
             if (!$user) {
@@ -207,7 +207,7 @@ class ProjectComprehensiveSeeder extends Seeder
                 'third_name_en' => $fakerEn->firstName('male'),
                 'last_name_en' => $fakerEn->lastName,
                 'email' => $email,
-                'phone' => '966' . substr($nationalId, -9),
+                'phone' => '968' . substr($nationalId, -9),
             ]);
             $user->save();
 

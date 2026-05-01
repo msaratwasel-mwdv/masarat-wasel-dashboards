@@ -527,7 +527,7 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
                             <div className="bg-brand-yellow/10 border border-brand-yellow/30 px-4 py-2 rounded-xl text-center">
                                 <p className="text-[10px] font-black uppercase text-brand-dark opacity-70 mb-0.5">{isRTL ? "التكلفة المُعتمدة" : "Approved Cost"}</p>
                                 <p className="text-xl font-black text-brand-dark">
-                                    {req.cost ? Number(req.cost).toLocaleString() : "0.00"} <span className="text-sm">SAR</span>
+                                    {req.cost ? Number(req.cost).toLocaleString() : "0.00"} <span className="text-sm">ر.ع</span>
                                 </p>
                             </div>
                         </div>
@@ -669,7 +669,7 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
 
             <div className="mt-4 pt-4 border-t border-gray-100 dark:border-[#243460]">
               <label className={DS_labelCls}>
-                {isRTL ? "التكلفة المطلوبة (بالريال)" : "Required Cost (SAR)"} <span className="text-red-500">*</span>
+               {isRTL ? "التكلفة المطلوبة (بالريال العماني ر.ع)" : "Required Cost (OMR)"} <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"

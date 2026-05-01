@@ -32,7 +32,7 @@ class AssistantSeeder extends Seeder
                     'last_name_en' => $fakerEn->lastName,
                     'email' => "assistant$i@wasel.com",
                     'password' => Hash::make('password'),
-                    'phone' => "96654000000$i",
+                    'phone' => "96854000000$i",
                 ]
             );
             $user->roles()->syncWithoutDetaching([$role->id]);

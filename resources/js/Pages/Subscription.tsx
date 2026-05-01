@@ -229,7 +229,7 @@ export default function Subscription() {
                                 <label className="text-sm font-black text-brand-navy">رقم الجوال النشط</label>
                                 <div className="flex shadow-sm rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 focus-within:ring-2 focus-within:ring-brand-navy/20 focus-within:border-brand-navy transition-all">
                                    <select className="bg-transparent pr-8 border-none text-slate-500 font-bold text-sm w-28" dir="ltr">
-                                      <option>🇸🇦 +966</option>
+                                      <option>🇸🇦 +968</option>
                                       <option>🇾🇪 +967</option>
                                       <option>🇦🇪 +971</option>
                                    </select>

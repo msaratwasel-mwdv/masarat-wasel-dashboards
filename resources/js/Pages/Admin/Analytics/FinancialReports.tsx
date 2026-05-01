@@ -80,19 +80,19 @@ export default function FinancialReports({ auth, expensesByType, expensesPerBus,
                     <div className="grid grid-cols-4 gap-4 mb-6 text-center">
                         <div className="border border-gray-300 rounded-lg p-3">
                             <p className="text-xs font-bold text-gray-500">{isRTL ? 'الإجمالي' : 'Total'}</p>
-                            <p className="text-xl font-black">{summary.total.toLocaleString()} SAR</p>
+                            <p className="text-xl font-black">{summary.total.toLocaleString()} OMR</p>
                         </div>
                         <div className="border border-gray-300 rounded-lg p-3">
                             <p className="text-xs font-bold text-gray-500">{isRTL ? 'الوقود' : 'Fuel'}</p>
-                            <p className="text-xl font-black text-amber-600">{summary.fuel.toLocaleString()} SAR</p>
+                            <p className="text-xl font-black text-amber-600">{summary.fuel.toLocaleString()} OMR</p>
                         </div>
                         <div className="border border-gray-300 rounded-lg p-3">
                             <p className="text-xs font-bold text-gray-500">{isRTL ? 'الصيانة' : 'Maintenance'}</p>
-                            <p className="text-xl font-black text-blue-600">{summary.maintenance.toLocaleString()} SAR</p>
+                            <p className="text-xl font-black text-blue-600">{summary.maintenance.toLocaleString()} OMR</p>
                         </div>
                         <div className="border border-gray-300 rounded-lg p-3">
                             <p className="text-xs font-bold text-gray-500">{isRTL ? 'أخرى' : 'Other'}</p>
-                            <p className="text-xl font-black text-green-600">{summary.other.toLocaleString()} SAR</p>
+                            <p className="text-xl font-black text-green-600">{summary.other.toLocaleString()} OMR</p>
                         </div>
                     </div>
                     <h3 className="text-lg font-black mb-2">{isRTL ? 'تفصيل لكل حافلة' : 'Per-Bus Breakdown'}</h3>
@@ -164,10 +164,10 @@ export default function FinancialReports({ auth, expensesByType, expensesPerBus,
                 {/* ── Summary KPIs ── */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     {[
-                        { icon: <Wallet size={20} />, label: isRTL ? 'إجمالي المصاريف' : 'Total Expenses', value: `${summary.total.toLocaleString()}`, sub: 'SAR', color: 'bg-[#0f2044]/10 text-[#0f2044] dark:bg-[#0f2044]/30 dark:text-[#7ba7e8]' },
-                        { icon: <Fuel size={20} />, label: isRTL ? 'تكلفة الوقود' : 'Fuel Cost', value: `${summary.fuel.toLocaleString()}`, sub: 'SAR', color: 'bg-[#f5b800]/10 text-[#b38600]' },
-                        { icon: <Wrench size={20} />, label: isRTL ? 'تكلفة الصيانة' : 'Maintenance Cost', value: `${summary.maintenance.toLocaleString()}`, sub: 'SAR', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-600' },
-                        { icon: <Package size={20} />, label: isRTL ? 'أخرى' : 'Other Costs', value: `${summary.other.toLocaleString()}`, sub: 'SAR', color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' },
+                        { icon: <Wallet size={20} />, label: isRTL ? 'إجمالي المصاريف' : 'Total Expenses', value: `${summary.total.toLocaleString()}`, sub: 'OMR', color: 'bg-[#0f2044]/10 text-[#0f2044] dark:bg-[#0f2044]/30 dark:text-[#7ba7e8]' },
+                        { icon: <Fuel size={20} />, label: isRTL ? 'تكلفة الوقود' : 'Fuel Cost', value: `${summary.fuel.toLocaleString()}`, sub: 'OMR', color: 'bg-[#f5b800]/10 text-[#b38600]' },
+                        { icon: <Wrench size={20} />, label: isRTL ? 'تكلفة الصيانة' : 'Maintenance Cost', value: `${summary.maintenance.toLocaleString()}`, sub: 'OMR', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-600' },
+                        { icon: <Package size={20} />, label: isRTL ? 'أخرى' : 'Other Costs', value: `${summary.other.toLocaleString()}`, sub: 'OMR', color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' },
                     ].map((kpi, i) => (
                         <div key={i} className="flex items-center gap-4 p-5 rounded-[20px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm">
                             <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0 ${kpi.color}`}>
@@ -197,14 +197,14 @@ export default function FinancialReports({ auth, expensesByType, expensesPerBus,
                                             <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <RechartsTooltip formatter={(value: any) => `${Number(value).toLocaleString()} SAR`} />
+                                    <RechartsTooltip formatter={(value: any) => `${Number(value).toLocaleString()} OMR`} />
                                     <Legend />
                                 </PieChart>
                             </ResponsiveContainer>
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                 <div className="text-center">
                                     <span className="text-2xl font-black text-[#0f2044] dark:text-white">{summary.total.toLocaleString()}</span>
-                                    <span className="block text-[9px] font-bold text-gray-400 uppercase">SAR</span>
+                                    <span className="block text-[9px] font-bold text-gray-400 uppercase">OMR</span>
                                 </div>
                             </div>
                         </div>
@@ -232,7 +232,7 @@ export default function FinancialReports({ auth, expensesByType, expensesPerBus,
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#e2e8f0'} />
                                     <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} />
-                                    <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderRadius: '12px', border: 'none' }} formatter={(value: any) => `${Number(value).toLocaleString()} SAR`} />
+                                    <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderRadius: '12px', border: 'none' }} formatter={(value: any) => `${Number(value).toLocaleString()} OMR`} />
                                     <Area type="monotone" dataKey="fuel" stroke="#f5b800" strokeWidth={3} fillOpacity={1} fill="url(#fuelGrad)" name={isRTL ? 'الوقود' : 'Fuel'} />
                                     <Area type="monotone" dataKey="maintenance" stroke="#0f2044" strokeWidth={2} fillOpacity={1} fill="url(#maintGrad)" name={isRTL ? 'الصيانة' : 'Maintenance'} />
                                 </AreaChart>
@@ -254,7 +254,7 @@ export default function FinancialReports({ auth, expensesByType, expensesPerBus,
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#e2e8f0'} />
                                     <XAxis dataKey="bus_number" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} />
-                                    <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderRadius: '12px', border: 'none' }} formatter={(value: any) => `${Number(value).toLocaleString()} SAR`} />
+                                    <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderRadius: '12px', border: 'none' }} formatter={(value: any) => `${Number(value).toLocaleString()} OMR`} />
                                     <Legend />
                                     <Bar dataKey="fuel_cost" name={isRTL ? 'الوقود' : 'Fuel'} fill="#f5b800" radius={[8, 8, 0, 0]} />
                                     <Bar dataKey="maintenance_cost" name={isRTL ? 'الصيانة' : 'Maintenance'} fill="#0f2044" radius={[8, 8, 0, 0]} />
@@ -300,7 +300,7 @@ export default function FinancialReports({ auth, expensesByType, expensesPerBus,
                                         <td className="px-4 py-3.5 font-bold text-[#b38600] dark:text-[#f5b800]">{bus.fuel_cost.toLocaleString()}</td>
                                         <td className="px-4 py-3.5 font-bold text-sky-600 dark:text-sky-400">{bus.maintenance_cost.toLocaleString()}</td>
                                         <td className="px-4 py-3.5 font-bold text-emerald-600 dark:text-emerald-400">{bus.other_cost.toLocaleString()}</td>
-                                        <td className="px-4 py-3.5 font-black text-[#0f2044] dark:text-white">{bus.total_cost.toLocaleString()} <span className="text-[10px] text-gray-400">SAR</span></td>
+                                        <td className="px-4 py-3.5 font-black text-[#0f2044] dark:text-white">{bus.total_cost.toLocaleString()} <span className="text-[10px] text-gray-400">OMR</span></td>
                                         <td className="px-4 py-3.5 text-gray-500 font-bold">{bus.entries}</td>
                                     </tr>
                                 ))}

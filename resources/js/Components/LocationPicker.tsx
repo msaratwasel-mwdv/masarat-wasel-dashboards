@@ -36,7 +36,7 @@ function LocationMarker({ lat, lng, onChange }: LocationPickerProps) {
 export default function LocationPicker({ lat, lng, onChange }: LocationPickerProps) {
     const center = useMemo(() => {
         if (lat !== null && lng !== null) return [lat, lng] as [number, number];
-        return [24.7136, 46.6753] as [number, number]; // Riyadh default
+        return [23.5859, 58.4059] as [number, number]; // Muscat, Oman default
     }, [lat, lng]);
 
     return (

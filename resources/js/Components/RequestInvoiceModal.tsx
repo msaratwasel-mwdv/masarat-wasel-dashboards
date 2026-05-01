@@ -346,7 +346,7 @@ export default function RequestInvoiceModal({ show, onClose, request, schoolName
                 </div>
                 <p className="text-2xl font-black text-white">{cost}</p>
                 <p className="text-[10px] font-bold text-white/70 mt-0.5">
-                  {isRTL ? "ريال سعودي" : "SAR"}
+                  {isRTL ? "ريال سعودي" : "OMR"}
                 </p>
               </div>
             </div>

@@ -892,7 +892,7 @@ export default function IndexStudents({
                           }
                           className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
                           required
-                          placeholder="+966XXXXXXXXX"
+                          placeholder="+968XXXXXXXXX"
                         />
                         <InputError message={guardianCreateForm.errors.phone} />
                       </div>

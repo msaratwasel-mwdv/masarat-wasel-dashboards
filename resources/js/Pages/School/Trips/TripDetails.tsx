@@ -2,6 +2,7 @@ import React from 'react';
 import SchoolAuthenticatedLayout from '@/Layouts/SchoolAuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import useTranslation from '@/hooks/useTranslation';
+import { useTheme } from '@/Contexts/ThemeContext';
 import { motion } from 'framer-motion';
 import { 
     Bus as BusIcon, 
@@ -12,7 +13,10 @@ import {
     Clock, 
     ArrowLeft,
     MapPin,
-    Shield
+    Shield,
+    Home,
+    School as SchoolIcon,
+    ArrowRight
 } from 'lucide-react';
 
 interface Attendance {
@@ -23,7 +27,7 @@ interface Attendance {
         last_name_ar: string;
         student_code: string;
     };
-    status: 'absent' | 'boarded' | 'dropped' | 'excused';
+    status: 'pending' | 'boarded' | 'dropped' | 'absent' | 'excused' | 'waiting';
     check_in_time?: string;
     check_out_time?: string;
 }
@@ -55,6 +59,7 @@ interface Props {
 
 export default function TripDetails({ auth, trip }: Props) {
     const { t } = useTranslation();
+    const { isRTL } = useTheme();
 
     const getStatusStyle = (status: string) => {
         switch (status) {
@@ -63,6 +68,32 @@ export default function TripDetails({ auth, trip }: Props) {
             case 'pending': return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
             default: return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
         }
+    };
+
+    // 5-stage journey timeline based on trip type and attendance status
+    const getJourneyStages = (tripType: string, status: string) => {
+        const isForth = tripType === 'forth';
+
+        const stages = isForth
+            ? [
+                { key: 'home',   label: isRTL ? 'في المنزل' : 'At Home',   icon: Home,       statuses: ['pending', 'waiting'] },
+                { key: 'bus1',   label: isRTL ? 'في الحافلة' : 'On Bus',    icon: BusIcon,    statuses: ['boarded'] },
+                { key: 'school', label: isRTL ? 'في المدرسة' : 'At School', icon: SchoolIcon, statuses: ['dropped'] },
+                { key: 'bus2',   label: isRTL ? 'في الحافلة' : 'On Bus',    icon: BusIcon,    statuses: [] },
+                { key: 'home2',  label: isRTL ? 'في المنزل' : 'At Home',   icon: Home,       statuses: [] },
+            ]
+            : [
+                { key: 'school', label: isRTL ? 'في المدرسة' : 'At School', icon: SchoolIcon, statuses: ['pending', 'waiting'] },
+                { key: 'bus1',   label: isRTL ? 'في الحافلة' : 'On Bus',    icon: BusIcon,    statuses: ['boarded'] },
+                { key: 'home',   label: isRTL ? 'في المنزل' : 'At Home',   icon: Home,       statuses: ['dropped'] },
+                { key: 'bus2',   label: isRTL ? 'في الحافلة' : 'On Bus',    icon: BusIcon,    statuses: [] },
+                { key: 'home2',  label: isRTL ? 'في المنزل' : 'At Home',   icon: Home,       statuses: [] },
+            ];
+
+        let activeIdx = -1;
+        if (status === 'absent' || status === 'excused') return { stages, activeIdx: -1, isAbsent: true };
+        stages.forEach((s, i) => { if (s.statuses.includes(status)) activeIdx = i; });
+        return { stages, activeIdx, isAbsent: false };
     };
 
     return (
@@ -206,7 +237,9 @@ export default function TripDetails({ auth, trip }: Props) {
                                 <thead>
                                     <tr className="bg-slate-50 dark:bg-slate-900/30 text-[10px] uppercase font-black tracking-widest text-slate-400">
                                         <th className="px-8 py-4 text-start">{t('Student')}</th>
-                                        <th className="px-8 py-4 text-start">{t('Status')}</th>
+                                        <th className="px-4 py-4 text-center" colSpan={5}>
+                                            <span className="text-indigo-500">{t('Journey Status')}</span>
+                                        </th>
                                         <th className="px-8 py-4 text-center">{t('Check In')}</th>
                                         <th className="px-8 py-4 text-end">{t('Check Out')}</th>
                                     </tr>
@@ -229,20 +262,39 @@ export default function TripDetails({ auth, trip }: Props) {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-5">
-                                                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                                                    attendance.status === 'dropped' 
-                                                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
-                                                        : attendance.status === 'boarded'
-                                                        ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
-                                                        : attendance.status === 'excused'
-                                                        ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                                                        : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                                                }`}>
-                                                    <div className={`w-1 h-1 rounded-full bg-current`} />
-                                                    {t(attendance.status)}
-                                                </div>
-                                            </td>
+
+                                            {/* 5-Stage Journey Timeline */}
+                                            {(() => {
+                                                const { stages, activeIdx, isAbsent } = getJourneyStages(trip.type, attendance.status);
+                                                return stages.map((stage, stageIdx) => {
+                                                    const Icon = stage.icon;
+                                                    const isPast = stageIdx < activeIdx;
+                                                    const isCurrent = stageIdx === activeIdx;
+                                                    return (
+                                                        <td key={stage.key} className="px-2 py-5 text-center">
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all border-2 ${
+                                                                    isAbsent
+                                                                        ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-400'
+                                                                        : isCurrent
+                                                                        ? 'bg-indigo-500 border-indigo-500 text-white shadow-md shadow-indigo-500/30 scale-110'
+                                                                        : isPast
+                                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700 text-emerald-500'
+                                                                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-300'
+                                                                }`}>
+                                                                    <Icon className="w-3.5 h-3.5" />
+                                                                </div>
+                                                                <span className={`text-[8px] font-black uppercase leading-tight tracking-tight max-w-[52px] text-center ${
+                                                                    isCurrent ? 'text-indigo-600 dark:text-indigo-400'
+                                                                    : isPast ? 'text-emerald-600 dark:text-emerald-400'
+                                                                    : 'text-slate-300 dark:text-slate-600'
+                                                                }`}>{stage.label}</span>
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                });
+                                            })()}
+
                                             <td className="px-8 py-5 text-center">
                                                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                                                     {attendance.check_in_time ? attendance.check_in_time : '---'}

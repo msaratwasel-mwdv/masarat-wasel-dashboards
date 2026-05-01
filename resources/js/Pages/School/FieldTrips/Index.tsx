@@ -38,7 +38,7 @@ interface FieldTripsProps {
 }
 
 export default function Index({ auth, fieldTrips = [], classrooms = [], teachers = [] }: FieldTripsProps) {
-    const { lang } = useTranslation();
+    const { t, lang } = useTranslation();
     const isRtl = lang === 'ar';
 
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -60,14 +60,7 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
     };
 
     const translateStatus = (status: string) => {
-        const map: Record<string, string> = {
-            pending:     isRtl ? 'قيد الانتظار'    : 'Pending',
-            approved:    isRtl ? 'موافق عليه'       : 'Approved',
-            in_progress: isRtl ? 'قيد التنفيذ'      : 'In Progress',
-            completed:   isRtl ? 'مكتملة'           : 'Completed',
-            cancelled:   isRtl ? 'ملغاة / مرفوضة'  : 'Cancelled',
-        };
-        return map[status] || status;
+        return t(status);
     };
 
     const getStatusBadge = (status: string) => {
@@ -88,35 +81,35 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
     };
 
     const filterBtns = [
-        { key: 'all',         label: isRtl ? 'الكل'          : 'All' },
-        { key: 'pending',     label: isRtl ? 'قيد الانتظار'  : 'Pending' },
-        { key: 'approved',    label: isRtl ? 'موافق عليه'    : 'Approved' },
-        { key: 'in_progress', label: isRtl ? 'قيد التنفيذ'   : 'In Progress' },
-        { key: 'completed',   label: isRtl ? 'مكتملة'        : 'Completed' },
+        { key: 'all',         label: t('All') },
+        { key: 'pending',     label: t('Pending') },
+        { key: 'approved',    label: t('Approved') },
+        { key: 'in_progress', label: t('In Progress') },
+        { key: 'completed',   label: t('Completed') },
     ];
 
     const statsCards = [
-        { label: isRtl ? 'إجمالي الرحلات'     : 'Total Trips',      val: fieldTrips.length,                                           icon: <Map className="w-5 h-5" />,        accent: 'navy' as const },
-        { label: isRtl ? 'طلبات قيد الانتظار' : 'Pending Requests', val: fieldTrips.filter(x => x.status === 'pending').length,      icon: <Clock className="w-5 h-5" />,      accent: 'gold' as const },
-        { label: isRtl ? 'جارية الآن'         : 'Active Now',       val: fieldTrips.filter(x => x.status === 'in_progress').length,  icon: <Navigation className="w-5 h-5" />, accent: 'blue' as const },
-        { label: isRtl ? 'مكتملة'             : 'Finalized',        val: fieldTrips.filter(x => x.status === 'completed').length,    icon: <CheckCircle className="w-5 h-5" />, accent: 'green' as const },
+        { label: t('Total Trips'),      val: fieldTrips.length,                                           icon: <Map className="w-5 h-5" />,        accent: 'navy' as const },
+        { label: t('Pending Requests'), val: fieldTrips.filter(x => x.status === 'pending').length,      icon: <Clock className="w-5 h-5" />,      accent: 'gold' as const },
+        { label: t('Active Now'),       val: fieldTrips.filter(x => x.status === 'in_progress').length,  icon: <Navigation className="w-5 h-5" />, accent: 'blue' as const },
+        { label: t('Finalized'),        val: fieldTrips.filter(x => x.status === 'completed').length,    icon: <CheckCircle className="w-5 h-5" />, accent: 'green' as const },
     ];
 
     const tableHeaders = [
-        isRtl ? 'الرحلة والوصف'  : 'Trip & Description',
-        isRtl ? 'التاريخ والوقت' : 'Schedule',
-        isRtl ? 'الوجهة'         : 'Destination',
-        isRtl ? 'المشاركون'      : 'Participants',
-        isRtl ? 'الحالة'         : 'Status',
-        isRtl ? 'الإجراءات'      : 'Operations',
+        t('Trip & Description'),
+        t('Schedule'),
+        t('Destination'),
+        t('Participants'),
+        t('Status'),
+        t('Operations'),
     ];
 
     return (
         <SchoolAuthenticatedLayout
             user={auth.user}
-            header={<h2 className={DS_pageTitle}>{isRtl ? 'الرحلات الميدانية' : 'Field Trips'}</h2>}
+            header={<h2 className={DS_pageTitle}>{t('Field Trips')}</h2>}
         >
-            <Head title={isRtl ? 'الرحلات الميدانية' : 'Field Trips'} />
+            <Head title={t('Field Trips')} />
 
             <div className={DS_pageWrapper}>
                 {/* Stats Cards */}
@@ -143,10 +136,10 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                             </div>
                             <div className={isRtl ? "text-right" : "text-left"}>
                                 <h3 className="text-base font-bold text-[#0f2044] dark:text-white">
-                                    {isRtl ? 'الرحلات الميدانية المسجلة' : 'Registered Field Trips'}
+                                    {t('Registered Field Trips')}
                                 </h3>
                                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-                                    {isRtl ? `عرض ${filteredTrips.length} رحلة` : `Showing ${filteredTrips.length} trips`}
+                                    {t('Showing')} {filteredTrips.length} {t('trips')}
                                 </p>
                             </div>
                         </div>
@@ -156,7 +149,7 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                                 <Search className={`absolute ${isRtl ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none`} />
                                 <input
                                     type="text"
-                                    placeholder={isRtl ? 'بحث في الرحلات...' : 'Search trips...'}
+                                    placeholder={t('Search trips...')}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className={`${DS_searchInput} ${isRtl ? "pr-10 pl-4" : "pl-10 pr-4"}`}
@@ -165,7 +158,7 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                             </div>
                             <button onClick={() => setShowCreateModal(true)} className={DS_btnGold}>
                                 <Plus className="w-4 h-4" />
-                                {isRtl ? 'طلب رحلة جديدة' : 'Request New Trip'}
+                                {t('Request New Trip')}
                             </button>
                         </div>
                     </div>
@@ -227,13 +220,13 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                                                     <div className="flex items-center gap-1.5">
                                                         <Users className="w-3.5 h-3.5 text-gray-400" />
                                                         <span className="text-[10px] font-bold text-[#0f2044] dark:text-[#7ba7e8] bg-[#0f2044]/5 dark:bg-[#0f2044]/30 px-2 py-0.5 rounded-[6px]">
-                                                            {trip.students_count || 0} {isRtl ? 'طالب' : 'Students'}
+                                                            {trip.students_count || 0} {t('Students')}
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5">
                                                         <Users className="w-3.5 h-3.5 text-gray-400" />
                                                         <span className="text-[10px] font-bold text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-[6px]">
-                                                            {trip.internal_teachers_count || 0} {isRtl ? 'معلم' : 'Teachers'}
+                                                            {trip.internal_teachers_count || 0} {t('Teachers')}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -244,7 +237,7 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                                                     {getStatusBadge(trip.status)}
                                                     {trip.status === 'cancelled' && trip.rejection_reason && (
                                                         <div className="text-[10px] text-red-500 max-w-[140px] bg-red-50 dark:bg-red-900/10 px-2 py-1 rounded-[8px] leading-relaxed border border-red-100 dark:border-red-900/30">
-                                                            <span className="font-bold">{isRtl ? 'السبب:' : 'Reason:'}</span> {trip.rejection_reason}
+                                                            <span className="font-bold">{t('Reason')}:</span> {trip.rejection_reason}
                                                         </div>
                                                     )}
                                                 </div>
@@ -253,10 +246,10 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                                             <td className={`${DS_tableTd} ${isRtl ? 'text-left' : 'text-right'}`}>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleView(trip.id); }}
-                                                    className="p-2 text-gray-400 hover:text-[#0f2044] hover:bg-[#0f2044]/5 dark:hover:text-white dark:hover:bg-[#243460] rounded-[10px] transition-all"
-                                                    title={isRtl ? 'عرض التفاصيل' : 'View Details'}
+                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#0f2044]/5 hover:bg-[#0f2044]/10 text-[#0f2044] dark:text-[#7ba7e8] font-black rounded-xl transition-all text-[10px] uppercase tracking-widest group-hover:bg-brand-navy group-hover:text-white"
                                                 >
-                                                    <Eye className="w-5 h-5" />
+                                                    <Eye className="w-4 h-4" />
+                                                    <span>{t('Explore')}</span>
                                                 </button>
                                             </td>
                                         </tr>
@@ -268,10 +261,10 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                                                 <Map className="w-7 h-7 text-gray-300" />
                                             </div>
                                             <h3 className="text-base font-bold text-[#0f2044] dark:text-white mb-1">
-                                                {isRtl ? 'لا توجد رحلات مطابقة' : 'No Trips Found'}
+                                                {t('No Trips Found')}
                                             </h3>
                                             <p className="text-gray-400 text-sm">
-                                                {isRtl ? 'جرب تغيير البحث أو الفلتر' : 'Try adjusting your search or filters'}
+                                                {t('Try adjusting your search or filters')}
                                             </p>
                                         </td>
                                     </tr>

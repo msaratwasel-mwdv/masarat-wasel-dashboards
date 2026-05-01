@@ -53,8 +53,8 @@ class BusController extends Controller
         // 3. School Location for Map Center
         $school = Auth::user()->school;
         $schoolLocation = [
-            'lat' => 24.7136, // Default Riyadh
-            'lng' => 46.6753,
+            'lat' => 23.5859, // Default Muscat, Oman
+            'lng' => 58.4059,
         ];
         // If school has location, use it (Assuming school model has address_lat/lng or similar)
         // $schoolLocation = ['lat' => $school->lat, 'lng' => $school->lng];
@@ -110,8 +110,8 @@ class BusController extends Controller
                     'plate_number' => $bus->plate_number,
                     'capacity' => $bus->capacity,
                     'status' => $bus->status,
-                    'current_latitude' => (float) $bus->current_latitude,
-                    'current_longitude' => (float) $bus->current_longitude,
+                    'latitude' => (float) $bus->latitude,
+                    'longitude' => (float) $bus->longitude,
                     'trip_status' => $bus->trip_status,
                     'driver' => $bus->driver?->user,
                     'students_count' => $bus->students_count ?? 0,
@@ -119,8 +119,8 @@ class BusController extends Controller
             });
 
         $schoolLocation = [
-            'lat' => 24.7136,
-            'lng' => 46.6753,
+            'lat' => 23.5859, // Default Muscat, Oman
+            'lng' => 58.4059,
         ];
 
         return Inertia::render('School/LiveTracking/Index', [
@@ -137,14 +137,14 @@ class BusController extends Controller
         $schoolId = Auth::user()->getSchoolId();
 
         $buses = Bus::where('school_id', $schoolId)
-            ->whereNotNull('current_latitude')
-            ->whereNotNull('current_longitude')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
             ->get()
             ->map(function ($bus) {
                 return [
                     'id' => $bus->id,
-                    'lat' => (float) $bus->current_latitude,
-                    'lng' => (float) $bus->current_longitude,
+                    'lat' => (float) $bus->latitude,
+                    'lng' => (float) $bus->longitude,
                     'status' => $bus->trip_status ?? 'idle',
                     'bus_number' => $bus->bus_number,
                     'last_update' => $bus->last_location_update ? $bus->last_location_update->diffForHumans() : null,

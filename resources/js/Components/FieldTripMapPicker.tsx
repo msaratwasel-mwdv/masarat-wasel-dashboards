@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Search, MapPin, LocateFixed, X } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
 
 interface FieldTripMapPickerProps {
     lat: number | null;

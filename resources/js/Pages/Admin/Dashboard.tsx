@@ -296,7 +296,7 @@ export default function Dashboard({
                     </div>
                     <div className={isRTL ? 'text-right' : 'text-left'}>
                       <h3 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>{isRTL ? "التتبع المباشر" : "Live Tracking"}</h3>
-                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isRTL ? "رصد حركة الحافلات في صنعاء" : "Active fleet monitoring in Sana'a"}</p>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isRTL ? "رصد حركة الحافلات في سلطنة عمان" : "Active fleet monitoring in Oman"}</p>
                     </div>
                  </div>
                  
@@ -333,26 +333,12 @@ export default function Dashboard({
                         exit={{ opacity: 0 }}
                         className="absolute inset-0"
                       >
-                         {GOOGLE_MAPS_API_KEY ? (
-                           <GoogleMapContainer 
-                             apiKey={GOOGLE_MAPS_API_KEY}
+                         <GoogleMapContainer 
+                             apiKey=""
                              data={filteredMapData}
                              isDark={isDark}
                              isRTL={isRTL}
-                           />
-                         ) : (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-white p-8 text-center">
-                                <AlertTriangle className="w-12 h-12 text-[#f5b800] mb-4" />
-                                <h5 className="font-black mb-2 text-[#f5b800] uppercase tracking-tighter">
-                                    {isRTL ? "مفتاح الخرائط مفقود" : "API KEY MISSING"}
-                                </h5>
-                                <p className="text-[10px] text-white/40 max-w-[200px] leading-relaxed font-bold">
-                                    {isRTL 
-                                        ? "يرجى تفعيل VITE_GOOGLE_MAPS_API_KEY في ملف الإعدادات." 
-                                        : "Please enable VITE_GOOGLE_MAPS_API_KEY in your settings."}
-                                </p>
-                            </div>
-                         )}
+                         />
                       </motion.div>
                     ) : (
                       <motion.div 
@@ -370,7 +356,7 @@ export default function Dashboard({
                          </div>
                          <div>
                            <h4 className={`text-xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{isRTL ? "نظام التتبع في وضع الاستعداد" : "Tracking System on Standby"}</h4>
-                           <p className={`text-sm max-w-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isRTL ? "تم إيقاف تفعيل الخريطة لتسريع تحميل الصفحة وتوفير موارد النظام. قم بتفعيلها لمراقبة حركة الأسطول في صنعاء." : "Map tracking is disabled to optimize performance. Enable it to monitor real-time fleet movement in Sana'a."}</p>
+                           <p className={`text-sm max-w-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isRTL ? "تم إيقاف تفعيل الخريطة لتسريع تحميل الصفحة وتوفير موارد النظام. قم بتفعيلها لمراقبة حركة الأسطول في عُمان." : "Map tracking is disabled to optimize performance. Enable it to monitor real-time fleet movement in Oman."}</p>
                          </div>
                           <button 
                             onClick={() => setIsTrackingEnabled(true)}

@@ -39,7 +39,7 @@ function MapController({ center }: { center: [number, number] }) {
     return null;
 }
 
-export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng = 46.6753 }: Props) {
+export default function LiveTrackingMap({ buses, centerLat = 23.5859, centerLng = 58.4059 }: Props) {
     const { t, isRtl } = useTranslation();
     const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
     const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
@@ -342,25 +342,26 @@ export default function LiveTrackingMap({ buses, centerLat = 24.7136, centerLng 
                             </motion.div>
                         )}
                     </AnimatePresence>
+                    
+                    {/* Empty State Overlay */}
+                    {busesWithLocation.length === 0 && (
+                        <div className="absolute inset-0 z-[1000] flex flex-col items-center justify-center bg-white/80 dark:bg-[#0f172a]/90 backdrop-blur-sm rounded-[32px] border border-gray-200 dark:border-[#243460] transition-all">
+                            <div className="w-24 h-24 rounded-[30px] bg-gray-50 dark:bg-[#1a2845] flex items-center justify-center text-5xl mx-auto mb-8 grayscale opacity-60 shadow-inner">
+                                📍
+                            </div>
+                            <h3 className="text-2xl font-black text-[#0f2044] dark:text-white mb-3">
+                                {t('No buses with location data')}
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto leading-relaxed">
+                                {searchQuery || statusFilter !== 'all'
+                                    ? t('Try adjusting your filters')
+                                    : t('Waiting for GPS data from buses...')}
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Empty State */}
-            {busesWithLocation.length === 0 && (
-                <div className="text-center py-20 bg-white dark:bg-[#1a2845] rounded-[40px] border border-dashed border-gray-200 dark:border-[#243460]">
-                    <div className="w-24 h-24 rounded-[30px] bg-gray-50 dark:bg-[#0f172a] flex items-center justify-center text-5xl mx-auto mb-8 grayscale opacity-50">
-                        📍
-                    </div>
-                    <h3 className="text-2xl font-black text-[#0f2044] dark:text-white mb-3">
-                        {t('No buses with location data')}
-                    </h3>
-                    <p className="text-sm text-gray-400 max-w-md mx-auto leading-relaxed">
-                        {searchQuery || statusFilter !== 'all'
-                            ? t('Try adjusting your filters')
-                            : t('Waiting for GPS data from buses...')}
-                    </p>
-                </div>
-            )}
         </div>
     );
 }

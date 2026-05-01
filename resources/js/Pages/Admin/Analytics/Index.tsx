@@ -128,13 +128,44 @@ export default function AnalyticsIndex({ auth, kpis, month_label }: Props) {
                                 <th className="border border-gray-300 p-3 font-bold">{isRTL ? 'التفاصيل' : 'Details'}</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr><td className="border border-gray-300 p-2">{isRTL ? 'نسبة الرحلات الآمنة' : 'Safe Trips Rate'}</td><td className="border border-gray-300 p-2 text-center font-bold">{kpis.safe_trips_percent}%</td><td className="border border-gray-300 p-2">{kpis.safe_trips} / {kpis.total_completed}</td></tr>
-                            <tr><td className="border border-gray-300 p-2">{isRTL ? 'معدل الالتزام بالمواعيد' : 'On-Time Rate'}</td><td className="border border-gray-300 p-2 text-center font-bold">{kpis.on_time_percent}%</td><td className="border border-gray-300 p-2">{kpis.on_time_trips} / {kpis.total_with_times}</td></tr>
-                            <tr><td className="border border-gray-300 p-2">{isRTL ? 'معدل استخدام الأسطول' : 'Fleet Utilization'}</td><td className="border border-gray-300 p-2 text-center font-bold">{kpis.utilization_percent}%</td><td className="border border-gray-300 p-2">{kpis.total_students} / {kpis.total_capacity} {isRTL ? '(مقعد/يومياً)' : '(Seats/Daily)'}</td></tr>
-                            <tr><td className="border border-gray-300 p-2">{isRTL ? 'إجمالي المصاريف الشهرية' : 'Monthly Expenses'}</td><td className="border border-gray-300 p-2 text-center font-bold">{kpis.monthly_expenses.toLocaleString()} SAR</td><td className="border border-gray-300 p-2">{kpis.active_buses} {isRTL ? 'حافلة نشطة' : 'active buses'}</td></tr>
-                            <tr><td className="border border-gray-300 p-2">{isRTL ? 'إجمالي الرحلات' : 'Total Trips'}</td><td className="border border-gray-300 p-2 text-center font-bold">{kpis.total_trips_month}</td><td className="border border-gray-300 p-2">{kpis.total_completed} {isRTL ? 'مكتملة' : 'completed'}</td></tr>
-                        </tbody>
+        <tbody>
+    <tr>
+        <td className="border border-gray-300 p-2">{isRTL ? 'نسبة الرحلات الآمنة' : 'Safe Trips Rate'}</td>
+        <td className="border border-gray-300 p-2 text-center font-bold">{kpis.safe_trips_percent}%</td>
+        <td className="border border-gray-300 p-2">{kpis.safe_trips} / {kpis.total_completed}</td>
+    </tr>
+
+    <tr>
+        <td className="border border-gray-300 p-2">{isRTL ? 'معدل الالتزام بالمواعيد' : 'On-Time Rate'}</td>
+        <td className="border border-gray-300 p-2 text-center font-bold">{kpis.on_time_percent}%</td>
+        <td className="border border-gray-300 p-2">{kpis.on_time_trips} / {kpis.total_with_times}</td>
+    </tr>
+
+    <tr>
+        <td className="border border-gray-300 p-2">{isRTL ? 'معدل استخدام الأسطول' : 'Fleet Utilization'}</td>
+        <td className="border border-gray-300 p-2 text-center font-bold">{kpis.utilization_percent}%</td>
+        <td className="border border-gray-300 p-2">
+            {kpis.total_students} / {kpis.total_capacity} 
+            {isRTL ? '(مقعد/يومياً)' : '(Seats/Daily)'}
+        </td>
+    </tr>
+
+    <tr>
+        <td className="border border-gray-300 p-2">{isRTL ? 'إجمالي المصاريف الشهرية' : 'Monthly Expenses'}</td>
+        <td className="border border-gray-300 p-2 text-center font-bold">
+            {kpis.monthly_expenses.toLocaleString()} OMR
+        </td>
+        <td className="border border-gray-300 p-2">
+            {kpis.active_buses} {isRTL ? 'حافلة نشطة' : 'active buses'}
+        </td>
+    </tr>
+
+    <tr>
+        <td className="border border-gray-300 p-2">{isRTL ? 'إجمالي الرحلات' : 'Total Trips'}</td>
+        <td className="border border-gray-300 p-2 text-center font-bold">{kpis.total_trips_month}</td>
+        <td className="border border-gray-300 p-2">{kpis.total_completed} {isRTL ? 'مكتملة' : 'completed'}</td>
+    </tr>
+</tbody>
                     </table>
                 </div>
             </div>
@@ -205,7 +236,7 @@ export default function AnalyticsIndex({ auth, kpis, month_label }: Props) {
                             <div>
                                 <p className={DS_statLabel}>{isRTL ? 'المصاريف الشهرية' : 'Monthly Expenses'}</p>
                                 <p className={DS_statValue2('red')}>{(kpis.monthly_expenses / 1000).toFixed(1)}K</p>
-                                <p className="text-[10px] font-bold text-gray-400 mt-1">SAR {kpis.monthly_expenses.toLocaleString()}</p>
+                                <p className="text-[10px] font-bold text-gray-400 mt-1">OMR {kpis.monthly_expenses.toLocaleString()}</p>
                             </div>
                         </div>
                     </div>

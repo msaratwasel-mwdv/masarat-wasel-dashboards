@@ -13,8 +13,10 @@ import {
     Users,
     Navigation,
     Route as RouteIcon,
-    AlertCircle
+    AlertCircle,
+    Printer
 } from 'lucide-react';
+import PrintReportHeader from '@/Components/PrintReportHeader';
 import {
     DS_pageWrapper,
     DS_pageTitle,
@@ -89,8 +91,27 @@ export default function TripDashboard({ auth, dailyTrips, fieldTrips, routes, fi
     const [activeTab, setActiveTab] = useState<'trips' | 'routes'>('trips');
     const [date, setDate] = useState(filters.date);
     const [routeId, setRouteId] = useState(filters.route_id || "");
+    const [tripTypeFilter, setTripTypeFilter] = useState<'all' | 'forth' | 'back'>('all');
 
     const [searchQuery, setSearchQuery] = useState('');
+    const [printType, setPrintType] = useState<'morning' | 'evening' | null>(null);
+
+    const handlePrint = (type: 'morning' | 'evening') => {
+        setPrintType(type);
+        setTimeout(() => { window.print(); setPrintType(null); }, 300);
+    };
+
+    // ─── Print CSS ───────────────────────────────────────────────────
+    const PRINT_STYLES = `
+    @media print {
+      body * { visibility: hidden !important; }
+      main { margin: 0 !important; position: static !important; }
+      #print-area, #print-area * { visibility: visible !important; }
+      #print-area { position: absolute; inset: 0; top: 0; left: 0; right: 0; width: 100%; padding: 20px; background: white; z-index: 9999; }
+      @page { size: landscape; }
+    }
+    `;
+
 
     const handleFilterChange = (newDate: string, newRouteId: string) => {
         router.get(route('school.trips.dashboard'), { date: newDate, route_id: newRouteId }, { preserveState: true });
@@ -112,7 +133,9 @@ export default function TripDashboard({ auth, dailyTrips, fieldTrips, routes, fi
             trip.bus?.driver?.user?.name?.toLowerCase().includes(searchLower) ||
             (trip.type === 'forth' ? (isRtl ? 'صباحي' : 'am') : (isRtl ? 'مسائي' : 'pm')).includes(searchLower);
             
-        return matchesRoute && matchesSearch;
+        const matchesType = tripTypeFilter === 'all' || trip.type === tripTypeFilter;
+
+        return matchesRoute && matchesSearch && matchesType;
     });
 
     const statsCards = [
@@ -158,6 +181,87 @@ export default function TripDashboard({ auth, dailyTrips, fieldTrips, routes, fi
             }
         >
             <Head title={isRtl ? 'لوحة الرحلات' : 'Trips Dashboard'} />
+            <style>{PRINT_STYLES}</style>
+
+            {/* Print Area */}
+            {printType && (
+                <div id="print-area" className="hidden print:block bg-white font-sans text-black w-full" dir={isRtl ? "rtl" : "ltr"}>
+                    <PrintReportHeader 
+                        title={printType === 'morning' ? t('Morning Trip Report') : t('Evening Trip Report')}
+                        schoolName={auth.user?.school?.name || t('School name not available')}
+                        schoolLogo={auth.user?.school?.logo || null}
+                        printDate={`${t('Print Date')}: ${new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' })}`}
+                        schoolAdminText={t('School Admin')}
+                    />
+
+                    {dailyTrips.filter(t => printType === 'morning' ? t.type === 'forth' : t.type === 'back').map(trip => (
+                        <div key={trip.id} className="mb-8 page-break-after-auto">
+                            <div className="bg-gray-100 p-2 mb-2 rounded border border-gray-300 flex justify-between items-center text-[10px] font-bold text-gray-800">
+                                <div>{t('Route')}: {trip.bus?.route?.name || '---'}</div>
+                                <div>{t('Bus')}: {trip.bus?.bus_number || '---'}</div>
+                                <div>{t('Driver')}: {trip.bus?.driver?.user?.name || '---'}</div>
+                            </div>
+                            <table className="w-full border-collapse border border-gray-300 text-[10px]">
+                                <thead>
+                                    <tr className="bg-gray-50">
+                                        <th className="border border-gray-300 p-1.5 text-center font-bold w-8">#</th>
+                                        <th className="border border-gray-300 p-1.5 text-right font-bold">{t('Student')}</th>
+                                        <th className="border border-gray-300 p-1.5 text-right font-bold">{t('Code')}</th>
+                                        {printType === 'morning' ? (
+                                            <>
+                                                <th className="border border-gray-300 p-1.5 text-center font-bold">{t('Bus at Door')}</th>
+                                                <th className="border border-gray-300 p-1.5 text-center font-bold">{t('Boarded')}</th>
+                                                <th className="border border-gray-300 p-1.5 text-center font-bold">{t('Alighted')}</th>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <th className="border border-gray-300 p-1.5 text-center font-bold">{t('Boarded')}</th>
+                                                <th className="border border-gray-300 p-1.5 text-center font-bold">{t('Bus Nearby')}</th>
+                                                <th className="border border-gray-300 p-1.5 text-center font-bold">{t('Alighted')}</th>
+                                            </>
+                                        )}
+                                        <th className="border border-gray-300 p-1.5 text-center font-bold">{t('Note')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(trip as any).attendances?.map((att: any, i: number) => {
+                                        const isPresent = att.status === 'boarded' || att.status === 'dropped';
+                                        return (
+                                            <tr key={att.id} className="border-b border-gray-300">
+                                                <td className="border border-gray-300 p-1.5 text-center">{i + 1}</td>
+                                                <td className="border border-gray-300 p-1.5 font-bold">{att.student?.first_name_ar} {att.student?.last_name_ar}</td>
+                                                <td className="border border-gray-300 p-1.5 font-mono">{att.student?.student_code || '-'}</td>
+                                                {printType === 'morning' ? (
+                                                    <>
+                                                        <td className="border border-gray-300 p-1.5 text-center font-mono">{att.check_in_time ? new Date('1970-01-01T' + att.check_in_time).toLocaleTimeString(isRtl ? 'ar-SA' : 'en-US', {hour: '2-digit', minute:'2-digit'}) : '-'}</td>
+                                                        <td className="border border-gray-300 p-1.5 text-center font-mono">{isPresent && att.check_in_time ? new Date('1970-01-01T' + att.check_in_time).toLocaleTimeString(isRtl ? 'ar-SA' : 'en-US', {hour: '2-digit', minute:'2-digit'}) : '-'}</td>
+                                                        <td className="border border-gray-300 p-1.5 text-center font-mono">{att.status === 'dropped' && att.check_out_time ? new Date('1970-01-01T' + att.check_out_time).toLocaleTimeString(isRtl ? 'ar-SA' : 'en-US', {hour: '2-digit', minute:'2-digit'}) : '-'}</td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="border border-gray-300 p-1.5 text-center font-mono">{isPresent && att.check_in_time ? new Date('1970-01-01T' + att.check_in_time).toLocaleTimeString(isRtl ? 'ar-SA' : 'en-US', {hour: '2-digit', minute:'2-digit'}) : '-'}</td>
+                                                        <td className="border border-gray-300 p-1.5 text-center font-mono">{att.check_in_time ? new Date('1970-01-01T' + att.check_in_time).toLocaleTimeString(isRtl ? 'ar-SA' : 'en-US', {hour: '2-digit', minute:'2-digit'}) : '-'}</td>
+                                                        <td className="border border-gray-300 p-1.5 text-center font-mono">{att.status === 'dropped' && att.check_out_time ? new Date('1970-01-01T' + att.check_out_time).toLocaleTimeString(isRtl ? 'ar-SA' : 'en-US', {hour: '2-digit', minute:'2-digit'}) : '-'}</td>
+                                                    </>
+                                                )}
+                                                <td className="border border-gray-300 p-1.5 text-center">
+                                                    {isPresent ? t('Present') : t('Absent')}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    ))}
+                    
+                    {dailyTrips.filter(t => printType === 'morning' ? t.type === 'forth' : t.type === 'back').length === 0 && (
+                        <div className="py-8 text-center font-bold text-gray-500">
+                            {printType === 'morning' ? t('No morning trips for this date') : t('No evening trips for this date')}
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className={DS_pageWrapper}>
                 {/* Stats Grid */}
@@ -187,7 +291,36 @@ export default function TripDashboard({ auth, dailyTrips, fieldTrips, routes, fi
                                         </h3>
                                     </div>
                                     
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={() => handlePrint('morning')}
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-[#f5b800]/10 text-[#f5b800] hover:bg-[#f5b800]/20 rounded-lg text-xs font-bold transition-all border border-[#f5b800]/20"
+                                            >
+                                                <Printer className="w-3.5 h-3.5" />
+                                                {isRtl ? 'طباعة تقرير الذهاب' : 'Print Morning'}
+                                            </button>
+                                            <button 
+                                                onClick={() => handlePrint('evening')}
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-[#0f2044]/10 text-[#0f2044] hover:bg-[#0f2044]/20 dark:bg-[#7ba7e8]/10 dark:text-[#7ba7e8] dark:hover:bg-[#7ba7e8]/20 rounded-lg text-xs font-bold transition-all border border-[#0f2044]/20 dark:border-[#7ba7e8]/20"
+                                            >
+                                                <Printer className="w-3.5 h-3.5" />
+                                                {isRtl ? 'طباعة تقرير العودة' : 'Print Evening'}
+                                            </button>
+                                        </div>
+                                    
                                     <div className="flex gap-3 flex-wrap">
+                                        <div className="relative">
+                                            <Filter className={`absolute w-4 h-4 text-gray-400 top-1/2 -translate-y-1/2 ${isRtl ? "right-3" : "left-3"}`} />
+                                            <select
+                                                value={tripTypeFilter}
+                                                onChange={(e) => setTripTypeFilter(e.target.value as any)}
+                                                className={`${DS_searchInput} ${isRtl ? 'pr-10' : 'pl-10'} py-2 min-w-[140px]`}
+                                            >
+                                                <option value="all">{isRtl ? 'جميع الرحلات' : 'All Trips'}</option>
+                                                <option value="forth">{isRtl ? 'رحلات الذهاب' : 'Morning Trips'}</option>
+                                                <option value="back">{isRtl ? 'رحلات العودة' : 'Evening Trips'}</option>
+                                            </select>
+                                        </div>
                                         <div className="relative">
                                             <Calendar className={`absolute w-4 h-4 text-gray-400 top-1/2 -translate-y-1/2 ${isRtl ? "right-3" : "left-3"}`} />
                                             <input

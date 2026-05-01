@@ -151,7 +151,7 @@ export default function EditSchoolAdmin({
                   }`}
                   value={data.phone}
                   onChange={(e) => setData("phone", e.target.value)}
-                  placeholder="9665..."
+                  placeholder="9687..."
                 />
                 {errors.phone && (
                   <div className="text-red-500 text-xs mt-1">

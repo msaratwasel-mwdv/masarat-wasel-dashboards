@@ -13,7 +13,9 @@ import {
     ChevronRight,
     Smartphone,
     Globe,
-    Terminal
+    Terminal,
+    MessageCircle,
+    Mail
 } from "lucide-react";
 
 import { 
@@ -106,19 +108,42 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
                     </div>
 
                     {/* Helper Info - Hidden on Mobile */}
-                    <div className="hidden lg:block mt-6 p-6 rounded-[20px] bg-gradient-to-br from-[#0f2044] to-[#1B3A5C] text-white shadow-xl relative overflow-hidden">
+                    <div className="hidden lg:block mt-6 p-6 rounded-[24px] bg-gradient-to-b from-[#0f2044] to-[#1a2f5c] border border-white/5 text-white shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-[#f5b800]/10 rounded-full blur-3xl -mr-10 -mt-10 transition-transform group-hover:scale-150 duration-700" />
                         <div className="relative z-10">
-                            <h4 className="text-sm font-black mb-2">{(isRtl ? 'تحتاج للمساعدة؟' : 'Need Help?')}</h4>
-                            <p className="text-[11px] text-white/70 leading-relaxed">
-                                {(isRtl 
-                                    ? 'إذا واجهت أي مشكلة في تحديث البيانات، يرجى التواصل مع الدعم الفني لمسارات واصل.' 
-                                    : 'If you encounter any issues updating data, please contact Masarat Wasel technical support.')}
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="p-2 bg-[#f5b800]/20 rounded-xl text-[#f5b800]">
+                                    <MessageCircle className="w-5 h-5" />
+                                </div>
+                                <h4 className="text-[15px] font-black text-[#f5b800]">
+                                    {isRtl ? 'تحتاج لمساعدة؟' : 'Need Help?'}
+                                </h4>
+                            </div>
+                            <p className="text-[11px] text-white/80 leading-relaxed font-medium mb-5">
+                                {isRtl 
+                                    ? 'فريق الدعم الفني جاهز لمساعدتك في أي وقت. تواصل معنا مباشرة.' 
+                                    : 'Technical support team is ready to assist you anytime. Contact us directly.'}
                             </p>
-                            <button className="mt-4 text-[10px] font-bold bg-[#f5b800] text-[#0f2044] px-4 py-2 rounded-lg hover:bg-white transition-colors">
-                                {(isRtl ? 'اتصل بنا' : 'Contact Support')}
-                            </button>
+                            <div className="flex flex-col gap-2.5">
+                                <a 
+                                    href="https://wa.me/96879967769" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="flex items-center justify-between px-4 py-2.5 bg-white/10 hover:bg-[#f5b800] hover:text-[#0f2044] text-white rounded-xl transition-all duration-300 group/btn"
+                                >
+                                    <span className="text-[12px] font-bold tracking-wider" dir="ltr">+968 7996 7769</span>
+                                    <MessageCircle className="w-4 h-4 opacity-70 group-hover/btn:opacity-100" />
+                                </a>
+                                <a 
+                                    href="mailto:msaratwasel@gmail.com" 
+                                    className="flex items-center justify-between px-4 py-2.5 bg-white/5 hover:bg-white/20 text-white/90 rounded-xl transition-all duration-300 group/btn"
+                                >
+                                    <span className="text-[11px] font-bold truncate">msaratwasel@gmail.com</span>
+                                    <Mail className="w-4 h-4 opacity-70 group-hover/btn:opacity-100 flex-shrink-0 ml-2" />
+                                </a>
+                            </div>
                         </div>
-                        <Building2 className="absolute -bottom-4 -right-4 w-24 h-24 text-white/5 rotate-12" />
+                        <Building2 className="absolute -bottom-6 -left-6 w-32 h-32 text-white/5 -rotate-12 pointer-events-none" />
                     </div>
                 </aside>
 

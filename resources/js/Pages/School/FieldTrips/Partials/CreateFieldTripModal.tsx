@@ -39,10 +39,8 @@ interface Props {
 }
 
 export default function CreateFieldTripModal({ show, onClose, teachers = [], classrooms = [] }: Props) {
-    const { lang } = useTranslation();
-    const isRtl = lang === 'ar';
-    const { isRTL, theme } = useTheme();
-    const t = (en: string, ar?: string) => isRtl && ar ? ar : en;
+    const { theme, isRTL } = useTheme();
+    const { t } = useTranslation();
     const isDark = theme === 'dark';
     const [currentStep, setCurrentStep] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
@@ -59,8 +57,8 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
         departure_time: '08:00',
         arrival_time: '',
         destination_address: '',
-        destination_latitude: null as number | null,
-        destination_longitude: null as number | null,
+        destination_latitude: 23.5859 as number | null, // Default: Muscat, Oman
+        destination_longitude: 58.4059 as number | null, // Default: Muscat, Oman
         student_ids: [] as number[],
         teacher_ids: [] as number[],
         external_members: [] as TripMember[],
@@ -103,10 +101,10 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
     if (!show) return null;
 
     const steps = [
-        { id: 1, name: t('Details', 'التفاصيل'), icon: '📝' },
-        { id: 2, name: t('Location', 'الموقع'), icon: '📍' },
-        { id: 3, name: t('Students', 'الطلاب'), icon: '🎓' },
-        { id: 4, name: t('Faculty', 'المشرفون'), icon: '📋' },
+        { id: 1, name: t('Details'), icon: '📝' },
+        { id: 2, name: t('Location'), icon: '📍' },
+        { id: 3, name: t('Students'), icon: '🎓' },
+        { id: 4, name: t('Faculty'), icon: '📋' },
     ];
 
     const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 4));
@@ -150,8 +148,8 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                             {steps.find(s => s.id === currentStep)?.icon || '🎒'}
                         </div>
                         <div>
-                            <h2 className="text-base font-bold text-white">{t('Field Trip Requisition', 'طلب رحلة ميدانية')}</h2>
-                            <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mt-0.5">{t('Educational Program', 'برنامج التعليم الميداني')}</p>
+                            <h2 className="text-base font-bold text-white">{t('Field Trip Requisition')}</h2>
+                            <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mt-0.5">{t('Educational Program')}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-1.5 rounded-[10px] bg-white/10 text-white hover:bg-white/20 transition-all">
@@ -180,25 +178,25 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                     {currentStep === 1 && (
                         <div className="space-y-5">
                             <div>
-                                <label className={DS_labelCls}>{t('Trip Title', 'عنوان الرحلة')}</label>
-                                <input type="text" value={data.name} onChange={e => setData('name', e.target.value)} className={DS_inputCls} placeholder={t('Science Museum Tour...', 'جولة في متحف العلوم...')} />
+                                <label className={DS_labelCls}>{t('Trip Title')}</label>
+                                <input type="text" value={data.name} onChange={e => setData('name', e.target.value)} className={DS_inputCls} placeholder={t('Science Museum Tour...')} />
                                 {errors.name && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.name}</p>}
                             </div>
                             <div>
-                                <label className={DS_labelCls}>{t('Description', 'الوصف والأهداف')}</label>
-                                <textarea value={data.description} onChange={e => setData('description', e.target.value)} rows={3} className={DS_inputCls} placeholder={t('Detail the trip purpose...', 'وصف هدف الرحلة...')} />
+                                <label className={DS_labelCls}>{t('Description & Objectives')}</label>
+                                <textarea value={data.description} onChange={e => setData('description', e.target.value)} rows={3} className={DS_inputCls} placeholder={t('Detail the trip purpose...')} />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label className={DS_labelCls}>{t('Date', 'التاريخ')}</label>
+                                    <label className={DS_labelCls}>{t('Date')}</label>
                                     <input type="date" value={data.date} onChange={e => setData('date', e.target.value)} className={DS_inputCls} />
                                 </div>
                                 <div>
-                                    <label className={DS_labelCls}>{t('Departure', 'وقت الانطلاق')}</label>
+                                    <label className={DS_labelCls}>{t('Departure')}</label>
                                     <input type="time" value={data.departure_time} onChange={e => setData('departure_time', e.target.value)} className={DS_inputCls} />
                                 </div>
                                 <div>
-                                    <label className={DS_labelCls}>{t('Arrival (Est.)', 'وقت العودة (تقريبي)')}</label>
+                                    <label className={DS_labelCls}>{t('Arrival (Est.)')}</label>
                                     <input type="time" value={data.arrival_time} onChange={e => setData('arrival_time', e.target.value)} className={DS_inputCls} />
                                     {errors.arrival_time && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.arrival_time}</p>}
                                 </div>
@@ -224,9 +222,9 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                 }}
                             />
                             <div>
-                                <label className={DS_labelCls}>{t('Destination Name', 'اسم الوجهة / العنوان')}</label>
-                                <input type="text" value={data.destination_address} onChange={e => setData('destination_address', e.target.value)} className={DS_inputCls} placeholder={t('Search or enter destination...', 'ابحث أو أدخل اسم الوجهة...')} />
-                                {errors.destination_latitude && <p className="text-red-500 text-[10px] mt-3 text-center font-black">⚠️ {t('Geolocation required on map', 'يرجى تحديد الموقع على الخريطة')}</p>}
+                                <label className={DS_labelCls}>{t('Destination Name')}</label>
+                                <input type="text" value={data.destination_address} onChange={e => setData('destination_address', e.target.value)} className={DS_inputCls} placeholder={t('Search or enter destination...')} />
+                                {errors.destination_latitude && <p className="text-red-500 text-[10px] mt-3 text-center font-black">⚠️ {t('Geolocation required on map')}</p>}
                             </div>
                         </div>
                     )}
@@ -240,17 +238,17 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                         type="text" 
                                         value={searchTerm} 
                                         onChange={e => setSearchTerm(e.target.value)}
-                                        placeholder={t('Search by student name or code...', 'ابحث باسم الطالب أو الرقم...')}
-                                        className={`${DS_inputCls} ${isRtl ? 'pr-10' : 'pl-10'}`}
+                                        placeholder={t('Search by student name or code...')}
+                                        className={`${DS_inputCls} ${isRTL ? 'pr-10' : 'pl-10'}`}
                                     />
-                                    <svg className={`w-4 h-4 absolute ${isRtl ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    <svg className={`w-4 h-4 absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                 </div>
                                 <select 
                                     value={selectedClassroomId} 
                                     onChange={e => setSelectedClassroomId(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
                                     className={DS_inputCls}
                                 >
-                                    <option value="all">{t('All Classes', 'جميع الفصول')}</option>
+                                    <option value="all">{t('All Classes')}</option>
                                     {classrooms.map(cls => <option key={cls.id} value={cls.id}>{cls.name}</option>)}
                                 </select>
                             </div>
@@ -258,16 +256,16 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                             <div className="flex justify-between items-center px-2">
                                 <div className="flex items-center gap-3">
                                     <span className="px-3 py-1 bg-[#0f2044] text-[#f5b800] rounded-[10px] text-[10px] font-black shadow">
-                                        {data.student_ids.length} {t('Selected', 'محدد')}
+                                        {data.student_ids.length} {t('Selected')}
                                     </span>
                                     <span className="text-[10px] font-bold text-gray-400">
-                                        / {filteredStudents.length} {t('Visible', 'ظاهر')}
+                                        / {filteredStudents.length} {t('Visible')}
                                     </span>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={selectAllFiltered} type="button" className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] hover:underline">{t('Select All', 'تحديد الكل')}</button>
+                                    <button onClick={selectAllFiltered} type="button" className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] hover:underline">{t('Select All')}</button>
                                     <span className="text-gray-300">|</span>
-                                    <button onClick={deselectAllFiltered} type="button" className="text-[10px] font-black text-red-500 hover:underline">{t('Clear', 'مسح')}</button>
+                                    <button onClick={deselectAllFiltered} type="button" className="text-[10px] font-black text-red-500 hover:underline">{t('Clear')}</button>
                                 </div>
                             </div>
 
@@ -320,7 +318,7 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                 {/* Internal Teachers */}
                                 <div className="space-y-4">
                                     <label className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-widest flex items-center gap-2">
-                                        🏛 {t('Internal Faculty', 'المعلمون الداخليون')}
+                                        🏛 {t('Internal Faculty')}
                                     </label>
                                     <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                                         {teachers.map(teacher => (
@@ -344,9 +342,9 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
                                         <label className="text-[11px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest flex items-center gap-2">
-                                            👥 {t('External Escorts', 'مرافقون خارجيون')}
+                                            👥 {t('External Escorts')}
                                         </label>
-                                        <button type="button" onClick={() => setShowMemberModal(true)} className="text-[9px] font-black text-purple-600 underline uppercase tracking-widest">+ {t('Add', 'إضافة')}</button>
+                                        <button type="button" onClick={() => setShowMemberModal(true)} className="text-[9px] font-black text-purple-600 underline uppercase tracking-widest">+ {t('Add')}</button>
                                     </div>
                                     <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                                         {data.external_members.map((member, idx) => (
@@ -364,7 +362,7 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                         {data.external_members.length === 0 && (
                                             <div className="h-32 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-2xl flex flex-col items-center justify-center text-gray-300">
                                                 <span className="text-2xl mb-2">👤</span>
-                                                <p className="text-[9px] font-black uppercase tracking-widest">{t('No externals added', 'لم يتم إضافة مرافقين')}</p>
+                                                <p className="text-[9px] font-black uppercase tracking-widest">{t('No externals added')}</p>
                                             </div>
                                         )}
                                     </div>
@@ -375,19 +373,19 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                              <div className="p-5 bg-[#0f2044]/5 dark:bg-[#0f2044]/20 rounded-[20px] border border-[#0f2044]/10 dark:border-[#243460]">
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                                     <div className="p-4 bg-white dark:bg-[#1a2845] rounded-[16px] shadow-sm border border-gray-100 dark:border-[#243460]">
-                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('Students', 'طلاب')}</p>
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('Students')}</p>
                                         <p className="text-xl font-black text-[#0f2044] dark:text-white">{data.student_ids.length}</p>
                                     </div>
                                     <div className="p-4 bg-white dark:bg-[#1a2845] rounded-[16px] shadow-sm border border-gray-100 dark:border-[#243460]">
-                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('Teachers', 'معلمون')}</p>
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('Teachers')}</p>
                                         <p className="text-xl font-black text-[#0f2044] dark:text-white">{data.teacher_ids.length}</p>
                                     </div>
                                     <div className="p-4 bg-white dark:bg-[#1a2845] rounded-[16px] shadow-sm border border-gray-100 dark:border-[#243460]">
-                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('Externals', 'مرافقون')}</p>
+                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('Externals')}</p>
                                         <p className="text-xl font-black text-purple-600 dark:text-purple-400">{data.external_members.length}</p>
                                     </div>
                                     <div className="p-4 bg-[#0f2044] text-white rounded-[16px] shadow">
-                                        <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest mb-1">{t('Departure', 'وقت الانطلاق')}</p>
+                                        <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest mb-1">{t('Departure')}</p>
                                         <p className="text-xl font-black text-[#f5b800]">{data.departure_time}</p>
                                     </div>
                                 </div>
@@ -398,26 +396,26 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
 
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-gray-100 dark:border-[#243460] bg-gray-50/50 dark:bg-[#0f2044]/10 flex justify-between items-center">
-                    <button onClick={onClose} className={DS_cancelBtn}>{t('Cancel', 'إلغاء')}</button>
+                    <button onClick={onClose} className={DS_cancelBtn}>{t('Cancel')}</button>
                     <div className="flex gap-3">
                         {currentStep > 1 && (
-                            <button onClick={prevStep} className={DS_btnSecondary}>{t('Previous', 'السابق')}</button>
+                            <button onClick={prevStep} className={DS_btnSecondary}>{t('Previous')}</button>
                         )}
                         {currentStep < 4 ? (
                             <button
                                 onClick={nextStep}
                                 disabled={
                                     (currentStep === 1 && (!data.name || !data.date)) ||
-                                    (currentStep === 2 && (!data.destination_address || !data.destination_latitude)) ||
+                                    (currentStep === 2 && (!data.destination_address)) ||
                                     (currentStep === 3 && data.student_ids.length === 0)
                                 }
                                 className={DS_btnPrimary + " disabled:opacity-30 disabled:cursor-not-allowed"}
                             >
-                                {t('Next Step', 'التالي')}
+                                {t('Next Step')}
                             </button>
                         ) : (
                             <button onClick={handleSubmit} disabled={processing} className={DS_submitBtn(processing)}>
-                                {processing ? t('Sending...', 'جارٍ الإرسال...') : t('Submit Request', 'إرسال الطلب')}
+                                {processing ? t('Sending...') : t('Submit Request')}
                             </button>
                         )}
                     </div>
@@ -429,20 +427,20 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                         <div className={`bg-white dark:bg-[#1a2845] rounded-[24px] shadow-2xl max-w-sm w-full p-6 border border-gray-100 dark:border-[#243460] ${isRTL ? 'rtl' : 'ltr'}`} onClick={e => e.stopPropagation()}>
                             <h3 className="text-base font-bold text-[#0f2044] dark:text-white mb-5 flex items-center gap-3">
                                 <span className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-[12px] text-lg">➕</span>
-                                {t('External Escort', 'إضافة مرافق خارجي')}
+                                {t('External Escort')}
                             </h3>
                             <div className="space-y-4 mb-6">
                                 <div>
-                                    <label className={DS_labelCls}>{t('Legal Name', 'الاسم الكامل')}</label>
-                                    <input type="text" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} className={DS_inputCls} placeholder={t('Full name...', 'الاسم الكامل...')} />
+                                    <label className={DS_labelCls}>{t('Legal Name')}</label>
+                                    <input type="text" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} className={DS_inputCls} placeholder={t('Full name...')} />
                                 </div>
                                 <div>
-                                    <label className={DS_labelCls}>{t('Contact #', 'رقم الجوال')}</label>
-                                    <input type="text" value={memberForm.phone || ''} onChange={e => setMemberForm({...memberForm, phone: e.target.value})} className={DS_inputCls} placeholder={t('05XXXXXXXX', '05XXXXXXXX')} />
+                                    <label className={DS_labelCls}>{t('Contact #')}</label>
+                                    <input type="text" value={memberForm.phone || ''} onChange={e => setMemberForm({...memberForm, phone: e.target.value})} className={DS_inputCls} placeholder="05XXXXXXXX" />
                                 </div>
                                 <div>
-                                    <label className={DS_labelCls}>{t('ID / Passport', 'رقم الهوية / جواز السفر')}</label>
-                                    <input type="text" value={memberForm.national_id || ''} onChange={e => setMemberForm({...memberForm, national_id: e.target.value})} className={DS_inputCls} placeholder={t('ID number...', 'رقم الهوية...')} />
+                                    <label className={DS_labelCls}>{t('ID / Passport')}</label>
+                                    <input type="text" value={memberForm.national_id || ''} onChange={e => setMemberForm({...memberForm, national_id: e.target.value})} className={DS_inputCls} placeholder={t('ID number...')} />
                                 </div>
                             </div>
                             <button 
@@ -455,7 +453,7 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                 }}
                                 className="w-full py-3 bg-purple-600 text-white font-bold rounded-[14px] hover:bg-purple-700 shadow transition-all text-sm"
                             >
-                                {t('Register Member', 'إضافة المرافق')}
+                                {t('Register Member')}
                             </button>
                         </div>
                     </div>

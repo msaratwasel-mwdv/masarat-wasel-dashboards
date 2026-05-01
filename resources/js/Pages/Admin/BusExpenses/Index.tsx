@@ -161,7 +161,7 @@ export default function BusExpensesIndex({ expenses, buses, filters, stats }: Pr
       header: isRTL ? "المبلغ" : "Amount",
       cell: (info) => (
         <div className="font-black text-brand-navy dark:text-white">
-          <span className="text-[10px] opacity-50 mr-1">SAR</span>
+          <span className="text-[10px] opacity-50 mr-1">OMR</span>
           {Number(info.getValue()).toLocaleString()}
         </div>
       )
@@ -234,7 +234,7 @@ export default function BusExpensesIndex({ expenses, buses, filters, stats }: Pr
                 <th className="border border-gray-300 p-1.5 text-right font-bold w-8 text-black">#</th>
                 <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الحافلة" : "Bus"}</th>
                 <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "النوع" : "Type"}</th>
-                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "المبلغ (SAR)" : "Amount (SAR)"}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "المبلغ (OMR)" : "Amount (OMR)"}</th>
                 <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "التاريخ" : "Date"}</th>
                 <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "التفاصيل" : "Details"}</th>
               </tr>
@@ -287,7 +287,7 @@ export default function BusExpensesIndex({ expenses, buses, filters, stats }: Pr
               <div className={isRTL ? "text-right" : "text-left"}>
                 <p className={DS_statLabel}>{stat.label}</p>
                 <p className={DS_statValue2(stat.accent)}>
-                   {Number(stat.value).toLocaleString()} <span className="text-[10px] opacity-50">SAR</span>
+                   {Number(stat.value).toLocaleString()} <span className="text-[10px] opacity-50">OMR</span>
                 </p>
               </div>
             </motion.div>

@@ -24,7 +24,7 @@ class TripDashboardController extends Controller
         // Fetch today's trips
         $query = Trip::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
             ->whereDate('trip_date', $date)
-            ->with(['bus.driver.user', 'bus.assistant', 'bus.route'])
+            ->with(['bus.driver.user', 'bus.assistant', 'bus.route', 'attendances.student'])
             ->withCount('attendances');
 
         if ($routeId) {

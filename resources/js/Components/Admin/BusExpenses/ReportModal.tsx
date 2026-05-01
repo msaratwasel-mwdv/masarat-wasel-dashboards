@@ -192,7 +192,7 @@ export default function ReportModal({ isOpen, onClose, buses, isRTL }: ReportMod
                                : (isRTL ? 'كفاءة ممتازة' : 'Excellent Efficiency')}
                           </span>
                           <h4 className={`text-2xl font-black mt-3 text-[#0f2044] dark:text-white`}>
-                             {reportData.stats.efficiency} <span className="text-xs opacity-60">SAR/KM</span>
+                             {reportData.stats.efficiency} <span className="text-xs opacity-60">OMR/KM</span>
                           </h4>
                           <p className={`text-xs font-bold mt-1 text-gray-600 dark:text-gray-400`}>
                              {isRTL 

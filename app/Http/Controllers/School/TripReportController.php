@@ -177,4 +177,6 @@ class TripReportController extends Controller
             'school' => Auth::user()->school,
         ]);
     }
+
+
 }

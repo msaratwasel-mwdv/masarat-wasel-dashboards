@@ -260,7 +260,7 @@ export const GuardianWizard: React.FC<GuardianWizardProps> = ({
                                     }
                                     className="w-full"
                                     required
-                                    placeholder="+966XXXXXXXXX"
+                                    placeholder="+968XXXXXXXXX"
                                 />
                                 <InputError
                                     message={guardianCreateForm.errors.phone}

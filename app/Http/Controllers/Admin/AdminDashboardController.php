@@ -202,13 +202,13 @@ class AdminDashboardController extends Controller
 
 
         // 3. بيانات الخريطة الوهمية (US-REP-001)
-        // سنفترض وجود 3 باصات تتحرك في "صنعاء" مثلاً
+        // سنفترض وجود 3 باصات تتحرك في "مسقط" مثلاً
         $liveMapData = [
             [
                 'id' => 101,
                 'code' => 'BUS-001',
-                'lat' => 15.3694,
-                'lng' => 44.1910,
+                'lat' => 23.5859,
+                'lng' => 58.4059,
                 'status' => 'moving',
                 'speed' => '45 km/h',
                 'school_id' => 1 // Demo
@@ -216,8 +216,8 @@ class AdminDashboardController extends Controller
             [
                 'id' => 102,
                 'code' => 'BUS-005',
-                'lat' => 15.3550,
-                'lng' => 44.2000,
+                'lat' => 23.6000,
+                'lng' => 58.4200,
                 'status' => 'stopped',
                 'speed' => '0 km/h',
                 'school_id' => 1 // Demo
@@ -225,8 +225,8 @@ class AdminDashboardController extends Controller
             [
                 'id' => 103,
                 'code' => 'BUS-012',
-                'lat' => 15.3800,
-                'lng' => 44.1800,
+                'lat' => 23.5700,
+                'lng' => 58.3900,
                 'status' => 'moving',
                 'speed' => '60 km/h',
                 'school_id' => 2 // Demo different school

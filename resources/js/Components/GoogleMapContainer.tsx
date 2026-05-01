@@ -1,27 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  APIProvider, 
-  Map, 
-  Marker, 
-  InfoWindow,
-  ControlPosition,
-  useMap
-} from '@vis.gl/react-google-maps';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Layers, Zap, Map as MapIcon, Navigation } from 'lucide-react';
-
-// --- Deep Black Style (Snazzy Maps Style: Charcoal/Midnight) ---
-export const deepBlackStyles = [
-  { "elementType": "geometry", "stylers": [{ "color": "#12151a" }] },
-  { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#5e6a7e" }] },
-  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#12151a" }] },
-  { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "color": "#2c3544" }] },
-  { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "road", "elementType": "geometry.fill", "stylers": [{ "color": "#1e2531" }] },
-  { "featureType": "road", "elementType": "labels.text.fill", "stylers": [{ "color": "#4b5563" }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0a0c10" }] }
-];
+import { Layers, Zap, Map as MapIcon, AlertTriangle } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
 
 interface GoogleMapContainerProps {
   apiKey: string;
@@ -30,126 +10,173 @@ interface GoogleMapContainerProps {
   isRTL: boolean;
 }
 
-export default function GoogleMapContainer({ apiKey, data, isDark, isRTL }: GoogleMapContainerProps) {
-  const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'hybrid' | 'terrain'>('roadmap');
-  const [showTraffic, setShowTraffic] = useState(false);
+export default function GoogleMapContainer({ data, isDark, isRTL }: GoogleMapContainerProps) {
+  const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
   const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const leafletMapRef = useRef<any>(null);
+  const markersRef = useRef<{ [key: number]: any }>({});
 
-  const center = { lat: 15.3694, lng: 44.191 }; // Sana'a
+  const centerLat = 23.5859; // Muscat, Oman
+  const centerLng = 58.4059;
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    import('leaflet').then((L) => {
+      if (!leafletMapRef.current) {
+        leafletMapRef.current = L.map(mapRef.current, {
+          zoomControl: false,
+          attributionControl: false,
+        }).setView([centerLat, centerLng], 12);
+
+        L.control.zoom({ position: isRTL ? 'topleft' : 'topright' }).addTo(leafletMapRef.current);
+      }
+
+      setMapReady(true);
+    });
+
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update map tiles based on type & theme
+  useEffect(() => {
+    if (!leafletMapRef.current || !mapReady) return;
+    
+    import('leaflet').then((L) => {
+      // Clear existing layers
+      leafletMapRef.current.eachLayer((layer: any) => {
+        if (layer instanceof L.TileLayer) {
+          leafletMapRef.current.removeLayer(layer);
+        }
+      });
+
+      let tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+      
+      if (mapType === 'satellite') {
+        tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      } else if (isDark) {
+        tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+      }
+
+      L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(leafletMapRef.current);
+    });
+  }, [mapType, isDark, mapReady]);
+
+  // Update markers
+  useEffect(() => {
+    if (!leafletMapRef.current || !mapReady) return;
+
+    import('leaflet').then((L) => {
+      // Remove old markers
+      Object.values(markersRef.current).forEach((marker: any) => {
+        leafletMapRef.current.removeLayer(marker);
+      });
+      markersRef.current = {};
+
+      data.forEach((bus) => {
+        const isMoving = bus.status === 'moving' || bus.status === 'active';
+        const color = isMoving ? '#10b981' : '#f59e0b';
+        
+        const customIcon = L.divIcon({
+          html: `<div style="
+            width:32px;height:32px;
+            background:${isDark ? '#1e293b' : '#ffffff'};
+            border-radius:50% 50% 50% 0;
+            transform:rotate(-45deg);
+            border:2px solid ${color};
+            box-shadow:0 4px 12px rgba(0,0,0,0.3);
+            display:flex;align-items:center;justify-content:center;
+            transition: all 0.3s ease;
+          "><div style="
+            transform:rotate(45deg);
+            width:12px;height:12px;
+            background:${color};
+            border-radius:50%;
+          "></div></div>`,
+          className: '',
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+          popupAnchor: [0, -32],
+        });
+
+        const marker = L.marker([bus.lat, bus.lng], { icon: customIcon }).addTo(leafletMapRef.current);
+        
+        const popupContent = `
+          <div dir="${isRTL ? 'rtl' : 'ltr'}" style="text-align: ${isRTL ? 'right' : 'left'}; min-width: 140px; padding: 4px;">
+            <p style="font-size: 10px; font-weight: 900; color: #94a3b8; margin: 0 0 4px 0; text-transform: uppercase;">${isRTL ? 'حافلة' : 'BUS'}</p>
+            <h5 style="font-size: 14px; font-weight: 900; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; margin: 0 0 8px 0; text-transform: uppercase;">${bus.code}</h5>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${color};"></div>
+                <span style="font-size: 11px; font-weight: 700; color: #475569;">
+                  ${isMoving ? (isRTL ? 'متحرك' : 'Moving') : (isRTL ? 'متوقف' : 'Stopped')}
+                </span>
+              </div>
+              <p style="font-size: 11px; font-weight: 900; color: #94a3b8; margin: 0;">${bus.speed}</p>
+            </div>
+          </div>
+        `;
+        
+        marker.bindPopup(popupContent);
+        
+        marker.on('click', () => {
+          setSelectedBusId(bus.id);
+        });
+
+        markersRef.current[bus.id] = marker;
+      });
+
+      // Fit bounds if there are buses
+      if (data.length > 0) {
+        const bounds = L.latLngBounds(data.map(b => [b.lat, b.lng]));
+        leafletMapRef.current.fitBounds(bounds, { padding: [50, 50] });
+      }
+    });
+  }, [data, isDark, isRTL, mapReady]);
 
   return (
-    <APIProvider apiKey={apiKey}>
-      <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl border border-slate-700/50 group/map">
-        <Map
-          defaultCenter={center}
-          defaultZoom={13}
-          styles={isDark ? deepBlackStyles : []}
-          mapTypeId={mapType}
-          disableDefaultUI={true}
-          gestureHandling={'greedy'}
-        >
-          {/* Traffic Layer Management */}
-          <TrafficLayer show={showTraffic} />
+    <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl border border-slate-700/50 group/map">
+      <div ref={mapRef} className="w-full h-full" style={{ zIndex: 1 }} />
 
-          {/* Markers */}
-          {data.map((bus) => (
-            <React.Fragment key={bus.id}>
-              <Marker
-                position={{ lat: bus.lat, lng: bus.lng }}
-                onClick={() => setSelectedBusId(bus.id)}
-                title={bus.code}
-                icon={{
-                   path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
-                   fillColor: bus.status === 'moving' ? '#10b981' : '#f59e0b',
-                   fillOpacity: 1,
-                   strokeWeight: 2,
-                   strokeColor: "#ffffff",
-                   scale: 1.5,
-                }}
-              />
-
-              {/* Info Window */}
-              {selectedBusId === bus.id && (
-                <InfoWindow 
-                  position={{ lat: bus.lat, lng: bus.lng }}
-                  onCloseClick={() => setSelectedBusId(null)}
-                >
-                  <div className={`p-2 min-w-[140px] ${isRTL ? 'text-right' : 'text-left'} bg-white`}>
-                    <p className="text-[10px] font-black text-slate-400 mb-1">{isRTL ? 'حافلة' : 'BUS'}</p>
-                    <h5 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-1.5 mb-2 uppercase">{bus.code}</h5>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-1.5">
-                            <div className={`w-1.5 h-1.5 rounded-full ${bus.status === 'moving' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                            <span className="text-[10px] font-bold text-slate-600">
-                              {bus.status === 'moving' ? (isRTL ? 'متحرك' : 'Moving') : (isRTL ? 'متوقف' : 'Stopped')}
-                            </span>
-                         </div>
-                         <p className="text-[10px] font-black text-slate-400">{bus.speed}</p>
-                      </div>
-                    </div>
-                  </div>
-                </InfoWindow>
-              )}
-            </React.Fragment>
-          ))}
-
-          {/* --- Bottom Left Controls Overlay --- */}
-          <div className={`absolute bottom-6 ${isRTL ? 'left-6' : 'right-6'} flex flex-col gap-3 z-10`}>
-              {/* Traffic Toggle */}
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowTraffic(!showTraffic)}
-                className={`flex items-center justify-center gap-2 h-10 px-4 rounded-xl border backdrop-blur-md transition-all shadow-xl font-black text-[10px] tracking-widest uppercase ${
-                  showTraffic 
-                    ? 'bg-blue-600 border-blue-500 text-white' 
-                    : 'bg-slate-900/80 border-slate-700 text-slate-400'
-                }`}
-              >
-                <Zap className={`w-4 h-4 ${showTraffic ? 'fill-current' : ''}`} />
-                {isRTL ? 'حركة المرور' : 'Traffic'}
-              </motion.button>
-
-              {/* Map Type Toggle */}
-              <div className="bg-slate-900/80 p-1.5 border border-slate-700 rounded-2xl backdrop-blur-md flex gap-2 shadow-2xl">
-                <button 
-                  onClick={() => setMapType('roadmap')}
-                  className={`flex-1 flex items-center justify-center h-10 px-3 rounded-xl transition-all ${mapType === 'roadmap' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  <MapIcon className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => setMapType('satellite')}
-                  className={`flex-1 flex items-center justify-center h-10 px-3 rounded-xl transition-all ${mapType === 'satellite' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  <Layers className="w-4 h-4" />
-                </button>
-              </div>
+      {/* --- Bottom Left Controls Overlay --- */}
+      <div className={`absolute bottom-6 ${isRTL ? 'left-6' : 'right-6'} flex flex-col gap-3 z-[1000]`}>
+          {/* Map Type Toggle */}
+          <div className="bg-slate-900/80 p-1.5 border border-slate-700 rounded-2xl backdrop-blur-md flex gap-2 shadow-2xl">
+            <button 
+              onClick={() => setMapType('roadmap')}
+              className={`flex-1 flex items-center justify-center h-10 px-3 rounded-xl transition-all ${mapType === 'roadmap' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <MapIcon className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setMapType('satellite')}
+              className={`flex-1 flex items-center justify-center h-10 px-3 rounded-xl transition-all ${mapType === 'satellite' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <Layers className="w-4 h-4" />
+            </button>
           </div>
-        </Map>
       </div>
-    </APIProvider>
+      
+      {data.length === 0 && (
+         <div className="absolute inset-0 z-[1000] flex flex-col items-center justify-center bg-white/80 dark:bg-[#0f172a]/90 backdrop-blur-sm transition-all pointer-events-none">
+             <div className="w-20 h-20 rounded-[24px] bg-gray-50 dark:bg-[#1a2845] flex items-center justify-center text-4xl mx-auto mb-6 grayscale opacity-60 shadow-inner">
+                 📍
+             </div>
+             <h3 className="text-xl font-black text-[#0f2044] dark:text-white mb-2">
+                 {isRTL ? "لا توجد حافلات نشطة" : "No active buses"}
+             </h3>
+             <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto leading-relaxed text-center px-4">
+                 {isRTL ? "في انتظار إشارات الموقع من أجهزة التتبع الخاصة بالحافلات" : "Waiting for GPS signals from bus tracking devices"}
+             </p>
+         </div>
+      )}
+    </div>
   );
-}
-
-/**
- * TrafficLayer helper component
- */
-function TrafficLayer({ show }: { show: boolean }) {
-  const map = useMap();
-  const [trafficLayer, setTrafficLayer] = useState<google.maps.TrafficLayer | null>(null);
-
-  useEffect(() => {
-    if (!map) return;
-    const layer = new google.maps.TrafficLayer();
-    setTrafficLayer(layer);
-  }, [map]);
-
-  useEffect(() => {
-    if (!trafficLayer) return;
-    trafficLayer.setMap(show ? map : null);
-  }, [trafficLayer, show, map]);
-
-  return null;
 }

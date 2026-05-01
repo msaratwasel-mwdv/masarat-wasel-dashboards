@@ -121,14 +121,14 @@ export default function AdminFieldTripDetailsModal({ show, onClose, tripId }: Pr
                                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{t('Target Objective')}</p>
                                         <p className="font-black text-sm text-[#0f2044] dark:text-white truncate">{tripData.destination_address}</p>
                                         <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[8px] font-black uppercase tracking-widest mt-1">
-                                            <ShieldCheck size={8} /> Verified
+                                            <ShieldCheck size={8} /> {t('Verified')}
                                         </span>
                                     </div>
                                 </div>
                                 <div className="p-5 bg-[#0f2044] rounded-2xl shadow-xl shadow-[#0f2044]/10 flex flex-col justify-center border-b-4 border-[#f5b800]">
                                     <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{t('Service Quote')}</p>
                                     <p className="text-2xl font-black text-white">
-                                        {tripData.cost ? `${tripData.cost} ${isRTL ? 'ر.س' : 'SAR'}` : t('Pending Quote')}
+                                        {tripData.cost ? `${tripData.cost} ${t('OMR')}` : t('Pending Quote')}
                                     </p>
                                 </div>
                             </div>
@@ -174,7 +174,7 @@ export default function AdminFieldTripDetailsModal({ show, onClose, tripId }: Pr
                                             <div key={idx} className="p-4 bg-purple-50/20 dark:bg-purple-900/10 border border-purple-100/30 dark:border-purple-800/20 rounded-2xl flex items-center justify-between group">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center text-purple-600 text-[10px] font-black uppercase">
-                                                        EXT
+                                                        {t('EXT')}
                                                     </div>
                                                     <div>
                                                         <p className="font-black text-xs text-purple-900 dark:text-purple-300">{m.name}</p>

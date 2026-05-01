@@ -39,14 +39,9 @@ import {
   Filter,
 } from "lucide-react";
 import FieldTripMapPicker from "@/Components/FieldTripMapPicker";
-import {
-  APIProvider,
-  Map,
-  AdvancedMarker,
-  InfoWindow,
-  ControlPosition,
-  MapControl
-} from '@vis.gl/react-google-maps';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 // 1. Data Shape
 interface School {
@@ -67,27 +62,6 @@ interface Props {
   schools: School[];
 }
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-
-const lightMapStyles = [
-  { "elementType": "geometry", "stylers": [{ "color": "#f8fafc" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#64748b" }] },
-  { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "color": "#e2e8f0" }] },
-  { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "road", "elementType": "geometry.fill", "stylers": [{ "color": "#ffffff" }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#cbd5e1" }] }
-];
-
-const darkMapStyles = [
-  { "elementType": "geometry", "stylers": [{ "color": "#12151a" }] },
-  { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#5e6a7e" }] },
-  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#12151a" }] },
-  { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "color": "#2c3544" }] },
-  { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "road", "elementType": "geometry.fill", "stylers": [{ "color": "#1e2531" }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0a0c10" }] }
-];
 
 export default function SchoolsIndex({ schools }: Props) {
   const { isRTL, theme } = useTheme();
@@ -858,98 +832,97 @@ function ServiceBadge({ icon, active, label, isDark }: { icon: any, active: bool
 // ─── DASHBOARD COMPONENTS ─────────────────────────────
 
 function SchoolsDistributionMap({ schools, isDark, isRTL }: { schools: School[], isDark: boolean, isRTL: boolean }) {
-    const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
     const validSchools = schools.filter(s => s.latitude && s.longitude);
 
     // Default center to the average of points or a fallback (Oman)
     const center = useMemo(() => {
-        if (validSchools.length === 0) return { lat: 23.5859, lng: 58.4059 };
+        if (validSchools.length === 0) return [23.5859, 58.4059] as [number, number];
         const lat = validSchools.reduce((sum, s) => sum + Number(s.latitude), 0) / validSchools.length;
         const lng = validSchools.reduce((sum, s) => sum + Number(s.longitude), 0) / validSchools.length;
-        return { lat, lng };
+        return [lat, lng] as [number, number];
     }, [validSchools]);
 
+    // Custom school marker icon
+    const schoolIcon = L.divIcon({
+        html: `
+            <div style="
+                width:40px;height:40px;
+                background:#0f2044;
+                border-radius:12px;
+                display:flex;align-items:center;justify-content:center;
+                border:3px solid white;
+                box-shadow:0 10px 15px -3px rgba(0,0,0,0.3);
+                font-size:20px;
+                color:#f5b800;
+            ">
+                🏛
+            </div>
+        `,
+        className: 'custom-school-marker',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20],
+    });
+
     return (
-        <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
-            <Map
-                defaultCenter={center}
-                defaultZoom={11}
-                mapId={isDark ? "7d9c6c547846f49d" : "light_map_id"}
-                styles={isDark ? darkMapStyles : lightMapStyles}
-                disableDefaultUI={true}
-                gestureHandling={'greedy'}
-            >
-                {validSchools.map(school => (
-                    <React.Fragment key={school.id}>
-                        <AdvancedMarker
-                            position={{ lat: Number(school.latitude), lng: Number(school.longitude) }}
-                            onClick={() => setSelectedSchool(school)}
-                        >
-                            <motion.div
-                                whileHover={{ scale: 1.1, y: -5 }}
-                                className="relative flex flex-col items-center group cursor-pointer"
+        <MapContainer
+            center={center}
+            zoom={11}
+            style={{ height: '100%', width: '100%' }}
+            zoomControl={false}
+        >
+            <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {validSchools.map(school => (
+                <Marker
+                    key={school.id}
+                    position={[Number(school.latitude), Number(school.longitude)]}
+                    icon={schoolIcon}
+                >
+                    <Popup minWidth={220} className="custom-modern-popup">
+                        <div className={`p-4 ${isRTL ? 'text-right' : 'text-left'} dir-${isRTL ? 'rtl' : 'ltr'}`}>
+                            <div className="flex items-center gap-3 mb-4 border-b border-gray-100 pb-3">
+                                <div className="w-10 h-10 rounded-xl bg-brand-navy/10 flex items-center justify-center p-1.5">
+                                    {school.logo ? (
+                                        <img src={`/storage/${school.logo}`} className="w-full h-full object-contain" />
+                                    ) : (
+                                        <SchoolIcon className="w-5 h-5 text-brand-navy" />
+                                    )}
+                                </div>
+                                <div>
+                                    <h4 className="font-black text-sm text-gray-900 leading-tight">{school.name}</h4>
+                                    <p className="text-[9px] text-gray-400 font-bold flex items-center gap-0.5 mt-0.5">
+                                        <MapPin className="w-2.5 h-2.5" />
+                                        {school.address?.substring(0, 25)}...
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                <div className="bg-blue-50/50 p-2 rounded-2xl border border-blue-100/50 text-center">
+                                    <p className="text-[8px] font-black text-blue-400 uppercase mb-0.5">{isRTL ? 'الباصات' : 'Buses'}</p>
+                                    <p className="text-sm font-black text-blue-600">{school.buses_count || 0}</p>
+                                </div>
+                                <div className="bg-emerald-50/50 p-2 rounded-2xl border border-emerald-100/50 text-center">
+                                    <p className="text-[8px] font-black text-emerald-400 uppercase mb-0.5">{isRTL ? 'الطلاب' : 'Students'}</p>
+                                    <p className="text-sm font-black text-emerald-600">{school.enrollments_count || 0}</p>
+                                </div>
+                            </div>
+
+                            <Link
+                                href={route('admin.schools.show', school.id)}
+                                className="w-full py-2 bg-brand-navy text-white text-[10px] font-black rounded-xl hover:bg-brand-dark transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-navy/20"
                             >
-                                <div className={`p-1.5 rounded-2xl border-2 shadow-2xl transition-all duration-300 ${
-                                    school.status === 'Active'
-                                    ? 'bg-brand-navy border-white text-white'
-                                    : 'bg-gray-500 border-gray-100 text-white grayscale'
-                                }`}>
-                                    <SchoolIcon className="w-5 h-5" />
-                                </div>
-                                <div className={`mt-2 px-3 py-1 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full shadow-lg border border-gray-100 dark:border-gray-800 transition-opacity ${selectedSchool?.id === school.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                                    <p className="text-[9px] font-black whitespace-nowrap dark:text-white uppercase tracking-tighter">{school.name}</p>
-                                </div>
-                            </motion.div>
-                        </AdvancedMarker>
-
-                        {selectedSchool?.id === school.id && (
-                            <InfoWindow
-                                position={{ lat: Number(school.latitude), lng: Number(school.longitude) }}
-                                onCloseClick={() => setSelectedSchool(null)}
-                            >
-                                <div className={`p-4 min-w-[220px] ${isRTL ? 'text-right' : 'text-left'} dir-${isRTL ? 'rtl' : 'ltr'}`}>
-                                    <div className="flex items-center gap-3 mb-4 border-b border-gray-100 pb-3">
-                                        <div className="w-10 h-10 rounded-xl bg-brand-navy/10 flex items-center justify-center p-1.5">
-                                            {school.logo ? (
-                                                <img src={`/storage/${school.logo}`} className="w-full h-full object-contain" />
-                                            ) : (
-                                                <SchoolIcon className="w-5 h-5 text-brand-navy" />
-                                            )}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-black text-sm text-gray-900 leading-tight">{school.name}</h4>
-                                            <p className="text-[9px] text-gray-400 font-bold flex items-center gap-0.5 mt-0.5">
-                                                <MapPin className="w-2.5 h-2.5" />
-                                                {school.address?.substring(0, 25)}...
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
-                                        <div className="bg-blue-50/50 p-2 rounded-2xl border border-blue-100/50 text-center">
-                                            <p className="text-[8px] font-black text-blue-400 uppercase mb-0.5">{isRTL ? 'الباصات' : 'Buses'}</p>
-                                            <p className="text-sm font-black text-blue-600">{school.buses_count || 0}</p>
-                                        </div>
-                                        <div className="bg-emerald-50/50 p-2 rounded-2xl border border-emerald-100/50 text-center">
-                                            <p className="text-[8px] font-black text-emerald-400 uppercase mb-0.5">{isRTL ? 'الطلاب' : 'Students'}</p>
-                                            <p className="text-sm font-black text-emerald-600">{school.enrollments_count || 0}</p>
-                                        </div>
-                                    </div>
-
-                                    <Link
-                                        href={route('admin.schools.show', school.id)}
-                                        className="w-full py-2 bg-brand-navy text-white text-[10px] font-black rounded-xl hover:bg-brand-dark transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-navy/20"
-                                    >
-                                        {isRTL ? 'عرض التفاصيل والتقارير' : 'View Details & Reports'}
-                                        {isRTL ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                                    </Link>
-                                </div>
-                            </InfoWindow>
-                        )}
-                    </React.Fragment>
-                ))}
-            </Map>
-        </APIProvider>
+                                {isRTL ? 'عرض التفاصيل والتقارير' : 'View Details & Reports'}
+                                {isRTL ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                            </Link>
+                        </div>
+                    </Popup>
+                </Marker>
+            ))}
+        </MapContainer>
     );
 }
 

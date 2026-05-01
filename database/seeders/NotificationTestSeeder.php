@@ -49,7 +49,7 @@ class NotificationTestSeeder extends Seeder
                 'email' => 'supervisor_notify@wasel.com',
                 'password' => Hash::make('password'),
                 'national_id' => '1002004001',
-                'phone' => '966519999001',
+                'phone' => '968519999001',
             ]);
         
         if (!$supervisor->roles()->where('name', 'supervisor')->exists()) {
@@ -75,7 +75,7 @@ class NotificationTestSeeder extends Seeder
                 'email' => 'driver_notify@wasel.com',
                 'password' => Hash::make('password'),
                 'national_id' => '1002005001',
-                'phone' => '966599999001',
+                'phone' => '968599999001',
             ]);
 
         if (!$driver->roles()->where('name', 'driver')->exists()) {
@@ -109,7 +109,7 @@ class NotificationTestSeeder extends Seeder
                 'email' => 'assistant_notify@wasel.com',
                 'password' => Hash::make('password'),
                 'national_id' => '1002006001',
-                'phone' => '966589999001',
+                'phone' => '968589999001',
             ]);
 
         if (!$assistant->roles()->where('name', 'assistant')->exists()) {
@@ -150,7 +150,7 @@ class NotificationTestSeeder extends Seeder
             'last_name_en' => 'One',
             'email' => 'parent@wasel.com',
             'password' => Hash::make('password'),
-            'phone' => '966500000003',
+            'phone' => '968500000003',
             'national_id' => '1000200030',
         ]);
 

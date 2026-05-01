@@ -460,9 +460,8 @@ export default function SchoolAuthenticatedLayout({
           })}
         </nav>
 
-        {/* User Profile Section */}
-        <div className={`p-4 border-t border-white/10 dark:border-gray-700 bg-brand-navy/30 ${isCollapsed ? "flex flex-col items-center gap-4" : ""}`}>
-          <div className={`rounded-xl ${isCollapsed ? "p-1" : "p-3"} flex items-center ${flexDirection} justify-between group hover:bg-white/5 transition-colors w-full`}>
+        <div className={`p-4 border-t border-white/10 dark:border-gray-700 bg-brand-navy/30 ${isCollapsed ? "flex flex-col items-center gap-4" : "overflow-hidden"}`}>
+          <div className={`rounded-xl ${isCollapsed ? "p-1" : "p-3"} flex items-center ${flexDirection} justify-between group hover:bg-white/5 transition-colors w-full overflow-hidden`}>
             {!isCollapsed && (
               <Link
                 method="post"
@@ -475,13 +474,13 @@ export default function SchoolAuthenticatedLayout({
               </Link>
             )}
 
-            <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"} ${flexDirection}`}>
+            <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"} ${flexDirection} min-w-0`}>
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-yellow to-yellow-600 flex items-center justify-center text-white font-bold shadow-lg shrink-0">
                 {user.name.charAt(0).toUpperCase()}
               </div>
               {!isCollapsed && (
-                <div className={`flex flex-col ${isRTL ? "text-right" : "text-left"} overflow-hidden`}>
-                  <span className="text-sm font-bold text-white truncate">
+                <div className={`flex flex-col ${isRTL ? "text-right" : "text-left"} overflow-hidden min-w-0`}>
+                  <span className="text-sm font-bold text-white truncate" dir="auto">
                     {user.name}
                   </span>
                   <span className="text-[10px] text-gray-400 uppercase font-medium">
@@ -622,7 +621,7 @@ export default function SchoolAuthenticatedLayout({
             {/* User Profile */}
             <div className={`flex items-center gap-3 ${isRTL ? "pr-4 md:pr-6 border-r" : "pl-4 md:pl-6 border-l"} border-gray-100 dark:border-gray-700`}>
               <div className={`hidden sm:block ${isRTL ? "text-right" : "text-left"}`}>
-                <p className="text-[13px] font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap leading-none mb-1">
+                <p className="text-[13px] font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap truncate max-w-[120px] leading-none mb-1" dir="auto">
                   {user.name}
                 </p>
                 <div className={`flex items-center gap-1.5 ${flexDirection} opacity-50`}>

@@ -64,7 +64,7 @@ Route::get('/seed-test-data', function () {
             'password'    => \Illuminate\Support\Facades\Hash::make('password'),
             'role'        => 'guardian',
             'user_code'   => 'GD-001',
-            'phone'       => '966500000003',
+            'phone'       => '968500000003',
             'national_id' => '1000200030',
             'school_id'   => $school->id,
             'fcm_token'   => null,

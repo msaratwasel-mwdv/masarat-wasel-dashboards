@@ -57,7 +57,7 @@ class FieldTripController extends Controller
                     $schoolAdmin->id,
                     'field_trip_approved',
                     'تمت الموافقة على الرحلة الميدانية ✅',
-                    "وافقت الشركة على رحلة: {$fieldTrip->name}. التكلفة المقدرة: {$fieldTrip->cost} ر.س",
+                    "وافقت الشركة على رحلة: {$fieldTrip->name}. التكلفة المقدرة: {$fieldTrip->cost} ر.ع",
                     ['trip_id' => $fieldTrip->id],
                     auth()->user()->name
                 );

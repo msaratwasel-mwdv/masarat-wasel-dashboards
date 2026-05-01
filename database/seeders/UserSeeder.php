@@ -36,7 +36,7 @@ class UserSeeder extends Seeder
             [
                 'first_name_ar' => 'مدير', 'second_name_ar' => 'عام', 'third_name_ar' => 'النظام', 'last_name_ar' => 'مسارات',
                 'first_name_en' => 'General', 'second_name_en' => 'System', 'third_name_en' => 'Admin', 'last_name_en' => 'Masarat',
-                'email' => 'admin@wasel.com', 'password' => Hash::make('password'), 'phone' => '966500000001',
+                'email' => 'admin@wasel.com', 'password' => Hash::make('password'), 'phone' => '968500000001',
             ]
         );
         $admin->roles()->syncWithoutDetaching([Role::where('name', 'admin')->first()->id]);
@@ -48,7 +48,7 @@ class UserSeeder extends Seeder
             [
                 'first_name_ar' => $sNames['ar'][0], 'second_name_ar' => $sNames['ar'][1], 'third_name_ar' => $sNames['ar'][2], 'last_name_ar' => $sNames['ar'][3],
                 'first_name_en' => $sNames['en'][0], 'second_name_en' => $sNames['en'][1], 'third_name_en' => $sNames['en'][2], 'last_name_en' => $sNames['en'][3],
-                'email' => 'school@wasel.com', 'password' => Hash::make('password'), 'phone' => '966500000002',
+                'email' => 'school@wasel.com', 'password' => Hash::make('password'), 'phone' => '968500000002',
             ]
         );
         $sAdminUser->roles()->syncWithoutDetaching([Role::where('name', 'school_admin')->first()->id]);
@@ -62,7 +62,7 @@ class UserSeeder extends Seeder
                 [
                     'first_name_ar' => $names['ar'][0], 'second_name_ar' => $names['ar'][1], 'third_name_ar' => $names['ar'][2], 'last_name_ar' => $names['ar'][3],
                     'first_name_en' => $names['en'][0], 'second_name_en' => $names['en'][1], 'third_name_en' => $names['en'][2], 'last_name_en' => $names['en'][3],
-                    'email' => "supervisor$i@wasel.com", 'password' => Hash::make('password'), 'phone' => "96651000000$i",
+                    'email' => "supervisor$i@wasel.com", 'password' => Hash::make('password'), 'phone' => "96851000000$i",
                 ]
             );
             $user->roles()->syncWithoutDetaching([Role::where('name', 'field_supervisor')->first()->id]);
@@ -77,7 +77,7 @@ class UserSeeder extends Seeder
                 [
                     'first_name_ar' => $names['ar'][0], 'second_name_ar' => $names['ar'][1], 'third_name_ar' => $names['ar'][2], 'last_name_ar' => $names['ar'][3],
                     'first_name_en' => $names['en'][0], 'second_name_en' => $names['en'][1], 'third_name_en' => $names['en'][2], 'last_name_en' => $names['en'][3],
-                    'email' => "driver$i@wasel.com", 'password' => Hash::make('password'), 'phone' => "96659000000$i",
+                    'email' => "driver$i@wasel.com", 'password' => Hash::make('password'), 'phone' => "96859000000$i",
                 ]
             );
             $user->roles()->syncWithoutDetaching([Role::where('name', 'driver')->first()->id]);
@@ -96,7 +96,7 @@ class UserSeeder extends Seeder
                 [
                     'first_name_ar' => $names['ar'][0], 'second_name_ar' => $names['ar'][1], 'third_name_ar' => $names['ar'][2], 'last_name_ar' => $names['ar'][3],
                     'first_name_en' => $names['en'][0], 'second_name_en' => $names['en'][1], 'third_name_en' => $names['en'][2], 'last_name_en' => $names['en'][3],
-                    'email' => "teacher$i@wasel.com", 'password' => Hash::make('password'), 'phone' => "96652000000$i",
+                    'email' => "teacher$i@wasel.com", 'password' => Hash::make('password'), 'phone' => "96852000000$i",
                 ]
             );
             $user->roles()->syncWithoutDetaching([Role::where('name', 'teacher')->first()->id]);
@@ -111,7 +111,7 @@ class UserSeeder extends Seeder
                 [
                     'first_name_ar' => $names['ar'][0], 'second_name_ar' => $names['ar'][1], 'third_name_ar' => $names['ar'][2], 'last_name_ar' => $names['ar'][3],
                     'first_name_en' => $names['en'][0], 'second_name_en' => $names['en'][1], 'third_name_en' => $names['en'][2], 'last_name_en' => $names['en'][3],
-                    'email' => "assistant$i@wasel.com", 'password' => Hash::make('password'), 'phone' => "96654000000$i",
+                    'email' => "assistant$i@wasel.com", 'password' => Hash::make('password'), 'phone' => "96854000000$i",
                 ]
             );
             $user->roles()->syncWithoutDetaching([Role::where('name', 'assistant')->first()->id]);
@@ -126,7 +126,7 @@ class UserSeeder extends Seeder
                 [
                     'first_name_ar' => $names['ar'][0], 'second_name_ar' => $names['ar'][1], 'third_name_ar' => $names['ar'][2], 'last_name_ar' => $names['ar'][3],
                     'first_name_en' => $names['en'][0], 'second_name_en' => $names['en'][1], 'third_name_en' => $names['en'][2], 'last_name_en' => $names['en'][3],
-                    'email' => "guardian$i@wasel.com", 'password' => Hash::make('password'), 'phone' => "96653000000$i",
+                    'email' => "guardian$i@wasel.com", 'password' => Hash::make('password'), 'phone' => "96853000000$i",
                 ]
             );
             $user->roles()->syncWithoutDetaching([Role::where('name', 'parent')->first()->id]);

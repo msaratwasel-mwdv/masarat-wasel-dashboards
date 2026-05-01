@@ -341,7 +341,7 @@ export default function CreateStudent({
                               }
                               className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:ring-blue-500 dark:text-white"
                               required
-                              placeholder="+966..."
+                              placeholder="+968..."
                             />
                           </div>
 

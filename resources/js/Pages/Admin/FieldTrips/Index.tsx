@@ -167,7 +167,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
     const columnHelper = createColumnHelper<FieldTrip>();
     const columns = useMemo(() => [
         columnHelper.accessor('name', {
-            header: isRTL ? 'بيانات الرحلة' : 'Trip Identity',
+            header: t('Trip Identity'),
             cell: info => (
                 <div className="flex items-center gap-4 py-1">
                     <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-[#0f2044]/40 flex items-center justify-center text-xl shadow-inner border border-gray-100 dark:border-white/5 transition-transform group-hover:rotate-6">
@@ -185,7 +185,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
             )
         }),
         columnHelper.accessor('destination_address', {
-            header: isRTL ? 'الوجهة' : 'Destination',
+            header: t('Destination'),
             cell: info => (
                 <div className="flex items-center gap-2 text-xs font-bold text-gray-600 dark:text-gray-300">
                     <MapPin size={14} className="text-[#f5b800]" />
@@ -194,7 +194,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
             )
         }),
         columnHelper.accessor('date', {
-            header: isRTL ? 'التوقيت' : 'Schedule',
+            header: t('Schedule'),
             cell: info => (
                 <div className="flex flex-col gap-1">
                     <div className="text-xs font-black text-[#0f2044] dark:text-gray-100 flex items-center gap-1.5">
@@ -208,7 +208,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
             )
         }),
         columnHelper.accessor('students_count', {
-            header: isRTL ? 'المشاركون' : 'Pax',
+            header: t('Pax'),
             cell: info => (
                 <div className="flex items-center gap-3">
                     <div className="flex flex-col items-center">
@@ -224,7 +224,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
             )
         }),
         columnHelper.accessor('bus', {
-            header: isRTL ? 'اللوجستيات' : 'Logistics',
+            header: t('Logistics'),
             cell: info => {
                 const bus = info.getValue();
                 const costVal = info.row.original.cost;
@@ -237,7 +237,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
                         {costVal && (
                             <div className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                                 <Coins size={12} />
-                                {costVal} {isRTL ? 'ر.س' : 'SAR'}
+                                {costVal} {t('OMR')}
                             </div>
                         )}
                     </div>
@@ -250,7 +250,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
             }
         }),
         columnHelper.accessor('status', {
-            header: isRTL ? 'الحالة' : 'Status',
+            header: t('Status'),
             cell: info => {
                 const status = info.getValue();
                 const config: any = {
@@ -262,14 +262,14 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
                 const s = config[status] || { label: status, labelAr: status, class: 'bg-blue-50 text-blue-600' };
                 return (
                     <span className={`px-4 py-1.5 text-[9px] font-black rounded-xl border uppercase tracking-widest ${s.class}`}>
-                        {isRTL ? s.labelAr : s.label}
+                        {t(status)}
                     </span>
                 );
             }
         }),
         columnHelper.display({
             id: 'actions',
-            header: isRTL ? 'العمليات' : 'Ops',
+            header: t('Ops'),
             cell: info => (
                 <div className="flex items-center justify-center gap-2">
                     <button
@@ -325,9 +325,9 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
                                 <Zap size={24} fill="#f5b800" className="text-[#f5b800]" />
                             </div>
                             <div className="flex flex-col">
-                                <span>{isRTL ? 'الرحلات الميدانية' : 'Field Trips Logistics'}</span>
+                                <span>{t('Field Trips Logistics')}</span>
                                 <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mt-1">
-                                    {isRTL ? 'إدارة وتفويض الرحلات اللوجستية' : 'Fleet Deployment & Quote Management'}
+                                    {t('Fleet Deployment & Quote Management')}
                                 </span>
                             </div>
                         </h1>
@@ -360,12 +360,12 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
                             <div className="flex items-center gap-2">
                                 <button onClick={handlePrint} className={DS_btnSecondary}>
                                     <Printer size={16} />
-                                    {isRTL ? 'طباعة اللوجستيات' : 'Print Report'}
+                                    {t('Print Report')}
                                 </button>
                             </div>
                         }
                         searchPlaceholder={isRTL ? 'بحث عن رحلة...' : 'Search trip...'}
-                        emptyMessage={isRTL ? 'لا توجد رحلات ميدانية حالياً' : 'No field trips in the pipeline'}
+                        emptyMessage={t('No field trips in the pipeline')}
                     />
                 </div>
             </div>
@@ -386,7 +386,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
                             <div className="flex items-center gap-2">
                                 <ShieldCheck className="w-5 h-5 text-[#f5b800]" />
                                 <h2 className={DS_modalHeaderTitle}>
-                                    {isRTL ? 'الموافقة وتخصيص الموارد' : 'Finalize Logistics'}
+                                    {t('Finalize Logistics')}
                                 </h2>
                             </div>
                         </div>
@@ -405,7 +405,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
 
                             <div className="space-y-6">
                                 <div>
-                                    <label className={DS_label}>{t('Service Quote (SAR)')}</label>
+                                    <label className={DS_label}>{t('Service Quote (OMR)')}</label>
                                     <div className="relative">
                                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                                             <Coins size={18} />
@@ -485,7 +485,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
                             <div className="flex items-center gap-2">
                                 <Ban className="w-5 h-5 text-rose-500" />
                                 <h2 className={DS_modalHeaderTitle}>
-                                    {isRTL ? 'رفض الطلب' : 'Decline Requisition'}
+                                    {t('Decline Requisition')}
                                 </h2>
                             </div>
                         </div>
@@ -533,11 +533,11 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
             <style>{PRINT_STYLES}</style>
             <div id="field-trip-print-area" className="hidden print:block bg-white text-black w-full" dir={isRTL ? "rtl" : "ltr"}>
                 <PrintReportHeader
-                    title={isRTL ? "تقرير الرحلات الميدانية" : "Field Trips Report"}
-                    schoolName={isRTL ? "إدارة شركة مسارات واصل" : "Masarat Wasel Admin"}
+                    title={t('Field Trips Report')}
+                    schoolName={t('Masarat Wasel Admin')}
                     schoolLogo={null}
-                    printDate={`${isRTL ? "تاريخ الطباعة" : "Print Date"}: ${new Date().toLocaleDateString(isRTL ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric" })}`}
-                    schoolAdminText={isRTL ? "إدارة العمليات" : "Operations Dept"}
+                    printDate={`${t('Print Date')}: ${new Date().toLocaleDateString(isRTL ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric" })}`}
+                    schoolAdminText={t('Operations Dept')}
                 />
                 
                 <div className="px-4">
@@ -545,13 +545,13 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
                         <thead>
                             <tr className="bg-gray-100">
                                 <th className="border border-gray-300 p-1.5 text-center font-bold text-black w-8">#</th>
-                                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "اسم الرحلة" : "Trip Name"}</th>
-                                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "المدرسة" : "School"}</th>
-                                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الوجهة" : "Destination"}</th>
-                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "التاريخ" : "Date"}</th>
-                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "الحافلة" : "Bus"}</th>
-                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "التكلفة" : "Cost"}</th>
-                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRTL ? "الحالة" : "Status"}</th>
+                                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{t('Trip Name')}</th>
+                                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{t('School')}</th>
+                                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{t('Destination')}</th>
+                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{t('Date')}</th>
+                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{t('Bus')}</th>
+                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{t('Cost')}</th>
+                                <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{t('Status')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -563,7 +563,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
                                     <td className="border border-gray-300 p-1.5">{trip.destination_address}</td>
                                     <td className="border border-gray-300 p-1.5 text-center">{trip.date}</td>
                                     <td className="border border-gray-300 p-1.5 text-center">{trip.bus?.bus_number || '---'}</td>
-                                    <td className="border border-gray-300 p-1.5 text-center font-bold">{trip.cost || '---'} ر.س</td>
+                                    <td className="border border-gray-300 p-1.5 text-center font-bold">{trip.cost || '---'} ر.ع</td>
                                     <td className="border border-gray-300 p-1.5 text-center">
                                         <span className="px-2 py-0.5 border border-gray-400 rounded text-[8px] font-black uppercase">
                                             {trip.status}
@@ -576,12 +576,12 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
                     
                     <div className="mt-12 flex justify-between items-end text-xs font-black text-gray-800">
                         <div className="space-y-1">
-                            <p>{isRTL ? "إجمالي الرحلات:" : "Total Trips:"} {fieldTrips.length}</p>
-                            <p>{isRTL ? "الموافق عليها:" : "Approved:"} {fieldTrips.filter(t => t.status === 'approved').length}</p>
+                            <p>{t('Total Trips')}: {fieldTrips.length}</p>
+                            <p>{t('Approved')}: {fieldTrips.filter(t => t.status === 'approved').length}</p>
                         </div>
                         <div className="text-center pb-2">
                             <div className="w-48 h-px bg-gray-300 mb-2" />
-                            <p>{isRTL ? "توقيع مدير العمليات" : "Operations Manager Signature"}</p>
+                            <p>{t('Operations Manager Signature')}</p>
                         </div>
                     </div>
                 </div>

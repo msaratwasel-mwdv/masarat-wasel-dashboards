@@ -3,6 +3,7 @@ import useTranslation from '@/hooks/useTranslation';
 import axios from 'axios';
 import FieldTripMapDisplay from '@/Components/FieldTripMapDisplay';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { MapPin, Info } from 'lucide-react';
 
 interface Props {
     show: boolean;
@@ -92,7 +93,7 @@ export default function ViewFieldTripModal({ show, onClose, tripId }: Props) {
                                 </div>
                                 <div className="p-6 bg-brand-navy text-white rounded-3xl shadow-xl shadow-brand-navy/10 flex flex-col justify-center">
                                     <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{t('Expedition Cost')}</p>
-                                    <p className="text-2xl font-black">{tripData.cost ? `${tripData.cost} ر.س` : t('Pending Quote')}</p>
+                                    <p className="text-2xl font-black">{tripData.cost ? `${tripData.cost} ر.ع` : t('Pending Quote')}</p>
                                 </div>
                             </div>
 
@@ -100,11 +101,24 @@ export default function ViewFieldTripModal({ show, onClose, tripId }: Props) {
                                 {/* Map Box */}
                                 <div className="space-y-4">
                                     <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">{t('Location Context')}</h3>
-                                    <FieldTripMapDisplay
-                                        lat={parseFloat(tripData.destination_latitude)}
-                                        lng={parseFloat(tripData.destination_longitude)}
-                                        isDark={isDark}
-                                    />
+                                    <div className="h-64 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-inner bg-gray-50 dark:bg-gray-900/30 flex items-center justify-center relative">
+                                        {tripData.destination_latitude && tripData.destination_longitude ? (
+                                            <FieldTripMapDisplay
+                                                lat={parseFloat(tripData.destination_latitude)}
+                                                lng={parseFloat(tripData.destination_longitude)}
+                                                isDark={isDark}
+                                            />
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-3 text-gray-400 p-8 text-center">
+                                                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center">
+                                                    <Info className="w-6 h-6 opacity-40" />
+                                                </div>
+                                                <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">
+                                                    {t('No spatial data available for this asset')}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Participants Summary */}
