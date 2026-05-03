@@ -185,7 +185,10 @@ class NotificationController extends Controller
         $receivedNotificationIds = \App\Models\NotificationRecipient::where('user_id', $userId)
             ->pluck('notification_id');
 
-        $query = Notification::whereIn('id', $receivedNotificationIds)
+        $query = Notification::where(function ($q) use ($userId, $receivedNotificationIds) {
+                $q->where('user_id', $userId)
+                  ->orWhereIn('id', $receivedNotificationIds);
+            })
             ->with('sender')
             ->latest();
 
@@ -221,7 +224,10 @@ class NotificationController extends Controller
             return $notif;
         });
 
-        $receivedBase = Notification::whereIn('id', $receivedNotificationIds);
+        $receivedBase = Notification::where(function ($q) use ($userId, $receivedNotificationIds) {
+            $q->where('user_id', $userId)
+              ->orWhereIn('id', $receivedNotificationIds);
+        });
         $stats = [
             'total' => (clone $receivedBase)->count(),
             'unread' => (clone $receivedBase)->whereIn('status', ['sent', 'pending'])->count(),

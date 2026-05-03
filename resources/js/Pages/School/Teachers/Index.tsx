@@ -460,7 +460,7 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
             )}
 
             {/* Footer Buttons */}
-            <div className={`flex justify-between items-center pt-4 border-t border-[#0f2044]/10 dark:border-[#243460] mt-2 ${isRtl ? "flex-row-reverse" : ""}`}>
+            <div className="flex justify-between items-center pt-4 border-t border-[#0f2044]/10 dark:border-[#243460] mt-2">
               <button type="button" onClick={currentStep === 1 ? closeModal : () => setCurrentStep(1)} className={DS_cancelBtn}>
                 {currentStep === 1 ? t("Cancel") : t("Back")}
               </button>

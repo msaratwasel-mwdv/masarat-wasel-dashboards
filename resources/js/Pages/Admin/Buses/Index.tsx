@@ -196,7 +196,6 @@ export default function Index({
     capacity: 25,
     status: "active",
     driver_id: "",
-    field_supervisor_id: "",
     assistant_id: "",
     school_id: "",
     route_id: "",
@@ -249,7 +248,6 @@ export default function Index({
         capacity: bus.capacity,
         status: bus.status as any,
         driver_id: bus.driver?.user_id?.toString() || "",
-        field_supervisor_id: bus.field_supervisor_id?.toString() || "",
         assistant_id: bus.assistant_id?.toString() || "",
         school_id: bus.school_id?.toString() || "",
         route_id: bus.route_id?.toString() || "",
@@ -277,7 +275,6 @@ export default function Index({
     formData.append("capacity", String(d.capacity));
     formData.append("status", d.status);
     formData.append("driver_id", d.driver_id || "");
-    formData.append("field_supervisor_id", d.field_supervisor_id || "");
     formData.append("assistant_id", d.assistant_id || "");
     formData.append("school_id", d.school_id || "");
     formData.append("route_id", d.route_id || "");
@@ -426,12 +423,6 @@ export default function Index({
                 <span className={`font-bold ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "مساعدة:" : "A:"} </span>
                 <span className={!bus.assistant ? "text-red-400 italic" : ""}>
                   {bus.assistant?.name || (isRTL ? "غير مسند" : "—")}
-                </span>
-              </div>
-              <div className={`text-xs ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                <span className={`font-bold ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "مشرف:" : "S:"} </span>
-                <span className={!bus.field_supervisor ? "text-red-400 italic" : ""}>
-                  {bus.field_supervisor?.name || (isRTL ? "غير مسند" : "—")}
                 </span>
               </div>
             </div>
@@ -756,7 +747,6 @@ export default function Index({
                            {[
                              { title: isRTL ? "الطيار (السائق)" : "PILOT", name: modalState.bus.driver?.name, icon: "👨‍✈️", color: "amber", sub: isRTL ? "المشغل الرئيسي" : "Main Operator" },
                              { title: isRTL ? "المساعدة" : "ASSISTANT", name: modalState.bus.assistant?.name, icon: "👩‍🏫", color: "rose", sub: isRTL ? "سلامة الركاب" : "Passenger Safety" },
-                             { title: isRTL ? "المشرف الميداني" : "SUPERVISOR", name: modalState.bus.field_supervisor?.name, icon: "🏢", color: "violet", sub: isRTL ? "عمليات الميدان" : "Field Operations" },
                              { title: isRTL ? "الموقع (المدرسة)" : "LOCATION", name: modalState.bus.school?.name, icon: "🏫", color: "emerald", sub: modalState.bus.route?.name || (isRTL ? "في وضع الانتظار" : "Standby Route") },
                              { title: isRTL ? "لون الحافلة" : "VEHICLE COLOR", name: modalState.bus.color, icon: "🎨", color: "blue", sub: isRTL ? "المظهر الخارجي" : "Exterior Appearance" }
                            ].map(card => (
@@ -847,22 +837,22 @@ export default function Index({
             <div className={`flex flex-col h-[90vh] ${isDark ? "bg-[#111827]" : "bg-white"} overflow-hidden shadow-2xl rounded-2xl`}>
 
               {/* ── Header ── */}
-              <div className={`px-8 py-5 border-b flex items-center justify-between flex-shrink-0 ${isDark ? "border-gray-800 bg-[#0f172a]" : "border-gray-100 bg-gray-50/50"} ${isRTL ? "flex-row-reverse" : ""}`}>
+              <div className={`px-8 py-6 bg-[#0f2044] flex items-center justify-between flex-shrink-0 text-white ${isRTL ? "flex-row-reverse" : ""}`}>
                 <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
-                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${isDark ? "bg-brand-yellow/10" : "bg-brand-dark/5"}`}>
-                    <BusIcon className={`w-6 h-6 ${isDark ? "text-brand-yellow" : "text-brand-dark"}`} />
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/10 text-brand-yellow">
+                    <BusIcon className="w-6 h-6" />
                   </div>
                   <div className={isRTL ? "text-right" : ""}>
-                    <h2 className={`text-lg font-black uppercase tracking-tight ${isDark ? "text-white" : "text-gray-900"}`}>
+                    <h2 className="text-2xl font-bold text-white">
                       {modalState.type === "edit" ? (isRTL ? "تحديث بيانات الأسطول" : "Update Fleet Asset") : (isRTL ? "تسجيل أصل جديد" : "Register New Asset")}
                     </h2>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+                    <p className="mt-1 text-sm text-blue-100">
                       {modalState.type === "edit" ? (isRTL ? "تعديل مواصفات الحافلة وتعيينات الطاقم" : "Modify vehicle specs and crew assignments") : (isRTL ? "إضافة حافلة جديدة لمنظومة النقل" : "Introduce a new vehicle to the transport system")}
                     </p>
                   </div>
                 </div>
-                <button type="button" onClick={closeModal} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isDark ? "hover:bg-gray-800 text-gray-500 hover:text-white" : "hover:bg-gray-100 text-gray-400 hover:text-gray-900"}`}>
-                  <LucideX className="w-5 h-5" />
+                <button type="button" onClick={closeModal} className="p-2 transition-colors rounded-lg text-white/80 hover:text-white hover:bg-white/10">
+                  <LucideX className="w-6 h-6" />
                 </button>
               </div>
 
@@ -973,13 +963,6 @@ export default function Index({
                           <select value={busForm.data.driver_id || ""} onChange={(e) => busForm.setData("driver_id", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
                             <option value="">{isRTL ? "— بدون سائق —" : "— Standby Mode —"}</option>
                             {(modalState.type === "edit" ? editDriverOptions : availableDrivers).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                          </select>
-                        </div>
-                        <div className={isRTL ? "text-right" : ""}>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المشرف الميداني" : "Field Supervisor"}</label>
-                           <select value={busForm.data.field_supervisor_id || ""} onChange={(e) => busForm.setData("field_supervisor_id", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
-                            <option value="">{isRTL ? "— بدون مشرف —" : "— No Supervision —"}</option>
-                            {(modalState.type === "edit" ? editFieldSupervisorOptions : availableFieldSupervisors).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
                         </div>
                         <div className={isRTL ? "text-right" : ""}>

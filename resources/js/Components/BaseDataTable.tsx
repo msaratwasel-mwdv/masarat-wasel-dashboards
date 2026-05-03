@@ -28,6 +28,10 @@ import {
   DS_tableRow,
   DS_tableTd,
   DS_tableTh,
+  DS_sectionHeader,
+  DS_searchInput,
+  DS_filterBtn,
+  DS_btnSecondary,
 } from "@/lib/DS";
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -229,53 +233,59 @@ export default function BaseDataTable<T extends { id?: number | string }>({
   const colCount = columns.length;
 
   return (
-    <div className="space-y-5">
-
-      {/* ── Top Header: Title + Actions ── */}
-      {(title || headerAction || exportEnabled) && (
-        <div
-          className={`flex flex-wrap gap-4 justify-between items-start ${
-            isRTL ? "flex-row-reverse" : ""
-          }`}
-        >
-          {/* Title block */}
+    <div className={DS_card}>
+      {/* ── Toolbar: Search + Filters + Actions ── */}
+      {(title || headerAction || exportEnabled || filterTabs || onSearchChange) && (
+        <div className={DS_sectionHeader(isRTL)}>
+          
+          {/* Title block (optional, left/right depending on RTL) */}
           {title && (
-            <div className={isRTL ? "text-right" : ""}>
-              <h1
-                className={`text-2xl font-bold tracking-tight ${
-                  isDark ? "text-white" : "text-brand-dark"
-                }`}
-              >
+            <div className={isRTL ? "text-right ml-4" : "mr-4"}>
+              <h1 className={`text-xl font-bold tracking-tight ${isDark ? "text-white" : "text-brand-dark"}`}>
                 {title}
               </h1>
               {subtitle && (
-                <p
-                  className={`text-sm mt-1 ${
-                    isDark ? "text-gray-400" : "text-gray-500"
-                  }`}
-                >
+                <p className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
                   {subtitle}
                 </p>
               )}
             </div>
           )}
 
+          {/* Search Input */}
+          {onSearchChange && (
+            <div className="flex-1 min-w-[200px]">
+              <input
+                type="text"
+                value={searchValue || ""}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={searchPlaceholder || (isRTL ? "بحث..." : "Search...")}
+                className={DS_searchInput}
+                dir={isRTL ? "rtl" : "ltr"}
+              />
+            </div>
+          )}
+
+          {/* Filter Pills */}
+          {filterTabs && onFilterChange && (
+            <div className="flex gap-2 flex-wrap">
+              {filterTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => onFilterChange(tab.key)}
+                  className={DS_filterBtn(activeFilter === tab.key)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Actions: export + primary CTA */}
-          <div
-            className={`flex flex-wrap gap-2 items-center ${
-              isRTL ? "flex-row-reverse" : ""
-            }`}
-          >
+          <div className={`flex flex-wrap gap-2 items-center ${isRTL ? "flex-row-reverse" : ""}`}>
             {exportEnabled && (
-              <a
-                href={getExportUrl("csv")}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
-                  isDark
-                    ? "bg-emerald-900/20 text-emerald-400 border-emerald-900/50 hover:bg-emerald-900/40"
-                    : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                }`}
-              >
-                <FileDown className="w-3.5 h-3.5" />
+              <a href={getExportUrl("csv")} className={DS_btnSecondary}>
+                <FileDown className="w-4 h-4" />
                 {isRTL ? "إكسيل" : "Excel"}
               </a>
             )}
@@ -284,92 +294,8 @@ export default function BaseDataTable<T extends { id?: number | string }>({
         </div>
       )}
 
-
-
-      {/* ── Controls: Filter Tabs + Search ── */}
-      {(filterTabs || onSearchChange) && (
-        <div
-          className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 ${
-            isRTL ? "sm:flex-row-reverse" : ""
-          }`}
-        >
-          {/* Filter Pills */}
-          {filterTabs && onFilterChange && (
-            <div className="flex gap-2 flex-wrap">
-              {filterTabs.map((tab) => {
-                const isActive = activeFilter === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => onFilterChange(tab.key)}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${
-                      isActive
-                        ? isDark
-                          ? "bg-brand-dark text-brand-yellow border-brand-dark shadow-md shadow-brand-dark/20"
-                          : "bg-brand-dark text-white border-brand-dark shadow-md"
-                        : isDark
-                        ? "bg-gray-800/80 text-gray-400 border-gray-700 hover:bg-gray-700 hover:text-gray-200"
-                        : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-700"
-                    }`}
-                  >
-                    {tab.dotColor && (
-                      <span
-                        className={`inline-block w-1.5 h-1.5 rounded-full ${tab.dotColor}`}
-                      />
-                    )}
-                    {tab.label}
-                    {tab.count !== undefined && (
-                      <span
-                        className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-black leading-none ${
-                          isActive
-                            ? isDark
-                              ? "bg-brand-yellow/20 text-brand-yellow"
-                              : "bg-white/20 text-white"
-                            : isDark
-                            ? "bg-gray-700 text-gray-400"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {tab.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Search Input */}
-          {onSearchChange && (
-            <div className="relative w-full sm:w-auto sm:min-w-[260px]">
-              <Search
-                className={`w-4 h-4 absolute top-1/2 -translate-y-1/2 ${
-                  isRTL ? "right-3" : "left-3"
-                } ${isDark ? "text-gray-500" : "text-gray-400"}`}
-              />
-              <input
-                type="text"
-                value={searchValue || ""}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={
-                  searchPlaceholder || (isRTL ? "بحث..." : "Search...")
-                }
-                className={`w-full ${
-                  isRTL ? "pr-9 pl-4" : "pl-9 pr-4"
-                } py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark/50 transition-all ${
-                  isDark
-                    ? "bg-gray-800 border-gray-700 text-white placeholder-gray-500"
-                    : "bg-white border-gray-200 placeholder-gray-400"
-                }`}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Table Card ── */}
-      <div className={DS_card}>
-        <div className={DS_tableWrapper}>
+      {/* ── Table Wrapper ── */}
+      <div className={DS_tableWrapper}>
           <table className={DS_tableBase}>
             {/* Sticky Header */}
             <thead className={DS_tableHead}>
@@ -508,7 +434,6 @@ export default function BaseDataTable<T extends { id?: number | string }>({
           </div>
         )}
       </div>
-    </div>
   );
 }
 

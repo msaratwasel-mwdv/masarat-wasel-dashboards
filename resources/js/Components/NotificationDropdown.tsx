@@ -300,7 +300,10 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
                         <div className="p-4 bg-gray-50 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700">
                             <button
                                 onClick={() => {
-                                    router.visit('/admin/notifications/all');
+                                    const targetUrl = window.location.pathname.startsWith('/admin') 
+                                        ? '/admin/notifications/all' 
+                                        : '/school/notifications/received';
+                                    router.visit(targetUrl);
                                     setIsOpen(false);
                                 }}
                                 className="w-full py-3 bg-white dark:bg-gray-800 text-sm text-brand-navy dark:text-white hover:text-brand-yellow dark:hover:text-brand-yellow font-bold rounded-xl transition-all shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700"

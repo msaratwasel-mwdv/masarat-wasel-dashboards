@@ -359,15 +359,37 @@ class AnalyticsController extends Controller
     {
         $dateFrom = $request->input('date_from', Carbon::now()->startOfMonth()->toDateString());
         $dateTo = $request->input('date_to', Carbon::now()->toDateString());
+        $typeFilter = $request->input('type', 'all');
+
+        $baseQuery = BusExpense::whereBetween('date', [$dateFrom, $dateTo]);
+        if ($typeFilter !== 'all') {
+            $baseQuery->where('type', $typeFilter);
+        }
+
+        // ── Detailed Expenses (For Print & Logs) ──
+        $detailedExpenses = (clone $baseQuery)->with('bus:id,bus_number,plate_number')
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get()
+            ->map(function ($exp) {
+                return [
+                    'id' => $exp->id,
+                    'date' => $exp->date,
+                    'bus_number' => $exp->bus?->bus_number ?? '—',
+                    'amount' => round($exp->amount, 2),
+                    'type' => $exp->type,
+                    'extra_info' => $exp->extra_info,
+                    'photo_url' => $exp->photo_url,
+                ];
+            });
 
         // ── Expenses by type ──
-        $expensesByType = BusExpense::select('type', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as count'))
-            ->whereBetween('date', [$dateFrom, $dateTo])
+        $expensesByType = (clone $baseQuery)->select('type', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as count'))
             ->groupBy('type')
             ->get();
 
         // ── Expenses per bus ──
-        $expensesPerBus = BusExpense::with('bus:id,bus_number,plate_number')
+        $expensesPerBus = (clone $baseQuery)->with('bus:id,bus_number,plate_number')
             ->select(
                 'bus_id',
                 DB::raw("SUM(CASE WHEN type = 'fuel' THEN amount ELSE 0 END) as fuel_cost"),
@@ -376,7 +398,6 @@ class AnalyticsController extends Controller
                 DB::raw("SUM(amount) as total_cost"),
                 DB::raw("COUNT(*) as entries")
             )
-            ->whereBetween('date', [$dateFrom, $dateTo])
             ->groupBy('bus_id')
             ->get()
             ->map(function ($row) {
@@ -393,24 +414,32 @@ class AnalyticsController extends Controller
             });
 
         // ── Monthly trend ──
-        $monthlyTrend = BusExpense::select(
+        $historicalBaseQuery = BusExpense::where('date', '>=', Carbon::now()->subMonths(6)->startOfMonth());
+        if ($typeFilter !== 'all') {
+            $historicalBaseQuery->where('type', $typeFilter);
+        }
+
+        $monthlyTrend = $historicalBaseQuery->select(
                 DB::raw("TO_CHAR(date, 'YYYY-MM') as month"),
                 DB::raw("SUM(CASE WHEN type = 'fuel' THEN amount ELSE 0 END) as fuel"),
                 DB::raw("SUM(CASE WHEN type = 'maintenance' THEN amount ELSE 0 END) as maintenance"),
                 DB::raw("SUM(CASE WHEN type NOT IN ('fuel', 'maintenance') THEN amount ELSE 0 END) as other"),
                 DB::raw("SUM(amount) as total")
             )
-            ->where('date', '>=', Carbon::now()->subMonths(6)->startOfMonth())
             ->groupBy(DB::raw("TO_CHAR(date, 'YYYY-MM')"))
             ->orderBy('month')
             ->get();
 
         // ── Summary ──
-        $totalExpenses = BusExpense::whereBetween('date', [$dateFrom, $dateTo])->sum('amount');
-        $fuelTotal = BusExpense::where('type', 'fuel')->whereBetween('date', [$dateFrom, $dateTo])->sum('amount');
-        $maintenanceTotal = BusExpense::where('type', 'maintenance')->whereBetween('date', [$dateFrom, $dateTo])->sum('amount');
+        $totalExpenses = (clone $baseQuery)->sum('amount');
+        $fuelTotal = clone $baseQuery;
+        $fuelTotal = $typeFilter === 'fuel' || $typeFilter === 'all' ? $fuelTotal->where('type', 'fuel')->sum('amount') : 0;
+        
+        $maintenanceTotal = clone $baseQuery;
+        $maintenanceTotal = $typeFilter === 'maintenance' || $typeFilter === 'all' ? $maintenanceTotal->where('type', 'maintenance')->sum('amount') : 0;
 
         return Inertia::render('Admin/Analytics/FinancialReports', [
+            'detailedExpenses' => $detailedExpenses,
             'expensesByType' => $expensesByType,
             'expensesPerBus' => $expensesPerBus,
             'monthlyTrend' => $monthlyTrend,
@@ -423,6 +452,7 @@ class AnalyticsController extends Controller
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
+                'type' => $typeFilter,
             ],
         ]);
     }

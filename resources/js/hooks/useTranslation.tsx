@@ -26,6 +26,9 @@ const dictionary = {
   "Loading...": { ar: "جار التحميل...", en: "Loading..." },
   "No Data": { ar: "لا توجد بيانات", en: "No Data Available" },
   Total: { ar: "الإجمالي", en: "Total" },
+  "Approved Price": { ar: "التسعيرة المعتمدة", en: "Approved Price" },
+  "Morning Bus Assignment": { ar: "رحلة ذهاب", en: "Morning Bus Assignment" },
+  "Afternoon Bus Assignment": { ar: "رحلة عودة", en: "Afternoon Bus Assignment" },
   None: { ar: "لا يوجد", en: "None" },
   "Are you sure?": { ar: "هل أنت متأكد؟", en: "Are you sure?" },
   "Are you sure you want to delete this? This action cannot be undone.": {

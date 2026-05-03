@@ -33,7 +33,7 @@ class BusRequestController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'request_type' => 'required|in:permanent,temporary,field_trip',
+            'request_type' => 'required|in:permanent,temporary',
             'seats' => 'required|integer|min:1',
             'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'nullable|date|after:start_date',
@@ -67,7 +67,7 @@ class BusRequestController extends Controller
         }
 
         $validated = $request->validate([
-            'request_type' => 'required|in:permanent,temporary,field_trip',
+            'request_type' => 'required|in:permanent,temporary',
             'seats' => 'required|integer|min:1',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after:start_date',

@@ -184,6 +184,21 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
                                         </div>
                                     </div>
 
+                                    {/* Approved Cost */}
+                                    {request.status === 'approved' && request.cost && (
+                                        <div className="mb-5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 p-4 rounded-[16px] flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-800/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                                    <span className="text-sm font-black">{isRtl ? 'ر.ع' : 'OMR'}</span>
+                                                </div>
+                                                <span className="text-sm font-bold text-[#0f2044] dark:text-white">{t('Approved Price')}</span>
+                                            </div>
+                                            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                                                {request.cost}
+                                            </p>
+                                        </div>
+                                    )}
+
                                     {/* Text Info */}
                                     <div className="flex-1 space-y-3">
                                         <div>
@@ -261,7 +276,6 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
                                 >
                                     <option value="permanent">{t('Permanent')}</option>
                                     <option value="temporary">{t('Temporary')}</option>
-                                    <option value="field_trip">{t('Field Trip')}</option>
                                 </select>
                             </div>
 
