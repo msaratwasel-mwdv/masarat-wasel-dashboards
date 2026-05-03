@@ -6,36 +6,27 @@ import {
     useTransform,
     AnimatePresence,
 } from "framer-motion";
-import {
-    Bus,
-    Shield,
-    Zap,
-    MapPin,
-    Phone,
-    ArrowLeft,
-    CheckCircle2,
-    Users,
-    Clock,
-    BarChart3,
-    Smartphone,
-    ChevronRight,
-    Menu,
-    X,
-    Instagram,
-    Twitter,
-    Linkedin,
-    Facebook,
-    Award,
-    MessageCircle,
-    Mail,
-} from "lucide-react";
-import { useState, useEffect } from "react";
+import { Play, Bus, Shield, Zap, MapPin, Phone, ArrowLeft, CheckCircle2, Users, Clock, BarChart3, Smartphone, ChevronRight, Menu, X, Instagram, Twitter, Linkedin, Facebook, Award, MessageCircle, Mail } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 
 export default function Welcome({
     auth,
 }: PageProps<{ laravelVersion: string; phpVersion: string }>) {
     const [isScrolled, setIsScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    const togglePlay = () => {
+        if (videoRef.current) {
+            if (isPlaying) {
+                videoRef.current.pause();
+            } else {
+                videoRef.current.play();
+            }
+            setIsPlaying(!isPlaying);
+        }
+    };
 
     useEffect(() => {
         const handleScroll = () => {
@@ -299,13 +290,31 @@ export default function Welcome({
                     >
                         <div className="absolute inset-0 bg-gradient-to-tr from-brand-yellow/20 to-transparent rounded-[3rem] blur-3xl rotate-12 -z-10" />
                         <div className="relative rounded-[3rem] bg-white p-4 shadow-3xl shadow-slate-200/50 border border-white">
-                            <div className="rounded-[2.5rem] overflow-hidden aspect-[4/3] bg-slate-100 flex items-center justify-center">
-                                {/* Placeholder for real product screenshot or high-quality illustration */}
-                                <img
-                                    src="/assets/images/bus-illustration.png"
-                                    className="w-[80%] hover:scale-110 transition-transform duration-700"
-                                    alt="Main UI Illustration"
+                            <div 
+                                className="rounded-[2.5rem] overflow-hidden aspect-[4/3] bg-slate-100 flex items-center justify-center cursor-pointer group/video relative"
+                                onClick={togglePlay}
+                            >
+                                <video
+                                    ref={videoRef}
+                                    src="/assets/images/welcome_video.webm"
+                                    className="w-full h-full object-contain transition-transform duration-700"
+                                    playsInline
+                                    loop
+                                    onPlay={() => setIsPlaying(true)}
+                                    onPause={() => setIsPlaying(false)}
                                 />
+                                
+                                {!isPlaying && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover/video:bg-black/20 transition-all duration-500">
+                                        <motion.div 
+                                            initial={{ scale: 0.8, opacity: 0 }}
+                                            animate={{ scale: 1, opacity: 1 }}
+                                            className="w-20 h-20 bg-brand-yellow text-brand-navy rounded-full flex items-center justify-center shadow-2xl transform group-hover/video:scale-110 transition-transform duration-500"
+                                        >
+                                            <Play size={32} fill="currentColor" className="mr-[-4px]" />
+                                        </motion.div>
+                                    </div>
+                                )}
                             </div>
                             {/* Floating UI Elements */}
                             <motion.div

@@ -10,6 +10,7 @@ import {
     XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
     ResponsiveContainer, Legend
 } from 'recharts';
+import OmaniRial from '@/Components/OmaniRial';
 
 interface Props {
     auth: any;
@@ -90,21 +91,21 @@ export default function FinancialReports({ auth, detailedExpenses, expensesByTyp
                     <div className="grid grid-cols-4 gap-4 mb-6 text-center">
                         <div className="border border-gray-300 rounded-lg p-3">
                             <p className="text-xs font-bold text-gray-500">{isRTL ? 'الإجمالي' : 'Total'}</p>
-                            <p className="text-xl font-black">{summary.total.toLocaleString()} OMR</p>
+                            <p className="text-xl font-black">{summary.total.toLocaleString()} <OmaniRial  /></p>
                         </div>
                         {type === 'all' && (
                             <>
                                 <div className="border border-gray-300 rounded-lg p-3">
                                     <p className="text-xs font-bold text-gray-500">{isRTL ? 'الوقود' : 'Fuel'}</p>
-                                    <p className="text-xl font-black text-amber-600">{summary.fuel.toLocaleString()} OMR</p>
+                                    <p className="text-xl font-black text-amber-600">{summary.fuel.toLocaleString()} <OmaniRial  /></p>
                                 </div>
                                 <div className="border border-gray-300 rounded-lg p-3">
                                     <p className="text-xs font-bold text-gray-500">{isRTL ? 'الصيانة' : 'Maintenance'}</p>
-                                    <p className="text-xl font-black text-blue-600">{summary.maintenance.toLocaleString()} OMR</p>
+                                    <p className="text-xl font-black text-blue-600">{summary.maintenance.toLocaleString()} <OmaniRial  /></p>
                                 </div>
                                 <div className="border border-gray-300 rounded-lg p-3">
                                     <p className="text-xs font-bold text-gray-500">{isRTL ? 'أخرى' : 'Other'}</p>
-                                    <p className="text-xl font-black text-green-600">{summary.other.toLocaleString()} OMR</p>
+                                    <p className="text-xl font-black text-green-600">{summary.other.toLocaleString()} <OmaniRial  /></p>
                                 </div>
                             </>
                         )}
@@ -120,7 +121,7 @@ export default function FinancialReports({ auth, detailedExpenses, expensesByTyp
                                 <th className="border border-gray-300 p-1.5">{isRTL ? 'الحافلة' : 'Bus'}</th>
                                 {type === 'all' && <th className="border border-gray-300 p-1.5">{isRTL ? 'النوع' : 'Type'}</th>}
                                 <th className="border border-gray-300 p-1.5">{isRTL ? 'الوصف' : 'Description'}</th>
-                                <th className="border border-gray-300 p-1.5">{isRTL ? 'المبلغ (OMR)' : 'Amount'}</th>
+                                <th className="border border-gray-300 p-1.5">{isRTL ? 'المبلغ (<OmaniRial  />)' : 'Amount'}</th>
                                 <th className="border border-gray-300 p-1.5 w-24">{isRTL ? 'صورة الفاتورة' : 'Invoice'}</th>
                             </tr>
                         </thead>
@@ -234,10 +235,10 @@ export default function FinancialReports({ auth, detailedExpenses, expensesByTyp
                         </div>
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{isRTL ? 'إجمالي المصاريف' : 'Total Expenses'}</p>
-                            <p className="text-2xl font-black text-[#0f2044] dark:text-white mt-0.5">{summary.total.toLocaleString()} <span className="text-sm text-gray-400">OMR</span></p>
+                            <p className="text-2xl font-black text-[#0f2044] dark:text-white mt-0.5">{summary.total.toLocaleString()} <span className="text-sm text-gray-400"><OmaniRial  /></span></p>
                         </div>
                     </div>
-                    
+
                     {(type === 'all' || type === 'fuel') && (
                         <div className="flex items-center gap-4 p-5 rounded-[20px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm">
                             <div className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0 bg-[#f5b800]/10 text-[#b38600]">
@@ -245,11 +246,11 @@ export default function FinancialReports({ auth, detailedExpenses, expensesByTyp
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{isRTL ? 'تكلفة الوقود' : 'Fuel Cost'}</p>
-                                <p className="text-2xl font-black text-[#0f2044] dark:text-white mt-0.5">{summary.fuel.toLocaleString()} <span className="text-sm text-gray-400">OMR</span></p>
+                                <p className="text-2xl font-black text-[#0f2044] dark:text-white mt-0.5">{summary.fuel.toLocaleString()} <span className="text-sm text-gray-400"><OmaniRial  /></span></p>
                             </div>
                         </div>
                     )}
-                    
+
                     {(type === 'all' || type === 'maintenance') && (
                         <div className="flex items-center gap-4 p-5 rounded-[20px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm">
                             <div className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0 bg-sky-50 dark:bg-sky-900/20 text-sky-600">
@@ -257,7 +258,7 @@ export default function FinancialReports({ auth, detailedExpenses, expensesByTyp
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{isRTL ? 'تكلفة الصيانة' : 'Maintenance Cost'}</p>
-                                <p className="text-2xl font-black text-[#0f2044] dark:text-white mt-0.5">{summary.maintenance.toLocaleString()} <span className="text-sm text-gray-400">OMR</span></p>
+                                <p className="text-2xl font-black text-[#0f2044] dark:text-white mt-0.5">{summary.maintenance.toLocaleString()} <span className="text-sm text-gray-400"><OmaniRial  /></span></p>
                             </div>
                         </div>
                     )}
@@ -269,7 +270,7 @@ export default function FinancialReports({ auth, detailedExpenses, expensesByTyp
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{isRTL ? 'أخرى' : 'Other Costs'}</p>
-                                <p className="text-2xl font-black text-[#0f2044] dark:text-white mt-0.5">{summary.other.toLocaleString()} <span className="text-sm text-gray-400">OMR</span></p>
+                                <p className="text-2xl font-black text-[#0f2044] dark:text-white mt-0.5">{summary.other.toLocaleString()} <span className="text-sm text-gray-400"><OmaniRial  /></span></p>
                             </div>
                         </div>
                     )}
@@ -292,14 +293,14 @@ export default function FinancialReports({ auth, detailedExpenses, expensesByTyp
                                                 <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                                             ))}
                                         </Pie>
-                                        <RechartsTooltip formatter={(value: any) => `${Number(value).toLocaleString()} OMR`} />
+                                        <RechartsTooltip formatter={(value: any) => `${Number(value).toLocaleString()} <OmaniRial  />`} />
                                         <Legend />
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                     <div className="text-center">
                                         <span className="text-2xl font-black text-[#0f2044] dark:text-white">{summary.total.toLocaleString()}</span>
-                                        <span className="block text-[9px] font-bold text-gray-400 uppercase">OMR</span>
+                                        <span className="block text-[9px] font-bold text-gray-400 uppercase"><OmaniRial  /></span>
                                     </div>
                                 </div>
                             </div>
@@ -328,8 +329,8 @@ export default function FinancialReports({ auth, detailedExpenses, expensesByTyp
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#e2e8f0'} />
                                     <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} />
-                                    <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderRadius: '12px', border: 'none' }} formatter={(value: any) => `${Number(value).toLocaleString()} OMR`} />
-                                    
+                                    <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderRadius: '12px', border: 'none' }} formatter={(value: any) => `${Number(value).toLocaleString()} <OmaniRial  />`} />
+
                                     {(type === 'all' || type === 'fuel') && (
                                         <Area type="monotone" dataKey="fuel" stroke="#f5b800" strokeWidth={3} fillOpacity={1} fill="url(#fuelGrad)" name={isRTL ? 'الوقود' : 'Fuel'} />
                                     )}
@@ -382,8 +383,8 @@ export default function FinancialReports({ auth, detailedExpenses, expensesByTyp
                                         {type === 'all' && (
                                             <td className="px-4 py-3.5">
                                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold whitespace-nowrap ${
-                                                    exp.type === 'fuel' ? 'bg-[#f5b800]/10 text-[#b38600]' : 
-                                                    exp.type === 'maintenance' ? 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400' : 
+                                                    exp.type === 'fuel' ? 'bg-[#f5b800]/10 text-[#b38600]' :
+                                                    exp.type === 'maintenance' ? 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400' :
                                                     'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
                                                 }`}>
                                                     {typeLabels[exp.type]?.icon || <Package size={12} />}
@@ -392,7 +393,7 @@ export default function FinancialReports({ auth, detailedExpenses, expensesByTyp
                                             </td>
                                         )}
                                         <td className="px-4 py-3.5 text-gray-500 dark:text-gray-400 max-w-sm truncate" title={exp.extra_info}>{exp.extra_info || '—'}</td>
-                                        <td className="px-4 py-3.5 font-black text-[#0f2044] dark:text-white whitespace-nowrap">{exp.amount.toLocaleString()} <span className="text-[10px] text-gray-400">OMR</span></td>
+                                        <td className="px-4 py-3.5 font-black text-[#0f2044] dark:text-white whitespace-nowrap">{exp.amount.toLocaleString()} <span className="text-[10px] text-gray-400"><OmaniRial  /></span></td>
                                         <td className="px-4 py-3.5">
                                             {exp.photo_url ? (
                                                 <a href={exp.photo_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-sky-600 hover:text-sky-700 font-bold text-xs transition-colors group">
