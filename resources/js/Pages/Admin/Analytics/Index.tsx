@@ -13,6 +13,7 @@ import {
     Users, GraduationCap, Bus, AlertTriangle,
     ArrowUpRight, Printer, BarChart, FileText, ChevronRight
 } from 'lucide-react';
+import OmaniRial from '@/Components/OmaniRial';
 import PrintReportHeader from '@/Components/PrintReportHeader';
 
 interface Props {
@@ -153,7 +154,7 @@ export default function AnalyticsIndex({ auth, kpis, month_label }: Props) {
     <tr>
         <td className="border border-gray-300 p-2">{isRTL ? 'إجمالي المصاريف الشهرية' : 'Monthly Expenses'}</td>
         <td className="border border-gray-300 p-2 text-center font-bold">
-            {kpis.monthly_expenses.toLocaleString()} OMR
+            {kpis.monthly_expenses.toLocaleString()} <OmaniRial />
         </td>
         <td className="border border-gray-300 p-2">
             {kpis.active_buses} {isRTL ? 'حافلة نشطة' : 'active buses'}
@@ -236,7 +237,7 @@ export default function AnalyticsIndex({ auth, kpis, month_label }: Props) {
                             <div>
                                 <p className={DS_statLabel}>{isRTL ? 'المصاريف الشهرية' : 'Monthly Expenses'}</p>
                                 <p className={DS_statValue2('red')}>{(kpis.monthly_expenses / 1000).toFixed(1)}K</p>
-                                <p className="text-[10px] font-bold text-gray-400 mt-1">OMR {kpis.monthly_expenses.toLocaleString()}</p>
+                                <p className="text-[10px] font-bold text-gray-400 mt-1"><OmaniRial className="inline-block align-middle me-1" size="0.9em" /> {kpis.monthly_expenses.toLocaleString()}</p>
                             </div>
                         </div>
                     </div>

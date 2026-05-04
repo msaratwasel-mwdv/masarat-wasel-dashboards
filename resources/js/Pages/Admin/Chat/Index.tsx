@@ -210,9 +210,9 @@ export default function Index({ auth, conversations, schools, filters }: Props) 
   ], [isRTL, t, isDark]);
 
   const statsGrid = [
-    { label: t('Total Channels'), val: conversations.total, icon: <MessageSquare size={24} />, color: 'blue' },
-    { label: t('Active Traffic'), val: conversations.data.filter((c) => c.last_message).length, icon: <Zap size={24} />, color: 'gold' },
-    { label: t('Educational Units'), val: schools.length, icon: <SchoolIcon size={24} />, color: 'navy' },
+    { label: isRTL ? 'إجمالي القنوات' : 'Total Channels', val: conversations.total, icon: <MessageSquare size={24} />, color: 'blue' },
+    { label: isRTL ? 'المحادثات النشطة' : 'Active Traffic', val: conversations.data.filter((c) => c.last_message).length, icon: <Zap size={24} />, color: 'gold' },
+    { label: isRTL ? 'الوحدات التعليمية' : 'Educational Units', val: schools.length, icon: <SchoolIcon size={24} />, color: 'navy' },
   ];
 
   return (
@@ -316,24 +316,24 @@ export default function Index({ auth, conversations, schools, filters }: Props) 
             </div>
             <div className="relative z-10 mt-6 md:mt-0 flex gap-10">
                 <div className="text-center">
-                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{t('Parent Node')}</p>
+                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{isRTL ? 'أولياء الأمور' : 'Parent Node'}</p>
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                        <span className="text-xs font-black text-white">Active</span>
+                        <span className="text-xs font-black text-white">{isRTL ? 'نشط' : 'Active'}</span>
                     </div>
                 </div>
                 <div className="text-center">
-                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{t('Logistics Node')}</p>
+                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{isRTL ? 'السائقون' : 'Logistics Node'}</p>
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                        <span className="text-xs font-black text-white">Active</span>
+                        <span className="text-xs font-black text-white">{isRTL ? 'نشط' : 'Active'}</span>
                     </div>
                 </div>
                 <div className="text-center">
-                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{t('Control Node')}</p>
+                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{isRTL ? 'المشرفات' : 'Control Node'}</p>
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                        <span className="text-xs font-black text-white">Active</span>
+                        <span className="text-xs font-black text-white">{isRTL ? 'نشط' : 'Active'}</span>
                     </div>
                 </div>
             </div>

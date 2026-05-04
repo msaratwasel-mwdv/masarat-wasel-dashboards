@@ -4,6 +4,7 @@ import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import useTranslation from "@/hooks/useTranslation";
 import Modal from "@/Components/Modal";
 import { motion, AnimatePresence } from "framer-motion";
+import PrintReportHeader from "@/Components/PrintReportHeader";
 import { 
     Bus as BusIcon, 
     ArrowRight, 
@@ -15,8 +16,19 @@ import {
     Sunrise, 
     Sunset, 
     Info,
-    Users
+    Users,
+    Printer
 } from "lucide-react";
+
+// ─── Print CSS ───────────────────────────────────────────────────
+const PRINT_STYLES = `
+@media print {
+  body * { visibility: hidden !important; }
+  main { margin: 0 !important; position: static !important; }
+  #print-area, #print-area * { visibility: visible !important; }
+  #print-area { position: absolute; inset: 0; width: 100%; padding: 20px; background: white; }
+}
+`;
 import {
     DS_pageWrapper,
     DS_pageTitle,
@@ -180,7 +192,7 @@ function ConfirmModal({
             {/* Forth (Morning) changes */}
             <div className="space-y-2">
               <p className="text-sm font-black text-[#0f2044] dark:text-[#7ba7e8] flex items-center gap-2 mb-3 bg-[#0f2044]/5 dark:bg-[#0f2044]/30 p-2 rounded-[12px]">
-                <Sunrise className="w-4 h-4" /> {isRtl ? "الرحلة الصباحية (ذهاب)" : "Morning Trip (Forth)"}
+                <Sunrise className="w-4 h-4" /> {isRtl ? "رحلة ذهاب" : "Outbound Trip"}
               </p>
               <Section
                 title={isRtl ? "إضافة" : "Adding"}
@@ -205,7 +217,7 @@ function ConfirmModal({
             {/* Back (Afternoon) changes */}
             <div className="space-y-2 border-t border-gray-100 dark:border-gray-700 pt-5">
               <p className="text-sm font-black text-[#f5b800] flex items-center gap-2 mb-3 bg-[#f5b800]/10 p-2 rounded-[12px]">
-                <Sunset className="w-4 h-4" /> {isRtl ? "الرحلة المسائية (إياب)" : "Afternoon Trip (Back)"}
+                <Sunset className="w-4 h-4" /> {isRtl ? "رحلة عودة" : "Return Trip"}
               </p>
               <Section
                 title={isRtl ? "إضافة" : "Adding"}
@@ -360,9 +372,66 @@ export default function AssignStudents() {
     );
   };
 
+  const handlePrint = () => window.print();
+
   return (
     <SchoolAuthenticatedLayout user={auth.user} header={<h2 className={DS_pageTitle}>{isRtl ? "تعيين الطلاب للحافلات" : "Assign Students to Buses"}</h2>}>
       <Head title={isRtl ? "تعيين الطلاب للحافلات" : "Assign Bus Students"} />
+      <style>{PRINT_STYLES}</style>
+
+      {/* Print Area */}
+      {selectedBus && (
+        <div id="print-area" className="hidden print:block bg-white font-sans text-black w-full" dir={isRtl ? "rtl" : "ltr"}>
+          <PrintReportHeader 
+            title={isRtl ? "تقرير تعيين الطلاب للحافلة" : "Bus Student Assignments Report"}
+            schoolName={auth.user?.school?.name || (isRtl ? "إدارة المدرسة" : "School Admin")}
+            schoolLogo={auth.user?.school?.logo || null}
+            printDate={`${isRtl ? "تاريخ الطباعة" : "Print Date"}: ${new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' })}`}
+            schoolAdminText={isRtl ? "إدارة المدرسة" : "School Admin"}
+          />
+
+          <div className="px-4 mb-6 mt-4 flex justify-between items-end border-b-2 border-gray-800 pb-4">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">{isRtl ? "بيانات الحافلة" : "Bus Details"}</h3>
+              <p className="text-sm font-bold mt-2 text-gray-700">{isRtl ? "الحافلة:" : "Bus:"} {selectedBus.bus_number} — {selectedBus.plate_number}</p>
+              <p className="text-sm font-bold mt-1 text-gray-700">{isRtl ? "السائق:" : "Driver:"} {selectedBus.driver ?? "—"}</p>
+              <p className="text-sm font-bold mt-1 text-gray-700">{isRtl ? "المشرف:" : "Assistant:"} {selectedBus.assistant ?? "—"}</p>
+              <p className="text-sm font-bold mt-1 text-gray-700">{isRtl ? "المسار:" : "Route:"} {selectedBus.route?.name ?? "—"}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-gray-700">{isRtl ? "سعة الحافلة:" : "Bus Capacity:"} {selectedBus.capacity}</p>
+              <p className="text-sm font-bold mt-1 text-gray-700">{isRtl ? "إجمالي الطلاب المخصصين:" : "Total Assigned:"} {uniqueTotal}</p>
+              <p className="text-sm font-bold mt-1 text-emerald-600">{isRtl ? "رحلة ذهاب:" : "Outbound:"} {forthStudentIds.length}</p>
+              <p className="text-sm font-bold mt-1 text-yellow-600">{isRtl ? "رحلة عودة:" : "Return:"} {backStudentIds.length}</p>
+            </div>
+          </div>
+
+          <div className="px-4">
+            <table className="w-full border-collapse border border-gray-300 text-[10px]">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border border-gray-300 p-1.5 text-center font-bold w-8 text-black">#</th>
+                  <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRtl ? "اسم الطالب" : "Student Name"}</th>
+                  <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRtl ? "الرقم المدني" : "Civil ID"}</th>
+                  <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRtl ? "رحلة ذهاب" : "Outbound"}</th>
+                  <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRtl ? "رحلة عودة" : "Return"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStudents.filter(s => forthStudentIds.includes(s.id) || backStudentIds.includes(s.id)).map((s, i) => (
+                  <tr key={s.id} className="border-b border-gray-300">
+                    <td className="border border-gray-300 p-1.5 text-center text-gray-700 font-semibold">{i + 1}</td>
+                    <td className="border border-gray-300 p-1.5 font-bold text-gray-900">{s.name}</td>
+                    <td className="border border-gray-300 p-1.5 font-mono text-gray-700">{s.national_id || s.student_code || "—"}</td>
+                    <td className="border border-gray-300 p-1.5 text-center font-bold text-gray-900">{forthStudentIds.includes(s.id) ? "✓" : "—"}</td>
+                    <td className="border border-gray-300 p-1.5 text-center font-bold text-gray-900">{backStudentIds.includes(s.id) ? "✓" : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Confirm Modal */}
       {showConfirm && selectedBus && (
@@ -400,6 +469,16 @@ export default function AssignStudents() {
                 </motion.div>
             )}
 
+            {selectedBus && (
+                <button
+                    onClick={handlePrint}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-[#0f2044] dark:hover:bg-[#1a2845] text-gray-700 dark:text-gray-300 rounded-[14px] font-bold text-sm transition-all flex items-center gap-2 border border-gray-200 dark:border-[#243460]"
+                >
+                    <Printer className="w-4 h-4" />
+                    {isRtl ? "طباعة السجل" : "Print Roster"}
+                </button>
+            )}
+
             <button
                 onClick={handleReviewClick}
                 disabled={!selectedBusId || !hasChanges}
@@ -427,8 +506,8 @@ export default function AssignStudents() {
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {[
               { label: isRtl ? "إجمالي الطلاب" : "Total Students", val: uniqueTotal, icon: <Users className="w-5 h-5" />, accent: "navy" as const },
-              { label: isRtl ? "الصباحي (ذهاب)" : "Morning Trip", val: forthStudentIds.length, icon: <Sunrise className="w-5 h-5" />, accent: "blue" as const },
-              { label: isRtl ? "المسائي (إياب)" : "Afternoon Trip", val: backStudentIds.length, icon: <Sunset className="w-5 h-5" />, accent: "gold" as const },
+              { label: isRtl ? "رحلة ذهاب" : "Outbound Trip", val: forthStudentIds.length, icon: <Sunrise className="w-5 h-5" />, accent: "blue" as const },
+              { label: isRtl ? "رحلة عودة" : "Return Trip", val: backStudentIds.length, icon: <Sunset className="w-5 h-5" />, accent: "gold" as const },
               { label: isRtl ? "المقاعد المتاحة" : "Available Seats", val: selectedBus ? Math.max(0, selectedBus.capacity - uniqueTotal) : 0, icon: <BusIcon className="w-5 h-5" />, accent: overCapacity ? "red" as const : "green" as const },
             ].map(s => (
               <div key={s.label} className={`${DS_statCard(s.accent)} ${isRtl ? "flex-row-reverse" : ""}`}>
@@ -527,9 +606,9 @@ export default function AssignStudents() {
                   <span className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-3">{isRtl ? "دليل الألوان" : "Color Legend"}</span>
                   <div className="space-y-2.5">
                     {[
-                      { color: "bg-[#0f2044] border-[#0f2044] shadow-sm", label: isRtl ? "صباحي فقط (ذهاب)" : "Morning only" },
-                      { color: "bg-[#f5b800] border-[#f5b800] shadow-sm", label: isRtl ? "مسائي فقط (إياب)" : "Afternoon only" },
-                      { color: "bg-gradient-to-r from-[#0f2044] to-[#f5b800] shadow-sm", label: isRtl ? "ذهاب + إياب" : "Both trips" },
+                      { color: "bg-[#0f2044] border-[#0f2044] shadow-sm", label: isRtl ? "رحلة ذهاب فقط" : "Outbound only" },
+                      { color: "bg-[#f5b800] border-[#f5b800] shadow-sm", label: isRtl ? "رحلة عودة فقط" : "Return only" },
+                      { color: "bg-gradient-to-r from-[#0f2044] to-[#f5b800] shadow-sm", label: isRtl ? "رحلة ذهاب وعودة" : "Both trips" },
                       { color: "bg-red-400 border-red-500 shadow-sm", label: isRtl ? "معين لحافلة أخرى" : "Assigned to another bus" },
                     ].map(({ color, label }) => (
                       <div key={label} className="flex items-center gap-3 text-xs font-bold text-gray-600 dark:text-gray-300">
@@ -567,10 +646,10 @@ export default function AssignStudents() {
                 </div>
                 <div className="flex gap-4 text-xs font-bold flex-shrink-0">
                   <button onClick={toggleAllForth} className="text-[#0f2044] dark:text-[#7ba7e8] hover:opacity-70 bg-[#0f2044]/10 dark:bg-[#0f2044]/30 px-3 py-1.5 rounded-[10px] transition-all">
-                    {allForthSelected ? (isRtl ? "إلغاء الصباحي" : "Deselect Morning") : (isRtl ? "تحديد الكل (صباحي)" : "Select All Morning")}
+                    {allForthSelected ? (isRtl ? "إلغاء رحلة ذهاب" : "Deselect Outbound") : (isRtl ? "تحديد الكل رحلة ذهاب" : "Select All Outbound")}
                   </button>
                   <button onClick={toggleAllBack} className="text-[#7a5c00] dark:text-[#f5b800] hover:opacity-70 bg-[#f5b800]/20 px-3 py-1.5 rounded-[10px] transition-all">
-                    {allBackSelected ? (isRtl ? "إلغاء المسائي" : "Deselect Afternoon") : (isRtl ? "تحديد الكل (مسائي)" : "Select All Afternoon")}
+                    {allBackSelected ? (isRtl ? "إلغاء رحلة عودة" : "Deselect Return") : (isRtl ? "تحديد الكل رحلة عودة" : "Select All Return")}
                   </button>
                 </div>
               </div>
@@ -593,8 +672,8 @@ export default function AssignStudents() {
                             <tr>
                                 <th className={DS_tableTh(isRtl)}>{isRtl ? "الطالب" : "Student"}</th>
                                 <th className={DS_tableTh(isRtl)}>{isRtl ? "الرقم المدني" : "Civil ID"}</th>
-                                <th className={DS_tableTh(isRtl) + " text-center"}>{isRtl ? "الصباحي (ذهاب)" : "Morning (Forth)"}</th>
-                                <th className={DS_tableTh(isRtl) + " text-center"}>{isRtl ? "المسائي (إياب)" : "Afternoon (Back)"}</th>
+                                <th className={DS_tableTh(isRtl) + " text-center"}>{isRtl ? "رحلة ذهاب" : "Outbound"}</th>
+                                <th className={DS_tableTh(isRtl) + " text-center"}>{isRtl ? "رحلة عودة" : "Return"}</th>
                             </tr>
                         </thead>
                         <tbody>

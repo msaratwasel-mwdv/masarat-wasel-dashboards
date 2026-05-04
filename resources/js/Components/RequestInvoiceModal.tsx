@@ -4,6 +4,7 @@ import Modal from '@/Components/Modal';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { FileText, Printer, CheckCircle, Bus, Users, MapPin, Calendar, Building2, Banknote, ShieldCheck, Mail, Phone, Hash, Clock } from 'lucide-react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
+import OmaniRial from '@/Components/OmaniRial';
 
 interface AssignedBus {
     id: number;
@@ -346,7 +347,7 @@ export default function RequestInvoiceModal({ show, onClose, request, schoolName
                 </div>
                 <p className="text-2xl font-black text-white">{cost}</p>
                 <p className="text-[10px] font-bold text-white/70 mt-0.5">
-                  {isRTL ? "ريال سعودي" : "OMR"}
+                  <OmaniRial size="1.2em" />
                 </p>
               </div>
             </div>

@@ -11,6 +11,7 @@ import BaseDataTable, {
 } from "@/Components/BaseDataTable";
 import PrintReportHeader from "@/Components/PrintReportHeader";
 import Modal from "@/Components/Modal";
+import OmaniRial from "@/Components/OmaniRial";
 import { createColumnHelper } from "@tanstack/react-table";
 import { 
   Bus as BusIcon, 
@@ -669,7 +670,7 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
 
             <div className="mt-4 pt-4 border-t border-gray-100 dark:border-[#243460]">
               <label className={DS_labelCls}>
-               {isRTL ? "التكلفة المطلوبة (بالريال العماني ر.ع)" : "Required Cost (OMR)"} <span className="text-red-500">*</span>
+               {isRTL ? "التكلفة المطلوبة" : "Required Cost"} (<OmaniRial size="1em" />) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"

@@ -445,11 +445,7 @@ export default function Authenticated({
                   </button>
 
                   {!isCollapsed && isExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      className={`mt-1 space-y-1 ${isRTL ? "pr-12" : "pl-12"}`}
-                    >
+                    <div className={`mt-1 space-y-1 ${isRTL ? "pr-12" : "pl-12"}`}>
                       {item.subItems.map((sub) => {
                         const isSubActive = route().current(sub.route);
                         return (
@@ -466,7 +462,7 @@ export default function Authenticated({
                           </Link>
                         );
                       })}
-                    </motion.div>
+                    </div>
                   )}
                 </div>
               );

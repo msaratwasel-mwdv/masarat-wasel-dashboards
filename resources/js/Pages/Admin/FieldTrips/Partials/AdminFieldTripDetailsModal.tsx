@@ -3,6 +3,7 @@ import useTranslation from '@/hooks/useTranslation';
 import axios from 'axios';
 import FieldTripMapDisplay from '@/Components/FieldTripMapDisplay';
 import { useTheme } from '@/Contexts/ThemeContext';
+import OmaniRial from '@/Components/OmaniRial';
 import { 
     X, 
     Search, 
@@ -127,8 +128,8 @@ export default function AdminFieldTripDetailsModal({ show, onClose, tripId }: Pr
                                 </div>
                                 <div className="p-5 bg-[#0f2044] rounded-2xl shadow-xl shadow-[#0f2044]/10 flex flex-col justify-center border-b-4 border-[#f5b800]">
                                     <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{t('Service Quote')}</p>
-                                    <p className="text-2xl font-black text-white">
-                                        {tripData.cost ? `${tripData.cost} ${t('OMR')}` : t('Pending Quote')}
+                                    <p className="text-2xl font-black text-white flex items-center justify-center gap-2">
+                                        {tripData.cost ? <>{tripData.cost} <OmaniRial size="1.2em" className="inline-block align-middle me-1 opacity-80" /></> : t('Pending Quote')}
                                     </p>
                                 </div>
                             </div>

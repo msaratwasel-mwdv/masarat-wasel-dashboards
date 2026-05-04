@@ -184,7 +184,7 @@ export default function Show({ auth, conversation, messages }: Props) {
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 bg-[#f5b800] rounded-full animate-pulse" />
                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                            ID: #{conversation.id} • {t('Live Monitoring')}
+                            ID: #{conversation.id} • {isRTL ? 'مراقبة حية' : 'Live Monitoring'}
                         </span>
                     </div>
                 </div>
@@ -217,7 +217,7 @@ export default function Show({ auth, conversation, messages }: Props) {
                                 ))}
                             </div>
                             <span className="text-xs font-black text-[#0f2044] dark:text-gray-300 uppercase tracking-wider">
-                                {conversation.participants.length} {t('Operatives Embedded')}
+                                {conversation.participants.length} {isRTL ? 'عضو في المحادثة' : 'Operatives Embedded'}
                             </span>
                         </div>
                         <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-800/30">
@@ -231,7 +231,7 @@ export default function Show({ auth, conversation, messages }: Props) {
                         {groupedMessages.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-30">
                                 <MessageCircle size={64} className="text-gray-400" />
-                                <p className="text-sm font-black text-gray-500 uppercase tracking-[0.2em]">{t('No Transmission Recorded')}</p>
+                                <p className="text-sm font-black text-gray-500 uppercase tracking-[0.2em]">{isRTL ? 'لا توجد رسائل مسجلة' : 'No Transmission Recorded'}</p>
                             </div>
                         ) : (
                             groupedMessages.map((group, gIdx) => (
@@ -293,9 +293,9 @@ export default function Show({ auth, conversation, messages }: Props) {
                     {/* Stats Footer */}
                     <div className="p-4 bg-gray-50/50 dark:bg-[#0f2044]/40 border-t border-gray-100 dark:border-[#243460] flex items-center justify-between">
                         <div className="flex items-center gap-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                            <span className="flex items-center gap-1.5"><MessageCircle size={12} /> {messages.total} {t('Packets')}</span>
+                            <span className="flex items-center gap-1.5"><MessageCircle size={12} /> {messages.total} {isRTL ? 'رسالة' : 'Packets'}</span>
                             <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                            <span className="flex items-center gap-1.5"><Users size={12} /> {conversation.participants.length} {t('Nodes')}</span>
+                            <span className="flex items-center gap-1.5"><Users size={12} /> {conversation.participants.length} {isRTL ? 'عضو' : 'Nodes'}</span>
                         </div>
                     </div>
                 </div>
@@ -306,7 +306,7 @@ export default function Show({ auth, conversation, messages }: Props) {
                 <div className={`${DS_card} p-6 space-y-6`}>
                     <div className="flex items-center gap-2 mb-2">
                         <Users size={18} className="text-[#f5b800]" />
-                        <h3 className="text-sm font-black text-[#0f2044] dark:text-white uppercase tracking-wider">{t('Operative Roster')}</h3>
+                        <h3 className="text-sm font-black text-[#0f2044] dark:text-white uppercase tracking-wider">{isRTL ? 'أطراف المحادثة' : 'Operative Roster'}</h3>
                     </div>
                     
                     <div className="space-y-4">
@@ -326,7 +326,7 @@ export default function Show({ auth, conversation, messages }: Props) {
                                 <button 
                                     onClick={() => { setSelectedUser(p); setShowAlertModal(true); }}
                                     className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
-                                    title={t('Signal Alert')}
+                                    title={isRTL ? 'إرسال تنبيه إداري' : 'Signal Alert'}
                                 >
                                     <ShieldAlert size={16} />
                                 </button>
@@ -339,7 +339,7 @@ export default function Show({ auth, conversation, messages }: Props) {
                             <div className="flex items-start gap-3">
                                 <AlertTriangle size={16} className="text-amber-600 mt-0.5" />
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-black text-amber-900 dark:text-amber-400 uppercase tracking-widest">{t('Admin Protocol')}</p>
+                                    <p className="text-[10px] font-black text-amber-900 dark:text-amber-400 uppercase tracking-widest">{isRTL ? 'صلاحيات الإدارة' : 'Admin Protocol'}</p>
                                     <p className="text-[10px] text-amber-700 dark:text-amber-500/80 leading-relaxed font-bold">
                                         {isRTL 
                                             ? "بصفتك مسؤولاً، يمكنك رصد كافة المحادثات وحذف أي محتوى مخالف أو إرسال تنبيهات إدارية مباشرة للمشاركين." 
@@ -360,7 +360,7 @@ export default function Show({ auth, conversation, messages }: Props) {
           <div className={DS_modalHeader(isRTL)}>
             <div className="flex items-center gap-3">
               <div className={DS_modalHeaderAccent} />
-              <h3 className={DS_modalHeaderTitle}>{t('Redaction Protocol')}</h3>
+              <h3 className={DS_modalHeaderTitle}>{isRTL ? 'تأكيد الحذف' : 'Redaction Protocol'}</h3>
             </div>
             <button onClick={() => setShowDeleteModal(false)} className={DS_modalClose}>
               <ArrowLeft size={18} className={isRTL ? 'rotate-180' : ''} />
@@ -371,7 +371,7 @@ export default function Show({ auth, conversation, messages }: Props) {
             <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-rose-500 shadow-inner">
                 <Trash2 size={40} />
             </div>
-            <h4 className="text-xl font-black text-[#0f2044] dark:text-white mb-2">{t('Confirm Redaction?')}</h4>
+            <h4 className="text-xl font-black text-[#0f2044] dark:text-white mb-2">{isRTL ? 'هل أنت متأكد من الحذف؟' : 'Confirm Redaction?'}</h4>
             <p className="text-xs font-bold text-gray-500 dark:text-gray-400 max-w-xs mx-auto leading-relaxed">
                 {isRTL 
                     ? "هل أنت متأكد من حذف هذه الرسالة؟ سيتم استبدال المحتوى بنص إداري تحذيري." 
@@ -388,13 +388,13 @@ export default function Show({ auth, conversation, messages }: Props) {
 
           <div className={DS_modalFooter(isRTL)}>
             <button onClick={() => setShowDeleteModal(false)} className={DS_btnSecondary}>
-              {t('Abort')}
+              {isRTL ? 'إلغاء' : 'Abort'}
             </button>
             <button 
                 onClick={handleDeleteMessage}
                 className="px-8 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-black shadow-lg shadow-rose-600/20 transition-all active:scale-95"
             >
-              {t('Finalize Redaction')}
+              {isRTL ? 'حذف الرسالة' : 'Finalize Redaction'}
             </button>
           </div>
         </div>
@@ -406,7 +406,7 @@ export default function Show({ auth, conversation, messages }: Props) {
           <div className={DS_modalHeader(isRTL)}>
             <div className="flex items-center gap-3">
               <div className="w-2 h-6 bg-amber-400 rounded-full" />
-              <h3 className={DS_modalHeaderTitle}>{t('Signal Alert')}</h3>
+              <h3 className={DS_modalHeaderTitle}>{isRTL ? 'إرسال تنبيه إداري' : 'Signal Alert'}</h3>
             </div>
             <button onClick={() => setShowAlertModal(false)} className={DS_modalClose}>
                 <ArrowLeft size={18} className={isRTL ? 'rotate-180' : ''} />
@@ -420,13 +420,13 @@ export default function Show({ auth, conversation, messages }: Props) {
                         {selectedUser?.name.charAt(0)}
                     </div>
                     <div>
-                        <p className="text-[10px] font-black text-amber-900 dark:text-amber-400 uppercase tracking-widest">{t('Target Operative')}</p>
+                        <p className="text-[10px] font-black text-amber-900 dark:text-amber-400 uppercase tracking-widest">{isRTL ? 'المستلم' : 'Target Operative'}</p>
                         <p className="text-sm font-black text-[#0f2044] dark:text-white">{selectedUser?.name}</p>
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <label className={DS_label}>{t('Alert Transmission')}</label>
+                    <label className={DS_label}>{isRTL ? 'نص التنبيه' : 'Alert Transmission'}</label>
                     <textarea
                         value={alertForm.data.alert_message}
                         onChange={(e) => alertForm.setData("alert_message", e.target.value)}
@@ -440,14 +440,14 @@ export default function Show({ auth, conversation, messages }: Props) {
 
             <div className={DS_modalFooter(isRTL)}>
                 <button type="button" onClick={() => setShowAlertModal(false)} className={DS_btnSecondary}>
-                    {t('Cancel')}
+                    {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button 
                     type="submit" 
                     disabled={alertForm.processing}
                     className="px-8 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-black shadow-lg shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50"
                 >
-                    {alertForm.processing ? t('Syncing...') : t('Broadcast Alert')}
+                    {alertForm.processing ? (isRTL ? 'جاري الإرسال...' : 'Syncing...') : (isRTL ? 'إرسال التنبيه' : 'Broadcast Alert')}
                 </button>
             </div>
           </form>

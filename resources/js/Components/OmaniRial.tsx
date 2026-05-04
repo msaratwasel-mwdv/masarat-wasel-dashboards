@@ -8,22 +8,20 @@ interface OmaniRialProps {
 }
 
 const OmaniRial: React.FC<OmaniRialProps> = ({
-  size = 80,
+  size = "1em",
   color = "currentColor",
-  className = "",
+  className = "inline-block align-middle",
 }) => {
   return (
     <svg
       id="OmaniRial_Symbol"
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 2736.46 843.47" // الحفاظ على أبعاد الملف الأصلي
-      width={size}
-      height="auto" // جعل الارتفاع يتناسب تلقائياً مع العرض
+      viewBox="0 0 2736.46 843.47"
+      width="auto"
+      height={size}
       className={className}
       style={{
-        display: "inline-block",
-        verticalAlign: "middle",
-        flexShrink: 0, // يمنع انكماش الشعار داخل الـ Flexbox
+        flexShrink: 0,
       }}
     >
       <g fill={color}>

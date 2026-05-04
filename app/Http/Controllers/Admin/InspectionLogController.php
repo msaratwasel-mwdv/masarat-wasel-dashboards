@@ -15,7 +15,7 @@ class InspectionLogController extends Controller
     public function index(Request $request)
     {
         $query = Inspection::query()->with([
-            'fieldSupervisor:id,name,phone,email',
+            'fieldSupervisor:id,first_name_ar,last_name_ar,first_name_en,last_name_en,phone,email',
             'bus:id,bus_number',
             'results.item:id,name'
         ]);
@@ -33,7 +33,10 @@ class InspectionLogController extends Controller
                     $bq->where('bus_number', 'like', "%{$search}%")
                        ->orWhere('bus_number', 'like', "%{$search}%");
                 })->orWhereHas('fieldSupervisor', function ($sq) use ($search) {
-                    $sq->where('name', 'like', "%{$search}%");
+                    $sq->where('first_name_ar', 'like', "%{$search}%")
+                       ->orWhere('last_name_ar', 'like', "%{$search}%")
+                       ->orWhere('first_name_en', 'like', "%{$search}%")
+                       ->orWhere('last_name_en', 'like', "%{$search}%");
                 });
             });
         }

@@ -114,9 +114,10 @@ export default function InspectionLogs({
 
       {/* Main Content (Hidden when printing a specific modal) */}
       <div
-        className={`py-6 dir-${isRTL ? "rtl" : "ltr"} ${
+        className={`py-6 ${
           isDetailsModalOpen ? "print:hidden" : "print:py-0"
         }`}
+        dir={isRTL ? "rtl" : "ltr"}
       >
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
           {/* Filters - Hidden when printing */}
@@ -430,7 +431,7 @@ export default function InspectionLogs({
           </div>
 
           {!isDetailsModalOpen && (
-            <div className="hidden print:block text-center mt-8 text-black dir-rtl">
+            <div className="hidden print:block text-center mt-8 text-black" dir="rtl">
               <p className="font-bold">توقيع المفتش المختص:</p>
               <br />
               <br />
@@ -446,7 +447,8 @@ export default function InspectionLogs({
           <div
             className={`${
               isDark ? "bg-gray-800 text-white" : "bg-white text-gray-900"
-            } rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden transform transition-all flex flex-col max-h-[90vh] print:max-h-none print:shadow-none print:rounded-none print:text-black dir-rtl print:overflow-visible`}
+            } rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden transform transition-all flex flex-col max-h-[90vh] print:max-h-none print:shadow-none print:rounded-none print:text-black print:overflow-visible`}
+            dir="rtl"
           >
             {/* Modal Header (Screen Only) */}
             <div
@@ -519,7 +521,7 @@ export default function InspectionLogs({
                   </div>
                 </div>
                 
-                <div className="text-left dir-ltr">
+                <div className="text-left" dir="ltr">
                     <p className="text-sm font-bold text-gray-500 mb-1 print:text-black">Date: {new Date().toLocaleDateString('en-GB')}</p>
                     <p className="text-sm font-bold text-gray-500 print:text-black">Ref: INSP-{selectedInspection.id}</p>
                 </div>
@@ -531,9 +533,8 @@ export default function InspectionLogs({
             </div>
 
             <div
-              className={`p-6 overflow-y-auto print:overflow-visible dir-${
-                isRTL ? "rtl" : "ltr"
-              } bg-gray-50/50 dark:bg-transparent print:bg-white`}
+              className={`p-6 overflow-y-auto print:overflow-visible bg-gray-50/50 dark:bg-transparent print:bg-white`}
+              dir={isRTL ? "rtl" : "ltr"}
             >
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div

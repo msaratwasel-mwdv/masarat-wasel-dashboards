@@ -67,7 +67,7 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "user",
   },
   {
-    label: isRTL ? "الباصات" : "Buses",
+    label: isRTL ? "الحافلات" : "Buses",
     icon: "bus",
     subItems: [
       {
@@ -79,8 +79,16 @@ const getMenuItems = (isRTL: boolean) => [
         route: "school.bus-requests.index",
       },
       {
-        label: isRTL ? "تعيين الطلاب للباص" : "Assign Bus Students",
+        label: isRTL ? "تعيين الطلاب للحافلة" : "Assign Bus Students",
         route: "school.buses.students.assign",
+      },
+      {
+        label: isRTL ? "السائقون" : "Drivers",
+        route: "school.drivers.index",
+      },
+      {
+        label: isRTL ? "مشرفات الحافلات" : "Bus Supervisors",
+        route: "school.assistants.index",
       },
     ],
   },
@@ -397,11 +405,7 @@ export default function SchoolAuthenticatedLayout({
                   </button>
 
                   {!isCollapsed && isExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      className={`mt-1 space-y-1 ${isRTL ? "pr-12" : "pl-12"}`}
-                    >
+                    <div className={`mt-1 space-y-1 ${isRTL ? "pr-12" : "pl-12"}`}>
                       {item.subItems.map((sub) => {
                         const isSubActive = route().current(sub.route);
                         return (
@@ -418,7 +422,7 @@ export default function SchoolAuthenticatedLayout({
                           </Link>
                         );
                       })}
-                    </motion.div>
+                    </div>
                   )}
                 </div>
               );

@@ -293,7 +293,7 @@ export default function FinancialReports({ auth, detailedExpenses, expensesByTyp
                                                 <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                                             ))}
                                         </Pie>
-                                        <RechartsTooltip formatter={(value: any) => `${Number(value).toLocaleString()} <OmaniRial  />`} />
+                                        <RechartsTooltip formatter={(value: any) => [<span className="inline-flex items-center gap-1">{Number(value).toLocaleString()} <OmaniRial /></span>, undefined]} />
                                         <Legend />
                                     </PieChart>
                                 </ResponsiveContainer>
@@ -329,7 +329,7 @@ export default function FinancialReports({ auth, detailedExpenses, expensesByTyp
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#e2e8f0'} />
                                     <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} />
-                                    <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderRadius: '12px', border: 'none' }} formatter={(value: any) => `${Number(value).toLocaleString()} <OmaniRial  />`} />
+                                    <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderRadius: '12px', border: 'none' }} formatter={(value: any) => [<span className="inline-flex items-center gap-1">{Number(value).toLocaleString()} <OmaniRial /></span>, undefined]} />
 
                                     {(type === 'all' || type === 'fuel') && (
                                         <Area type="monotone" dataKey="fuel" stroke="#f5b800" strokeWidth={3} fillOpacity={1} fill="url(#fuelGrad)" name={isRTL ? 'الوقود' : 'Fuel'} />

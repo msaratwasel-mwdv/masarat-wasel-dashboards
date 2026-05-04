@@ -6,6 +6,7 @@ import useTranslation from '@/hooks/useTranslation';
 import AdminFieldTripDetailsModal from './Partials/AdminFieldTripDetailsModal';
 import PrintReportHeader from "@/Components/PrintReportHeader";
 import BaseDataTable from '@/Components/BaseDataTable';
+import OmaniRial from '@/Components/OmaniRial';
 import Modal from '@/Components/Modal';
 import { 
     Zap, 
@@ -237,7 +238,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
                         {costVal && (
                             <div className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                                 <Coins size={12} />
-                                {costVal} {t('OMR')}
+                                {costVal} <OmaniRial className="inline-block align-middle me-1" size="1.2em" />
                             </div>
                         )}
                     </div>
@@ -405,7 +406,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
 
                             <div className="space-y-6">
                                 <div>
-                                    <label className={DS_label}>{t('Service Quote (OMR)')}</label>
+                                    <label className={DS_label}>{t('Service Quote')} (<OmaniRial size="1em" />)</label>
                                     <div className="relative">
                                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                                             <Coins size={18} />
