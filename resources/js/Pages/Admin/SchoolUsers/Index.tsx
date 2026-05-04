@@ -53,6 +53,7 @@ import {
 import PrintReportHeader from "@/Components/PrintReportHeader";
 import { AnimatePresence } from "framer-motion";
 import Modal from "@/Components/Modal";
+import InputError from "@/Components/InputError";
 
 // ─── Print CSS ──────────────────────────────────────────────────
 const PRINT_STYLES = `
