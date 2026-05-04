@@ -198,6 +198,17 @@ export default function Authenticated({
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Prevent mobile menu from getting stuck when resizing to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768 && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isMobileMenuOpen]);
+
   useEffect(() => {
     localStorage.setItem("admin-sidebar-collapsed", isCollapsed.toString());
   }, [isCollapsed]);
@@ -326,7 +337,7 @@ export default function Authenticated({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsMobileMenuOpen(false)}
-            className="fixed inset-0 bg-black/50 z-[45] md:hidden backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm"
           />
         )}
       </AnimatePresence>

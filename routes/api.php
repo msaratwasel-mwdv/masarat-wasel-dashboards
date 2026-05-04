@@ -25,16 +25,23 @@ Route::get('/user', function (Request $request) {
 
 // ═══ Broadcasting Auth for Sanctum (API Tokens) ═══
 Route::post('/broadcasting/auth', function (Request $request) {
-    $user = $request->user();
-    \Log::info("Broadcasting auth attempt", [
-        'user_id' => $user ? $user->id : 'guest',
-        'channel' => $request->channel_name,
-        'socket_id' => $request->socket_id
-    ]);
-    if (!$user) {
-        return response()->json(['message' => 'Unauthenticated'], 401);
+    try {
+        $user = $request->user();
+        \Log::info("Broadcasting auth attempt", [
+            'user_id' => $user ? $user->id : 'guest',
+            'channel' => $request->channel_name,
+            'socket_id' => $request->socket_id
+        ]);
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        return \Illuminate\Support\Facades\Broadcast::auth($request);
+    } catch (\Throwable $e) {
+        \Log::error("Broadcasting auth API route error: " . $e->getMessage(), [
+            'exception' => $e->getTraceAsString()
+        ]);
+        return response()->json(['message' => 'Broadcasting auth failed'], 500);
     }
-    return \Illuminate\Support\Facades\Broadcast::auth($request);
 })->middleware('auth:sanctum');
 
 // ========== الروابط المحمية بـ Sanctum ==========
@@ -80,6 +87,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/parent/profile/avatar', [\App\Http\Controllers\Api\ParentController::class, 'updateAvatar']);
     Route::get('/parent/children', [\App\Http\Controllers\Api\ParentController::class, 'children']);
     Route::get('/parent/children/{id}/attendance', [\App\Http\Controllers\Api\ParentController::class, 'childAttendance']);
+    Route::post('/parent/location/update', [\App\Http\Controllers\Api\ParentController::class, 'updateLocation']);
+    Route::post('/parent/student/location/update', [\App\Http\Controllers\Api\ParentController::class, 'updateStudentLocation']);
 
     // --- طلبات الغياب ---
     Route::post('/parent/absence-requests', [\App\Http\Controllers\Api\ParentController::class, 'storeAbsenceRequest']);

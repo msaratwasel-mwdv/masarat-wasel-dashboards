@@ -176,8 +176,9 @@ class ParentController extends Controller
                 'trip_count'             => $student->trips_count ?? 0,
                 'attendance_percentage'  => $attendancePercentage,
                 'image_url'              => $imageUrl,
-                'home_lat'               => $user->latitude,
-                'home_lng'               => $user->longitude,
+                'home_lat'               => $student->latitude ?? $user->latitude,
+                'home_lng'               => $student->longitude ?? $user->longitude,
+                'home_address'           => $student->address ?? $user->address,
                 'school'      => $student->currentEnrollment?->classroom?->school ? [
                     'id'      => $student->currentEnrollment->classroom->school->id,
                     'name'    => $student->currentEnrollment->classroom->school->name,
@@ -409,6 +410,88 @@ class ParentController extends Controller
             'data'    => $data,
         ]);
     }
+
+    /**
+     * POST /api/parent/location/update
+     * تحديث الإحداثيات الجغرافية للمنزل
+     */
+    public function updateLocation(Request $request): JsonResponse
+    {
+        $request->validate([
+            'latitude'  => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+        ]);
+
+        $user = $request->user();
+        Log::info("📍 Location Update: User ID {$user->id} set location to Lat: {$request->latitude}, Lng: {$request->longitude}");
+        
+        $user->update([
+            'latitude'  => $request->latitude,
+            'longitude' => $request->longitude,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث موقع المنزل بنجاح.',
+        ]);
+    }
+
+    /**
+     * POST /api/parent/student/location/update
+     * تحديث الإحداثيات الجغرافية لمنزل طالب محدد
+     */
+    public function updateStudentLocation(Request $request): JsonResponse
+    {
+        $request->validate([
+            'student_id' => 'required|exists:students,id',
+            'latitude'   => 'required|numeric|between:-90,90',
+            'longitude'  => 'required|numeric|between:-180,180',
+            'address'    => 'nullable|string|max:500',
+        ]);
+
+        $user = $request->user();
+        
+        // التحقق من أن الطالب يتبع لولي الأمر
+        $student = $user->students()
+            ->where('student_id', $request->student_id)
+            ->first();
+
+        if (!$student) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الطالب غير موجود أو لا يتبع لك.',
+            ], 404);
+        }
+
+        Log::info("📍 Student Location Update: Guardian ID {$user->id} updated Student ID {$student->id} to Lat: {$request->latitude}, Lng: {$request->longitude}");
+        
+        // استخدام $request->all() كما طلب المستخدم (مع الفلترة بواسطة $fillable)
+        $oldData = $student->toArray();
+        $student->update($request->all());
+
+        // Notify driver
+        $busId = $student->forth_bus_id ?? $student->back_bus_id;
+        if ($busId) {
+            $bus = \App\Models\Bus::find($busId);
+            if ($bus && $bus->driver) {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->sendToUser(
+                    $bus->driver->user,
+                    '?? ????? ???? ??????',
+                    "??? ??? ????? ?????? ???? ?????? {$student->full_name}",
+                    ['type' => 'address_change', 'student_id' => $student->id]
+                );
+            }
+        }
+
+        // ── Broadcast + audit are handled automatically by StudentObserver ──
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث موقع منزل الطالب بنجاح.',
+        ]);
+    }
 }
+
 
 
