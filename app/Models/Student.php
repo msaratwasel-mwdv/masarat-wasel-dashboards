@@ -34,6 +34,9 @@ class Student extends Model
         'back_bus_id',
         'back_latitude',
         'back_longitude',
+        'address',
+        'latitude',
+        'longitude',
     ];
 
     /**

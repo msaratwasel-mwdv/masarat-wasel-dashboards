@@ -86,7 +86,7 @@ export default function UpdateSchoolInformationForm() {
                             </span>
                         )}
                     </div>
-                    <div className="h-[300px] rounded-2xl overflow-hidden border-2 border-[#0f2044]/10 dark:border-[#243460] shadow-inner relative z-10">
+                    <div className="h-[400px] rounded-2xl border-2 border-[#0f2044]/10 dark:border-[#243460] shadow-inner relative z-10">
                         <FieldTripMapPicker
                             lat={data.latitude}
                             lng={data.longitude}

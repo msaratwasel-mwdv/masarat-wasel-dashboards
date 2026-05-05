@@ -17,7 +17,7 @@ export const DS_tableWrapper = "overflow-x-auto";
 export const DS_tableBase = "w-full text-sm";
 export const DS_tableHead = "bg-[#0f2044]/5 dark:bg-[#0f2044]/40";
 export const DS_tableRow = "hover:bg-[#0f2044]/[0.03] dark:hover:bg-[#0f2044]/30 transition-colors border-b border-gray-50 dark:border-[#243460] last:border-0";
-export const DS_tableTd = "px-4 py-3.5";
+export const DS_tableTd = "px-4 py-3.5 text-gray-800 dark:text-white";
 export const DS_divider = "border-b border-gray-100 dark:border-[#243460]";
 
 // ── Bus Assignment Specific Tokens ────────────────────────────────

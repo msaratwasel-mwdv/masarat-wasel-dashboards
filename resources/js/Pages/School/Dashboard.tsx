@@ -320,8 +320,8 @@ export default function SchoolDashboard({
                             {isRtl ? "إحصائيات الحضور الأسبوعية" : "Weekly Attendance Trend"}
                         </h3>
                     </div>
-                    <div className="p-6 h-[280px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div className="p-6 h-[280px] min-h-[280px] w-full min-w-0">
+                        <ResponsiveContainer width="100%" height={230}>
                             <AreaChart data={attendanceTrend}>
                                 <defs>
                                     <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
@@ -355,10 +355,10 @@ export default function SchoolDashboard({
                             {isRtl ? "توزيع الطلاب حسب الفصول" : "Class Distribution"}
                         </h3>
                     </div>
-                    <div className="p-6 h-[280px] flex items-center justify-center relative">
+                    <div className="p-6 h-[280px] min-h-[280px] w-full min-w-0 flex items-center justify-center relative">
                         {classDistribution.length > 0 ? (
                             <>
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="100%" height={230}>
                                     <PieChart>
                                         <Pie 
                                             data={classDistribution} 

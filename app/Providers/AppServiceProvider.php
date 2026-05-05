@@ -44,6 +44,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Register BusRequest Observer for Notifications
         \App\Models\BusRequest::observe(\App\Observers\BusRequestObserver::class);
+        \App\Models\Trip::observe(\App\Observers\TripObserver::class);
+        \App\Models\TripAttendance::observe(\App\Observers\TripAttendanceObserver::class);
+        \App\Models\Student::observe(\App\Observers\StudentObserver::class);
     }
 }
 

@@ -224,8 +224,12 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
         columnHelper.accessor('trip_date', {
             header: isRTL ? 'التاريخ' : 'Date',
             cell: (info) => {
-                const d = new Date(info.getValue());
-                return d.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                const val = info.getValue();
+                if (!val) return <span className="text-gray-400">—</span>;
+                const d = new Date(val);
+                if (isNaN(d.getTime())) return <span className="font-bold">{String(val)}</span>;
+                const dateStr = d.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                return <span className="font-bold">{dateStr}</span>;
             }
         }),
         columnHelper.accessor('type', {

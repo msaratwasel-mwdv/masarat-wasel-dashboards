@@ -227,8 +227,8 @@ export default function Dashboard({
                     <TrendingUp className="w-5 h-5 text-emerald-500" />
                     {isRTL ? "اتجاه الرحلات (آخر 7 أيام)" : "Trips Trend (Last 7 Days)"}
                  </h3>
-                 <div className="h-[230px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                 <div className="h-[300px] w-full min-w-0 min-h-[300px]">
+                    <ResponsiveContainer width="100%" height={260}>
                       <AreaChart data={tripsTrend}>
                         <defs>
                           <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">

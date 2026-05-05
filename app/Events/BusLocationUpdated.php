@@ -19,6 +19,7 @@ class BusLocationUpdated implements ShouldBroadcastNow
         public Bus $bus,
         public float $latitude,
         public float $longitude,
+        public float $heading = 0,
         public ?int $studentsOnBoard = 0
     ) {}
 
@@ -37,12 +38,22 @@ class BusLocationUpdated implements ShouldBroadcastNow
 
     public function broadcastWith(): array
     {
+        $driver = $this->bus->driver;
+
         return [
             'bus_id'            => $this->bus->id,
+            'bus_number'        => $this->bus->bus_number,
+            'plate_number'      => $this->bus->plate_number,
             'latitude'          => $this->latitude,
             'longitude'         => $this->longitude,
+            'heading'           => $this->heading,
             'trip_status'       => $this->bus->trip_status,
+            'speed_kmh'         => cache()->get('bus_speed_'.$this->bus->id, 0),
             'students_on_board' => $this->studentsOnBoard,
+            'driver' => $driver ? [
+                'name' => $driver->name,
+                'image_url' => $driver->image_url ? url($driver->image_url) : 'https://i.pravatar.cc/150?u=' . $driver->id,
+            ] : null,
             'timestamp'         => now()->toIso8601String(),
         ];
     }

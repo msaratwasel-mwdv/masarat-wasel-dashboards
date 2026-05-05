@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a6c8424e4cc3daa26145f3e125b5a22e",
+    "content-hash": "8f209142d331486fe5764bdbc69fdc29",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -9940,6 +9940,48 @@
                 }
             ],
             "time": "2024-11-21T01:49:47+00:00"
+        },
+        {
+            "name": "yidas/google-maps-services",
+            "version": "1.2.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/yidas/google-maps-services-php.git",
+                "reference": "a6300c722d7516980c882352fdccca9497a1700b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/yidas/google-maps-services-php/zipball/a6300c722d7516980c882352fdccca9497a1700b",
+                "reference": "a6300c722d7516980c882352fdccca9497a1700b",
+                "shasum": ""
+            },
+            "require": {
+                "guzzlehttp/guzzle": "~6.5.6|^7.4.3",
+                "php": ">=5.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "yidas\\googleMaps\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "PHP client library(SDK) for Google Maps API Web Services",
+            "homepage": "https://github.com/yidas/google-maps-services-php",
+            "keywords": [
+                "google maps",
+                "php",
+                "sdk",
+                "services"
+            ],
+            "support": {
+                "issues": "https://github.com/yidas/google-maps-services-php/issues",
+                "source": "https://github.com/yidas/google-maps-services-php"
+            },
+            "time": "2024-03-16T01:26:29+00:00"
         }
     ],
     "packages-dev": [
@@ -12473,7 +12515,8 @@
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.2"
+        "php": "^8.2",
+        "ext-zip": "*"
     },
     "platform-dev": {},
     "platform-overrides": {

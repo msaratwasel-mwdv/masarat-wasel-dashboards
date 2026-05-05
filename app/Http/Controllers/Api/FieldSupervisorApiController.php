@@ -30,6 +30,8 @@ class FieldSupervisorApiController extends Controller
                     'driver' => $bus->driver ? $bus->driver->name : null,
                     'assistant' => $bus->assistant ? $bus->assistant->name : null,
                     'field_supervisor' => $bus->fieldSupervisor ? $bus->fieldSupervisor->name : null,
+                    'front_qr' => $bus->front_qr ? asset('storage/' . $bus->front_qr) : null,
+                    'back_qr' => $bus->back_qr ? asset('storage/' . $bus->back_qr) : null,
                     'location_lat' => (double) $bus->current_latitude,
                     'location_lng' => (double) $bus->current_longitude,
                     'status' => $bus->status,

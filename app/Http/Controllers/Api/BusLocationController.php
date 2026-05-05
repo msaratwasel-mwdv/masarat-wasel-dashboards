@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Bus;
 use App\Models\Guardian;
 use App\Services\NotificationService;
+use App\Services\GoogleMapsService;
+use App\Events\DriverLocationUpdated;
+use App\Events\BusLocationUpdated;
 use Illuminate\Http\Request;
 
 class BusLocationController extends Controller
@@ -13,10 +16,12 @@ class BusLocationController extends Controller
     use \App\Traits\HasLocation;
 
     protected NotificationService $notificationService;
+    protected GoogleMapsService $googleMapsService;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(NotificationService $notificationService, GoogleMapsService $googleMapsService)
     {
         $this->notificationService = $notificationService;
+        $this->googleMapsService = $googleMapsService;
     }
 
     /**
@@ -28,12 +33,35 @@ class BusLocationController extends Controller
         $request->validate([
             'latitude'  => 'required|numeric',
             'longitude' => 'required|numeric',
+            'heading'   => 'nullable|numeric',
+        ]);
+
+        $heading = $request->input('heading', 0);
+
+        \Log::debug("📡 [DRIVER] Received location update for Bus {$bus->id}", [
+            'lat' => $request->latitude,
+            'lng' => $request->longitude,
+            'heading' => $heading
         ]);
 
         // حماية: السائق المسجل فقط هو من يمكنه تحديث موقع الباص
         if (!$bus->hasCrewMember($request->user()->id)) {
             return response()->json(['message' => 'غير مصرح لك بتحديث موقع هذا الباص.'], 403);
         }
+
+        // حساب السرعة الحقيقية بناءً على المسافة والزمن
+        $speedKmh = 0;
+        if ($bus->latitude && $bus->longitude && $bus->last_location_update) {
+            $distance = $this->calculateDistance((float)$bus->latitude, (float)$bus->longitude, (float)$request->latitude, (float)$request->longitude);
+            $timeDiff = $bus->last_location_update->diffInSeconds(now());
+            // حساب السرعة إذا كان الفارق أقل من 10 دقائق لتجنب القفزات
+            if ($timeDiff > 0 && $timeDiff < 600) {
+                $speedKmh = ($distance / 1000) / ($timeDiff / 3600);
+            }
+        }
+        // يمكن حفظ السرعة والاتجاه في الكاش لاستخدامها في واجهة المستخدم
+        cache()->put('bus_speed_'.$bus->id, min(round($speedKmh, 1), 120), now()->addMinutes(5));
+        cache()->put('bus_heading_'.$bus->id, $heading, now()->addMinutes(5));
 
         $bus->update([
             'latitude' => $request->latitude,
@@ -44,11 +72,41 @@ class BusLocationController extends Controller
         // 🔔 بث الموقع فورياً لجميع المتابعين (تطبيق السائق، المشرف، ولي الأمر)
         try {
             $today = now()->startOfDay();
-            $onBoard = \App\Models\TripAttendance::whereHas('trip', function($q) use ($bus, $today) {
-                $q->where('bus_id', $bus->id)->whereDate('trip_date', $today)->where('status', 'in_progress');
-            })->where('status', 'boarded')->count();
+            $trip = \App\Models\Trip::where('bus_id', $bus->id)->whereDate('trip_date', $today)->where('status', 'in_progress')->first();
+            
+            $onBoardCount = 0;
+            $etaData = null;
 
-            broadcast(new \App\Events\BusLocationUpdated($bus, $request->latitude, $request->longitude, $onBoard));
+            if ($trip) {
+                $onBoardStudents = \App\Models\TripAttendance::where('trip_id', $trip->id)
+                    ->where('status', 'boarded')
+                    ->with('student.guardians')
+                    ->get();
+                
+                $onBoardCount = $onBoardStudents->count();
+
+                // حساب الوقت المتوقع للطلاب الموجودين في الباص حالياً
+                $destinations = [];
+                foreach ($onBoardStudents as $attendance) {
+                    $guardian = $attendance->student->guardians->first();
+                    if ($guardian && $guardian->latitude && $guardian->longitude) {
+                        $destinations[] = "{$guardian->latitude},{$guardian->longitude}";
+                    }
+                }
+
+                if (!empty($destinations)) {
+                    $etaData = $this->googleMapsService->getDistanceAndETA("{$request->latitude},{$request->longitude}", $destinations);
+                }
+            }
+
+            // الحدث القديم للتوافق
+            broadcast(new BusLocationUpdated($bus, $request->latitude, $request->longitude, $heading, $onBoardCount));
+            
+            // الحدث الجديد المطلوب للتتبع اللحظي مع بيانات ETA
+            broadcast(new DriverLocationUpdated($bus, $request->latitude, $request->longitude, $heading, $etaData));
+
+            \Log::debug("✅ [DRIVER] Broadcast Successful for Bus {$bus->id}");
+
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Location broadcast error: " . $e->getMessage());
         }
@@ -122,14 +180,15 @@ class BusLocationController extends Controller
 
         return response()->json([
             'bus_id' => $bus->id,
-            'latitude' => (double) $bus->latitude,
-            'longitude' => (double) $bus->longitude,
+            'latitude' => $bus->latitude ? (double) $bus->latitude : null,
+            'longitude' => $bus->longitude ? (double) $bus->longitude : null,
+            'heading' => (double) cache()->get('bus_heading_'.$bus->id, 0), // Retrieve heading from cache
             'trip_status' => $bus->trip_status,
             'trip_type' => \App\Models\Trip::where('bus_id', $bus->id)->whereDate('trip_date', today())->where('status', 'in_progress')->value('type'),
             'last_update' => $bus->last_location_update ? $bus->last_location_update->toIso8601String() : null,
             'bus_number' => $bus->bus_number,
             'plate_number' => $bus->plate_number,
-            'speed_kmh' => in_array($bus->trip_status, ['on_route', 'to_school', 'to_home']) ? rand(30, 60) : 0,
+            'speed_kmh' => in_array($bus->trip_status, ['on_route', 'to_school', 'to_home']) ? cache()->get('bus_speed_'.$bus->id, 0) : 0,
             'students_on_board' => $studentsOnBoard,
             'student_statuses' => $guardianStudents,
             'driver' => $driver ? [
@@ -177,13 +236,13 @@ class BusLocationController extends Controller
         foreach ($students as $student) {
             $guardian = $student->guardians->first();
 
-            if (! $guardian || ! $guardian->home_latitude || ! $guardian->home_longitude) {
+            if (! $guardian || ! $guardian->latitude || ! $guardian->longitude) {
                 continue;
             }
 
             $distance = $this->calculateDistance(
                 $busLat, $busLon,
-                (float) $guardian->home_latitude, (float) $guardian->home_longitude
+                (float) $guardian->latitude, (float) $guardian->longitude
             );
 
             $alertDistance = $guardian->proximity_alert_distance ?? 2000;
