@@ -42,11 +42,22 @@ class AppServiceProvider extends ServiceProvider
         // ✅ 2. هذا هو السطر الذي يسجل "كتيب القواعد" في النظام
         Gate::policy(Student::class, StudentPolicy::class);
 
-        // Register BusRequest Observer for Notifications
+        // Register Observers for Cache Invalidation & Logic
         \App\Models\BusRequest::observe(\App\Observers\BusRequestObserver::class);
         \App\Models\Trip::observe(\App\Observers\TripObserver::class);
         \App\Models\TripAttendance::observe(\App\Observers\TripAttendanceObserver::class);
         \App\Models\Student::observe(\App\Observers\StudentObserver::class);
+        \App\Models\User::observe(\App\Observers\UserObserver::class);
+        \App\Models\Bus::observe(\App\Observers\BusObserver::class);
+        \App\Models\Notification::observe(\App\Observers\NotificationObserver::class);
+        \App\Models\NotificationRecipient::observe(\App\Observers\NotificationRecipientObserver::class);
+        
+        // Analytics models cache invalidation
+        $analyticsObserver = \App\Observers\AnalyticsCacheObserver::class;
+        \App\Models\Incident::observe($analyticsObserver);
+        \App\Models\BusExpense::observe($analyticsObserver);
+        \App\Models\Violation::observe($analyticsObserver);
+        \App\Models\Delay::observe($analyticsObserver);
     }
 }
 

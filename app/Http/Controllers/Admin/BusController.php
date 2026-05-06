@@ -24,7 +24,7 @@ class BusController extends Controller
         $statusFilter = $request->input('status', 'all');
 
         // 1. Base query for buses
-        $query = Bus::with([
+        $query = Bus::withStudentsCount()->with([
             'driver.user:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,image',
             'assistant:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,image',
             'fieldSupervisor:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,image',

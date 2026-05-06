@@ -7,9 +7,20 @@ use App\Models\SystemEventLog;
 use App\Events\StudentLocationUpdated;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class StudentObserver
 {
+    public function saved(Student $student): void
+    {
+        Cache::forget('admin_dashboard_stats');
+    }
+
+    public function deleted(Student $student): void
+    {
+        Cache::forget('admin_dashboard_stats');
+    }
+
     /**
      * Handle the Student "updated" event.
      * Propagates home location coordinate changes to the driver via broadcast.

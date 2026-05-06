@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\TripAttendance;
 use App\Models\SystemEventLog;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class TripAttendanceObserver
 {
@@ -20,6 +21,8 @@ class TripAttendanceObserver
                 'before_data' => ['status' => $attendance->getOriginal('status')],
                 'after_data' => ['status' => $attendance->status],
             ]);
+
+            Cache::forget('admin_dashboard_stats');
         }
     }
 
@@ -34,5 +37,7 @@ class TripAttendanceObserver
             'before_data' => null,
             'after_data' => ['status' => $attendance->status],
         ]);
+
+        Cache::forget('admin_dashboard_stats');
     }
 }
