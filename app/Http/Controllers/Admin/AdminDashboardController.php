@@ -12,69 +12,73 @@ class AdminDashboardController extends Controller
 {
     public function index()
     {
-        // --- 1. Bus Stats ---
-        $busTotal = Bus::count();
-        $busMaintenance = Bus::where('status', 'maintenance')->count();
-        // Booked/Assigned: Active and has a driver
-        $busBooked = Bus::where('status', 'active')->has('driver')->count();
-        // Available: Active (or just not maintenance) but no driver
-        $busAvailable = Bus::where('status', 'active')->doesntHave('driver')->count();
+        $stats = \Illuminate\Support\Facades\Cache::remember('admin_dashboard_stats', 300, function() {
+            // --- 1. Bus Stats ---
+            $busTotal = Bus::count();
+            $busMaintenance = Bus::where('status', 'maintenance')->count();
+            $busBooked = Bus::where('status', 'active')->has('driver')->count();
+            $busAvailable = Bus::where('status', 'active')->doesntHave('driver')->count();
 
-        // --- 2. Driver Stats ---
-        $driverTotal = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))->count();
-        // Drivers assigned to buses
-        $driverBooked = Bus::whereNotNull('driver_id')->distinct('driver_id')->count();
-        $driverAvailable = max(0, $driverTotal - $driverBooked);
+            // --- 2. Staff Stats — single query for all roles ---
+            $roleCounts = \Illuminate\Support\Facades\DB::table('user_roles')
+                ->join('roles', 'user_roles.role_id', '=', 'roles.id')
+                ->whereIn('roles.name', ['driver', 'field_supervisor', 'assistant'])
+                ->selectRaw('roles.name, COUNT(*) as total')
+                ->groupBy('roles.name')
+                ->pluck('total', 'name');
 
-        // --- 3. Crew Stats (Assistants & Field Supervisors) ---
-        $fieldSupervisorTotal = User::whereHas('roles', fn($q) => $q->where('name', 'field_supervisor'))->count();
-        $fieldSupervisorBooked = Bus::whereNotNull('field_supervisor_id')->distinct('field_supervisor_id')->count();
-        $fieldSupervisorAvailable = max(0, $fieldSupervisorTotal - $fieldSupervisorBooked);
+            $driverTotal = $roleCounts->get('driver', 0);
+            $driverBooked = Bus::whereNotNull('driver_id')->distinct('driver_id')->count();
+            $driverAvailable = max(0, $driverTotal - $driverBooked);
 
-        $assistantTotal = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))->count();
-        $assistantBooked = Bus::whereNotNull('assistant_id')->distinct('assistant_id')->count();
-        $assistantAvailable = max(0, $assistantTotal - $assistantBooked);
+            $fieldSupervisorTotal = $roleCounts->get('field_supervisor', 0);
+            $fieldSupervisorBooked = Bus::whereNotNull('field_supervisor_id')->distinct('field_supervisor_id')->count();
+            $fieldSupervisorAvailable = max(0, $fieldSupervisorTotal - $fieldSupervisorBooked);
 
-        // --- 4. General Stats ---
-        $stats = [
-            'total_schools' => \App\Models\School::count(),
-            'total_students' => \App\Models\Student::count(),
-            'total_trips' => \App\Models\Trip::count(),
-            'daily_trips_today' => [
-                'pending' => \App\Models\Trip::whereDate('trip_date', Carbon::today())->where('status', 'pending')->count(),
-                'ongoing' => \App\Models\Trip::whereDate('trip_date', Carbon::today())->where('status', 'ongoing')->count(),
-                'completed' => \App\Models\Trip::whereDate('trip_date', Carbon::today())->where('status', 'finished')->count(),
-            ],
+            $assistantTotal = $roleCounts->get('assistant', 0);
+            $assistantBooked = Bus::whereNotNull('assistant_id')->distinct('assistant_id')->count();
+            $assistantAvailable = max(0, $assistantTotal - $assistantBooked);
 
-            // Buses Detailed
-            'buses' => [
-                'total' => $busTotal,
-                'available' => $busAvailable,
-                'booked' => $busBooked,
-                'maintenance' => $busMaintenance,
-            ],
+            return [
+                'total_schools' => \App\Models\School::count(),
+                'total_students' => \App\Models\Student::count(),
+                'total_trips' => \App\Models\Trip::count(),
+                'daily_trips_today' => [
+                    'pending' => \App\Models\Trip::whereDate('trip_date', \Carbon\Carbon::today())->where('status', 'pending')->count(),
+                    'ongoing' => \App\Models\Trip::whereDate('trip_date', \Carbon\Carbon::today())->where('status', 'ongoing')->count(),
+                    'completed' => \App\Models\Trip::whereDate('trip_date', \Carbon\Carbon::today())->where('status', 'finished')->count(),
+                ],
 
-            // Drivers Detailed
-            'drivers' => [
-                'total' => $driverTotal,
-                'available' => $driverAvailable,
-                'booked' => $driverBooked,
-            ],
+                // Buses Detailed
+                'buses' => [
+                    'total' => $busTotal,
+                    'available' => $busAvailable,
+                    'booked' => $busBooked,
+                    'maintenance' => $busMaintenance,
+                ],
 
-            // Field Supervisors Detailed
-            'field_supervisors' => [
-                'total' => $fieldSupervisorTotal,
-                'available' => $fieldSupervisorAvailable,
-                'booked' => $fieldSupervisorBooked,
-            ],
+                // Drivers Detailed
+                'drivers' => [
+                    'total' => $driverTotal,
+                    'available' => $driverAvailable,
+                    'booked' => $driverBooked,
+                ],
 
-            // Assistants Detailed
-            'assistants' => [
-                'total' => $assistantTotal,
-                'available' => $assistantAvailable,
-                'booked' => $assistantBooked,
-            ],
-        ];
+                // Field Supervisors Detailed
+                'field_supervisors' => [
+                    'total' => $fieldSupervisorTotal,
+                    'available' => $fieldSupervisorAvailable,
+                    'booked' => $fieldSupervisorBooked,
+                ],
+
+                // Assistants Detailed
+                'assistants' => [
+                    'total' => $assistantTotal,
+                    'available' => $assistantAvailable,
+                    'booked' => $assistantBooked,
+                ],
+            ];
+        });
 
         // --- 5. Trends & Charts (US-REP-002) ---
         $sevenDaysAgo = Carbon::now()->subDays(6)->startOfDay();
@@ -104,9 +108,9 @@ class AdminDashboardController extends Controller
 
         // Fleet Distribution (for Pie Chart)
         $fleetDistribution = [
-            ['name' => 'Active', 'value' => $busBooked, 'color' => '#22c55e'],
-            ['name' => 'Available', 'value' => $busAvailable, 'color' => '#eab308'],
-            ['name' => 'Maintenance', 'value' => $busMaintenance, 'color' => '#ef4444'],
+            ['name' => 'Active', 'value' => $stats['buses']['booked'], 'color' => '#22c55e'],
+            ['name' => 'Available', 'value' => $stats['buses']['available'], 'color' => '#eab308'],
+            ['name' => 'Maintenance', 'value' => $stats['buses']['maintenance'], 'color' => '#ef4444'],
         ];
 
         // --- 6. Recent Activities Feed ---

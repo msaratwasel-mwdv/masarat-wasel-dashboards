@@ -17,7 +17,7 @@ class SchoolUserController extends Controller
     // عرض قائمة جميع مدراء المدارس
     public function index(Request $request)
     {
-        $query = User::withRole('school_admin')->with('schoolAdmin.school');
+        $query = User::withRole('school_admin')->with(['roles', 'schoolAdmin.school']);
 
         if ($request->filled('search')) {
             $search = $request->search;

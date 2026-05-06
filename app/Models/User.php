@@ -48,7 +48,7 @@ class User extends Authenticatable
      *
      * @var array
      */
-    protected $appends = ['name', 'name_en', 'role', 'is_active', 'school'];
+    protected $appends = ['name', 'name_en', 'role', 'is_active'];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -85,11 +85,13 @@ class User extends Authenticatable
 
     /**
      * Get the user's primary role name (first role).
-     * Used for backward compatibility with code that reads $user->role.
+     * Uses the pre-loaded roles collection (no extra query if eager loaded).
      */
     public function getRoleAttribute(): ?string
     {
-        return $this->roles->first()?->name;
+        // Use getRelationValue to avoid triggering load if not loaded
+        $roles = $this->getRelationValue('roles');
+        return $roles ? $roles->first()?->name : null;
     }
 
     public function getIsActiveAttribute(): bool
@@ -385,14 +387,57 @@ class User extends Authenticatable
      * Get the school attribute accessor to emulate the school relationship.
      * This uses the getSchoolId() helper to look up the active school for the user.
      */
+    /**
+     * School accessor — uses pre-loaded relationships when available.
+     * Avoids N+1 by checking relationLoaded() before accessing.
+     */
     public function getSchoolAttribute()
     {
-        $schoolId = $this->getSchoolId();
-        return $schoolId ? \App\Models\School::find($schoolId) : null;
+        // If school was set manually (e.g. from eager-loaded data), return it
+        if (isset($this->attributes['_cached_school'])) {
+            return $this->attributes['_cached_school'];
+        }
+        $schoolId = $this->getSchoolIdEfficient();
+        if (!$schoolId) return null;
+        $school = \App\Models\School::find($schoolId);
+        $this->attributes['_cached_school'] = $school;
+        return $school;
     }
 
     public function getSchoolIdAttribute(): ?int
     {
+        return $this->getSchoolIdEfficient();
+    }
+
+    /**
+     * Efficient school ID resolution — only queries relationships that are loaded.
+     * For unloaded relationships, falls back to getSchoolId().
+     */
+    public function getSchoolIdEfficient(): ?int
+    {
+        // Admin users don't belong to any school
+        if ($this->relationLoaded('roles') && $this->roles->contains('name', 'admin')) {
+            return null;
+        }
+
+        // Fast path: check already-loaded relationships first
+        if ($this->relationLoaded('schoolAdmin') && $this->schoolAdmin?->school_id) {
+            return $this->schoolAdmin->school_id;
+        }
+        if ($this->relationLoaded('teacher') && $this->teacher?->school_id) {
+            return $this->teacher->school_id;
+        }
+        if ($this->relationLoaded('assignedBus') && $this->assignedBus?->school_id) {
+            return $this->assignedBus->school_id;
+        }
+        if ($this->relationLoaded('assignedBusAsAssistant') && $this->assignedBusAsAssistant?->school_id) {
+            return $this->assignedBusAsAssistant->school_id;
+        }
+        if ($this->relationLoaded('assignedBusAsFieldSupervisor') && $this->assignedBusAsFieldSupervisor?->school_id) {
+            return $this->assignedBusAsFieldSupervisor->school_id;
+        }
+
+        // Slow path: query DB (only for single-user contexts like auth)
         return $this->getSchoolId();
     }
 
