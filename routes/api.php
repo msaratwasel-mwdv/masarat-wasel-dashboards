@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// ========== المصادقة ==========
-Route::post('/auth/login', [AuthController::class, 'login']);
+// ✅ Rate Limiting: 5 محاولات دخول فقط كل دقيقة — يمنع Brute Force attacks
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -45,7 +45,8 @@ Route::post('/broadcasting/auth', function (Request $request) {
 })->middleware('auth:sanctum');
 
 // ========== الروابط المحمية بـ Sanctum ==========
-Route::middleware('auth:sanctum')->group(function () {
+// ✅ Rate Limiting: 60 طلب كل دقيقة لكل المستخدمين المسجلين — يمنع DDoS
+Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
     // --- المصادقة ---
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -68,7 +69,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/bus/{bus}/start-trip', [DailyTripApiController::class, 'startTrip']);
         Route::post('/bus/{bus}/confirm-trip', [DailyTripApiController::class, 'confirmTrip']);
         Route::post('/bus/{bus}/arrive', [DailyTripApiController::class, 'arrive']);
-        Route::post('/bus/{bus}/notify-near-house', [DailyTripApiController::class, 'notifyNearHouse']);
+        // ✅ throttle:10,1 — أكثر تشدداً لأن الإشعارات قد تُستغل لـ spam
+        Route::post('/bus/{bus}/notify-near-house', [DailyTripApiController::class, 'notifyNearHouse'])->middleware('throttle:10,1');
         Route::post('/bus/{bus}/mark-absent', [DailyTripApiController::class, 'markAbsent']);
         Route::post('/bus/{bus}/end-trip', [DailyTripApiController::class, 'endTrip']);
         Route::post('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'store']);

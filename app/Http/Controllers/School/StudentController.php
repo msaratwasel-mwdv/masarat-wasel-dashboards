@@ -342,37 +342,34 @@ class StudentController extends Controller
 
         $guardianId = $student->guardians()->first()?->id;
 
-        try {
-            $validated = $request->validate([
-                // Student Data
-                'first_name_ar' => 'required|string|max:255',
-                'second_name_ar' => 'required|string|max:255',
-                'third_name_ar' => 'required|string|max:255',
-                'last_name_ar' => 'required|string|max:255',
-                'first_name_en' => 'required|string|max:255',
-                'second_name_en' => 'required|string|max:255',
-                'third_name_en' => 'required|string|max:255',
-                'last_name_en' => 'required|string|max:255',
-                'national_id' => ['nullable', 'string', 'max:50', Rule::unique('students')->ignore($student->id)],
-                'gender' => 'required|in:male,female',
-                'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
-                'forth_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
-                'back_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
-                'is_active' => 'required|boolean',
-                'image' => 'nullable|image|max:5120',
+        // Laravel يعيد المستخدم تلقائياً مع رسائل الخطأ عند فشل الـ validation
+        $validated = $request->validate([
+            // Student Data
+            'first_name_ar' => 'required|string|max:255',
+            'second_name_ar' => 'required|string|max:255',
+            'third_name_ar' => 'required|string|max:255',
+            'last_name_ar' => 'required|string|max:255',
+            'first_name_en' => 'required|string|max:255',
+            'second_name_en' => 'required|string|max:255',
+            'third_name_en' => 'required|string|max:255',
+            'last_name_en' => 'required|string|max:255',
+            'national_id' => ['nullable', 'string', 'max:50', Rule::unique('students')->ignore($student->id)],
+            'gender' => 'required|in:male,female',
+            'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
+            'forth_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
+            'back_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
+            'is_active' => 'required|boolean',
+            'image' => 'nullable|image|max:5120',
 
-                // Guardian Data (now referencing users table)
-                'guardian.name' => 'required|string|max:255',
-                'guardian.name_en' => 'nullable|string|max:255',
-                'guardian.national_id' => ['required', 'string', 'max:50', Rule::unique('users', 'national_id')->ignore($guardianId)],
-                'guardian.phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($guardianId)],
-                'guardian.address' => 'nullable|string|max:255',
-                'guardian.home_number' => 'nullable|string|max:50',
-                'guardian.image' => 'nullable|image|max:5120',
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            dd($e->errors());
-        }
+            // Guardian Data (now referencing users table)
+            'guardian.name' => 'required|string|max:255',
+            'guardian.name_en' => 'nullable|string|max:255',
+            'guardian.national_id' => ['required', 'string', 'max:50', Rule::unique('users', 'national_id')->ignore($guardianId)],
+            'guardian.phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($guardianId)],
+            'guardian.address' => 'nullable|string|max:255',
+            'guardian.home_number' => 'nullable|string|max:50',
+            'guardian.image' => 'nullable|image|max:5120',
+        ]);
 
         DB::transaction(function () use ($validated, $request, $student) {
             $studentData = [
