@@ -180,10 +180,14 @@ class ParentController extends Controller
                 'home_lat'               => $student->latitude ?? $user->latitude,
                 'home_lng'               => $student->longitude ?? $user->longitude,
                 'home_address'           => $student->address ?? $user->address,
+                'location_note'          => $student->location_note,
                 'school'      => $student->currentEnrollment?->classroom?->school ? [
                     'id'      => $student->currentEnrollment->classroom->school->id,
                     'name'    => $student->currentEnrollment->classroom->school->name,
-                    'location' => $student->currentEnrollment->classroom->school->address,
+                    'address' => $student->currentEnrollment->classroom->school->address,
+                    'latitude' => $student->currentEnrollment->classroom->school->latitude,
+                    'longitude' => $student->currentEnrollment->classroom->school->longitude,
+                    'location' => $student->currentEnrollment->classroom->school->address, // Keep for backward compatibility
                 ] : null,
                 'bus' => $activeBus ? [
                     'id'           => $activeBus->id,
@@ -487,6 +491,7 @@ class ParentController extends Controller
             'latitude'   => 'required|numeric|between:-90,90',
             'longitude'  => 'required|numeric|between:-180,180',
             'address'    => 'nullable|string|max:500',
+            'note'       => 'nullable|string|max:1000',
         ]);
 
         $user = $request->user();
@@ -516,6 +521,7 @@ class ParentController extends Controller
             'new_latitude' => $request->latitude,
             'new_longitude'=> $request->longitude,
             'new_address'  => $request->address,
+            'note'         => $request->note,
             'status'       => 'pending',
         ]);
 

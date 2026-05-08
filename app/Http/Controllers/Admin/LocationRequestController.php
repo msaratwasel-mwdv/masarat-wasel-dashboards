@@ -59,6 +59,7 @@ class LocationRequestController extends Controller
             'back_latitude'   => $locationRequest->new_latitude,
             'back_longitude'  => $locationRequest->new_longitude,
             'address'         => $locationRequest->new_address,
+            'location_note'   => $locationRequest->note,
             'forth_bus_id'    => $request->forth_bus_id,
             'back_bus_id'     => $request->back_bus_id,
         ]);

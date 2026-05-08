@@ -37,6 +37,7 @@ class Student extends Model
         'address',
         'latitude',
         'longitude',
+        'location_note',
     ];
     
     /**

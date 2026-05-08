@@ -20,6 +20,7 @@ class StudentLocationRequest extends Model
         'new_latitude',
         'new_longitude',
         'new_address',
+        'note',
         'status',
         'rejection_reason',
         'approved_at',
