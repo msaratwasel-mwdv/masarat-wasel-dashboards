@@ -1,4 +1,4 @@
-import { Head } from "@inertiajs/react";
+import { Head, usePage } from "@inertiajs/react";
 import { useEffect } from "react";
 import { ShieldCheck, GraduationCap, Nfc } from "lucide-react";
 
@@ -33,14 +33,35 @@ interface Props {
 }
 
 export default function PrintCard({ student }: Props) {
+  const currentStorageUrl = usePage().props.storage_url as string || window.location.origin + '/storage';
+
   useEffect(() => {
+    const handleAfterPrint = () => {
+      window.close();
+    };
+    window.addEventListener("afterprint", handleAfterPrint);
+
     // Automatically trigger print when the component mounts
     setTimeout(() => {
       window.print();
-      // Close the window after printing (handles the "stuck page" issue)
-      window.close();
     }, 1000); // 1s delay to allow images (QR and Avatar) to load
+
+    return () => {
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
   }, []);
+
+  const getImageUrl = (path: string | null) => {
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    
+    let cleanPath = path;
+    if (cleanPath.startsWith("/storage/")) cleanPath = cleanPath.substring("/storage/".length);
+    else if (cleanPath.startsWith("storage/")) cleanPath = cleanPath.substring("storage/".length);
+    if (cleanPath.startsWith("/")) cleanPath = cleanPath.substring(1);
+    
+    return `${currentStorageUrl}/${cleanPath}`;
+  };
 
   const qrData = `STUDENT-${student.student_code || student.national_id}`;
   const className = student.current_enrollment?.classroom?.name || "—";
@@ -131,7 +152,7 @@ export default function PrintCard({ student }: Props) {
             <div className="relative w-[85px] h-[85px] rounded-full overflow-hidden bg-gray-200 p-1 border-[3px] border-[#1f285c] shadow-sm">
               {student.image ? (
                 <img
-                  src={`/storage/${student.image}`}
+                  src={getImageUrl(student.image) || ""}
                   className="w-full h-full object-cover rounded-full"
                   alt="Student"
                   crossOrigin="anonymous"

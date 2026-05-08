@@ -569,7 +569,7 @@ export default function IndexStudents({
             </button>
             <button
               onClick={() => {
-                toast.info(isRTL ? "جاري تحضير البطاقة للطباعة..." : "Preparing ID card for print...");
+                toast.info(isRtl ? "جاري تحضير البطاقة للطباعة..." : "Preparing ID card for print...");
                 const url = route("school.students.print", student.id);
                 window.open(url, "PrintStudentCard", "width=1000,height=800,scrollbars=yes,status=yes,resizable=yes");
               }}

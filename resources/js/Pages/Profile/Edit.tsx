@@ -4,12 +4,12 @@ import { Head, usePage } from "@inertiajs/react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/Contexts/ThemeContext";
-import { 
-    Building2, 
-    User, 
-    Lock, 
-    Bell, 
-    ShieldCheck, 
+import {
+    Building2,
+    User,
+    Lock,
+    Bell,
+    ShieldCheck,
     ChevronRight,
     Smartphone,
     Globe,
@@ -18,8 +18,8 @@ import {
     Mail
 } from "lucide-react";
 
-import { 
-    DS_card, 
+import {
+    DS_card,
     DS_pageTitle,
     DS_divider
 } from "@/lib/DS";
@@ -41,12 +41,12 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
     const Layout = isAdmin ? AuthenticatedLayout : SchoolAuthenticatedLayout;
 
     const tabs = [
-        { 
-            id: 'info', 
-            label: isAdmin 
-                ? (isRtl ? 'بيانات الشركة' : 'Company Profile') 
-                : (isRtl ? 'بيانات المدرسة' : 'School Profile'), 
-            icon: Building2 
+        {
+            id: 'info',
+            label: isAdmin
+                ? (isRtl ? 'بيانات الشركة' : 'Company Profile')
+                : (isRtl ? 'بيانات المدرسة' : 'School Profile'),
+            icon: Building2
         },
         { id: 'profile', label: isRtl ? 'الملف الشخصي' : 'Personal Profile', icon: User },
         { id: 'security', label: isRtl ? 'الأمان' : 'Security', icon: Lock },
@@ -86,8 +86,8 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
                                         className={`flex-shrink-0 lg:w-full flex items-center gap-3 px-4 py-3.5 rounded-[18px] text-xs lg:text-[13px] font-bold transition-all duration-300 group relative ${
-                                            isActive 
-                                                ? 'bg-[#0f2044] text-[#f5b800] shadow-xl shadow-[#0f2044]/30 scale-[1.02]' 
+                                            isActive
+                                                ? 'bg-[#0f2044] text-[#f5b800] shadow-xl shadow-[#0f2044]/30 scale-[1.02]'
                                                 : 'text-gray-500 hover:bg-[#0f2044]/5 dark:hover:bg-[#0f2044]/30 dark:text-gray-400 hover:text-[#0f2044] dark:hover:text-white'
                                         }`}
                                     >
@@ -96,9 +96,9 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
                                         </div>
                                         <span className="whitespace-nowrap flex-1 text-start">{tab.label}</span>
                                         {isActive && (
-                                            <motion.div 
-                                                layoutId="tab-indicator" 
-                                                className="hidden lg:block w-1.5 h-6 bg-[#f5b800] rounded-full" 
+                                            <motion.div
+                                                layoutId="tab-indicator"
+                                                className="hidden lg:block w-1.5 h-6 bg-[#f5b800] rounded-full"
                                             />
                                         )}
                                     </button>
@@ -120,22 +120,22 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
                                 </h4>
                             </div>
                             <p className="text-[11px] text-white/80 leading-relaxed font-medium mb-5">
-                                {isRtl 
-                                    ? 'فريق الدعم الفني جاهز لمساعدتك في أي وقت. تواصل معنا مباشرة.' 
+                                {isRtl
+                                    ? 'فريق الدعم الفني جاهز لمساعدتك في أي وقت. تواصل معنا مباشرة...'
                                     : 'Technical support team is ready to assist you anytime. Contact us directly.'}
                             </p>
                             <div className="flex flex-col gap-2.5">
-                                <a 
-                                    href="https://wa.me/96879967769" 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
+                                <a
+                                    href="https://wa.me/96879967769"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                     className="flex items-center justify-between px-4 py-2.5 bg-white/10 hover:bg-[#f5b800] hover:text-[#0f2044] text-white rounded-xl transition-all duration-300 group/btn"
                                 >
                                     <span className="text-[12px] font-bold tracking-wider" dir="ltr">+968 7996 7769</span>
                                     <MessageCircle className="w-4 h-4 opacity-70 group-hover/btn:opacity-100" />
                                 </a>
-                                <a 
-                                    href="mailto:msaratwasel@gmail.com" 
+                                <a
+                                    href="mailto:msaratwasel@gmail.com"
                                     className="flex items-center justify-between px-4 py-2.5 bg-white/5 hover:bg-white/20 text-white/90 rounded-xl transition-all duration-300 group/btn"
                                 >
                                     <span className="text-[11px] font-bold truncate">msaratwasel@gmail.com</span>
@@ -167,7 +167,7 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
                                                     {isRtl ? "بيانات الشركة" : "Company Information"}
                                                 </h2>
                                                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                                    {isRtl 
+                                                    {isRtl
                                                         ? "تحديث البيانات العامة للشركة التي تظهر في اللوحة الرئيسية والتقارير."
                                                         : "Update general company information used in the dashboard and reports."}
                                                 </p>
@@ -180,11 +180,11 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
                                                     {isRtl ? "الهوية المؤسسية" : "Corporate Identity"}
                                                 </h3>
                                                 <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
-                                                    {isRtl 
-                                                        ? "بيانات الشركة مرتبطة تلقائياً بملف المدير العام. يمكنك تحديث الشعار والاسم من خلال تعديل بياناتك الشخصية." 
+                                                    {isRtl
+                                                        ? "بيانات الشركة مرتبطة تلقائياً بملف المدير العام. يمكنك تحديث الشعار والاسم من خلال تعديل بياناتك الشخصية."
                                                         : "Company identity is automatically linked to the General Admin profile. You can update logo and name via personal settings."}
                                                 </p>
-                                                <button 
+                                                <button
                                                     onClick={() => setActiveTab('profile')}
                                                     className="mt-10 px-10 py-4 bg-[#f5b800] hover:bg-[#0f2044] hover:text-[#f5b800] text-[#0f2044] rounded-2xl text-sm font-black transition-all duration-300 shadow-xl shadow-[#f5b800]/20"
                                                 >
@@ -194,14 +194,14 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
                                         </div>
                                     ) : <UpdateSchoolInformationForm />
                                 )}
-                                
+
                                 {activeTab === 'profile' && (
-                                    <UpdateProfileInformationForm 
-                                        mustVerifyEmail={mustVerifyEmail} 
-                                        status={status} 
+                                    <UpdateProfileInformationForm
+                                        mustVerifyEmail={mustVerifyEmail}
+                                        status={status}
                                     />
                                 )}
-                                
+
                                 {activeTab === 'security' && <UpdatePasswordForm />}
 
                                 {activeTab === 'system' && isAdmin && <SystemCommands />}
@@ -213,7 +213,7 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
                                                 {isRtl ? "تفضيلات النظام" : "System Preferences"}
                                             </h2>
                                             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                                {isRtl 
+                                                {isRtl
                                                     ? "تخصيص تجربة استخدامك للنظام من حيث المظهر واللغة والتنبيهات."
                                                     : "Customize your system experience including appearance, language, and notifications."}
                                             </p>
@@ -231,7 +231,7 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
                                                         <p className="text-[10px] text-gray-500">{theme === 'dark' ? (isRtl ? 'الوضع المظلم مفعّل' : 'Dark Mode Enabled') : (isRtl ? 'الوضع الفاتح مفعّل' : 'Light Mode Enabled')}</p>
                                                     </div>
                                                 </div>
-                                                <button 
+                                                <button
                                                     onClick={toggleTheme}
                                                     className={`w-12 h-6 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-[#f5b800]' : 'bg-gray-300'}`}
                                                 >
@@ -250,7 +250,7 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
                                                         <p className="text-[10px] text-gray-500">{isRtl ? 'اللغة العربية' : 'English Language'}</p>
                                                     </div>
                                                 </div>
-                                                <button 
+                                                <button
                                                     onClick={toggleLanguage}
                                                     className="px-4 py-1.5 bg-white dark:bg-[#0f2044] border border-gray-200 dark:border-[#243460] rounded-xl text-xs font-black shadow-sm"
                                                 >
@@ -266,8 +266,8 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
                                             <Bell className="w-12 h-12 text-[#f5b800] mx-auto mb-4 opacity-40" />
                                             <h4 className="font-bold text-[#0f2044] dark:text-white">{(isRtl ? 'إعدادات التنبيهات قيد التطوير' : 'Notification Settings coming soon')}</h4>
                                             <p className="text-xs text-gray-500 mt-2 max-w-sm mx-auto">
-                                                {(isRtl 
-                                                    ? 'سنتمكن قريباً من تخصيص أنواع التنبيهات التي ترغب في استلامها عبر البريد أو المتصفح.' 
+                                                {(isRtl
+                                                    ? 'سنتمكن قريباً من تخصيص أنواع التنبيهات التي ترغب في استلامها عبر البريد أو المتصفح.'
                                                     : 'You will soon be able to customize what types of notifications you receive via email or browser.')}
                                             </p>
                                         </div>
