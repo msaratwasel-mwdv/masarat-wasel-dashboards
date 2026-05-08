@@ -247,3 +247,18 @@ html[dir="rtl"] {
 [dir="rtl"] .Toastify__toast-body {
   text-align: right;
 }
+
+/* Google Maps Branding Hiding */
+.hide-google-branding .gm-style-cc {
+    display: none !important;
+}
+.hide-google-branding a[href^="https://maps.google.com/maps"] {
+    display: none !important;
+}
+.hide-google-branding a[href^="https://www.google.com/intl/en-US_US/help/terms_maps.html"] {
+    display: none !important;
+}
+.hide-google-branding .gmnoprint {
+    display: none !important;
+}
+

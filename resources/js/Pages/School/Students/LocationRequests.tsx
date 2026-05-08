@@ -3,7 +3,7 @@ import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import { Head, router } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, User, FileText, CheckCircle, XCircle, Clock, ChevronRight, AlertCircle, Map as MapIcon, Info } from "lucide-react";
+import { MapPin, User, FileText, CheckCircle, XCircle, Clock, ChevronRight, AlertCircle, Map as MapIcon, Info, Check, X } from "lucide-react";
 import MiniMap from "@/Components/MiniMap";
 import LocationComparisonMap from "@/Components/LocationComparisonMap";
 import SearchableSelect from "@/Components/SearchableSelect";
@@ -31,7 +31,8 @@ import {
     DS_submitBtn,
     DS_badge,
     DS_statLabel,
-    DS_statValue2
+    DS_statValue2,
+    DS_label
 } from "@/lib/DS";
 import { APIProvider } from '@vis.gl/react-google-maps';
 
@@ -65,6 +66,7 @@ interface LocationRequest {
     new_latitude: number;
     new_longitude: number;
     new_address?: string;
+    note?: string;
     status: 'pending' | 'approved' | 'rejected';
     rejection_reason?: string;
     created_at: string;
@@ -401,30 +403,69 @@ export default function LocationRequests({ auth, locationRequests, buses = [], s
 
                                         {action === 'approve' && (
                                             <>
-                                                {/* Parent's Written Address */}
-                                                <div className="p-6 rounded-3xl bg-[#f5b800]/5 border-2 border-[#f5b800]/20 shadow-sm relative overflow-hidden group">
-                                                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                                                        <FileText className="w-12 h-12 text-[#f5b800]" />
-                                                    </div>
-                                                    <div className="relative z-10">
-                                                        <div className="flex items-center gap-2 mb-3">
-                                                            <FileText className="w-4 h-4 text-[#f5b800]" />
-                                                            <span className="text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase tracking-widest">
-                                                                {isRtl ? 'الوصف النصي من ولي الأمر' : 'Guardian Written Description'}
-                                                            </span>
+                                                {/* Parent Info Card (Replacement for redundant map) */}
+                                                <div className="p-5 rounded-3xl bg-blue-50/30 dark:bg-blue-500/5 border border-blue-100/50 dark:border-blue-500/10 flex flex-col gap-2">
+                                                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                                                        <MapPin className="w-3 h-3" />
+                                                        {isRtl ? 'تفاصيل الموقع الجغرافي' : 'Geographic Details'}
+                                                    </p>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <span className="text-[9px] text-gray-400 uppercase block">{isRtl ? 'خط العرض' : 'Latitude'}</span>
+                                                            <span className="text-xs font-bold text-[#0f2044] dark:text-gray-300">{processingRequest.new_latitude}</span>
                                                         </div>
-                                                        <p className="text-sm font-bold text-[#0f2044] dark:text-white leading-relaxed">
-                                                            {processingRequest.new_address || (isRtl ? 'لم يكتب أي وصف نصي' : 'No written description provided')}
+                                                        <div>
+                                                            <span className="text-[9px] text-gray-400 uppercase block">{isRtl ? 'خط الطول' : 'Longitude'}</span>
+                                                            <span className="text-xs font-bold text-[#0f2044] dark:text-gray-300">{processingRequest.new_longitude}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Distance & Info Alert */}
+                                                <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 p-4 rounded-2xl flex items-start gap-3">
+                                                    <div className="text-blue-500 mt-0.5">ℹ️</div>
+                                                    <div className="flex-1">
+                                                        <p className="text-xs font-bold text-blue-900 dark:text-blue-200 leading-snug">
+                                                            {isRtl 
+                                                                ? 'يمكنك معاينة المسار من الموقع القديم (باللون الرمادي) إلى الموقع الجديد (باللون الذهبي). يساعدك هذا في معرفة ما إذا كان الطالب يحتاج إلى تغيير الحافلة.' 
+                                                                : 'Preview the path from the old location (Gray) to the new location (Gold). This helps you decide if the student needs a bus reassignment.'
+                                                            }
                                                         </p>
                                                     </div>
                                                 </div>
+
+                                                {/* Guardian's Description */}
+                                                <div className="space-y-3">
+                                                    <h4 className={DS_label}>{isRtl ? 'وصف الموقع من ولي الأمر' : 'GUARDIAN DESCRIPTION'}</h4>
+                                                    <div className="p-5 rounded-3xl bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-100 dark:border-amber-900/20 relative overflow-hidden group">
+                                                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                                                            <MapPin className="w-10 h-10" />
+                                                        </div>
+                                                        <p className="text-sm font-bold text-amber-900 dark:text-amber-100 leading-relaxed relative z-10">
+                                                            {processingRequest.new_address || (isRtl ? 'لم يتم تقديم وصف نصي' : 'No text description provided')}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Guardian's Note */}
+                                                {processingRequest.note && (
+                                                    <div className="space-y-3">
+                                                        <h4 className={DS_label}>{isRtl ? 'ملاحظة ولي الأمر' : 'GUARDIAN NOTE'}</h4>
+                                                        <div className="p-5 rounded-3xl bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 relative overflow-hidden group">
+                                                            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-bl-full transform translate-x-8 -translate-y-8 group-hover:scale-110 transition-transform duration-700" />
+                                                            <p className="text-sm font-bold text-blue-900 dark:text-blue-100 leading-relaxed relative z-10">
+                                                                {processingRequest.note}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                )}
 
                                                 {/* Bus Assignment - Critical Section */}
                                                 <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-[#243460]">
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                                         <h4 className="text-xs font-black text-[#0f2044] dark:text-white uppercase">
-                                                            {isRtl ? 'تخصيst الحافلات الجديد' : 'New Bus Assignment'}
+                                                            {isRtl ? 'تخصيص الحافلات الجديد' : 'New Bus Assignment'}
                                                         </h4>
                                                     </div>
 
@@ -504,25 +545,27 @@ export default function LocationRequests({ auth, locationRequests, buses = [], s
                                             </div>
                                         </div>
 
-                                        <LocationComparisonMap 
-                                            oldLat={processingRequest.old_latitude}
-                                            oldLng={processingRequest.old_longitude}
-                                            newLat={processingRequest.new_latitude}
-                                            newLng={processingRequest.new_longitude}
-                                            height="450px"
-                                        />
+                                        <div className="bg-white dark:bg-[#0f172a] rounded-[32px] overflow-hidden border-4 border-white dark:border-[#243460] shadow-2xl relative">
+                                                <LocationComparisonMap 
+                                                    oldLat={processingRequest.old_latitude}
+                                                    oldLng={processingRequest.old_longitude}
+                                                    newLat={processingRequest.new_latitude}
+                                                    newLng={processingRequest.new_longitude}
+                                                    height="650px"
+                                                />
+                                        </div>
 
                                         {/* Coordinate Breakdown */}
-                                        <div className="grid grid-cols-2 gap-4 mt-2">
-                                            <div className="p-4 rounded-2xl bg-gray-100/50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
-                                                <p className="text-[9px] font-black text-gray-400 uppercase mb-1 tracking-tighter">LATITUDE DELTA</p>
-                                                <p className="text-xs font-mono font-bold text-[#0f2044] dark:text-white">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 flex flex-col items-center">
+                                                <p className="text-[9px] font-black text-gray-400 uppercase mb-1 tracking-widest">{isRtl ? 'فرق خط العرض' : 'LATITUDE DELTA'}</p>
+                                                <p className={`text-sm font-mono font-bold ${(processingRequest.new_latitude - processingRequest.old_latitude) === 0 ? 'text-gray-400' : 'text-amber-600'}`}>
                                                     {(processingRequest.new_latitude - processingRequest.old_latitude).toFixed(6)}
                                                 </p>
                                             </div>
-                                            <div className="p-4 rounded-2xl bg-gray-100/50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
-                                                <p className="text-[9px] font-black text-gray-400 uppercase mb-1 tracking-tighter">LONGITUDE DELTA</p>
-                                                <p className="text-xs font-mono font-bold text-[#0f2044] dark:text-white">
+                                            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 flex flex-col items-center">
+                                                <p className="text-[9px] font-black text-gray-400 uppercase mb-1 tracking-widest">{isRtl ? 'فرق خط الطول' : 'LONGITUDE DELTA'}</p>
+                                                <p className={`text-sm font-mono font-bold ${(processingRequest.new_longitude - processingRequest.old_longitude) === 0 ? 'text-gray-400' : 'text-amber-600'}`}>
                                                     {(processingRequest.new_longitude - processingRequest.old_longitude).toFixed(6)}
                                                 </p>
                                             </div>

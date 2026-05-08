@@ -37,11 +37,26 @@ interface Props {
 }
 
 // Map Controller for Google Maps
-function MapController({ center }: { center: { lat: number, lng: number } }) {
+function MapController({ center, buses }: { center?: { lat: number, lng: number }, buses?: Bus[] }) {
     const map = useMap();
+
+    // Fit bounds on first load or when buses change significantly
+    useEffect(() => {
+        if (map && buses && buses.length > 0 && !center) {
+            const bounds = new window.google.maps.LatLngBounds();
+            buses.forEach(bus => {
+                const lat = typeof bus.latitude === 'string' ? parseFloat(bus.latitude) : bus.latitude;
+                const lng = typeof bus.longitude === 'string' ? parseFloat(bus.longitude) : bus.longitude;
+                if (lat && lng) bounds.extend({ lat, lng });
+            });
+            map.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100 });
+        }
+    }, [map, buses]);
+
     useEffect(() => {
         if (map && center) {
             map.panTo(center);
+            map.setZoom(15);
         }
     }, [map, center]);
     return null;
@@ -108,11 +123,23 @@ export default function LiveTrackingMap({ buses, centerLat = 23.5859, centerLng 
 
     // Only update map center when a bus is selected
     const mapTarget = useMemo(() => {
-        if (!selectedBus) return null;
+        if (!selectedBus) return undefined;
         const lat = typeof selectedBus.latitude === 'string' ? parseFloat(selectedBus.latitude) : selectedBus.latitude!;
         const lng = typeof selectedBus.longitude === 'string' ? parseFloat(selectedBus.longitude) : selectedBus.longitude!;
         return { lat, lng };
     }, [selectedBus]);
+
+    const navigateBus = (direction: 'next' | 'prev') => {
+        if (busesWithLocation.length === 0) return;
+        const currentIndex = selectedBus ? busesWithLocation.findIndex(b => b.id === selectedBus.id) : -1;
+        let nextIndex;
+        if (direction === 'next') {
+            nextIndex = (currentIndex + 1) % busesWithLocation.length;
+        } else {
+            nextIndex = (currentIndex - 1 + busesWithLocation.length) % busesWithLocation.length;
+        }
+        setSelectedBus(busesWithLocation[nextIndex]);
+    };
 
     return (
         <APIProvider apiKey={API_KEY}>
@@ -233,7 +260,7 @@ export default function LiveTrackingMap({ buses, centerLat = 23.5859, centerLng 
                             disableDefaultUI={true}
                             gestureHandling={'greedy'}
                         >
-                            {mapTarget && <MapController center={mapTarget} />}
+                            <MapController center={mapTarget} buses={busesWithLocation} />
 
                             {busesWithLocation.map(bus => {
                                 const busLat = typeof bus.latitude === 'string' ? parseFloat(bus.latitude) : bus.latitude!;
@@ -293,12 +320,15 @@ export default function LiveTrackingMap({ buses, centerLat = 23.5859, centerLng 
                                     className={`absolute top-8 ${isRtl ? 'left-8' : 'right-8'} bottom-8 w-80 bg-white/95 backdrop-blur-xl dark:bg-[#1a2845]/95 rounded-[35px] shadow-2xl border border-gray-100 dark:border-[#243460] z-[1001] overflow-hidden flex flex-col`}
                                 >
                                     <div className="p-8 border-b border-gray-50 dark:border-white/5 relative">
-                                        <button 
-                                            onClick={() => setSelectedBus(null)}
-                                            className="absolute top-6 right-6 p-2 rounded-full bg-gray-100 dark:bg-white/5 text-gray-400 hover:text-rose-500 transition-colors"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
+                                        <div className="flex gap-2 absolute top-6 right-6">
+                                            <button 
+                                                onClick={() => setSelectedBus(null)}
+                                                className="p-2 rounded-full bg-gray-100 dark:bg-white/5 text-gray-400 hover:text-rose-500 transition-colors"
+                                                title={t('Close')}
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                         <div className="w-16 h-16 rounded-[22px] bg-[#0f2044] text-3xl flex items-center justify-center mb-6 shadow-xl shadow-[#0f2044]/20">
                                             🚌
                                         </div>
@@ -326,9 +356,18 @@ export default function LiveTrackingMap({ buses, centerLat = 23.5859, centerLng 
                                         )}
                                     </div>
 
-                                    <div className="p-6">
-                                        <button className="w-full py-4 rounded-2xl bg-[#0f2044] text-white font-black text-sm hover:bg-[#1a2d5a] transition-all shadow-xl shadow-[#0f2044]/20">
-                                            {t('Details')}
+                                    <div className="p-6 border-t border-gray-50 dark:border-white/5 grid grid-cols-2 gap-4">
+                                        <button 
+                                            onClick={() => navigateBus('prev')}
+                                            className="py-4 rounded-2xl bg-gray-100 dark:bg-white/5 text-[#0f2044] dark:text-white font-black text-sm hover:bg-gray-200 dark:hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            {isRtl ? 'السابق' : 'Previous'}
+                                        </button>
+                                        <button 
+                                            onClick={() => navigateBus('next')}
+                                            className="py-4 rounded-2xl bg-[#0f2044] text-white font-black text-sm hover:bg-[#1a2d5a] transition-all shadow-xl shadow-[#0f2044]/20 flex items-center justify-center gap-2"
+                                        >
+                                            {isRtl ? 'التالي' : 'Next'}
                                         </button>
                                     </div>
                                 </motion.div>
