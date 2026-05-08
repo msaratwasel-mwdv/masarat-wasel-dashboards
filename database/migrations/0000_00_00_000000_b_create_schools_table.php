@@ -20,13 +20,6 @@ return new class extends Migration
             $table->string('address')->nullable(); // المدينة/الموقع
             $table->enum('status', ['Active', 'Inactive'])->default('Active'); // الحالة
 
-            // خطط الاشتراك (Subscription Plan)
-            $table->boolean('has_transport')->default(true); // خدمة النقل
-            $table->boolean('has_attendance')->default(true); // خدمة الحضور
-
-            $table->enum('transport_status', ['active', 'blocked'])->default('active');
-            $table->foreignId('plan_id')->nullable()->constrained('plans')->nullOnDelete();
-
             $table->timestamps(); // تاريخ الإنشاء والتعديل
         });
     }

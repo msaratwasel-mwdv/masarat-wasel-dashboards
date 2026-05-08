@@ -18,10 +18,6 @@ class School extends Model
         'longitude',
         'address',
         'status',
-        'has_transport',
-        'has_attendance',
-        'transport_status',
-        'plan_id',
     ];
 
     /**
@@ -100,18 +96,18 @@ class School extends Model
 
     public function hasFeature(string $feature): bool
     {
-        if (!$this->plan_id) return false;
+        $subscription = $this->currentSubscription;
+        if (!$subscription || !$subscription->plan) return false;
         
-        $plan = $this->plan;
-        if (!$plan) return false;
-        
-        return (bool) $plan->{$feature};
+        return (bool) $subscription->plan->{$feature};
     }
 
     public function maxBuses(): ?int
     {
-        if (!$this->plan_id || !$this->plan) return 0;
-        return $this->plan->max_buses;
+        $subscription = $this->currentSubscription;
+        if (!$subscription || !$subscription->plan) return 0;
+        
+        return $subscription->plan->max_buses;
     }
 
     public function totalOwed(): float

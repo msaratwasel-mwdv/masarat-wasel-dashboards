@@ -34,9 +34,6 @@ class SubscriptionService
                 'end_date' => Carbon::now()->toDateString(), // Will be updated on approval
             ]);
 
-            // Update school plan_id
-            $school->update(['plan_id' => $plan->id]);
-
             return ['subscription' => $subscription];
         });
     }
@@ -106,11 +103,9 @@ class SubscriptionService
         $subscription = Subscription::findOrFail($subscriptionId);
         $subscription->update(['status' => 'cancelled']);
         
-        // Remove plan from school if it's the current one
-        $school = \App\Models\School::find($subscription->school_id);
-        if ($school && $school->plan_id === $subscription->plan_id) {
-            $school->update(['plan_id' => null]);
-        }
+        // Remove plan from school if it's the current one (Legacy cleanup - no longer needed with schema change)
+        // $school = \App\Models\School::find($subscription->school_id);
+
     }
 
     /**
@@ -187,7 +182,8 @@ class SubscriptionService
      */
     public function getSchoolBillingData(int $schoolId): array
     {
-        $school = \App\Models\School::with('plan')->findOrFail($schoolId);
+        $school = \App\Models\School::findOrFail($schoolId);
+        $currentPlan = $school->currentSubscription?->plan;
         
         $installments = \App\Models\Installment::with(['subscription.plan'])
             ->where('school_id', $schoolId)
@@ -203,7 +199,7 @@ class SubscriptionService
             ->get();
 
         return [
-            'current_plan' => $school->plan,
+            'current_plan' => $currentPlan,
             'total_owed' => $totalOwed,
             'total_paid' => $totalPaid,
             'installments' => $installments,

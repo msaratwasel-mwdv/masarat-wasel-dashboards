@@ -20,14 +20,21 @@ class NotificationTestSeeder extends Seeder
     public function run(): void
     {
         // 1. Get or Create School
+        $plusPlan = \App\Models\Plan::where('name', 'Plus')->first();
         $school = School::first() ?? School::create([
             'name' => 'مدرسة الأفق العالمية',
             'location' => DB::raw("ST_GeomFromText('POINT(24.7136 46.6753)')"),
             'status' => 'active',
-            'has_transport' => true,
-            'has_attendance' => true,
         ]);
 
+        \App\Models\Subscription::create([
+            'school_id' => $school->id,
+            'plan_id' => $plusPlan->id,
+            'status' => 'active',
+            'start_date' => now(),
+            'end_date' => now()->addYear(),
+        ]);
+        
         // 2. Create Classroom
         $classroom = Classroom::first() ?? Classroom::create([
             'name' => 'فصل النخبة (أ)',

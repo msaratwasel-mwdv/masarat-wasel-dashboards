@@ -21,14 +21,6 @@ class CheckAttendanceSubscription
             return $next($request);
         }
 
-        $school = $user->school;
-        
-        if (!$school || !$school->hasFeature('has_attendance')) {
-            return response()->json([
-                'message' => 'Your school does not have an active Attendance subscription.'
-            ], 403);
-        }
-
         return $next($request);
     }
 }

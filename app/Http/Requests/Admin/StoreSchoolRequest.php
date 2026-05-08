@@ -29,10 +29,6 @@ class StoreSchoolRequest extends FormRequest
             'status' => ['required', 'in:Active,Inactive'],
             'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
 
-            'has_transport' => 'boolean',
-            'has_attendance' => 'boolean',
-            'plan_id' => ['nullable', 'exists:plans,id'],
-
             // Optional Admin Data (Step 2)
             'admin_name' => ['nullable', 'required_if:create_admin,true', 'string', 'max:255'],
             'admin_email' => ['nullable', 'required_if:create_admin,true', 'email', 'max:255', 'unique:users,email'],
