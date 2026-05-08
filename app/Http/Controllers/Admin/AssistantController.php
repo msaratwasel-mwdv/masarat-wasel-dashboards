@@ -208,6 +208,16 @@ class AssistantController extends Controller
         return redirect()->back()->with('success', 'Assistant deleted successfully');
     }
 
+    public function printCard(User $assistant)
+    {
+        $assistant->load(['assistant', 'assignedBusAsAssistant.school']);
+
+        return Inertia::render('Admin/Drivers/PrintCard', [
+            'driver' => $assistant,
+            'jobTitle' => 'مشرفة حافلة'
+        ]);
+    }
+
     public function export()
     {
         return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\AssistantsExport(false), 'assistants.xlsx');

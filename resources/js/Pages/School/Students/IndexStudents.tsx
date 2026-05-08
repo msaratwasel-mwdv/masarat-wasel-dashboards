@@ -13,6 +13,7 @@ import SecondaryButton from "@/Components/SecondaryButton";
 import PrintReportHeader from "@/Components/PrintReportHeader";
 import BaseDataTable, { type FilterTab, type PaginationMeta } from "@/Components/BaseDataTable";
 import { createColumnHelper } from "@tanstack/react-table";
+import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { Users, CheckCircle2, UserX, UserPlus, Printer, Edit2, Trash2 } from "lucide-react";
 import {
@@ -567,7 +568,11 @@ export default function IndexStudents({
               <Trash2 size={14} />
             </button>
             <button
-              onClick={() => window.open(route("school.students.print", student.id), "_blank")}
+              onClick={() => {
+                toast.info(isRTL ? "جاري تحضير البطاقة للطباعة..." : "Preparing ID card for print...");
+                const url = route("school.students.print", student.id);
+                window.open(url, "PrintStudentCard", "width=1000,height=800,scrollbars=yes,status=yes,resizable=yes");
+              }}
               className="p-2 bg-gray-100 dark:bg-[#0f2044] text-gray-600 dark:text-gray-300 rounded-lg hover:bg-[#0f2044] hover:text-[#f5b800] transition-all shadow-sm"
               title={t("Print")}
             >

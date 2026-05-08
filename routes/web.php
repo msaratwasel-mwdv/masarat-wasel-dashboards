@@ -101,6 +101,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('assistants/export', [AssistantController::class, 'export'])->name('assistants.export');
         Route::get('assistants/template', [AssistantController::class, 'downloadTemplate'])->name('assistants.template');
         Route::post('assistants/import', [AssistantController::class, 'import'])->name('assistants.import');
+        Route::get('assistants/{assistant}/print', [AssistantController::class, 'printCard'])->name('assistants.print');
         Route::resource('assistants', AssistantController::class)->except(['create', 'edit', 'show']);
 
         // المشرفين الميدانيين

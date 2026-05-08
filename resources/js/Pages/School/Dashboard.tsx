@@ -227,11 +227,11 @@ export default function SchoolDashboard({
                         <div className="grid grid-cols-3 gap-4">
                             <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#243460]/50 border border-gray-100 dark:border-white/5 text-center">
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{isRtl ? 'حاضر' : 'Present'}</p>
-                                <p className="text-xl font-black text-emerald-500">{stats.attendance_percentage}%</p>
+                                <p className="text-xl font-black text-emerald-500">{Number(stats.attendance_percentage).toFixed(1).replace(/\.0$/, '')}%</p>
                             </div>
                             <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#243460]/50 border border-gray-100 dark:border-white/5 text-center">
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{isRtl ? 'غائب' : 'Absent'}</p>
-                                <p className="text-xl font-black text-rose-500">{Math.max(0, 100 - stats.attendance_percentage)}%</p>
+                                <p className="text-xl font-black text-rose-500">{Math.max(0, 100 - Number(stats.attendance_percentage)).toFixed(1).replace(/\.0$/, '')}%</p>
                             </div>
                             <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#243460]/50 border border-gray-100 dark:border-white/5 text-center">
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{isRtl ? 'الكل' : 'Total'}</p>
@@ -258,7 +258,7 @@ export default function SchoolDashboard({
                                 ></circle>
                             </svg>
                             <div className="absolute inset-0 flex items-center justify-center font-black text-2xl text-[#0f2044] dark:text-white">
-                                {stats.attendance_percentage}%
+                                {Number(stats.attendance_percentage).toFixed(1).replace(/\.0$/, '')}%
                             </div>
                         </div>
                         <Link

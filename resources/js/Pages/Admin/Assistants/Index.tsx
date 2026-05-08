@@ -13,6 +13,7 @@ import BaseDataTable, {
   type PaginationMeta,
 } from "@/Components/BaseDataTable";
 import { createColumnHelper } from "@tanstack/react-table";
+import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
     Users, 
@@ -412,6 +413,17 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
                 title={isRTL ? "حذف" : "Delete"}
               >
                 <Trash2 size={14} />
+              </button>
+              <button 
+                onClick={() => {
+                    toast.info(isRTL ? "جاري تحضير بطاقة المشرفة..." : "Preparing assistant card for print...");
+                    const url = route("admin.assistants.print", assistant.id);
+                    window.open(url, "PrintAssistantCard", "width=1000,height=800,scrollbars=yes,status=yes,resizable=yes");
+                }}
+                className="p-2 bg-gray-100 dark:bg-[#0f2044] text-gray-600 dark:text-gray-300 rounded-lg hover:bg-[#0f2044] hover:text-[#f5b800] transition-all shadow-sm"
+                title={isRTL ? "طباعة البطاقة" : "Print ID Card"}
+              >
+                <Printer size={16} />
               </button>
             </div>
           );

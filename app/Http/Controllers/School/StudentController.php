@@ -478,7 +478,7 @@ class StudentController extends Controller
      */
     public function printCard(Student $student)
     {
-        $student->load(['guardians', 'currentEnrollment.classroom', 'forthBus.route', 'backBus.route']);
+        $student->load(['guardians', 'currentEnrollment.classroom.school', 'forthBus.route', 'backBus.route']);
 
         $this->authorize('view', $student);
 

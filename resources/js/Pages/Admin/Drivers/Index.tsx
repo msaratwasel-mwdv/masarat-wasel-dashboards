@@ -13,6 +13,7 @@ import BaseDataTable, {
   type PaginationMeta,
 } from "@/Components/BaseDataTable";
 import { createColumnHelper } from "@tanstack/react-table";
+import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
@@ -447,7 +448,11 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                 <Trash2 size={14} />
               </button>
               <button 
-                onClick={() => window.open(route("admin.drivers.print", driver.id), "_blank")}
+                onClick={() => {
+                  toast.info(isRTL ? "جاري تحضير بطاقة السائق..." : "Preparing driver card for print...");
+                  const url = route("admin.drivers.print", driver.id);
+                  window.open(url, "PrintDriverCard", "width=1000,height=800,scrollbars=yes,status=yes,resizable=yes");
+                }}
                 className="p-2 bg-gray-100 dark:bg-[#0f2044] text-gray-600 dark:text-gray-300 rounded-lg hover:bg-[#0f2044] hover:text-[#f5b800] transition-all shadow-sm"
                 title={isRTL ? "طباعة" : "Print"}
               >

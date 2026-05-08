@@ -12,7 +12,14 @@ interface Student {
   image: string | null;
   created_at: string;
   current_enrollment: {
-    classroom: { id: number; name: string };
+    classroom: { 
+      id: number; 
+      name: string;
+      school?: {
+        name: string;
+        logo_url: string | null;
+      };
+    };
   } | null;
   guardians?: {
     id: number;
@@ -30,6 +37,8 @@ export default function PrintCard({ student }: Props) {
     // Automatically trigger print when the component mounts
     setTimeout(() => {
       window.print();
+      // Close the window after printing (handles the "stuck page" issue)
+      window.close();
     }, 1000); // 1s delay to allow images (QR and Avatar) to load
   }, []);
 
@@ -75,26 +84,32 @@ export default function PrintCard({ student }: Props) {
           dir="ltr"
         >
           {/* Top Navy Header */}
-          <div className="bg-[#1f285c] w-full h-[60px] flex items-center justify-between px-5 text-white relative shrink-0">
-            {/* Logo */}
-            <div className="flex flex-col items-center justify-center">
+          <div className="bg-[#1f285c] w-full min-h-[60px] py-2 px-4 flex items-center justify-between text-white shrink-0">
+            {/* Left: Wasel */}
+            <div className="flex items-center gap-2 flex-1 max-w-[50%]">
               <img
                 src="/images/logo-blue-no-background.png"
                 alt="Wasel Logo"
-                className="w-14 h-auto object-contain bg-white/10 rounded px-1 pb-0.5"
+                className="w-10 h-auto object-contain bg-white/10 rounded px-1 py-0.5 shrink-0"
               />
+              <span className="text-[10px] font-black text-[#f5db68] leading-tight drop-shadow-sm whitespace-normal">
+                مسارات واصل
+              </span>
             </div>
-            {/* Header Text */}
-            <div className="text-right" dir="rtl">
-              <h2 className="text-[12px] font-black text-[#f5db68] leading-tight">
-                شركة إدارة النقل والخدمات
-              </h2>
-              <h3
-                className="text-[6px] font-bold uppercase tracking-widest text-gray-200 mt-1"
-                dir="ltr"
-              >
-                WASEL TRANSPORTATION & SERVICES
-              </h3>
+
+            {/* Right: School */}
+            <div className="flex items-center gap-2 flex-1 justify-end max-w-[50%] text-right">
+              <span className="text-[10px] font-bold text-white leading-tight drop-shadow-sm whitespace-normal break-words" dir="rtl">
+                {student.current_enrollment?.classroom?.school?.name || ""}
+              </span>
+              {student.current_enrollment?.classroom?.school?.logo_url && (
+                <img
+                  src={student.current_enrollment.classroom.school.logo_url}
+                  alt="School Logo"
+                  className="w-12 h-12 object-contain rounded-lg bg-white/10 p-1 shrink-0"
+                  crossOrigin="anonymous"
+                />
+              )}
             </div>
           </div>
 
@@ -175,10 +190,28 @@ export default function PrintCard({ student }: Props) {
               </div>
             </div>
 
-            {/* Major/Grade */}
+            {/* Civil ID */}
             <div className="flex items-center justify-between border-b border-gray-100 pb-1">
               <div className="w-[75px] text-[8.5px] font-bold text-gray-400 text-left uppercase tracking-wide">
-                Major/Grade:
+                Civil ID:
+              </div>
+              <div className="flex-1 px-1 flex items-center justify-center text-center">
+                <span className="text-[11px] font-black text-[#1f285c] font-mono">
+                  {student.national_id || "—"}
+                </span>
+              </div>
+              <div
+                className="w-[75px] text-[10px] font-black text-gray-500 text-right"
+                dir="rtl"
+              >
+                الرقم المدني:
+              </div>
+            </div>
+
+            {/* Grade */}
+            <div className="flex items-center justify-between border-b border-gray-100 pb-1">
+              <div className="w-[75px] text-[8.5px] font-bold text-gray-400 text-left uppercase tracking-wide">
+                Grade:
               </div>
               <div className="flex-1 px-1 flex flex-col items-center justify-center text-center">
                 <span
@@ -192,7 +225,7 @@ export default function PrintCard({ student }: Props) {
                 className="w-[75px] text-[10px] font-black text-gray-500 text-right"
                 dir="rtl"
               >
-                المرحلة/التخصص:
+                المرحلة:
               </div>
             </div>
 

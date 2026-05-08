@@ -21,6 +21,32 @@ class School extends Model
     ];
 
     /**
+     * The attributes that should be appended to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = ['logo_url'];
+
+    /**
+     * Get the fully qualified URL for the school's logo.
+     * This professionally handles HTTPS and correct storage paths.
+     */
+    public function getLogoUrlAttribute(): ?string
+    {
+        if (!$this->logo) {
+            return null;
+        }
+
+        // If the logo is already a full URL (e.g., S3 or external), return it as is.
+        if (filter_var($this->logo, FILTER_VALIDATE_URL)) {
+            return $this->logo;
+        }
+
+        // Use Laravel's Storage facade to generate the correct URL (handles https automatically if APP_URL is https)
+        return \Illuminate\Support\Facades\Storage::url($this->logo);
+    }
+
+    /**
      * The attributes that should be hidden for serialization.
      *
      * @var array

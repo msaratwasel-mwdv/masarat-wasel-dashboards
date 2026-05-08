@@ -3,47 +3,46 @@ import { useEffect } from "react";
 import { ShieldCheck, Map, Nfc } from "lucide-react";
 
 interface Driver {
-    id: number;
-    name: string;
-    name_en: string | null;
-    image: string | null;
-    user_code: string;
-    created_at: string;
-    driver: {
-        license_expiry_date: string;
-    } | null;
-    assigned_bus: {
-        school: { name: string } | null;
-    } | null;
+  id: number;
+  name: string;
+  name_en: string | null;
+  image: string | null;
+  user_code: string;
+  national_id: string;
+  created_at: string;
+  driver: {
+    license_expiry_date: string;
+  } | null;
+  assigned_bus: {
+    school: { name: string } | null;
+  } | null;
 }
 
 interface Props {
-    driver: Driver;
+  driver: Driver;
+  jobTitle?: string;
 }
 
-export default function PrintCard({ driver }: Props) {
-    useEffect(() => {
-        // Automatically trigger print when the component mounts
-        setTimeout(() => {
-            window.print();
-        }, 1000); // 1s delay to allow images (QR and Avatar) to load
-    }, []);
+export default function PrintCard({ driver, jobTitle = "سائق حافلة" }: Props) {
+  useEffect(() => {
+    setTimeout(() => {
+      window.print();
+      // Auto-close tab after print/cancel
+      window.close();
+    }, 1000);
+  }, []);
 
-    const qrData = `DRIVER-${driver.user_code}`;
-    const schoolName = driver.assigned_bus?.school?.name || "المدرسة العصرية العالمية الخاصة"; // Fallback to the one from image if no school
+  return (
+    <>
+      <Head title={`Print ID Card - ${driver.name}`} />
 
-    return (
-        <>
-            <Head title={`Print ID Card - ${driver.name}`} />
-            
-            {/* Print Override Styles */}
-            <style>{`
+      <style>{`
                 @media print {
                     @page { margin: 0; size: A4 portrait; }
                     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: transparent !important; }
                     #app-navbar, #app-sidebar, header { display: none !important; }
                 }
-                
+
                 body {
                     background-color: #f3f4f6;
                     display: flex;
@@ -53,123 +52,121 @@ export default function PrintCard({ driver }: Props) {
                     font-family: 'Tajawal', sans-serif, system-ui;
                 }
             `}</style>
-            
-            <div className="w-full max-w-4xl mx-auto flex flex-wrap justify-center gap-10 p-8 print:p-0 print:gap-8">
-                
-                {/* --- FRONT CARD --- */}
-                <div 
-                    className="relative w-[340px] h-[540px] rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center bg-[#1E293B] text-white print:shadow-none"
-                    style={{ border: '2px solid #cbd5e1' }}
-                >
-                    {/* Yellow/White Top Graphics */}
-                    <div className="absolute top-0 w-full h-1/3 bg-[#FCD34D] flex justify-between">
-                        {/* Logo Box (top left in RTL, top right in LTR) */}
-                        <div className="absolute top-4 left-4 bg-white p-2 rounded-xl text-center shadow-sm z-10 w-16 h-16 flex items-center justify-center">
-                            <div className="text-[#1E293B] font-black text-xs leading-tight">
-                                <span className="text-[#F59E0B]">واصل</span><br/>Wasel
-                            </div>
-                        </div>
-                    </div>
-                    {/* Curved Navy Background overlapping the yellow */}
-                    <div className="absolute top-0 w-full h-[180px]">
-                        <svg viewBox="0 0 340 180" className="w-full h-full preserve-3d" preserveAspectRatio="none">
-                             <path d="M 0 100 C 100 180, 240 180, 340 100 L 340 0 L 0 0 Z" fill="#1E293B"/>
-                        </svg>
-                    </div>
 
-                    {/* Photo Area */}
-                    <div className="relative mt-[80px] z-10 w-[140px] h-[140px] rounded-full border-[6px] border-white overflow-hidden bg-gray-200">
-                        {driver.image ? (
-                            <img src={`/storage/${driver.image}`} className="w-full h-full object-cover" alt="Driver" crossOrigin="anonymous"/>
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl text-gray-500 font-bold">
-                                {driver.name.charAt(0)}
-                            </div>
-                        )}
-                    </div>
+      <div className="w-full max-w-4xl mx-auto flex justify-center p-8 print:p-0">
+        {/* ======================= EXACT MATCH CARD ======================= */}
+        <div
+          className="relative w-[340px] h-[540px] rounded-[24px] overflow-hidden shadow-2xl text-white print:shadow-none"
+          style={{ backgroundColor: "#182436", border: "1px solid #cbd5e1" }}
+          dir="ltr"
+        >
+          {/* 1. White Edge Curve (الخط الأبيض الفاصل) */}
+          {/* استخدمنا Q-Bezier لعمل خط مستقيم من الجوانب ثم ينحني بنعومة للمنتصف */}
+          <svg
+            className="absolute top-0 left-0 w-full z-0"
+            viewBox="0 0 340 220"
+            style={{ height: "220px" }}
+          >
+            <path
+              d="M0 0 L340 0 L340 145 Q255 145 170 195 Q85 145 0 145 Z"
+              fill="#ffffff"
+            />
+          </svg>
 
-                    {/* Employee Identity */}
-                    <div className="mt-6 flex flex-col items-center text-center px-4 w-full z-10">
-                        <h2 className="text-lg font-black text-white leading-tight">شركة واصل لإدارة النقل والخدمات</h2>
-                        <h3 className="text-[10px] font-bold text-gray-300 mt-1 uppercase tracking-widest text-center leading-tight">Wasel Transport Management<br/>And Services Company</h3>
-                        
-                        <div className="mt-8 space-y-3 w-full text-center">
-                            <div className="flex items-center justify-center text-sm">
-                                <span className="text-gray-300 font-medium">اسم الموظف :</span>
-                                <strong className="ml-2 rtl:mr-2 text-white text-base">{driver.name}</strong>
-                            </div>
-                            <div className="flex items-center justify-center text-sm">
-                                <span className="text-gray-300 font-medium">المسمى الوظيفي :</span>
-                                <strong className="ml-2 rtl:mr-2 text-white">سائق حافلة</strong>
-                            </div>
-                            <div className="flex items-center justify-center text-sm">
-                                <span className="text-gray-300 font-medium">الرقم الوظيفي :</span>
-                                <strong className="ml-2 rtl:mr-2 text-white font-mono">{driver.user_code}</strong>
-                            </div>
-                        </div>
-                    </div>
+          {/* 2. Yellow Background Curve (الخلفية الصفراء) */}
+          <svg
+            className="absolute top-0 left-0 w-full z-10"
+            viewBox="0 0 340 220"
+            style={{ height: "220px" }}
+          >
+            <path
+              d="M0 0 L340 0 L340 120 Q255 120 170 170 Q85 120 0 120 Z"
+              fill="#fad046"
+            />
+          </svg>
 
-                    {/* Bottom Icons */}
-                    <div className="absolute bottom-6 w-full flex justify-center gap-6 text-gray-300">
-                        <div className="w-10 h-10 rounded-full border border-gray-400 flex items-center justify-center">
-                            <ShieldCheck size={20} strokeWidth={1.5} />
-                        </div>
-                        <div className="w-10 h-10 rounded-full border border-gray-400 flex items-center justify-center">
-                            <Map size={20} strokeWidth={1.5} />
-                        </div>
-                        <div className="w-10 h-10 rounded-full border border-gray-400 flex items-center justify-center">
-                            <Nfc size={20} strokeWidth={1.5} />
-                        </div>
-                    </div>
-                </div>
+          {/* 3. Top Left Small Logo (شعار الشركة في الزاوية) */}
 
-                {/* --- BACK CARD --- */}
-                <div 
-                    className="relative w-[340px] h-[540px] rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center bg-[#1E293B] text-center text-white print:shadow-none"
-                    style={{ border: '2px solid #cbd5e1' }}
-                >
-                    <div className="mt-8 px-6">
-                        <h3 className="text-xl font-bold mb-4 border-b border-gray-600 inline-block pb-1">اشعار قانوني</h3>
-                        <p className="text-[9px] text-gray-300 leading-relaxed font-semibold">
-                            هذه البطاقة ملك لـ {schoolName} ومشغلة من قبل شركة واصل لإدارة النقل والخدمات وتعتبر وثيقة تعريفية لحاملها ومخصصة للاستخدامات المحددة من قبل المدرسة وغير قابلة للتداول بين الاشخاص وفي حالة تداولها او اساءة الاستخدام قد يؤدي الى مصادرتها واتخاذ الاجراءات القانونية اللازمة. في حال العثور على هذه البطاقة يرجى تسليمها لإدارة المدرسة.
-                        </p>
-                        
-                        <h3 className="text-base font-bold mt-4 mb-2 uppercase tracking-wide">Legal Notice</h3>
-                        <p className="text-[8px] text-gray-400 leading-relaxed max-w-[280px] mx-auto">
-                            This card belongs to the {schoolName} and is operated by Wasel Transportation Management and Services Company. It is an identification document for its holder and is intended for the uses specified by the school and cannot be traded between persons and in case of circulation or misuse may lead to its confiscation and taking the necessary legal measures. If you find this card, please hand it over to the school administration.
-                        </p>
-                    </div>
-
-                    <div className="mt-5 w-full max-w-[200px] flex justify-between text-sm font-bold bg-[#1E293B] relative z-20">
-                        <div className="text-left">
-                            <div className="text-white">Join</div>
-                            <div className="text-white mt-2">Expire</div>
-                        </div>
-                        <div className="text-right text-white">
-                            <div>{new Date(driver.created_at).toLocaleDateString('en-GB')}</div>
-                            <div>{driver.driver?.license_expiry_date ? new Date(driver.driver.license_expiry_date).toLocaleDateString('en-GB') : 'N/A'}</div>
-                        </div>
-                    </div>
-
-                    {/* Bottom Area (Yellow + QR Code) */}
-                    <div className="absolute bottom-0 w-full h-[140px] bg-[#FCD34D] pt-4 flex flex-col items-center">
-                        {/* Upper Semicircle (cutout into the dark) enclosing ID code */}
-                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-48 h-20 bg-white rounded-t-[100px] flex items-start justify-center pt-4 z-10 shadow-[0_-5px_15px_rgba(0,0,0,0.2)]">
-                            <span className="text-[#1E293B] font-bold text-xl">{driver.user_code}</span>
-                        </div>
-                        
-                        <div className="relative z-20 top-4 p-1 bg-white rounded-lg shadow-md border-2 border-dashed border-[#F59E0B]">
-                            <img 
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrData)}&margin=0&color=1E293B&bgcolor=FFFFFF`} 
-                                alt="Driver QR" 
-                                className="w-[100px] h-[100px]"
-                                crossOrigin="anonymous"
-                            />
-                        </div>
-                    </div>
-                </div>
-
+          {/* 4. Center Navy Pillar with Drop Shadow (العمود الكحلي المركزي مع الظل) */}
+          <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-[140px] h-[230px] rounded-b-[70px] z-20"
+            style={{
+              backgroundColor: "#182436",
+              boxShadow:
+                "0 12px 20px -5px rgba(0, 0, 0, 0.65)" /* هذا الظل هو الذي يعطي البروز المطابق للصورة */,
+            }}
+          >
+            <div className="absolute left-10 top-5 w-[60px] h-[60px] bg-white rounded-lg shadow-sm z-30 flex items-center justify-center p-1">
+              <img
+                src="/images/logo-white-no-background.png"
+                alt="Logo"
+                className="w-full h-full object-contain"
+                onError={(e) => (e.currentTarget.style.display = "none")}
+              />
             </div>
-        </>
-    );
+            {/* Avatar (الصورة الشخصية مدمجة بدقة داخل العمود) */}
+            <div className="absolute bottom-[10px] left-[10px] w-[120px] h-[120px] rounded-full border-[3.5px] border-[#cbd5e1] shadow-inner overflow-hidden bg-gray-200">
+              {driver.image ? (
+                <img
+                  src={`/storage/${driver.image}`}
+                  className="w-full h-full object-cover"
+                  alt="Driver"
+                  crossOrigin="anonymous"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-4xl text-[#182436] font-black bg-white">
+                  {driver.name.charAt(0)}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 5. Main Content Area */}
+          <div
+            className="mt-[255px] w-full flex flex-col items-center text-center px-4 relative z-30"
+            dir="rtl"
+          >
+            <h2 className="text-[18px] font-bold text-white tracking-wide mb-1.5">
+              شركة واصل لإدارة النقل والخدمات
+            </h2>
+            <h3 className="text-[9px] font-bold text-gray-300 uppercase tracking-widest leading-[1.6] max-w-[280px]">
+              WASEL TRANSFERY MANAGEMENT
+              <br />
+              AND SERVICES COMPANY
+            </h3>
+
+            <div className="mt-7 flex flex-col items-center space-y-2.5">
+              <div className="text-[14.5px] font-bold text-gray-200">
+                الاسم الموظف :{" "}
+                <span className="text-white mr-1">{driver.name}</span>
+              </div>
+              <div className="text-[14.5px] font-bold text-gray-200">
+                المسمى الوظيفي :{" "}
+                <span className="text-white mr-1">{jobTitle}</span>
+              </div>
+              <div className="text-[14.5px] font-bold text-gray-200">
+                الرقم المدني :{" "}
+                <span className="text-white font-mono mr-1">
+                  {driver.national_id}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 6. Bottom Icons Container */}
+          <div className="absolute bottom-6 w-full flex justify-center gap-7 z-30">
+            <div className="w-[42px] h-[42px] rounded-full border-[1.5px] border-gray-400/70 flex items-center justify-center text-gray-300">
+              <ShieldCheck size={20} strokeWidth={1.5} />
+            </div>
+            <div className="w-[42px] h-[42px] rounded-full border-[1.5px] border-gray-400/70 flex items-center justify-center text-gray-300">
+              <Map size={20} strokeWidth={1.5} />
+            </div>
+            <div className="w-[42px] h-[42px] rounded-full border-[1.5px] border-gray-400/70 flex items-center justify-center text-gray-300">
+              <Nfc size={20} strokeWidth={1.5} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }

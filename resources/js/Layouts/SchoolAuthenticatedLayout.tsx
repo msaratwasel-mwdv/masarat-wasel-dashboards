@@ -571,8 +571,8 @@ export default function SchoolAuthenticatedLayout({
 
             {/* School Info Badge (Optional context for school layout) */}
             <div className="hidden md:flex items-center gap-3 p-1.5 pr-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-              {user?.school?.logo ? (
-                <img src={user.school.logo} alt="School" className="w-11 h-11 rounded-xl object-contain bg-white p-1" />
+              {user?.school?.logo_url ? (
+                <img src={user.school.logo_url} alt="School" className="w-11 h-11 rounded-xl object-contain bg-white p-1" />
               ) : (
                 <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-brand-yellow text-slate-900 shadow-lg shadow-brand-yellow/20">
                   <GraduationCap className="w-6 h-6" />
