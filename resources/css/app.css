@@ -249,16 +249,19 @@ html[dir="rtl"] {
 }
 
 /* Google Maps Branding Hiding */
+.hide-google-branding .gm-style-cc,
+.hide-google-branding .gmnoprint,
+.hide-google-branding a[href^="https://maps.google.com/maps"],
+.hide-google-branding a[href^="https://www.google.com/maps"],
+.hide-google-branding img[src*="google_white"],
+.hide-google-branding .gm-style-cc + div,
+.hide-google-branding .gm-control-active,
+.hide-google-branding a[target="_blank"],
 .hide-google-branding .gm-style-cc {
     display: none !important;
 }
-.hide-google-branding a[href^="https://maps.google.com/maps"] {
-    display: none !important;
-}
-.hide-google-branding a[href^="https://www.google.com/intl/en-US_US/help/terms_maps.html"] {
-    display: none !important;
-}
-.hide-google-branding .gmnoprint {
-    display: none !important;
+
+.hide-google-branding .gm-style {
+    cursor: default !important;
 }
 

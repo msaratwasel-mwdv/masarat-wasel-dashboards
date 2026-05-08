@@ -545,14 +545,27 @@ export default function LocationRequests({ auth, locationRequests, buses = [], s
                                             </div>
                                         </div>
 
-                                        <div className="bg-white dark:bg-[#0f172a] rounded-[32px] overflow-hidden border-4 border-white dark:border-[#243460] shadow-2xl relative">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-white dark:bg-[#0f172a] rounded-[32px] overflow-hidden border-4 border-white dark:border-[#243460] shadow-2xl relative hide-google-branding">
+                                                <div className="absolute top-4 left-4 z-10 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-4 py-2 rounded-xl border border-gray-100 dark:border-white/10 shadow-lg">
+                                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{isRtl ? 'الموقع الحالي' : 'Current Location'}</span>
+                                                </div>
                                                 <LocationComparisonMap 
-                                                    oldLat={processingRequest.old_latitude}
-                                                    oldLng={processingRequest.old_longitude}
+                                                    newLat={processingRequest.old_latitude}
+                                                    newLng={processingRequest.old_longitude}
+                                                    height="700px"
+                                                />
+                                            </div>
+                                            <div className="bg-white dark:bg-[#0f172a] rounded-[32px] overflow-hidden border-4 border-white dark:border-[#243460] shadow-2xl relative hide-google-branding">
+                                                <div className="absolute top-4 left-4 z-10 bg-white/90 dark:bg-amber-800/90 backdrop-blur-md px-4 py-2 rounded-xl border border-amber-100 dark:border-white/10 shadow-lg">
+                                                    <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">{isRtl ? 'الموقع الجديد' : 'New Location'}</span>
+                                                </div>
+                                                <LocationComparisonMap 
                                                     newLat={processingRequest.new_latitude}
                                                     newLng={processingRequest.new_longitude}
-                                                    height="650px"
+                                                    height="700px"
                                                 />
+                                            </div>
                                         </div>
 
                                         {/* Coordinate Breakdown */}
