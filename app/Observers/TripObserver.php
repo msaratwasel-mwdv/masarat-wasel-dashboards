@@ -4,7 +4,9 @@ namespace App\Observers;
 
 use App\Models\Trip;
 use App\Models\SystemEventLog;
+use App\Events\DashboardStatsUpdated;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class TripObserver
 {
@@ -20,6 +22,34 @@ class TripObserver
                 'before_data' => ['status' => $trip->getOriginal('status')],
                 'after_data' => ['status' => $trip->status],
             ]);
+
+            // Clear analytics and dashboard cache when trip status changes
+            Cache::forget('admin_dashboard_stats');
+            $monthKey = now()->format('Y-m');
+            Cache::forget("analytics:kpis:{$monthKey}");
+            
+            $this->broadcastUpdate();
         }
+    }
+
+    public function saved(Trip $trip): void
+    {
+        Cache::forget('admin_dashboard_stats');
+        $monthKey = now()->format('Y-m');
+        Cache::forget("analytics:kpis:{$monthKey}");
+        $this->broadcastUpdate();
+    }
+
+    public function deleted(Trip $trip): void
+    {
+        Cache::forget('admin_dashboard_stats');
+        $monthKey = now()->format('Y-m');
+        Cache::forget("analytics:kpis:{$monthKey}");
+        $this->broadcastUpdate();
+    }
+
+    protected function broadcastUpdate(): void
+    {
+        broadcast(new DashboardStatsUpdated('trips', ['admin.dashboard']));
     }
 }

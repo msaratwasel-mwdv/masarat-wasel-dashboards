@@ -5,6 +5,8 @@ import { useTheme } from "@/Contexts/ThemeContext";
 import { User } from "@/types";
 import { toast, ToastContainer, Bounce } from "react-toastify";
 import NotificationDropdown from "@/Components/NotificationDropdown";
+import { useEchoEvent } from "@/hooks/useEcho";
+import { useRealtimeToast } from "@/hooks/useRealtimeToast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
@@ -236,6 +238,18 @@ export default function Authenticated({
   }, [isCollapsed]);
 
   const { theme, language, toggleTheme, toggleLanguage, isRTL } = useTheme();
+  const { notifyEvent } = useRealtimeToast();
+
+  // Global Real-time Listeners for Admin
+  useEchoEvent(
+    'private',
+    'admin.emergencies',
+    '.emergency.reported',
+    (e: any) => {
+      notifyEvent('emergency', isRTL ? 'تنبيه طوارئ جديد!' : 'New Emergency Alert!', e.description || e.type);
+    }
+  );
+
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
     if (typeof window !== "undefined") {

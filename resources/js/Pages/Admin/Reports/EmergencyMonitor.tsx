@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, router } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
+import { useEchoEvent } from "@/hooks/useEcho";
+import { useRealtimeToast } from "@/hooks/useRealtimeToast";
 
 interface Incident {
   id: number;
@@ -29,13 +31,19 @@ export default function EmergencyMonitor({
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
 
-  // Polling every 10 seconds to keep dashboard live
-  useEffect(() => {
-    const interval = setInterval(() => {
+  const { notifyEvent } = useRealtimeToast();
+
+  // Listen for real-time emergency incidents
+  useEchoEvent(
+    'private',
+    'admin.emergencies',
+    '.emergency.reported',
+    (e: any) => {
+      // Toast is now handled globally in AuthenticatedLayout
+      // Reload the data from server to keep everything in sync
       router.reload({ only: ['activeIncidents', 'resolvedIncidents'], preserveState: true } as any);
-    }, 10000);
-    return () => clearInterval(interval);
-  }, []);
+    }
+  );
 
   const updateStatus = (id: number, status: string) => {
     router.put(route("admin.emergencies.update-status", id), { status }, { preserveScroll: true });
@@ -76,7 +84,7 @@ export default function EmergencyMonitor({
                 {isRTL ? "غرفة عمليات الطوارئ الحية" : "Live Emergency Operations Center"}
               </h1>
               <p className={`mt-1 text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                {isRTL ? "يتم تحديث هذه الصفحة تلقائياً كل 10 ثوانٍ" : "Auto-updates every 10 seconds"}
+                {isRTL ? "مزامنة لحظية للبيانات" : "Live data synchronization active"}
               </p>
             </div>
           </div>

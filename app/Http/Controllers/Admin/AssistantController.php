@@ -20,7 +20,7 @@ class AssistantController extends Controller
         $statusFilter = $request->input('status', 'all');
 
         $query = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
-            ->with(['assistant', 'assignedBusAsAssistant.school']);
+            ->with(['roles', 'assistant', 'assignedBusAsAssistant.school']);
 
         if ($statusFilter === 'assigned') {
             $query->whereHas('assignedBusAsAssistant');
@@ -56,11 +56,26 @@ class AssistantController extends Controller
             return $paginated;
         }
 
-        $counts = [
-            'all' => User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))->count(),
-            'assigned' => User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))->whereHas('assignedBusAsAssistant')->count(),
-            'available' => User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))->whereDoesntHave('assignedBusAsAssistant')->count(),
-        ];
+        $counts = \Illuminate\Support\Facades\Cache::remember('assistant_counts', 600, function() {
+            $assistantUserIds = \Illuminate\Support\Facades\DB::table('user_roles')
+                ->join('roles', 'user_roles.role_id', '=', 'roles.id')
+                ->where('roles.name', 'assistant')
+                ->pluck('user_roles.user_id');
+
+            $assignedCount = \Illuminate\Support\Facades\DB::table('buses')
+                ->whereIn('assistant_id', $assistantUserIds)
+                ->whereNull('deleted_at')
+                ->distinct('assistant_id')
+                ->count('assistant_id');
+
+            $totalCount = $assistantUserIds->count();
+
+            return [
+                'all' => $totalCount,
+                'assigned' => $assignedCount,
+                'available' => $totalCount - $assignedCount,
+            ];
+        });
 
         return Inertia::render('Admin/Assistants/Index', [
             'assistants' => $paginated,

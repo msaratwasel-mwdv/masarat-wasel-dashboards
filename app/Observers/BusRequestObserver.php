@@ -5,6 +5,8 @@ namespace App\Observers;
 use App\Models\BusRequest;
 use App\Models\Notification;
 use App\Models\User;
+use App\Events\BusRequestCreated;
+use App\Events\BusRequestStatusChanged;
 
 class BusRequestObserver
 {
@@ -37,6 +39,9 @@ class BusRequestObserver
                 'icon' => 'bus',
                 'color' => 'blue',
             ]);
+            
+            // Broadcast real-time event to admin
+            broadcast(new BusRequestCreated($busRequest, $admin->id));
         }
     }
 
@@ -74,6 +79,9 @@ class BusRequestObserver
                     'icon' => $busRequest->status === 'approved' ? 'check-circle' : 'x-circle',
                     'color' => $color,
                 ]);
+                
+                // Broadcast real-time event to school admin
+                broadcast(new BusRequestStatusChanged($busRequest, $schoolAdmin->id));
             }
         }
     }

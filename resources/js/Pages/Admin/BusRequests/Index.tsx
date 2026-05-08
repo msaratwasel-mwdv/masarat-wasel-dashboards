@@ -50,6 +50,8 @@ import {
   DS_cancelBtn,
   DS_btnSecondary,
 } from "@/lib/DS";
+import { useEchoEvent } from "@/hooks/useEcho";
+import { useRealtimeToast } from "@/hooks/useRealtimeToast";
 
 // ─── Print CSS ──────────────────────────────────────────────────
 const PRINT_STYLES = `
@@ -124,6 +126,18 @@ interface Props {
 export default function Index({ auth, requests, counts, filters, availableBuses }: Props) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
+  const { notifyEvent } = useRealtimeToast();
+
+  // Listen for real-time new bus requests
+  useEchoEvent(
+    'private',
+    'admin.bus-requests',
+    '.bus-request.created',
+    (e: any) => {
+      // Toast is now handled globally in AuthenticatedLayout
+      router.reload({ only: ['requests', 'counts'], preserveState: true, preserveScroll: true } as any);
+    }
+  );
 
   const [search, setSearch] = useState(filters.search);
   const [showRejectModal, setShowRejectModal] = useState(false);

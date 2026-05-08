@@ -21,7 +21,7 @@ class StaffController extends Controller
         $statusFilter = $request->input('status', 'all');
 
         $query = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
-            ->with(['driver', 'assignedBus.school']);
+            ->with(['roles', 'driver', 'assignedBus.school']);
 
         if ($statusFilter === 'assigned') {
             $query->whereHas('assignedBus');
@@ -60,11 +60,26 @@ class StaffController extends Controller
             return $paginated;
         }
 
-        $counts = [
-            'all' => User::whereHas('roles', fn($q) => $q->where('name', 'driver'))->count(),
-            'assigned' => User::whereHas('roles', fn($q) => $q->where('name', 'driver'))->whereHas('assignedBus')->count(),
-            'available' => User::whereHas('roles', fn($q) => $q->where('name', 'driver'))->whereDoesntHave('assignedBus')->count(),
-        ];
+        $counts = \Illuminate\Support\Facades\Cache::remember('driver_counts', 600, function() {
+            $driverUserIds = DB::table('user_roles')
+                ->join('roles', 'user_roles.role_id', '=', 'roles.id')
+                ->where('roles.name', 'driver')
+                ->pluck('user_roles.user_id');
+
+            $assignedCount = DB::table('buses')
+                ->whereIn('driver_id', $driverUserIds)
+                ->whereNull('deleted_at')
+                ->distinct('driver_id')
+                ->count('driver_id');
+
+            $totalCount = $driverUserIds->count();
+
+            return [
+                'all' => $totalCount,
+                'assigned' => $assignedCount,
+                'available' => $totalCount - $assignedCount,
+            ];
+        });
 
         return Inertia::render('Admin/Drivers/Index', [
             'drivers' => $paginated,

@@ -16,11 +16,11 @@ class FieldSupervisor extends Model
         'status',
     ];
 
-    protected $appends = ['name'];
+    // NOTE: 'name' removed from $appends to prevent N+1 reverse-lookup.
 
     public function getNameAttribute(): ?string
     {
-        return $this->user?->name;
+        return $this->relationLoaded('user') ? $this->user?->name : null;
     }
 
     public function user(): BelongsTo

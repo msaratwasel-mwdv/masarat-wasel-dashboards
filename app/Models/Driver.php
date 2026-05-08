@@ -20,11 +20,14 @@ class Driver extends Model
         'status',
     ];
 
-    protected $appends = ['name'];
+    // NOTE: 'name' removed from $appends to prevent N+1 reverse-lookup.
+    // The name is available on the parent User model when loaded via User::with('driver').
+    // Use $driver->name explicitly when needed in standalone context.
 
     public function getNameAttribute(): ?string
     {
-        return $this->user?->name;
+        // Only query if user is already loaded to prevent N+1
+        return $this->relationLoaded('user') ? $this->user?->name : null;
     }
 
     public function user(): BelongsTo

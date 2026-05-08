@@ -134,7 +134,7 @@ class NotificationService
     }
 
     /**
-     * إرسال إشعار لعدة مستخدمين.
+     * إرسال إشعار لعدة مستخدمين — محسّن بـ bulk insert + FCM multicast.
      */
     public function sendToUsers(
         array $userIds,
@@ -144,12 +144,56 @@ class NotificationService
         ?array $data = null,
         ?string $fromUserName = null
     ): Collection {
-        $notifications = collect();
+        if (empty($userIds)) {
+            return collect();
+        }
 
-        foreach ($userIds as $userId) {
-            $notifications->push(
-                $this->sendToUser($userId, $type, $title, $message, $data, $fromUserName)
-            );
+        $now = now();
+
+        // 1. Bulk DB Insert — all notifications in one query
+        $notificationsData = array_map(fn($userId) => [
+            'user_id'          => $userId,
+            'type'             => $type,
+            'title'            => $title,
+            'message'          => $message,
+            'data'             => $data ? json_encode($data) : null,
+            'from_user_name'   => $fromUserName,
+            'status'           => 'unread',
+            'recipient_type'   => 'individual',
+            'total_recipients' => 1,
+            'created_at'       => $now,
+            'updated_at'       => $now,
+        ], $userIds);
+
+        Notification::insert($notificationsData);
+
+        // 2. Fetch inserted notifications for return value
+        $notifications = Notification::whereIn('user_id', $userIds)
+            ->where('type', $type)
+            ->where('created_at', '>=', $now->subSecond())
+            ->get();
+
+        // 3. FCM Multicast — send to all tokens in one API call
+        try {
+            $users = User::whereIn('id', $userIds)->get();
+            $fcmTokens = [];
+            foreach ($users as $user) {
+                $token = $user->routeNotificationForFcm(null);
+                if ($token) {
+                    $fcmTokens[] = $token;
+                }
+            }
+
+            if (!empty($fcmTokens)) {
+                $this->sendMulticast(
+                    fcmTokens: $fcmTokens,
+                    title: $title,
+                    message: $message,
+                    data: array_merge($data ?? [], ['type' => $type])
+                );
+            }
+        } catch (\Exception $e) {
+            Log::error('[FCM] Bulk Send Error: ' . $e->getMessage());
         }
 
         return $notifications;

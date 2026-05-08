@@ -18,6 +18,11 @@ use Illuminate\Http\Request;
 class ChatController extends Controller
 {
     public function __construct(protected NotificationService $notificationService) {}
+
+    /**
+     * Per-request cache for valid contacts — avoids recalculating 4 times per request.
+     */
+    private ?\Illuminate\Support\Collection $cachedContacts = null;
     // ═══════════════════════════════════════════════════════════
     //  1. getContacts — جهات الاتصال المسموح بها حالياً
     // ═══════════════════════════════════════════════════════════
@@ -29,6 +34,15 @@ class ChatController extends Controller
     }
 
     private function getValidContactsList(User $user): \Illuminate\Support\Collection
+    {
+        if ($this->cachedContacts !== null) {
+            return $this->cachedContacts;
+        }
+
+        return $this->cachedContacts = $this->resolveValidContacts($user);
+    }
+
+    private function resolveValidContacts(User $user): \Illuminate\Support\Collection
     {
         $contacts = collect();
 

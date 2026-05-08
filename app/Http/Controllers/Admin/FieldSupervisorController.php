@@ -18,7 +18,7 @@ class FieldSupervisorController extends Controller
     {
         // Field supervisors are users with the 'field_supervisor' role
         $supervisors = User::whereHas('roles', fn($q) => $q->where('name', 'field_supervisor'))
-            ->with('fieldSupervisor')
+            ->with(['roles', 'fieldSupervisor'])
             ->latest()
             ->get();
 

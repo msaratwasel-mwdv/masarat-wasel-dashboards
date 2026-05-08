@@ -124,10 +124,20 @@ class Bus extends Model
      */
     public function getTripStatusAttribute(): string
     {
-        $trip = $this->relationLoaded('activeTrip') ? $this->activeTrip : $this->activeTrip()->first();
+        // Only use pre-loaded relationships to avoid N+1 in bus listings
+        if ($this->relationLoaded('activeTrip')) {
+            $trip = $this->activeTrip;
+        } else {
+            // Skip querying if not eagerly loaded — return idle to prevent N+1
+            return 'idle';
+        }
 
         if (!$trip) {
-            $lastTrip = $this->relationLoaded('latestTrip') ? $this->latestTrip : $this->latestTrip()->first();
+            if ($this->relationLoaded('latestTrip')) {
+                $lastTrip = $this->latestTrip;
+            } else {
+                return 'idle';
+            }
             
             if ($lastTrip && $lastTrip->status === 'finished' && $lastTrip->type === 'forth' && $lastTrip->trip_date->isToday()) {
                 return 'at_school';
@@ -265,6 +275,12 @@ class Bus extends Model
      */
     public function getStudentsCountAttribute(): int
     {
+        // If pre-loaded via withCount or scope, use it directly (no extra query)
+        if (array_key_exists('students_count', $this->attributes)) {
+            return (int) $this->attributes['students_count'];
+        }
+
+        // Fallback: direct query (only for single model access, NOT in loops)
         return Student::where(function ($query) {
             $query->where('forth_bus_id', $this->id)
                 ->orWhere('back_bus_id', $this->id);

@@ -28,58 +28,55 @@ class AnalyticsController extends Controller
     public function index(Request $request)
     {
         $now = Carbon::now();
-        $monthStart = $now->copy()->startOfMonth();
-        $monthEnd = $now->copy()->endOfMonth();
 
-        // ── Safe Trips (completed without incidents) ──
-        $totalTripsMonth = Trip::whereBetween('trip_date', [$monthStart, $monthEnd])->count();
-        $completedTripsMonth = Trip::whereBetween('trip_date', [$monthStart, $monthEnd])
-            ->where('status', 'completed')->count();
-        $tripsWithIncidents = Incident::whereBetween('created_at', [$monthStart, $monthEnd])
-            ->distinct('trip_id')->count('trip_id');
-        $safeTrips = max(0, $completedTripsMonth - $tripsWithIncidents);
-        $safeTripsPercent = $completedTripsMonth > 0 ? round(($safeTrips / $completedTripsMonth) * 100, 1) : 0;
+        $kpis = \Illuminate\Support\Facades\Cache::remember('analytics:kpis:' . $now->format('Y-m'), 300, function () use ($now) {
+            $monthStart = $now->copy()->startOfMonth();
+            $monthEnd = $now->copy()->endOfMonth();
 
-        // ── On-time Arrival % ──
-        $tripsWithTimes = Trip::whereBetween('trip_date', [$monthStart, $monthEnd])
-            ->where('status', 'completed')
-            ->whereNotNull('arrival_time')
-            ->whereNotNull('departure_time')
-            ->count();
-        // Consider "on time" if arrived within 60 minutes
-        $onTimeTrips = Trip::whereBetween('trip_date', [$monthStart, $monthEnd])
-            ->where('status', 'completed')
-            ->whereNotNull('arrival_time')
-            ->whereNotNull('departure_time')
-            ->whereRaw('EXTRACT(EPOCH FROM (arrival_time - departure_time)) / 60 <= 60')
-            ->count();
-        $onTimePercent = $tripsWithTimes > 0 ? round(($onTimeTrips / $tripsWithTimes) * 100, 1) : 0;
+            // ── Safe Trips (completed without incidents) ──
+            $totalTripsMonth = Trip::whereBetween('trip_date', [$monthStart, $monthEnd])->count();
+            $completedTripsMonth = Trip::whereBetween('trip_date', [$monthStart, $monthEnd])
+                ->where('status', 'completed')->count();
+            $tripsWithIncidents = Incident::whereBetween('created_at', [$monthStart, $monthEnd])
+                ->distinct('trip_id')->count('trip_id');
+            $safeTrips = max(0, $completedTripsMonth - $tripsWithIncidents);
+            $safeTripsPercent = $completedTripsMonth > 0 ? round(($safeTrips / $completedTripsMonth) * 100, 1) : 0;
 
-        // ── Fleet Utilization % ──
-        $activeBuses = Bus::where('status', 'active')->get();
-        $activeBusIds = $activeBuses->pluck('id');
-        $totalDailyCapacity = $activeBuses->sum('capacity') * 2; // (Forth + Back)
-        
-        $forthStudents = Student::where('is_active', true)
-            ->whereIn('forth_bus_id', $activeBusIds)->count();
-            
-        $backStudents = Student::where('is_active', true)
-            ->whereIn('back_bus_id', $activeBusIds)->count();
-            
-        $totalStudentsAssigned = $forthStudents + $backStudents; 
-        
-        $utilizationPercent = $totalDailyCapacity > 0 ? round(($totalStudentsAssigned / $totalDailyCapacity) * 100, 1) : 0;
+            // ── On-time Arrival % ──
+            $tripsWithTimes = Trip::whereBetween('trip_date', [$monthStart, $monthEnd])
+                ->where('status', 'completed')
+                ->whereNotNull('arrival_time')
+                ->whereNotNull('departure_time')
+                ->count();
+            $onTimeTrips = Trip::whereBetween('trip_date', [$monthStart, $monthEnd])
+                ->where('status', 'completed')
+                ->whereNotNull('arrival_time')
+                ->whereNotNull('departure_time')
+                ->whereRaw('EXTRACT(EPOCH FROM (arrival_time - departure_time)) / 60 <= 60')
+                ->count();
+            $onTimePercent = $tripsWithTimes > 0 ? round(($onTimeTrips / $tripsWithTimes) * 100, 1) : 0;
 
-        // ── Monthly Expenses ──
-        $monthlyExpenses = BusExpense::whereBetween('date', [$monthStart, $monthEnd])->sum('amount');
+            // ── Fleet Utilization % ──
+            $activeBuses = Bus::where('status', 'active')->get();
+            $activeBusIds = $activeBuses->pluck('id');
+            $totalDailyCapacity = $activeBuses->sum('capacity') * 2;
 
-        // ── Quick Stats ──
-        $totalDrivers = Driver::count();
-        $totalViolations = Violation::whereBetween('created_at', [$monthStart, $monthEnd])->count();
-        $totalDelays = Delay::whereBetween('created_at', [$monthStart, $monthEnd])->count();
+            $forthStudents = Student::where('is_active', true)
+                ->whereIn('forth_bus_id', $activeBusIds)->count();
+            $backStudents = Student::where('is_active', true)
+                ->whereIn('back_bus_id', $activeBusIds)->count();
+            $totalStudentsAssigned = $forthStudents + $backStudents;
+            $utilizationPercent = $totalDailyCapacity > 0 ? round(($totalStudentsAssigned / $totalDailyCapacity) * 100, 1) : 0;
 
-        return Inertia::render('Admin/Analytics/Index', [
-            'kpis' => [
+            // ── Monthly Expenses ──
+            $monthlyExpenses = BusExpense::whereBetween('date', [$monthStart, $monthEnd])->sum('amount');
+
+            // ── Quick Stats ──
+            $totalDrivers = Driver::count();
+            $totalViolations = Violation::whereBetween('created_at', [$monthStart, $monthEnd])->count();
+            $totalDelays = Delay::whereBetween('created_at', [$monthStart, $monthEnd])->count();
+
+            return [
                 'safe_trips_percent' => $safeTripsPercent,
                 'safe_trips' => $safeTrips,
                 'total_completed' => $completedTripsMonth,
@@ -95,7 +92,11 @@ class AnalyticsController extends Controller
                 'total_violations' => $totalViolations,
                 'total_delays' => $totalDelays,
                 'active_buses' => $activeBuses->count(),
-            ],
+            ];
+        });
+
+        return Inertia::render('Admin/Analytics/Index', [
+            'kpis' => $kpis,
             'month_label' => $now->translatedFormat('F Y'),
         ]);
     }
