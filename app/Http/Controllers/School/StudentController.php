@@ -462,13 +462,25 @@ class StudentController extends Controller
     }
 
     /**
-     * [Delete] حذف الطالب
+     * [Delete] حذف الطالب (Soft Delete مع تنظيف البيانات المرتبطة)
      */
     public function destroy(Student $student)
     {
-        $this->authorize('delete', $student);
+        // التحقق أن الطالب ينتمي لمدرسة المدير الحالي
+        $schoolId = Auth::user()->getSchoolId();
+        $studentSchoolId = $student->currentEnrollment?->school_id;
 
-        $student->delete();
+        // السماح بالحذف إذا: نفس المدرسة أو طالب بدون تسجيل (يتيم)
+        if ($studentSchoolId && (int) $schoolId !== (int) $studentSchoolId) {
+            abort(403, 'لا يحق لك حذف طالب من مدرسة أخرى.');
+        }
+
+        DB::transaction(function () use ($student) {
+            // Boot::deleting event يتكفل بـ:
+            // 1. إلغاء تخصيص الباصات (forth_bus_id, back_bus_id → null)
+            // 2. تعطيل التسجيل الأكاديمي (is_active → false)
+            $student->delete(); // Soft Delete — يحتفظ بالسجل مع deleted_at
+        });
 
         return redirect()->route('school.students.index')->with('success', 'Student deleted successfully.');
     }

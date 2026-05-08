@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,26 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Student extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
+
+    /**
+     * تنظيف البيانات المرتبطة عند الحذف الناعم (Soft Delete)
+     * يُنفَّذ تلقائياً داخل نفس الـ transaction الذي استدعى delete()
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function (Student $student) {
+            // استخدام DB مباشرة لتجنب إطلاق model events إضافية (recursive events)
+            \Illuminate\Support\Facades\DB::table('students')
+                ->where('id', $student->id)
+                ->update(['forth_bus_id' => null, 'back_bus_id' => null]);
+
+            // تعطيل التسجيل الأكاديمي — الحفاظ على السجل التاريخي
+            $student->enrollments()->update(['is_active' => false]);
+        });
+    }
 
     // ⬅️ أضف الحقول الجديدة هنا
     protected $fillable = [

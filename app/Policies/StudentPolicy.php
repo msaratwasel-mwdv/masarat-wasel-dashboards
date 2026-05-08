@@ -9,24 +9,32 @@ use Illuminate\Auth\Access\Response;
 class StudentPolicy
 {
     /**
-     * القاعدة: هل يمكن للمستخدم (مدير المدرسة) عرض/تعديل/حذف هذا الطالب؟
+     * القاعدة:
+     * هل يمكن للمستخدم (مدير المدرسة) عرض/تعديل/حذف هذا الطالب؟
      * الجواب: نعم، إذا كان معرف مدرسة المدير يطابق معرف مدرسة الطالب.
      */
     private function belongsToSchool(User $user, Student $student): bool
     {
-        // جلب سجل التحاق الطالب الحالي
-        $enrollment = $student->currentEnrollment;
+        $userSchoolId = $user->getSchoolId();
 
-        // إذا لم يكن للطالب سجل التحاق، أو أن المستخدم ليس له مدرسة، امنعه
-        if (!$enrollment || !$user->getSchoolId()) {
+        // إذا لم يكن للمستخدم مدرسة، امنعه
+        if (!$userSchoolId) {
             return false;
         }
 
-        // الحصول على معرف المدرسة من خلال الفصل
+        // جلب سجل التحاق الطالب الحالي
+        $enrollment = $student->currentEnrollment;
+
+        // إذا لم يكن للطالب سجل التحاق، امنعه
+        if (!$enrollment) {
+            return false;
+        }
+
+        // الحصول على معرف المدرسة من خلال الفصل أو enrollment
         $schoolId = $enrollment->classroom?->school_id ?? $enrollment->school_id;
 
-        // إذا تطابقت مدرسة المدير مع مدرسة الطالب، اسمح له
-        return $user->getSchoolId() === $schoolId;
+        // مقارنة بعد التحويل لـ int لتجنب مشاكل PostgreSQL
+        return (int) $userSchoolId === (int) $schoolId;
     }
 
     /**
@@ -53,5 +61,3 @@ class StudentPolicy
         return $this->belongsToSchool($user, $student);
     }
 }
-
-

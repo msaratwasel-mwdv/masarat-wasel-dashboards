@@ -142,6 +142,16 @@ const getMenuItems = (isRTL: boolean) => [
     ],
   },
   {
+    label: isRTL ? "إدارة المحتوى" : "Content Management",
+    icon: "clipboard",
+    subItems: [
+      {
+        label: isRTL ? "الفعاليات والأخبار" : "News & Events",
+        route: "admin.events.index",
+      },
+    ],
+  },
+  {
     label: isRTL ? "الاشتراكات والمالية" : "Plans & Billing",
     icon: "clipboard",
     subItems: [

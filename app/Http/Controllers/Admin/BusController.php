@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Bus;
 use App\Models\BusDocument;
 use App\Models\School;
+use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Validation\Rule;
@@ -238,12 +240,34 @@ class BusController extends Controller
             'deactivation_reason' => 'required|string|max:255',
         ]);
 
-        $bus->update([
-            'status' => 'out_of_service',
-            'deactivation_reason' => $request->deactivation_reason
-        ]);
+        // Capture values before transaction for use in post-commit logging
+        $busId     = $bus->id;
+        $busNumber = $bus->bus_number;
+        $archivedBy = auth()->id();
 
-        $bus->delete();
+        $result = DB::transaction(function () use ($bus, $request) {
+            // 1. فصل الطلاب المرتبطين بهذا الباص (atomic)
+            $detachedForth = Student::where('forth_bus_id', $bus->id)->update(['forth_bus_id' => null]);
+            $detachedBack  = Student::where('back_bus_id',  $bus->id)->update(['back_bus_id'  => null]);
+
+            // 2. تحديث حالة الباص وأرشفته
+            $bus->update([
+                'status'               => 'out_of_service',
+                'deactivation_reason'  => $request->deactivation_reason,
+            ]);
+            $bus->delete(); // Soft Delete
+
+            return ['forth' => $detachedForth, 'back' => $detachedBack];
+        });
+
+        // Log AFTER successful transaction — side effects must not be inside transactions
+        Log::info('[BusArchive] Bus archived with student cleanup', [
+            'bus_id'         => $busId,
+            'bus_number'     => $busNumber,
+            'detached_forth' => $result['forth'],
+            'detached_back'  => $result['back'],
+            'archived_by'    => $archivedBy,
+        ]);
 
         return redirect()->back()->with('success', 'Bus archived successfully');
     }
@@ -352,7 +376,24 @@ class BusController extends Controller
 
     public function destroy(Bus $bus)
     {
-        $bus->delete();
+        // Capture before transaction — values may not be accessible post soft-delete
+        $busId     = $bus->id;
+        $deletedBy = auth()->id();
+
+        DB::transaction(function () use ($bus) {
+            // فصل الطلاب المرتبطين أولاً (atomic)
+            Student::where('forth_bus_id', $bus->id)->update(['forth_bus_id' => null]);
+            Student::where('back_bus_id',  $bus->id)->update(['back_bus_id'  => null]);
+
+            $bus->delete(); // Soft Delete
+        });
+
+        // Log AFTER successful transaction — side effects outside transaction
+        Log::info('[BusDelete] Bus soft-deleted with student cleanup', [
+            'bus_id'     => $busId,
+            'deleted_by' => $deletedBy,
+        ]);
+
         return redirect()->route('admin.buses.index')
             ->with('success', 'تم حذف الحافلة بنجاح');
     }

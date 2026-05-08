@@ -6,16 +6,20 @@ import {
     useTransform,
     AnimatePresence,
 } from "framer-motion";
-import { Play, Bus, Shield, Zap, MapPin, Phone, ArrowLeft, CheckCircle2, Users, Clock, BarChart3, Smartphone, ChevronRight, Menu, X, Instagram, Twitter, Linkedin, Facebook, Award, MessageCircle, Mail } from "lucide-react";
+import { Play, Bus, Shield, Zap, MapPin, ArrowLeft, CheckCircle2, Users, Clock, BarChart3, Smartphone, ChevronRight, Menu, X, Instagram, Linkedin, Facebook, Award, MessageCircle, Mail, Moon, Sun, Globe, HeartHandshake, Lightbulb, Target, CheckCircle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
 export default function Welcome({
     auth,
-}: PageProps<{ laravelVersion: string; phpVersion: string }>) {
+    latestEvents = [],
+}: PageProps<{ laravelVersion: string; phpVersion: string; latestEvents: any[] }>) {
     const [isScrolled, setIsScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
+
+    const [lang, setLang] = useState<"ar" | "en">("ar");
+    const [theme, setTheme] = useState<"light" | "dark">("light");
 
     const togglePlay = () => {
         if (videoRef.current) {
@@ -59,16 +63,21 @@ export default function Welcome({
         },
     };
 
+    const isAr = lang === "ar";
+    const dir = isAr ? "rtl" : "ltr";
+
     return (
         <div
-            className="min-h-screen bg-slate-50 font-sans selection:bg-brand-yellow/30 selection:text-brand-navy overflow-hidden"
-            dir="rtl"
+            className={`min-h-screen font-sans selection:bg-brand-yellow/30 selection:text-brand-navy overflow-hidden transition-colors duration-300 ${
+                theme === "dark" ? "bg-slate-900 text-slate-100" : "bg-slate-50 text-slate-900"
+            }`}
+            dir={dir}
         >
             <Head>
-                <title>مسارات واصل | ثورة في النقل المدرسي الذكي</title>
+                <title>{isAr ? "مسارات واصل | نقل ذكي وآمن" : "Masarat Wasel | Smart & Safe Transport"}</title>
                 <meta
                     name="description"
-                    content="مسارات واصل - المنصة الأكثر أماناً وكفاءة لإدارة الأساطيل المدرسية في الشرق الأوسط."
+                    content="مسارات واصل - المنصة الأكثر أماناً وكفاءة لإدارة الأساطيل المدرسية في سلطنة عمان."
                 />
                 <link
                     rel="icon"
@@ -87,7 +96,7 @@ export default function Welcome({
             <nav
                 className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
                     isScrolled
-                        ? "py-3 bg-white/80 backdrop-blur-xl shadow-lg shadow-slate-200/50"
+                        ? theme === "dark" ? "py-3 bg-slate-900/90 backdrop-blur-xl shadow-lg shadow-black/50 border-b border-slate-800" : "py-3 bg-white/80 backdrop-blur-xl shadow-lg shadow-slate-200/50"
                         : "py-6 bg-transparent"
                 }`}
             >
@@ -104,27 +113,57 @@ export default function Welcome({
                                 className="relative h-full w-full object-contain rounded-xl shadow-sm border border-white"
                             />
                         </div>
-                        <span className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-l from-brand-navy to-slate-600 tracking-tight">
-                            مسارات واصل
+                        <span className={`text-xl font-black bg-clip-text text-transparent tracking-tight ${theme === "dark" ? "bg-gradient-to-l from-brand-yellow to-white" : "bg-gradient-to-l from-brand-navy to-slate-600"}`}>
+                            {isAr ? "مسارات واصل" : "Masarat Wasel"}
                         </span>
                     </Link>
 
                     {/* Desktop Nav */}
                     <div className="hidden lg:flex items-center gap-1">
-                        {["الرئيسية", "المميزات", "الخدمات", "الأسعار"].map(
+                        {[
+                            { id: "home", labelAr: "الرئيسية", labelEn: "Home" },
+                            { id: "about", labelAr: "من نحن", labelEn: "About Us" },
+                            { id: "features", labelAr: "المميزات", labelEn: "Features" },
+                            { id: "events", labelAr: "الفعاليات", labelEn: "Events" },
+                        ].map(
                             (item, i) => (
                                 <a
                                     key={i}
-                                    href={`#${["home", "features", "services", "pricing"][i]}`}
-                                    className="px-5 py-2 text-sm font-bold text-slate-600 hover:text-brand-navy hover:bg-slate-100/50 rounded-xl transition-all"
+                                    href={`#${item.id}`}
+                                    className={`px-5 py-2 text-sm font-bold rounded-xl transition-all ${
+                                        theme === "dark" ? "text-slate-300 hover:text-white hover:bg-slate-800" : "text-slate-600 hover:text-brand-navy hover:bg-slate-100/50"
+                                    }`}
                                 >
-                                    {item}
+                                    {isAr ? item.labelAr : item.labelEn}
                                 </a>
                             ),
                         )}
                     </div>
 
                     <div className="hidden lg:flex items-center gap-4">
+                        {/* Toggles */}
+                        <div className="flex items-center gap-2 border-r border-slate-200 pr-4 rtl:border-r-0 rtl:border-l rtl:pr-0 rtl:pl-4">
+                            <button
+                                onClick={() => setLang(lang === "ar" ? "en" : "ar")}
+                                className={`p-2 rounded-xl transition-colors flex items-center gap-2 text-sm font-bold ${
+                                    theme === "dark" ? "hover:bg-slate-800 text-slate-300" : "hover:bg-slate-100 text-slate-600"
+                                }`}
+                                title="Change Language"
+                            >
+                                <Globe size={18} />
+                                {lang === "ar" ? "EN" : "عربي"}
+                            </button>
+                            <button
+                                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                                className={`p-2 rounded-xl transition-colors ${
+                                    theme === "dark" ? "hover:bg-slate-800 text-brand-yellow" : "hover:bg-slate-100 text-brand-navy"
+                                }`}
+                                title="Toggle Theme"
+                            >
+                                {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+                            </button>
+                        </div>
+
                         {auth.user ? (
                             <Link
                                 href={
@@ -134,21 +173,23 @@ export default function Welcome({
                                 }
                                 className="px-6 py-2.5 bg-brand-navy text-white text-sm font-bold rounded-xl shadow-xl shadow-brand-navy/20 hover:shadow-brand-navy/30 hover:-translate-y-0.5 transition-all"
                             >
-                                لوحة التحكم
+                                {isAr ? "لوحة التحكم" : "Dashboard"}
                             </Link>
                         ) : (
                             <>
                                 <Link
                                     href={route("login")}
-                                    className="text-sm font-bold text-slate-600 hover:text-brand-navy px-4 transition-colors"
+                                    className={`text-sm font-bold px-4 transition-colors ${
+                                        theme === "dark" ? "text-slate-300 hover:text-white" : "text-slate-600 hover:text-brand-navy"
+                                    }`}
                                 >
-                                    تسجيل الدخول
+                                    {isAr ? "تسجيل الدخول" : "Login"}
                                 </Link>
                                 <Link
                                     href={route("subscription")}
                                     className="px-6 py-2.5 bg-brand-yellow text-brand-dark text-sm font-bold rounded-xl shadow-xl shadow-brand-yellow/20 hover:shadow-brand-yellow/30 hover:-translate-y-0.5 transition-all"
                                 >
-                                    اشترك الآن
+                                    {isAr ? "اشترك الآن" : "Subscribe Now"}
                                 </Link>
                             </>
                         )}
@@ -156,7 +197,7 @@ export default function Welcome({
 
                     {/* Mobile Menu Toggle */}
                     <button
-                        className="lg:hidden p-2 text-brand-navy"
+                        className={`lg:hidden p-2 ${theme === "dark" ? "text-white" : "text-brand-navy"}`}
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                     >
                         {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
@@ -168,35 +209,54 @@ export default function Welcome({
             <AnimatePresence>
                 {mobileMenuOpen && (
                     <motion.div
-                        initial={{ opacity: 0, x: 100 }}
+                        initial={{ opacity: 0, x: dir === "rtl" ? 100 : -100 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 100 }}
-                        className="fixed inset-0 z-40 bg-white pt-24 px-8 flex flex-col gap-6"
+                        exit={{ opacity: 0, x: dir === "rtl" ? 100 : -100 }}
+                        className={`fixed inset-0 z-40 pt-24 px-8 flex flex-col gap-6 ${
+                            theme === "dark" ? "bg-slate-900" : "bg-white"
+                        }`}
                     >
-                        {["الرئيسية", "المميزات", "الخدمات", "الأسعار"].map(
+                        <div className="flex justify-center gap-4 mb-4">
+                            <button onClick={() => {setLang(lang === "ar" ? "en" : "ar"); setMobileMenuOpen(false);}} className={`px-4 py-2 rounded-xl flex items-center gap-2 ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                                <Globe size={18} /> {lang === "ar" ? "English" : "العربية"}
+                            </button>
+                            <button onClick={() => {setTheme(theme === "light" ? "dark" : "light"); setMobileMenuOpen(false);}} className={`px-4 py-2 rounded-xl flex items-center gap-2 ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                                {theme === "light" ? <><Moon size={18} /> {isAr ? "ليلي" : "Dark"}</> : <><Sun size={18} /> {isAr ? "نهاري" : "Light"}</>}
+                            </button>
+                        </div>
+                        {[
+                            { id: "home", labelAr: "الرئيسية", labelEn: "Home" },
+                            { id: "about", labelAr: "من نحن", labelEn: "About Us" },
+                            { id: "features", labelAr: "المميزات", labelEn: "Features" },
+                            { id: "events", labelAr: "الفعاليات", labelEn: "Events" },
+                        ].map(
                             (item, i) => (
                                 <a
                                     key={i}
-                                    href={`#${["home", "features", "services", "pricing"][i]}`}
+                                    href={`#${item.id}`}
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className="text-2xl font-black text-brand-navy border-b border-slate-100 pb-4"
+                                    className={`text-2xl font-black border-b pb-4 ${
+                                        theme === "dark" ? "text-white border-slate-800" : "text-brand-navy border-slate-100"
+                                    }`}
                                 >
-                                    {item}
+                                    {isAr ? item.labelAr : item.labelEn}
                                 </a>
                             ),
                         )}
                         <div className="mt-auto pb-12 flex flex-col gap-4">
                             <Link
                                 href={route("login")}
-                                className="w-full py-4 text-center font-bold text-slate-600 bg-slate-50 rounded-2xl"
+                                className={`w-full py-4 text-center font-bold rounded-2xl ${
+                                    theme === "dark" ? "bg-slate-800 text-white" : "bg-slate-50 text-slate-600"
+                                }`}
                             >
-                                تسجيل الدخول
+                                {isAr ? "تسجيل الدخول" : "Login"}
                             </Link>
                             <Link
                                 href={route("subscription")}
                                 className="w-full py-4 text-center font-bold text-brand-dark bg-brand-yellow rounded-2xl shadow-lg"
                             >
-                                اشترك الآن
+                                {isAr ? "اشترك الآن" : "Subscribe Now"}
                             </Link>
                         </div>
                     </motion.div>
@@ -214,31 +274,33 @@ export default function Welcome({
                         initial="hidden"
                         animate="visible"
                         variants={containerVariants}
-                        className="text-right"
+                        className={isAr ? "text-right" : "text-left"}
                     >
                         <motion.div
                             variants={itemVariants}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-yellow/10 border border-brand-yellow/20 text-brand-dark text-xs font-bold mb-6"
+                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-bold mb-6 ${
+                                theme === "dark" ? "bg-brand-yellow/20 border-brand-yellow/30 text-brand-yellow" : "bg-brand-yellow/10 border-brand-yellow/20 text-brand-dark"
+                            }`}
                         >
                             <Award size={14} className="text-brand-yellow" />
-                            المنصة رقم 1 لإدارة النقل المدرسي في المنطقة
+                            {isAr ? "المنصة رقم 1 لإدارة النقل المدرسي في سلطنة عمان" : "The #1 School Transport Platform in Oman"}
                         </motion.div>
                         <motion.h1
                             variants={itemVariants}
-                            className="text-5xl lg:text-7xl font-black text-brand-navy leading-[1.15] mb-8"
+                            className={`text-5xl lg:text-7xl font-black leading-[1.15] mb-8 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}
                         >
-                            ثورة ذكية في <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-l from-brand-yellow via-yellow-600 to-brand-navy">
-                                إدارة النقل المدرسي
+                            {isAr ? "نقل ذكي وآمن" : "Smart & Safe"}<br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-l from-brand-yellow via-yellow-600 to-amber-500">
+                                {isAr ? "مع مسارات واصل" : "Transport"}
                             </span>
                         </motion.h1>
                         <motion.p
                             variants={itemVariants}
-                            className="text-lg lg:text-xl text-slate-500 font-medium leading-relaxed mb-12 max-w-xl"
+                            className={`text-lg lg:text-xl font-medium leading-relaxed mb-12 max-w-xl ${theme === 'dark' ? 'text-slate-300' : 'text-slate-500'}`}
                         >
-                            نقدم حلولاً رقمية ذكية لربط المدارس، أولياء الأمور،
-                            والسائقين في منصة واحدة آمنة. وفر الوقت، قلل
-                            التكاليف، واضمن سلامة طفلك في كل رحلة.
+                            {isAr 
+                              ? "نقدم حلول نقل ذكية وآمنة وحديثة بخدمات رقمية متكاملة لربط المدارس وأولياء الأمور. وفر وقتك، واضمن سلامة أبنائك باحترافية." 
+                              : "We offer smart, safe, and modern transport solutions with integrated digital services connecting schools and parents. Save time and ensure safety professionally."}
                         </motion.p>
                         <motion.div
                             variants={itemVariants}
@@ -246,50 +308,31 @@ export default function Welcome({
                         >
                             <Link
                                 href={route("subscription")}
-                                className="w-full sm:w-auto px-10 py-5 bg-brand-navy text-white text-lg font-black rounded-2xl shadow-2xl shadow-brand-navy/30 hover:shadow-brand-navy/50 hover:-translate-y-1 transition-all flex items-center justify-center gap-3"
+                                className="w-full sm:w-auto px-10 py-5 bg-brand-navy text-white text-lg font-black rounded-2xl shadow-2xl shadow-brand-navy/30 hover:shadow-brand-navy/50 hover:-translate-y-1 transition-all flex items-center justify-center gap-3 border border-brand-navy"
                             >
-                                ابدأ الآن مجاناً
-                                <ChevronRight
-                                    className="rotate-180"
-                                    size={20}
-                                />
+                                {isAr ? "ابدأ رحلتك معنا" : "Start Your Journey"}
+                                <ChevronRight className={isAr ? "rotate-180" : ""} size={20} />
                             </Link>
-                            <a
-                                href="#features"
-                                className="w-full sm:w-auto px-10 py-5 bg-white text-brand-navy text-lg font-bold rounded-2xl border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                            <Link
+                                href={route("subscription")}
+                                className={`w-full sm:w-auto px-10 py-5 text-lg font-bold rounded-2xl border transition-all flex items-center justify-center gap-2 ${
+                                    theme === "dark" ? "bg-slate-800 text-white border-slate-700 hover:bg-slate-700" : "bg-white text-brand-navy border-slate-200 hover:bg-slate-50"
+                                }`}
                             >
-                                اكتشف المميزات
-                            </a>
-                        </motion.div>
-
-                        <motion.div
-                            variants={itemVariants}
-                            className="mt-12 flex items-center gap-4 py-6 border-t border-slate-200"
-                        >
-                            <div className="flex -space-x-4 space-x-reverse">
-                                {[1, 2, 3, 4].map((i) => (
-                                    <div
-                                        key={i}
-                                        className="w-10 h-10 rounded-full border-2 border-white bg-slate-200 shadow-sm"
-                                    />
-                                ))}
-                            </div>
-                            <div className="text-sm font-bold text-slate-400">
-                                <span className="text-brand-navy">+500</span>{" "}
-                                مدرسة ومنشأة تثق بنا
-                            </div>
+                                {isAr ? "اشترك الآن" : "Subscribe Now"}
+                            </Link>
                         </motion.div>
                     </motion.div>
 
                     {/* Hero Visual */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.8, x: 100 }}
+                        initial={{ opacity: 0, scale: 0.8, x: dir === 'rtl' ? -100 : 100 }}
                         animate={{ opacity: 1, scale: 1, x: 0 }}
                         transition={{ duration: 1, ease: "easeOut" }}
                         className="relative"
                     >
                         <div className="absolute inset-0 bg-gradient-to-tr from-brand-yellow/20 to-transparent rounded-[3rem] blur-3xl rotate-12 -z-10" />
-                        <div className="relative rounded-[3rem] bg-white p-4 shadow-3xl shadow-slate-200/50 border border-white">
+                        <div className={`relative rounded-[3rem] p-4 shadow-3xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 shadow-black/50' : 'bg-white border-white shadow-slate-200/50'}`}>
                             <div 
                                 className="rounded-[2.5rem] overflow-hidden aspect-[4/3] bg-slate-100 flex items-center justify-center cursor-pointer group/video relative"
                                 onClick={togglePlay}
@@ -320,42 +363,14 @@ export default function Welcome({
                             <motion.div
                                 animate={{ y: [0, -10, 0] }}
                                 transition={{ duration: 4, repeat: Infinity }}
-                                className="absolute -top-10 -right-10 bg-white p-4 rounded-3xl shadow-xl border border-slate-50 flex items-center gap-4"
+                                className={`absolute -top-10 ${dir === 'rtl' ? '-right-10' : '-left-10'} p-4 rounded-3xl shadow-xl border flex items-center gap-4 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-50'}`}
                             >
                                 <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-500 flex items-center justify-center shadow-inner">
                                     <CheckCircle2 size={24} />
                                 </div>
-                                <div>
-                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                        {isScrolled ? "Status" : "System"}
-                                    </div>
-                                    <div className="text-sm font-black text-brand-navy">
-                                        الرحلة آمنة 100%
-                                    </div>
-                                </div>
-                            </motion.div>
-
-                            <motion.div
-                                animate={{ y: [0, 10, 0] }}
-                                transition={{
-                                    duration: 5,
-                                    repeat: Infinity,
-                                    delay: 0.5,
-                                }}
-                                className="absolute -bottom-8 -left-8 bg-brand-navy p-5 rounded-3xl shadow-2xl flex items-center gap-4 text-white"
-                            >
-                                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
-                                    <MapPin
-                                        size={24}
-                                        className="text-brand-yellow"
-                                    />
-                                </div>
-                                <div>
-                                    <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
-                                        التتبع المباشر
-                                    </div>
-                                    <div className="text-sm font-black">
-                                        الحافلة على بعد 2 دقيقة
+                                <div className={isAr ? "text-right" : "text-left"}>
+                                    <div className="text-sm font-black text-green-500">
+                                        {isAr ? "آمن 100%" : "100% Safe"}
                                     </div>
                                 </div>
                             </motion.div>
@@ -364,302 +379,440 @@ export default function Welcome({
                 </div>
             </section>
 
+            {/* --- About Us & Definitions Section --- */}
+            <section id="about" className={`py-24 relative ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'}`}>
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="text-center max-w-3xl mx-auto mb-16">
+                        <h2 className="text-xs font-black text-brand-yellow uppercase tracking-[0.2em] mb-4">
+                            {isAr ? "لماذا واصل؟" : "Why Wasel?"}
+                        </h2>
+                        <h3 className={`text-3xl lg:text-5xl font-black mb-6 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>
+                            {isAr ? "رؤيتنا نحو مستقبل النقل" : "Our Vision for Future Transport"}
+                        </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+                        {/* من نحن */}
+                        <div className={`p-10 rounded-[2.5rem] border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-100'} hover:-translate-y-2 transition-all duration-300`}>
+                            <div className="w-14 h-14 rounded-2xl bg-brand-yellow/20 text-brand-yellow flex items-center justify-center mb-6">
+                                <Users size={28} />
+                            </div>
+                            <h4 className={`text-2xl font-black mb-4 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>
+                                {isAr ? "من نحن" : "About Us"}
+                            </h4>
+                            <p className={`font-medium leading-relaxed ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                                {isAr ? "نحن شركة رائدة بخدمات النقل والتوصيل اللوجستي والأنظمة بسلطنة عمان، بدأنا العمل منذ عام 2012 ونقدم حلول نقل ذكية وآمنة وحديثة بخدمات رقمية متكاملة." : "We are a leading transport and logistics company in Oman, established in 2012, offering smart, safe, and modern transport solutions."}
+                            </p>
+                        </div>
+
+                        {/* رؤيتنا */}
+                        <div className={`p-10 rounded-[2.5rem] border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-100'} hover:-translate-y-2 transition-all duration-300`}>
+                            <div className="w-14 h-14 rounded-2xl bg-blue-500/20 text-blue-500 flex items-center justify-center mb-6">
+                                <Lightbulb size={28} />
+                            </div>
+                            <h4 className={`text-2xl font-black mb-4 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>
+                                {isAr ? "رؤيتنا" : "Our Vision"}
+                            </h4>
+                            <p className={`font-medium leading-relaxed ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                                {isAr ? "إدارة خدمات النقل المدرسي والعام باحترافية، وتقديم الحلول الرقمية واللوجستية بجودة عالية تضمن راحة وأمان عملائنا." : "Managing school and public transport professionally, and providing high-quality digital and logistical solutions."}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* مستويات الأمان */}
+                    <div className={`p-10 lg:p-16 rounded-[3rem] border ${theme === 'dark' ? 'bg-brand-navy border-slate-700 text-white' : 'bg-brand-navy text-white shadow-2xl shadow-brand-navy/30'}`}>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                            <div>
+                                <h4 className="text-3xl font-black mb-6 text-brand-yellow">
+                                    {isAr ? "مستويات الأمان" : "Security Levels"}
+                                </h4>
+                                <ul className="space-y-4">
+                                    {[
+                                        isAr ? "تتبع جغرافي مباشر" : "Live Geo-tracking",
+                                        isAr ? "مراقبة السرعة وسلوك السائقين" : "Speed & Behavior Monitoring",
+                                        isAr ? "إجراءات التفقد النهائي للطلبة" : "Final Student Inspection Procedures",
+                                        isAr ? "سجل الحضور والغياب والأرشفة الإلكترونية" : "Attendance Records & Digital Archiving",
+                                        isAr ? "التتبع المرئي المباشر" : "Live Visual Tracking",
+                                    ].map((item, i) => (
+                                        <li key={i} className="flex items-center gap-3 font-bold text-lg text-slate-200">
+                                            <CheckCircle className="text-emerald-400 shrink-0" size={24} />
+                                            {item}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* هدفنا */}
+                                <div className="bg-white/10 p-6 rounded-3xl backdrop-blur-md border border-white/10">
+                                    <Target className="text-brand-yellow mb-4" size={32} />
+                                    <h5 className="font-black text-xl mb-2 text-white">{isAr ? "هدفنا" : "Our Goal"}</h5>
+                                    <p className="text-sm text-white/70 font-medium leading-relaxed">
+                                        {isAr ? "الرقي بخدمات النقل المدرسي والعام لأعلى المستويات بتجربة آمنة ومنظمة." : "Elevating transport services to the highest levels securely."}
+                                    </p>
+                                </div>
+                                {/* امتيازاتنا */}
+                                <div className="bg-white/10 p-6 rounded-3xl backdrop-blur-md border border-white/10">
+                                    <Award className="text-brand-yellow mb-4" size={32} />
+                                    <h5 className="font-black text-xl mb-2 text-white">{isAr ? "امتيازاتنا" : "Privileges"}</h5>
+                                    <ul className="space-y-1">
+                                        {(isAr ? ["حافلات حديثة ومجهزة", "ربط مباشر بين ولي الأمر والمدرسة", "صندوق مفقودات", "مراقبة مستمرة"] : ["Modern equipped buses", "Parent-school connection", "Lost & found", "Continuous monitoring"]).map((item, i) => (
+                                            <li key={i} className="text-xs text-white/70 font-medium flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-brand-yellow flex-shrink-0" />
+                                                {item}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* --- Events & Mini Forum --- */}
+            <section id="events" className={`py-24 ${theme === 'dark' ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="flex justify-between items-end mb-12">
+                        <div>
+                            <h2 className="text-xs font-black text-brand-yellow uppercase tracking-[0.2em] mb-4">
+                                {isAr ? "أخبار وفعاليات" : "News & Events"}
+                            </h2>
+                            <h3 className={`text-3xl lg:text-4xl font-black ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>
+                                {isAr ? "المنتدى المصغر" : "Mini Forum"}
+                            </h3>
+                        </div>
+                        <Link href={route('events.index')} className={`font-bold text-sm ${theme === 'dark' ? 'text-brand-yellow hover:text-white' : 'text-brand-navy hover:text-brand-yellow'}`}>
+                            {isAr ? "عرض الكل" : "View All"}
+                        </Link>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {latestEvents.map((event) => (
+                            <Link href={route('events.index')} key={event.id} className={`rounded-[2rem] overflow-hidden border group cursor-pointer ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 hover:shadow-xl'}`}>
+                                <div className="h-48 bg-slate-200 relative overflow-hidden">
+                                    <div className="absolute inset-0 bg-brand-navy/10 group-hover:bg-transparent transition-colors z-10" />
+                                    {event.image ? (
+                                        <img src={event.image} alt={isAr ? event.title_ar : event.title_en} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                    ) : (
+                                        <div className={`w-full h-full flex items-center justify-center ${theme === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400'}`}>
+                                            <Bus size={48} className="opacity-50" />
+                                        </div>
+                                    )}
+                                    <div className="absolute top-4 right-4 z-20 bg-brand-yellow text-brand-dark text-xs font-black px-3 py-1 rounded-lg">
+                                        {isAr ? event.tag_ar : event.tag_en}
+                                    </div>
+                                </div>
+                                <div className="p-6">
+                                    <div className="text-xs text-slate-500 font-bold mb-2">
+                                        {event.event_date ? new Date(event.event_date).toLocaleDateString(isAr ? 'ar-SA' : 'en-US') : '—'}
+                                    </div>
+                                    <h4 className={`text-xl font-black mb-2 line-clamp-2 transition-colors group-hover:text-brand-yellow ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>
+                                        {isAr ? event.title_ar : event.title_en}
+                                    </h4>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
             {/* --- Features Section --- */}
-            <section id="features" className="py-32 bg-white relative">
+            <section id="features" className={`py-32 relative ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center max-w-3xl mx-auto mb-20">
                         <h2 className="text-xs font-black text-brand-yellow uppercase tracking-[0.2em] mb-4">
-                            مميزات المنصة
+                            {isAr ? "مميزات المنصة" : "Platform Features"}
                         </h2>
-                        <h3 className="text-4xl lg:text-5xl font-black text-brand-navy mb-6">
-                            كل ما تحتاجه لإدارة النقل بكفاءة عالية
+                        <h3 className={`text-4xl lg:text-5xl font-black mb-6 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>
+                            {isAr ? "خدمات النقل الشاملة" : "Comprehensive Transport Services"}
                         </h3>
-                        <p className="text-lg text-slate-500 font-medium">
-                            أدوات متطورة مصممة بعناية لتلبية احتياجات المدارس
-                            الحديثة وضمان راحة البال للجميع.
-                        </p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        <FeatureCard
-                            icon={<Zap size={28} />}
-                            title="تتبع GPS فوري"
-                            desc="راقب موقع الحافلة والسرعة والمسار بدقة متناهية من أي متصفح أو عبر تطبيق الجوال."
-                            color="blue"
-                        />
-                        <FeatureCard
-                            icon={<Shield size={28} />}
-                            title="أمان وخصوصية"
-                            desc="تشفير كامل لبيانات الطلاب وأولياء الأمور مع نظام صلاحيات صارم لكل مستخدم في النظام."
-                            color="emerald"
-                        />
-                        <FeatureCard
-                            icon={<Smartphone size={28} />}
-                            title="تطبيقات مخصصة"
-                            desc="تطبيقات سهلة الاستخدام للسائقين وأولياء الأمور تضمن التواصل الفوري وقت الضرورة."
-                            color="brand"
-                        />
-                        <FeatureCard
-                            icon={<BarChart3 size={28} />}
-                            title="تقارير دقيقة"
-                            desc="احصل على إحصائيات مفصلة عن استهلاك الوقود، الحضور والغياب، وتنبيهات الصيانة."
-                            color="orange"
-                        />
-                        <FeatureCard
-                            icon={<Clock size={28} />}
-                            title="تحسين المسارات"
-                            desc="خوارزميات ذكية لتخطيط أقصر وأسرع المسارات لتقليل وقت الرحلة وتكاليف التشغيل."
-                            color="purple"
-                        />
-                        <FeatureCard
-                            icon={<Users size={28} />}
-                            title="إدارة شاملة للمدارس"
-                            desc="إشراف كامل على المعلمين، الطلاب، السائقين والحافلات من لوحة تحكم واحدة موحدة."
-                            color="rose"
-                        />
+                        <FeatureCard theme={theme} icon={<Bus size={28} />} title={isAr ? "النقل المدرسي والعام" : "School & Public Transport"} desc={isAr ? "إدارة كاملة لأسطول النقل المدرسي والعام." : "Full management of transport fleet."} color="blue" />
+                        <FeatureCard theme={theme} icon={<Shield size={28} />} title={isAr ? "حلول السلامة" : "Safety Solutions"} desc={isAr ? "كاميرات، أحزمة أمان، طفايات حريق، إسعافات أولية." : "Cameras, seatbelts, fire extinguishers."} color="emerald" />
+                        <FeatureCard theme={theme} icon={<Smartphone size={28} />} title={isAr ? "إدارة عبر التطبيق" : "App Management"} desc={isAr ? "متابعة الحافلات مباشرة، وتحديث الحالة الفوري." : "Live bus tracking and instant updates."} color="brand" />
+                        <FeatureCard theme={theme} icon={<BarChart3 size={28} />} title={isAr ? "الأرشفة الإلكترونية" : "Digital Archiving"} desc={isAr ? "متابعة الحضور والغياب والإشعارات الفورية." : "Attendance tracking and instant notifications."} color="orange" />
+                        <FeatureCard theme={theme} icon={<Clock size={28} />} title={isAr ? "الرحلات المدرسية" : "School Trips"} desc={isAr ? "تنظيم رحلات مدرسية آمنة ومراقبة." : "Organizing safe and monitored school trips."} color="purple" />
+                        <FeatureCard theme={theme} icon={<HeartHandshake size={28} />} title={isAr ? "الدعم والتدريب" : "Support & Training"} desc={isAr ? "دعم فني وتوعية مستمرة للسائقين." : "Technical support and continuous awareness."} color="rose" />
                     </div>
                 </div>
             </section>
 
-            {/* --- Stats / Social Proof --- */}
-            <section className="py-24 bg-brand-navy text-white relative overflow-hidden">
+            {/* --- Success Stories --- */}
+            <section id="success" className="py-24 relative overflow-hidden bg-brand-navy text-white">
                 <div className="absolute top-0 right-0 w-full h-full opacity-10 blur-3xl pointer-events-none">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-yellow rounded-full" />
                 </div>
-                <div className="max-w-7xl mx-auto px-6 relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-12 text-center">
-                    {[
-                        { label: "رحلة آمنة يومياً", val: "50,000+" },
-                        { label: "مدرسة مشتركة", val: "200+" },
-                        { label: "طالب مسجل", val: "15,000+" },
-                        { label: "نسبة رضا العملاء", val: "98%" },
-                    ].map((stat, i) => (
-                        <div key={i}>
-                            <div className="text-4xl lg:text-6xl font-black text-brand-yellow mb-2">
-                                {stat.val}
+                <div className="max-w-7xl mx-auto px-6 relative z-10">
+                    <div className="text-center mb-16">
+                        <span className="inline-block text-xs font-black text-brand-yellow uppercase tracking-[0.2em] mb-4">{isAr ? "إنجازاتنا" : "Our Achievements"}</span>
+                        <h3 className="text-3xl lg:text-5xl font-black mb-4 text-white">{isAr ? "قصص النجاح" : "Success Stories"}</h3>
+                        <p className="text-slate-300 font-medium">{isAr ? "مدارس ومؤسسات تثق بخدماتنا في سلطنة عمان" : "Schools and institutions that trust our services in Oman"}</p>
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+                        {[
+                            { label: isAr ? "رحلة آمنة يومياً" : "Safe Daily Trips", val: "50,000+", icon: "🚌" },
+                            { label: isAr ? "مدرسة مشتركة" : "Partner Schools", val: "200+", icon: "🏫" },
+                            { label: isAr ? "طالب مسجل" : "Registered Students", val: "15,000+", icon: "👨‍🎓" },
+                            { label: isAr ? "نسبة رضا العملاء" : "Customer Satisfaction", val: "98%", icon: "⭐" },
+                        ].map((stat, i) => (
+                            <div key={i} className="bg-white/10 border border-white/20 rounded-3xl p-8 hover:bg-white/15 transition-colors">
+                                <div className="text-3xl mb-3">{stat.icon}</div>
+                                <div className="text-4xl lg:text-5xl font-black text-brand-yellow mb-3">
+                                    {stat.val}
+                                </div>
+                                <div className="text-sm font-bold text-white uppercase tracking-wider">
+                                    {stat.label}
+                                </div>
                             </div>
-                            <div className="text-sm font-bold text-white/50 uppercase tracking-widest">
-                                {stat.label}
-                            </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </section>
 
-            {/* --- CTA Section --- */}
-            <section className="py-32 relative overflow-hidden">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="relative bg-gradient-to-r from-brand-navy to-slate-900 rounded-[3rem] p-12 lg:p-24 overflow-hidden shadow-3xl shadow-brand-navy/30">
-                        <div className="absolute top-0 right-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none" />
-                        <div className="relative z-10 max-w-2xl text-right">
-                            <h2 className="text-4xl lg:text-6xl font-black text-white mb-8 leading-tight">
-                                جاهز لـتطوير تجربة النقل في مدرستك؟
-                            </h2>
-                            <p className="text-xl text-white/60 font-medium mb-12">
-                                انضم إلى مئات المدارس التي واكبت العصر الرقمي
-                                وضمنت سلامة طلابها مع مسارات واصل.
-                            </p>
-                            <div className="flex flex-col sm:flex-row items-center gap-6">
-                                <Link
-                                    href={route("subscription")}
-                                    className="w-full sm:w-auto px-12 py-5 bg-brand-yellow text-brand-dark text-xl font-black rounded-2xl shadow-xl shadow-brand-yellow/20 hover:shadow-brand-yellow/40 hover:-translate-y-1 transition-all"
-                                >
-                                    اشترك الآن
-                                </Link>
-                                <a
-                                    href="https://wa.me/96879967769"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-lg font-bold text-white hover:text-brand-yellow transition-colors underline underline-offset-8"
-                                >
-                                    تحدث مع خبير مبيعات
-                                </a>
+            {/* --- FAQ Section --- */}
+            <section id="faq" className={`py-24 ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+                <div className="max-w-4xl mx-auto px-6">
+                    <div className="text-center mb-16">
+                        <h2 className="text-xs font-black text-brand-yellow uppercase tracking-[0.2em] mb-4">{isAr ? "دعم وإجابات" : "Support & Answers"}</h2>
+                        <h3 className={`text-3xl lg:text-4xl font-black ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "الأسئلة الشائعة" : "Frequently Asked Questions"}</h3>
+                    </div>
+                    <div className="space-y-4">
+                        {[
+                            { q: isAr ? "ما هي مسارات واصل؟" : "What is Masarat Wasel?", a: isAr ? "مسارات واصل هي منصة متكاملة لإدارة النقل المدرسي في سلطنة عمان، تربط المدارس وأولياء الأمور والسائقين في منصة واحدة آمنة وذكية." : "Masarat Wasel is an integrated school transport management platform in Oman, connecting schools, parents, and drivers in one safe and smart platform." },
+                            { q: isAr ? "كيف يمكنني الاشتراك؟" : "How can I subscribe?", a: isAr ? "يمكنك الاشتراك بسهولة عبر النقر على زر 'اشترك الآن' وملء النموذج. سيتواصل معك فريقنا خلال 24 ساعة لإتمام التفعيل." : "You can subscribe easily by clicking the 'Subscribe Now' button and filling out the form. Our team will contact you within 24 hours to complete activation." },
+                            { q: isAr ? "هل يدعم النظام اللغة العربية؟" : "Does the system support Arabic?", a: isAr ? "نعم، يدعم النظام اللغتين العربية والإنجليزية بشكل كامل مع دعم الاتجاه من اليمين لليسار (RTL)." : "Yes, the system fully supports both Arabic and English with complete RTL support." },
+                            { q: isAr ? "ما هي باقات الاشتراك المتاحة؟" : "What subscription plans are available?", a: isAr ? "نقدم ثلاث باقات: الأساسية (حتى 5 حافلات)، والمتقدمة (حتى 15 حافلة)، والمؤسسات (غير محدودة). تواصل معنا لمعرفة المزيد." : "We offer three plans: Basic (up to 5 buses), Advanced (up to 15 buses), and Enterprise (unlimited). Contact us for more details." },
+                        ].map((faq, i) => (
+                            <div key={i} className={`p-8 rounded-3xl border ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-100'}`}>
+                                <h4 className={`text-lg font-black mb-3 ${theme === 'dark' ? 'text-brand-yellow' : 'text-brand-navy'}`}>{faq.q}</h4>
+                                <p className={`font-medium leading-relaxed ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>{faq.a}</p>
                             </div>
-                        </div>
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{
-                                duration: 20,
-                                repeat: Infinity,
-                                ease: "linear",
-                            }}
-                            className="absolute -bottom-32 -left-32 w-96 h-96 bg-brand-yellow/10 rounded-full blur-[80px]"
-                        />
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* --- Guide, Privacy, Terms, Cookies Sections --- */}
+            <section id="guide" className={`py-16 border-t ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
+                <div className="max-w-4xl mx-auto px-6">
+                    <h3 className={`text-2xl font-black mb-6 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "دليل الاستخدام" : "User Guide"}</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[
+                            { step: "1", title: isAr ? "سجّل مدرستك" : "Register Your School", desc: isAr ? "أكمل نموذج الاشتراك بمعلومات مدرستك وانتظر تأكيد التفعيل خلال 24 ساعة." : "Complete the subscription form with your school information and wait for activation confirmation within 24 hours." },
+                            { step: "2", title: isAr ? "أضف الحافلات والسائقين" : "Add Buses & Drivers", desc: isAr ? "قم برفع بيانات الحافلات والسائقين عبر لوحة التحكم، وسيساعدك فريقنا في ذلك." : "Upload bus and driver data through the dashboard, and our team will assist you." },
+                            { step: "3", title: isAr ? "ابدأ التتبع الآن" : "Start Tracking Now", desc: isAr ? "شارك رابط التطبيق مع أولياء الأمور وابدأ فوراً في متابعة رحلات الطلاب بشكل آمن." : "Share the app link with parents and immediately start monitoring student trips safely." },
+                        ].map((s, i) => (
+                            <div key={i} className={`p-6 rounded-2xl border flex flex-col gap-3 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'}`}>
+                                <div className="w-10 h-10 rounded-xl bg-brand-yellow text-brand-dark font-black flex items-center justify-center text-xl">{s.step}</div>
+                                <h4 className={`font-black text-lg ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>{s.title}</h4>
+                                <p className={`text-sm font-medium leading-relaxed ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{s.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <section id="privacy" className={`py-16 border-t ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'}`}>
+                <div className="max-w-4xl mx-auto px-6">
+                    <h3 className={`text-2xl font-black mb-6 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "سياسة الخصوصية" : "Privacy Policy"}</h3>
+                    <div className={`space-y-4 font-medium leading-relaxed ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                        <p>{isAr ? "تلتزم مسارات واصل بحماية خصوصية جميع مستخدميها. نجمع البيانات اللازمة فقط لتشغيل خدمات النقل وتحسينها، ولا نشاركها مع أطراف ثالثة إلا بموافقتك الصريحة." : "Masarat Wasel is committed to protecting the privacy of all users. We only collect data necessary to operate and improve transport services, and we do not share it with third parties without your explicit consent."}</p>
+                        <p>{isAr ? "نستخدم أعلى معايير التشفير (SSL/TLS) لحماية بياناتك أثناء النقل والتخزين. يحق لك طلب حذف بياناتك في أي وقت عبر التواصل مع فريق الدعم." : "We use the highest encryption standards (SSL/TLS) to protect your data during transmission and storage. You have the right to request deletion of your data at any time by contacting the support team."}</p>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>{isAr ? "آخر تحديث: مايو 2024 | للاستفسار: msaratwasel@gmail.com" : "Last updated: May 2024 | Inquiries: msaratwasel@gmail.com"}</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="terms" className={`py-16 border-t ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
+                <div className="max-w-4xl mx-auto px-6">
+                    <h3 className={`text-2xl font-black mb-6 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "شروط الخدمة" : "Terms of Service"}</h3>
+                    <div className={`space-y-4 font-medium leading-relaxed ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                        <p>{isAr ? "باستخدامك لمنصة مسارات واصل فإنك توافق على الشروط التالية: يجب استخدام المنصة لأغراض تعليمية ونقل مشروعة فقط. لا يسمح بمشاركة بيانات تسجيل الدخول مع أطراف غير مصرح لها." : "By using the Masarat Wasel platform, you agree to the following terms: The platform must be used for legitimate educational and transport purposes only. Sharing login credentials with unauthorized parties is not permitted."}</p>
+                        <p>{isAr ? "تحتفظ مسارات واصل بحق تحديث هذه الشروط في أي وقت. سيتم إخطار المستخدمين بأي تغييرات جوهرية عبر البريد الإلكتروني المسجل." : "Masarat Wasel reserves the right to update these terms at any time. Users will be notified of any material changes via their registered email address."}</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="cookies" className={`py-16 border-t ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'}`}>
+                <div className="max-w-4xl mx-auto px-6">
+                    <h3 className={`text-2xl font-black mb-6 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "سياسة ملفات الارتباط" : "Cookies Policy"}</h3>
+                    <div className={`space-y-4 font-medium leading-relaxed ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                        <p>{isAr ? "نستخدم ملفات الارتباط (Cookies) لتحسين تجربة الاستخدام وتذكر تفضيلاتك مثل اللغة والوضع اللوني. يمكنك التحكم في ملفات الارتباط عبر إعدادات متصفحك في أي وقت." : "We use cookies to improve the user experience and remember your preferences such as language and color mode. You can manage cookies through your browser settings at any time."}</p>
+                        <p>{isAr ? "لا نستخدم ملفات الارتباط لأغراض إعلانية أو لمشاركة بياناتك مع أطراف ثالثة." : "We do not use cookies for advertising purposes or to share your data with third parties."}</p>
                     </div>
                 </div>
             </section>
 
             {/* --- Footer --- */}
-            <footer className="pt-24 pb-12 bg-white border-t border-slate-100">
+            <footer className={`pt-24 pb-12 border-t ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
                 <div className="max-w-7xl mx-auto px-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-20 text-right">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-20">
                         <div>
-                            <Link
-                                href="/"
-                                className="flex items-center gap-3 mb-8"
-                            >
-                                <img
-                                    src="/assets/images/masarat-wasel-logo.jpg"
-                                    alt="Logo"
-                                    className="h-10 w-10 object-contain rounded-xl"
-                                />
-                                <span className="text-xl font-black text-brand-navy">
-                                    مسارات واصل
+                            <Link href="/" className="flex items-center gap-3 mb-8">
+                                <img src="/assets/images/masarat-wasel-logo.jpg" alt="Logo" className="h-10 w-10 object-contain rounded-xl" />
+                                <span className={`text-xl font-black ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>
+                                    {isAr ? "مسارات واصل" : "Masarat Wasel"}
                                 </span>
                             </Link>
-                            <p className="text-slate-500 font-medium leading-relaxed mb-8">
-                                نحن نهتم برحلة طفلك كما تهتم أنت تماماً. حلول
-                                ذكية للنقل المدرسي الذكي.
+                            <p className={`font-medium leading-relaxed mb-8 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                                {isAr ? "حلول النقل الذكي والأمن المتكامل بسلطنة عمان." : "Smart and safe integrated transport solutions in Oman."}
                             </p>
                             <div className="flex items-center gap-4">
-                                {[Twitter, Facebook, Instagram, Linkedin].map(
-                                    (Icon, i) => (
-                                        <a
-                                            key={i}
-                                            href="#"
-                                            className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-brand-navy hover:text-white transition-all shadow-sm"
-                                        >
-                                            <Icon size={18} />
-                                        </a>
-                                    ),
-                                )}
+                                <a href="https://www.instagram.com/wasel_company?igsh=MXhvOXhxN3l0c2Zvdw==" target="_blank" rel="noopener noreferrer" className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${theme === 'dark' ? 'bg-slate-800 text-slate-300 hover:bg-brand-yellow hover:text-brand-dark' : 'bg-slate-50 text-slate-400 hover:bg-brand-navy hover:text-white'}`}><Instagram size={18} /></a>
+                                <a href="#" target="_blank" rel="noopener noreferrer" className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all font-black ${theme === 'dark' ? 'bg-slate-800 text-slate-300 hover:bg-brand-yellow hover:text-brand-dark' : 'bg-slate-50 text-slate-400 hover:bg-brand-navy hover:text-white'}`}>X</a>
+                                <a href="https://www.linkedin.com/in/msarat-wasel-company-4a244b3b2" target="_blank" rel="noopener noreferrer" className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${theme === 'dark' ? 'bg-slate-800 text-slate-300 hover:bg-brand-yellow hover:text-brand-dark' : 'bg-slate-50 text-slate-400 hover:bg-brand-navy hover:text-white'}`}><Linkedin size={18} /></a>
+                                <a href="https://www.facebook.com/share/1F7AL1CXs6/" target="_blank" rel="noopener noreferrer" className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${theme === 'dark' ? 'bg-slate-800 text-slate-300 hover:bg-brand-yellow hover:text-brand-dark' : 'bg-slate-50 text-slate-400 hover:bg-brand-navy hover:text-white'}`}><Facebook size={18} /></a>
                             </div>
                         </div>
 
                         <div>
-                            <h4 className="text-lg font-black text-brand-navy mb-8">
-                                الروابط السريعة
+                            <h4 className={`text-lg font-black mb-8 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>
+                                {isAr ? "عن المنصة" : "Platform"}
                             </h4>
                             <ul className="space-y-4">
-                                {["عن المنصة", "المميزات", "قصص النجاح"].map(
-                                    (item, i) => (
-                                        <li key={i}>
-                                            <a
-                                                href="#"
-                                                className="text-slate-500 font-bold hover:text-brand-yellow transition-colors"
-                                            >
-                                                {item}
-                                            </a>
-                                        </li>
-                                    ),
-                                )}
+                                <li>
+                                    <a href="#about" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>
+                                        {isAr ? "من نحن" : "About Us"}
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#features" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>
+                                        {isAr ? "المميزات" : "Features"}
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#success" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>
+                                        {isAr ? "قصص النجاح" : "Success Stories"}
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#events" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>
+                                        {isAr ? "الفعاليات" : "Events"}
+                                    </a>
+                                </li>
                             </ul>
                         </div>
 
                         <div>
-                            <h4 className="text-lg font-black text-brand-navy mb-8">
-                                الدعم والمساعدة
+                            <h4 className={`text-lg font-black mb-8 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>
+                                {isAr ? "الدعم والسياسات" : "Support & Policies"}
                             </h4>
                             <ul className="space-y-4">
                                 <li>
-                                    <a href="https://wa.me/96879967769" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-500 font-bold hover:text-brand-yellow transition-colors dir-ltr" dir="ltr">
-                                        <MessageCircle className="w-5 h-5 text-[#f5b800]" />
+                                    <a href="#faq" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>{isAr ? "الأسئلة الشائعة" : "FAQ"}</a>
+                                </li>
+                                <li>
+                                    <a href="#guide" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>{isAr ? "دليل الاستخدام" : "User Guide"}</a>
+                                </li>
+                                <li>
+                                    <a href="#privacy" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>{isAr ? "سياسة الخصوصية" : "Privacy Policy"}</a>
+                                </li>
+                                <li>
+                                    <a href="#terms" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>{isAr ? "شروط الخدمة" : "Terms of Service"}</a>
+                                </li>
+                                <li>
+                                    <a href="#cookies" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>{isAr ? "ملفات الارتباط" : "Cookies Policy"}</a>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h4 className={`text-lg font-black mb-8 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>
+                                {isAr ? "تواصل معنا" : "Contact Us"}
+                            </h4>
+                            <ul className="space-y-4">
+                                <li>
+                                    <a href="https://wa.me/96879967769" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 font-bold transition-colors dir-ltr ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`} dir="ltr">
+                                        <MessageCircle className="w-5 h-5 text-brand-yellow" />
                                         <span>+968 7996 7769</span>
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="mailto:msaratwasel@gmail.com" className="flex items-center gap-2 text-slate-500 font-bold hover:text-brand-yellow transition-colors break-all">
-                                        <Mail className="w-5 h-5 text-[#f5b800] flex-shrink-0" />
+                                    <a href="mailto:msaratwasel@gmail.com" className={`flex items-center gap-2 font-bold transition-colors break-all ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>
+                                        <Mail className="w-5 h-5 text-brand-yellow flex-shrink-0" />
                                         <span>msaratwasel@gmail.com</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a
-                                        href="#"
-                                        className="text-slate-500 font-bold hover:text-brand-yellow transition-colors"
-                                    >
-                                        الأسئلة الشائعة
-                                    </a>
-                                </li>
-                                <li>
-                                    <a
-                                        href="#"
-                                        className="text-slate-500 font-bold hover:text-brand-yellow transition-colors"
-                                    >
-                                        دليل الاستخدام
-                                    </a>
-                                </li>
-                                <li>
-                                    <a
-                                        href="#"
-                                        className="text-slate-500 font-bold hover:text-brand-yellow transition-colors"
-                                    >
-                                        سياسة الخصوصية
                                     </a>
                                 </li>
                             </ul>
                         </div>
-
-                        <div>
-                            <h4 className="text-lg font-black text-brand-navy mb-8">
-                                اشترك في النشرة
-                            </h4>
-                            <p className="text-sm text-slate-400 font-bold mb-6 italic">
-                                احصل على آخر التحديثات مباشرة في بريدك
-                            </p>
-                            <form className="flex gap-2">
-                                <input
-                                    type="email"
-                                    placeholder="بريدك الإلكتروني"
-                                    className="flex-1 bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-brand-navy"
-                                />
-                                <button className="bg-brand-navy text-white px-5 py-3 rounded-xl font-black text-sm shadow-lg shadow-brand-navy/20">
-                                    انضم
-                                </button>
-                            </form>
-                        </div>
                     </div>
 
-                    <div className="pt-12 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className={`pt-12 border-t flex flex-col md:flex-row justify-between items-center gap-6 ${theme === 'dark' ? 'border-slate-800' : 'border-slate-100'}`}>
                         <div className="text-slate-400 font-bold text-sm">
-                            © 2024 مسارات واصل. جميع الحقوق محفوظة.
-                        </div>
-                        <div className="flex items-center gap-8">
-                            <a
-                                href="#"
-                                className="text-xs font-black text-slate-300 hover:text-brand-navy"
-                            >
-                                شروط الخدمة
-                            </a>
-                            <a
-                                href="#"
-                                className="text-xs font-black text-slate-300 hover:text-brand-navy"
-                            >
-                                ملفات الارتباط
-                            </a>
+                            {isAr ? "© 2024 مسارات واصل. جميع الحقوق محفوظة." : "© 2024 Masarat Wasel. All rights reserved."}
                         </div>
                     </div>
                 </div>
             </footer>
+
+            {/* --- Floating Support Icon (Omani Character) --- */}
+            <a 
+               href="https://wa.me/96879967769" 
+               target="_blank"
+               rel="noreferrer"
+               className={`fixed bottom-8 ${dir === 'rtl' ? 'left-8' : 'right-8'} z-50 group`}
+               title={isAr ? "تحدث مع الدعم الفني" : "Customer Support"}
+            >
+                <div className="relative">
+                    {/* Tooltip */}
+                    <div className={`absolute bottom-full mb-3 ${dir === 'rtl' ? 'left-0' : 'right-0'} px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg ${
+                        theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-brand-navy text-white'
+                    }`}>
+                        {isAr ? "الدعم الفني 💬" : "Support Chat 💬"}
+                    </div>
+                    {/* Pulsing Ring */}
+                    <div className="absolute inset-0 rounded-full bg-brand-yellow/30 animate-ping" />
+                    {/* Avatar Circle */}
+                    <div className={`relative w-16 h-16 rounded-full border-4 border-brand-yellow shadow-2xl overflow-hidden hover:scale-110 transition-transform duration-300 ${
+                        theme === 'dark' ? 'bg-slate-800' : 'bg-white'
+                    }`}>
+                        <img
+                            src="/assets/images/omani-support-avatar.png"
+                            alt={isAr ? "الدعم الفني" : "Support"}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                                // Fallback if image doesn't load
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-brand-navy text-2xl font-black">👨‍💼</div>';
+                            }}
+                        />
+                    </div>
+                </div>
+            </a>
         </div>
     );
 }
 
 // ─── Sub-Components ───────────────────────────────────────
 
-function FeatureCard({ icon, title, desc, color }: any) {
+function FeatureCard({ icon, title, desc, color, theme }: any) {
+    const isDark = theme === 'dark';
     const colorMap: any = {
-        blue: "text-blue-500 bg-blue-50",
-        emerald: "text-emerald-500 bg-emerald-50",
-        brand: "text-brand-navy bg-slate-50",
-        orange: "text-orange-500 bg-orange-50",
-        purple: "text-purple-500 bg-purple-50",
-        rose: "text-rose-500 bg-rose-50",
+        blue: isDark ? "text-blue-400 bg-blue-900/30" : "text-blue-500 bg-blue-50",
+        emerald: isDark ? "text-emerald-400 bg-emerald-900/30" : "text-emerald-500 bg-emerald-50",
+        brand: isDark ? "text-brand-yellow bg-slate-700" : "text-brand-navy bg-slate-50",
+        orange: isDark ? "text-orange-400 bg-orange-900/30" : "text-orange-500 bg-orange-50",
+        purple: isDark ? "text-purple-400 bg-purple-900/30" : "text-purple-500 bg-purple-50",
+        rose: isDark ? "text-rose-400 bg-rose-900/30" : "text-rose-500 bg-rose-50",
     };
 
     return (
         <motion.div
             whileHover={{ y: -8 }}
-            className="group p-10 bg-white border border-slate-100 rounded-[2.5rem] transition-all duration-300 hover:shadow-2xl hover:shadow-slate-200/50 hover:border-brand-yellow/20"
+            className={`group p-10 border rounded-[2.5rem] transition-all duration-300 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-brand-yellow/50 shadow-black/30 hover:shadow-2xl' : 'bg-white border-slate-100 hover:shadow-2xl hover:shadow-slate-200/50 hover:border-brand-yellow/20'}`}
         >
             <div
                 className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-8 transition-transform group-hover:scale-110 group-hover:rotate-3 duration-300 ${colorMap[color] || colorMap.brand}`}
             >
                 {icon}
             </div>
-            <h4 className="text-2xl font-black text-brand-navy mb-4">
+            <h4 className={`text-2xl font-black mb-4 ${isDark ? 'text-white' : 'text-brand-navy'}`}>
                 {title}
             </h4>
-            <p className="text-slate-500 font-medium leading-relaxed">{desc}</p>
+            <p className={`font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{desc}</p>
         </motion.div>
     );
 }

@@ -958,13 +958,15 @@ class DailyTripApiController extends Controller
             return response()->json(['message' => 'غير مصرح لك بإرسال تنبيهات الاقتراب لهذا الباص.'], 403);
         }
 
-        // 1. تحديث الحالة في قاعدة البيانات إلى "waiting"
+        // 1. تحديث الحالة في قاعدة البيانات إلى "waiting" (داخل Transaction لضمان تكامل البيانات)
         $trip = $this->getActiveTrip($bus);
         if ($trip) {
-            TripAttendance::updateOrCreate(
-                ['trip_id' => $trip->id, 'student_id' => $student->id],
-                ['status' => 'waiting']
-            );
+            DB::transaction(function () use ($trip, $student) {
+                TripAttendance::updateOrCreate(
+                    ['trip_id' => $trip->id, 'student_id' => $student->id],
+                    ['status' => 'waiting']
+                );
+            });
         }
 
         // 2. إرسال الإشعار لولي الأمر (Push Notification)

@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ChatController extends Controller
 {
@@ -248,15 +249,19 @@ class ChatController extends Controller
         if (! $conversation) {
             $receiver = User::findOrFail($receiverId);
 
-            $conversation = Conversation::create([
-                'school_id' => $user->getSchoolId() ?? $receiver->getSchoolId(),
-                'type'      => 'private',
-            ]);
+            $conversation = DB::transaction(function () use ($user, $receiver, $receiverId) {
+                $conv = Conversation::create([
+                    'school_id' => $user->getSchoolId() ?? $receiver->getSchoolId(),
+                    'type'      => 'private',
+                ]);
 
-            $conversation->participants()->attach([
-                $user->id       => ['role' => $user->role],
-                $receiverId     => ['role' => $receiver->role],
-            ]);
+                $conv->participants()->attach([
+                    $user->id       => ['role' => $user->role],
+                    $receiverId     => ['role' => $receiver->role],
+                ]);
+
+                return $conv;
+            });
         }
 
         $conversation->load(['participants', 'lastMessage.sender', 'chatParticipants']);
