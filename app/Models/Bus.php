@@ -116,7 +116,7 @@ class Bus extends Model
      */
     public function activeTrip(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
-        return $this->hasOne(Trip::class)->where('status', 'in_progress')->latestOfMany();
+        return $this->hasOne(Trip::class)->whereIn('status', ['in_progress', 'started'])->latestOfMany();
     }
 
     /**

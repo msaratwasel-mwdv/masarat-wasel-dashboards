@@ -234,6 +234,9 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
                                             if (notification.data?.bus_request_id) {
                                                 router.visit('/admin/bus-requests');
                                                 setIsOpen(false);
+                                            } else if (notification.data?.location_request_id || notification.data?.request_id || notification.type === 'location_request' || notification.data?.type === 'location_request') {
+                                                router.visit('/school/location-requests');
+                                                setIsOpen(false);
                                             }
                                         }}
                                     >

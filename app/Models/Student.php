@@ -38,6 +38,23 @@ class Student extends Model
         'latitude',
         'longitude',
     ];
+    
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted()
+    {
+        static::saving(function ($student) {
+            // If the primary latitude or longitude is changed, sync to directional fields
+            if ($student->isDirty(['latitude', 'longitude'])) {
+                $student->forth_latitude = $student->latitude;
+                $student->forth_longitude = $student->longitude;
+                $student->back_latitude = $student->latitude;
+                $student->back_longitude = $student->longitude;
+            }
+        });
+    }
+
 
     /**
      * The attributes that should be appended to the model's array form.

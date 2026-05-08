@@ -93,6 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- طلبات الغياب ---
     Route::post('/parent/absence-requests', [\App\Http\Controllers\Api\ParentController::class, 'storeAbsenceRequest']);
     Route::get('/parent/absence-requests', [\App\Http\Controllers\Api\ParentController::class, 'absenceRequestsHistory']);
+    Route::get('/parent/location-requests', [\App\Http\Controllers\Api\ParentController::class, 'locationRequestsHistory']);
 
     // --- المشرف الميداني ---
     Route::get('/field/buses', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'buses']);

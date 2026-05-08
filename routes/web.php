@@ -399,6 +399,12 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         // School Settings
         Route::post('settings/school', [\App\Http\Controllers\School\SchoolSettingsController::class, 'update'])->name('settings.school.update');
 
+        // 8. طلبات تغيير الموقع
+        Route::get('location-requests', [\App\Http\Controllers\Admin\LocationRequestController::class, 'index'])->name('location-requests.index');
+        Route::post('location-requests/{id}/approve', [\App\Http\Controllers\Admin\LocationRequestController::class, 'approve'])->name('location-requests.approve');
+        Route::post('location-requests/{id}/reject', [\App\Http\Controllers\Admin\LocationRequestController::class, 'reject'])->name('location-requests.reject');
+
+
     });
 
 // ⚪ ثالثاً: روابط الملف الشخصي

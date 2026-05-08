@@ -334,6 +334,15 @@ class User extends Authenticatable
     // ── FCM ─────────────────────────────────────────────
 
     /**
+     * Accessor for fcm_token.
+     * NOTE: fcm_token does NOT exist on the users table.
+     */
+    public function getFcmTokenAttribute(): ?string
+    {
+        return $this->routeNotificationForFcm(null);
+    }
+
+    /**
      * Route notifications for the FCM channel.
      * NOTE: fcm_token does NOT exist on the users table.
      *       It lives on each extension table (drivers.fcm_token, guardians.fcm_token, etc.)

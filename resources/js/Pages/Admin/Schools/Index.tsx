@@ -494,7 +494,7 @@ export default function SchoolsIndex({ schools }: Props) {
                                                         ...prev,
                                                         latitude: lat,
                                                         longitude: lng,
-                                                        address: address || prev.address
+                                                        address: prev.address || address
                                                     }));
                                                 }}
                                             />

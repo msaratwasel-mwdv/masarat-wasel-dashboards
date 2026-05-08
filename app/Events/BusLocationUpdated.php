@@ -39,6 +39,7 @@ class BusLocationUpdated implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         $driver = $this->bus->driver;
+        $activeTrip = $this->bus->activeTrip;
 
         return [
             'bus_id'            => $this->bus->id,
@@ -50,6 +51,9 @@ class BusLocationUpdated implements ShouldBroadcastNow
             'trip_status'       => $this->bus->trip_status,
             'speed_kmh'         => cache()->get('bus_speed_'.$this->bus->id, 0),
             'students_on_board' => $this->studentsOnBoard,
+            'total_students'    => $this->bus->students_count,
+            'departure_time'    => $activeTrip ? $activeTrip->departure_time?->toIso8601String() : null,
+            'eta_minutes'       => cache()->get('bus_eta_'.$this->bus->id),
             'driver' => $driver ? [
                 'name' => $driver->name,
                 'image_url' => $driver->image_url ? url($driver->image_url) : 'https://i.pravatar.cc/150?u=' . $driver->id,
