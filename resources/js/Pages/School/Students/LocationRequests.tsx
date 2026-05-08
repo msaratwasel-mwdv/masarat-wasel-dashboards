@@ -5,6 +5,7 @@ import { useTheme } from "@/Contexts/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, User, FileText, CheckCircle, XCircle, Clock, ChevronRight, AlertCircle, Map as MapIcon, Info } from "lucide-react";
 import MiniMap from "@/Components/MiniMap";
+import LocationComparisonMap from "@/Components/LocationComparisonMap";
 import SearchableSelect from "@/Components/SearchableSelect";
 import {
     DS_card,
@@ -32,6 +33,10 @@ import {
     DS_statLabel,
     DS_statValue2
 } from "@/lib/DS";
+import { APIProvider } from '@vis.gl/react-google-maps';
+
+const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
 
 interface Student {
     id: number;
@@ -151,7 +156,9 @@ export default function LocationRequests({ auth, locationRequests, buses = [], s
     };
 
     return (
-        <SchoolAuthenticatedLayout
+        <APIProvider apiKey={API_KEY || ''}>
+            <SchoolAuthenticatedLayout
+
             user={auth.user}
             header={
                 <h2 className={DS_pageTitle}>
@@ -345,131 +352,223 @@ export default function LocationRequests({ auth, locationRequests, buses = [], s
             {/* Process Modal */}
             <AnimatePresence>
                 {processingRequest && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0f2044]/60 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#0f2044]/80 backdrop-blur-md">
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            initial={{ opacity: 0, scale: 0.95, y: 30 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white dark:bg-[#1a2845] w-full max-w-md rounded-[22px] shadow-2xl overflow-hidden border border-white/10"
+                            exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                            className="bg-white dark:bg-[#1a2845] w-full max-w-4xl rounded-[32px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] overflow-hidden border border-white/20 flex flex-col max-h-[90vh]"
                         >
-                            <div className={DS_modalHeader(isRtl)}>
-                                <div className="flex items-center gap-3">
-                                    <div className={DS_modalHeaderAccent} />
-                                    <h3 className={DS_modalHeaderTitle}>
-                                        {action === 'approve' ? (isRtl ? 'الموافقة على تغيير الموقع' : 'Approve Location Change') : (isRtl ? 'رفض الطلب' : 'Reject Request')}
-                                    </h3>
+                            {/* Modal Header */}
+                            <div className="px-8 py-6 bg-[#0f2044] text-white flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-1.5 h-8 bg-[#f5b800] rounded-full" />
+                                    <div>
+                                        <h3 className="text-xl font-black uppercase tracking-tight">
+                                            {action === 'approve' 
+                                                ? (isRtl ? 'الموافقة على تغيير الموقع' : 'Approve Location Change') 
+                                                : (isRtl ? 'رفض الطلب' : 'Reject Request')}
+                                        </h3>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
+                                            {isRtl ? 'مراجعة وتأكيد البيانات الجغرافية' : 'Review and verify geospatial data'}
+                                        </p>
+                                    </div>
                                 </div>
-                                <button onClick={closeProcessModal} className={DS_modalClose}>
-                                    <XCircle className="w-5 h-5" />
+                                <button onClick={closeProcessModal} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                    <XCircle className="w-6 h-6" />
                                 </button>
                             </div>
 
-                            <div className={DS_modalBody}>
-                                <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#0f2044]/5 dark:bg-[#0f2044]/20 border border-[#0f2044]/10 dark:border-[#243460]">
-                                    <div className={`p-2 rounded-xl ${action === 'approve' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}>
-                                        <AlertCircle className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-[#0f2044] dark:text-white mb-1">
-                                            {(isRtl ? 'مراجعة الطلب' : 'Review Request')}
-                                        </p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                                            {action === 'approve' 
-                                                ? (isRtl ? 'هل توافق على تغيير موقع منزل الطالب' : 'Are you sure you want to approve the location change for') 
-                                                : (isRtl ? 'هل تريد رفض طلب تغيير موقع منزل الطالب' : 'Are you sure you want to reject the location change for')} <strong>{processingRequest?.student?.full_name || (isRtl ? 'هذا الطالب' : 'this student')}</strong>؟
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {action === 'approve' && (
-                                    <>
-                                        <div className="mt-4 grid grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-gray-400 uppercase">{(isRtl ? 'الموقع الحالي' : 'Current')}</p>
-                                                {processingRequest.old_latitude && processingRequest.old_longitude ? (
-                                                    <MiniMap lat={processingRequest.old_latitude} lng={processingRequest.old_longitude} width={180} height={120} />
-                                                ) : (
-                                                    <div className="w-[180px] h-[120px] rounded-2xl bg-gray-50 flex items-center justify-center text-xs text-gray-400">
-                                                        {(isRtl ? 'غير محدد' : 'Not set')}
-                                                    </div>
-                                                )}
+                            {/* Modal Body - Scrollable */}
+                            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                    
+                                    {/* Left Column: Details & Decision */}
+                                    <div className="lg:col-span-5 space-y-6">
+                                        <div className="flex items-center gap-4 p-5 rounded-2xl bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/10">
+                                            <div className="w-12 h-12 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                                <User className="w-6 h-6" />
                                             </div>
-                                            <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-emerald-500 uppercase">{(isRtl ? 'الموقع المقترح' : 'Proposed')}</p>
-                                                <MiniMap lat={processingRequest.new_latitude} lng={processingRequest.new_longitude} width={180} height={120} />
-                                                {processingRequest.new_address && (
-                                                    <div className="mt-2 p-2 rounded bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
-                                                        <p className="text-[10px] text-gray-500 font-bold mb-1">{(isRtl ? 'العنوان النصي' : 'Textual Address')}</p>
-                                                        <p className="text-[11px] text-gray-700 dark:text-gray-300 leading-tight">{processingRequest.new_address}</p>
-                                                    </div>
-                                                )}
+                                            <div>
+                                                <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                                                    {isRtl ? 'بيانات الطالب' : 'Student Data'}
+                                                </p>
+                                                <p className="text-lg font-black text-[#0f2044] dark:text-white leading-tight">
+                                                    {processingRequest?.student?.full_name}
+                                                </p>
                                             </div>
                                         </div>
 
-                                        <div className="mt-6 space-y-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10 dark:bg-amber-500/10 dark:border-amber-500/20">
-                                            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-2">
-                                                <Info className="w-4 h-4" />
-                                                <p className="text-xs font-bold">{(isRtl ? 'تخصيص الحافلات (إلزامي)' : 'Bus Assignment (Mandatory)')}</p>
-                                            </div>
-                                            
-                                            <div className="grid grid-cols-1 gap-4">
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 block uppercase">{(isRtl ? 'حافلة الذهاب (الصباح)' : 'Morning Bus (Forth)')}</label>
-                                                    <SearchableSelect
-                                                        options={buses.map(b => ({ id: b.id, label: `${isRtl ? 'حافلة' : 'Bus'} ${b.bus_number} (${b.plate_number})` }))}
-                                                        value={forthBusId}
-                                                        onChange={setForthBusId}
-                                                        placeholder={isRtl ? 'اختر حافلة الذهاب' : 'Select Morning Bus'}
+                                        {action === 'approve' && (
+                                            <>
+                                                {/* Parent's Written Address */}
+                                                <div className="p-6 rounded-3xl bg-[#f5b800]/5 border-2 border-[#f5b800]/20 shadow-sm relative overflow-hidden group">
+                                                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                                                        <FileText className="w-12 h-12 text-[#f5b800]" />
+                                                    </div>
+                                                    <div className="relative z-10">
+                                                        <div className="flex items-center gap-2 mb-3">
+                                                            <FileText className="w-4 h-4 text-[#f5b800]" />
+                                                            <span className="text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase tracking-widest">
+                                                                {isRtl ? 'الوصف النصي من ولي الأمر' : 'Guardian Written Description'}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm font-bold text-[#0f2044] dark:text-white leading-relaxed">
+                                                            {processingRequest.new_address || (isRtl ? 'لم يكتب أي وصف نصي' : 'No written description provided')}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Bus Assignment - Critical Section */}
+                                                <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-[#243460]">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                        <h4 className="text-xs font-black text-[#0f2044] dark:text-white uppercase">
+                                                            {isRtl ? 'تخصيst الحافلات الجديد' : 'New Bus Assignment'}
+                                                        </h4>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 gap-4">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-tighter flex justify-between">
+                                                                <span>{isRtl ? 'حافلة الذهاب' : 'Morning Bus'}</span>
+                                                                {processingRequest.student?.forth_bus_id && <span className="text-blue-500">{isRtl ? 'الحالية' : 'Current'}: {processingRequest.student.forth_bus_id}</span>}
+                                                            </label>
+                                                            <SearchableSelect
+                                                                options={buses.map(b => ({ id: b.id, label: `${isRtl ? 'حافلة' : 'Bus'} ${b.bus_number} (${b.plate_number})` }))}
+                                                                value={forthBusId}
+                                                                onChange={setForthBusId}
+                                                                placeholder={isRtl ? 'اختر حافلة الذهاب' : 'Select Morning Bus'}
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-tighter flex justify-between">
+                                                                <span>{isRtl ? 'حافلة العودة' : 'Afternoon Bus'}</span>
+                                                                {processingRequest.student?.back_bus_id && <span className="text-blue-500">{isRtl ? 'الحالية' : 'Current'}: {processingRequest.student.back_bus_id}</span>}
+                                                            </label>
+                                                            <SearchableSelect
+                                                                options={buses.map(b => ({ id: b.id, label: `${isRtl ? 'حافلة' : 'Bus'} ${b.bus_number} (${b.plate_number})` }))}
+                                                                value={backBusId}
+                                                                onChange={setBackBusId}
+                                                                placeholder={isRtl ? 'اختر حافلة العودة' : 'Select Afternoon Bus'}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/10">
+                                                        <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold leading-relaxed">
+                                                            <Info className="w-3.5 h-3.5 inline mr-1" />
+                                                            {isRtl 
+                                                                ? 'عند الموافقة، سيتم تحديث موقع الطالب فوراً وتغيير حافلاته حسب اختيارك.' 
+                                                                : 'Upon approval, student location and bus assignments will be updated immediately.'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {action === 'reject' && (
+                                            <div className="space-y-4">
+                                                <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-500/5 border border-red-100 dark:border-red-500/10">
+                                                    <label className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase mb-2 block tracking-widest">
+                                                        {isRtl ? 'سبب الرفض (سيصل لولي الأمر)' : 'Rejection Reason (Sent to Guardian)'}
+                                                    </label>
+                                                    <textarea
+                                                        className="w-full bg-white dark:bg-[#1a2845] border border-red-200 dark:border-red-900/30 rounded-xl p-4 text-sm font-bold text-[#0f2044] dark:text-white focus:ring-2 focus:ring-red-500 outline-none min-h-[150px] transition-all"
+                                                        value={rejectionReason}
+                                                        onChange={(e) => setRejectionReason(e.target.value)}
+                                                        placeholder={isRtl ? 'اكتب هنا سبب الرفض بالتفصيل...' : 'Write detailed reason here...'}
+                                                        required
                                                     />
                                                 </div>
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 block uppercase">{(isRtl ? 'حافلة العودة (المساء)' : 'Afternoon Bus (Back)')}</label>
-                                                    <SearchableSelect
-                                                        options={buses.map(b => ({ id: b.id, label: `${isRtl ? 'حافلة' : 'Bus'} ${b.bus_number} (${b.plate_number})` }))}
-                                                        value={backBusId}
-                                                        onChange={setBackBusId}
-                                                        placeholder={isRtl ? 'اختر حافلة العودة' : 'Select Afternoon Bus'}
-                                                    />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Right Column: Visual Comparison */}
+                                    <div className="lg:col-span-7 flex flex-col gap-4">
+                                        <div className="flex items-center justify-between px-2">
+                                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">
+                                                {isRtl ? 'التحليل الجغرافي للموقع' : 'Geospatial Location Analysis'}
+                                            </h4>
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+                                                    <span className="text-[10px] font-bold text-gray-500">{isRtl ? 'الموقع السابق' : 'Former'}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-[#f5b800]" />
+                                                    <span className="text-[10px] font-bold text-[#f5b800]">{isRtl ? 'الموقع الجديد' : 'New'}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                    </>
-                                )}
 
-                                {action === 'reject' && (
-                                    <div className="mt-4">
-                                        <label className={DS_labelCls}>{(isRtl ? 'سبب الرفض' : 'Rejection Reason')}</label>
-                                        <textarea
-                                            className={`${DS_inputCls} min-h-[100px] py-3`}
-                                            value={rejectionReason}
-                                            onChange={(e) => setRejectionReason(e.target.value)}
-                                            placeholder={(isRtl ? 'أدخل سبب الرفض هنا...' : 'Enter reason for rejection...')}
-                                            required
+                                        <LocationComparisonMap 
+                                            oldLat={processingRequest.old_latitude}
+                                            oldLng={processingRequest.old_longitude}
+                                            newLat={processingRequest.new_latitude}
+                                            newLng={processingRequest.new_longitude}
+                                            height="450px"
                                         />
-                                    </div>
-                                )}
 
-                                <div className="flex justify-end gap-3 pt-4">
-                                    <button
-                                        onClick={closeProcessModal}
-                                        className={DS_cancelBtn}
-                                        disabled={isProcessing}
-                                    >
-                                        {(isRtl ? 'إلغاء' : 'Cancel')}
-                                    </button>
-                                    <button
-                                        onClick={handleProcess}
-                                        disabled={isProcessing || (action === 'reject' && !rejectionReason.trim()) || (action === 'approve' && (!forthBusId || !backBusId))}
-                                        className={`${DS_submitBtn(isProcessing)} ${action === 'reject' ? 'bg-red-600 hover:bg-red-700' : ''}`}
-                                    >
-                                        {isProcessing ? (isRtl ? 'جاري المعالجة...' : 'Processing...') : (action === 'approve' ? (isRtl ? 'تأكيد الموافقة' : 'Confirm Approve') : (isRtl ? 'تأكيد الرفض' : 'Confirm Reject'))}
-                                    </button>
+                                        {/* Coordinate Breakdown */}
+                                        <div className="grid grid-cols-2 gap-4 mt-2">
+                                            <div className="p-4 rounded-2xl bg-gray-100/50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                                <p className="text-[9px] font-black text-gray-400 uppercase mb-1 tracking-tighter">LATITUDE DELTA</p>
+                                                <p className="text-xs font-mono font-bold text-[#0f2044] dark:text-white">
+                                                    {(processingRequest.new_latitude - processingRequest.old_latitude).toFixed(6)}
+                                                </p>
+                                            </div>
+                                            <div className="p-4 rounded-2xl bg-gray-100/50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                                <p className="text-[9px] font-black text-gray-400 uppercase mb-1 tracking-tighter">LONGITUDE DELTA</p>
+                                                <p className="text-xs font-mono font-bold text-[#0f2044] dark:text-white">
+                                                    {(processingRequest.new_longitude - processingRequest.old_longitude).toFixed(6)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="px-8 py-6 bg-gray-50 dark:bg-[#1a2845]/50 border-t border-gray-100 dark:border-[#243460] flex items-center justify-between">
+                                <button
+                                    onClick={closeProcessModal}
+                                    className="px-6 py-3 rounded-2xl text-sm font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5 transition-all"
+                                    disabled={isProcessing}
+                                >
+                                    {isRtl ? 'إلغاء' : 'Cancel'}
+                                </button>
+                                
+                                <button
+                                    onClick={handleProcess}
+                                    disabled={isProcessing || (action === 'reject' && !rejectionReason.trim()) || (action === 'approve' && (!forthBusId || !backBusId))}
+                                    className={`px-10 py-3 rounded-2xl text-sm font-black uppercase tracking-wider transition-all shadow-xl active:scale-95 flex items-center gap-3 ${
+                                        isProcessing ? 'bg-gray-400' : 
+                                        action === 'approve' ? 'bg-[#f5b800] text-[#0f2044] hover:bg-[#e0a800] shadow-[#f5b800]/20' : 
+                                        'bg-red-600 text-white hover:bg-red-700 shadow-red-600/20'
+                                    }`}
+                                >
+                                    {isProcessing ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                            <span>{isRtl ? 'جاري المعالجة' : 'Processing'}</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {action === 'approve' ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                                            <span>{action === 'approve' ? (isRtl ? 'تأكيد وحفظ' : 'Confirm & Save') : (isRtl ? 'تأكيد الرفض' : 'Confirm Reject')}</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </motion.div>
                     </div>
                 )}
             </AnimatePresence>
         </SchoolAuthenticatedLayout>
+    </APIProvider>
     );
 }
+

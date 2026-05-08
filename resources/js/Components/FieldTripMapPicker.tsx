@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-    APIProvider, 
-    Map, 
-    AdvancedMarker, 
-    useMap, 
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+    APIProvider,
+    Map,
+    AdvancedMarker,
+    useMap,
     useMapsLibrary,
     ControlPosition,
-    MapControl
-} from '@vis.gl/react-google-maps';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, LocateFixed, X, Loader2 } from 'lucide-react';
+    MapControl,
+} from "@vis.gl/react-google-maps";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, MapPin, LocateFixed, X, Loader2 } from "lucide-react";
 
 interface FieldTripMapPickerProps {
     lat: number | null;
@@ -25,29 +25,44 @@ export default function FieldTripMapPicker(props: FieldTripMapPickerProps) {
     if (!API_KEY) {
         return (
             <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 text-sm font-bold">
-                Google Maps API Key is missing in .env (VITE_GOOGLE_MAPS_API_KEY)
+                Google Maps API Key is missing in .env
+                (VITE_GOOGLE_MAPS_API_KEY)
             </div>
         );
     }
 
     return (
-        <APIProvider apiKey={API_KEY} solutionChannel="GMP_GCC_reactgooglemaps_v1">
+        <APIProvider
+            apiKey={API_KEY}
+            solutionChannel="GMP_GCC_reactgooglemaps_v1"
+        >
             <GoogleMapInner {...props} />
         </APIProvider>
     );
 }
 
-function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPickerProps) {
+function GoogleMapInner({
+    lat,
+    lng,
+    onChange,
+    isDark,
+    isRtl,
+}: FieldTripMapPickerProps) {
     const map = useMap();
-    const placesLib = useMapsLibrary('places');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<google.maps.places.AutocompletePrediction[]>([]);
+    const placesLib = useMapsLibrary("places");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<
+        google.maps.places.AutocompletePrediction[]
+    >([]);
     const [isSearching, setIsSearching] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
-    const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
+    const [placesService, setPlacesService] =
+        useState<google.maps.places.PlacesService | null>(null);
 
     const defaultCenter = { lat: 23.5859, lng: 58.4059 }; // Muscat, Oman
-    const [center, setCenter] = useState(lat && lng ? { lat, lng } : defaultCenter);
+    const [center, setCenter] = useState(
+        lat && lng ? { lat, lng } : defaultCenter,
+    );
 
     useEffect(() => {
         if (map && !placesService && placesLib) {
@@ -56,60 +71,80 @@ function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPicke
     }, [map, placesLib]);
 
     // Handle map click
-    const onMapClick = useCallback((e: any) => {
-        if (!e.detail.latLng) return;
-        const { lat: newLat, lng: newLng } = e.detail.latLng;
-        onChange(newLat, newLng);
-        
-        // Reverse geocode to get address
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ location: { lat: newLat, lng: newLng } }, (results, status) => {
-            if (status === 'OK' && results?.[0]) {
-                onChange(newLat, newLng, results[0].formatted_address);
-            }
-        });
-    }, [onChange]);
+    const onMapClick = useCallback(
+        (e: any) => {
+            if (!e.detail.latLng) return;
+            const { lat: newLat, lng: newLng } = e.detail.latLng;
+            onChange(newLat, newLng);
+
+            // Reverse geocode to get address
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode(
+                { location: { lat: newLat, lng: newLng } },
+                (results, status) => {
+                    if (status === "OK" && results?.[0]) {
+                        onChange(newLat, newLng, results[0].formatted_address);
+                    }
+                },
+            );
+        },
+        [onChange],
+    );
 
     // Search Logic
     const handleSearch = async () => {
         if (!searchQuery.trim() || !placesLib || !map) return;
         setIsSearching(true);
-        
+
         const autocompleteService = new placesLib.AutocompleteService();
-        autocompleteService.getPlacePredictions({
-            input: searchQuery,
-            componentRestrictions: { country: ['om', 'ye'] },
-            language: isRtl ? 'ar' : 'en'
-        }, (predictions, status) => {
-            setIsSearching(false);
-            if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-                setSearchResults(predictions);
-            } else {
-                setSearchResults([]);
-            }
-        });
+        autocompleteService.getPlacePredictions(
+            {
+                input: searchQuery,
+                componentRestrictions: { country: ["om", "ye"] },
+                language: isRtl ? "ar" : "en",
+            },
+            (predictions, status) => {
+                setIsSearching(false);
+                if (
+                    status === google.maps.places.PlacesServiceStatus.OK &&
+                    predictions
+                ) {
+                    setSearchResults(predictions);
+                } else {
+                    setSearchResults([]);
+                }
+            },
+        );
     };
 
-    const selectSearchResult = (prediction: google.maps.places.AutocompletePrediction) => {
+    const selectSearchResult = (
+        prediction: google.maps.places.AutocompletePrediction,
+    ) => {
         if (!placesService || !map) return;
 
-        placesService.getDetails({
-            placeId: prediction.place_id,
-            fields: ['geometry', 'formatted_address']
-        }, (place, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
-                const newLat = place.geometry.location.lat();
-                const newLng = place.geometry.location.lng();
-                const address = place.formatted_address;
+        placesService.getDetails(
+            {
+                placeId: prediction.place_id,
+                fields: ["geometry", "formatted_address"],
+            },
+            (place, status) => {
+                if (
+                    status === google.maps.places.PlacesServiceStatus.OK &&
+                    place?.geometry?.location
+                ) {
+                    const newLat = place.geometry.location.lat();
+                    const newLng = place.geometry.location.lng();
+                    const address = place.formatted_address;
 
-                onChange(newLat, newLng, address);
-                setCenter({ lat: newLat, lng: newLng });
-                map.panTo({ lat: newLat, lng: newLng });
-                map.setZoom(15);
-                setSearchResults([]);
-                setSearchQuery(prediction.structured_formatting.main_text);
-            }
-        });
+                    onChange(newLat, newLng, address);
+                    setCenter({ lat: newLat, lng: newLng });
+                    map.panTo({ lat: newLat, lng: newLng });
+                    map.setZoom(15);
+                    setSearchResults([]);
+                    setSearchQuery(prediction.structured_formatting.main_text);
+                }
+            },
+        );
     };
 
     const handleMyLocation = () => {
@@ -123,7 +158,7 @@ function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPicke
                 map.setZoom(15);
                 setIsLocating(false);
             },
-            () => setIsLocating(false)
+            () => setIsLocating(false),
         );
     };
 
@@ -141,14 +176,26 @@ function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPicke
                             if (e.target.value.length > 2) handleSearch();
                             else setSearchResults([]);
                         }}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                        placeholder={isRtl ? 'ابحث عن موقع في عُمان...' : 'Search location in Oman...'}
+                        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                        placeholder={
+                            isRtl
+                                ? "ابحث عن موقع في عُمان..."
+                                : "Search location in Oman..."
+                        }
                         className="flex-1 bg-transparent text-sm font-medium text-gray-700 dark:text-white placeholder-gray-400 focus:outline-none"
-                        dir={isRtl ? 'rtl' : 'ltr'}
+                        dir={isRtl ? "rtl" : "ltr"}
                     />
-                    {isSearching && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#f5b800]" />}
+                    {isSearching && (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#f5b800]" />
+                    )}
                     {searchQuery && !isSearching && (
-                        <button onClick={() => { setSearchQuery(''); setSearchResults([]); }} className="text-gray-400 hover:text-gray-600">
+                        <button
+                            onClick={() => {
+                                setSearchQuery("");
+                                setSearchResults([]);
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                        >
                             <X className="w-3.5 h-3.5" />
                         </button>
                     )}
@@ -157,7 +204,7 @@ function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPicke
                 {/* Search Results Dropdown */}
                 <AnimatePresence>
                     {searchResults.length > 0 && (
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
@@ -170,7 +217,9 @@ function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPicke
                                     className="w-full px-4 py-3 text-start text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-[#0f2044]/5 dark:hover:bg-[#0f2044]/30 flex items-start gap-2 border-b border-gray-50 dark:border-[#243460] last:border-0 transition-colors"
                                 >
                                     <MapPin className="w-3.5 h-3.5 text-[#0f2044] dark:text-[#7ba7e8] mt-0.5 flex-shrink-0" />
-                                    <span className="leading-relaxed">{result.description}</span>
+                                    <span className="leading-relaxed">
+                                        {result.description}
+                                    </span>
                                 </button>
                             ))}
                         </motion.div>
@@ -184,11 +233,11 @@ function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPicke
                     defaultCenter={center}
                     defaultZoom={lat && lng ? 15 : 10}
                     onClick={onMapClick}
-                    gestureHandling={'greedy'}
+                    gestureHandling={"greedy"}
                     disableDefaultUI={true}
                     mapId="bf5047303847291a" // Optional: using a generic ID for advanced markers if available, otherwise it works as basic
                     className="w-full h-full"
-                    theme={isDark ? 'dark' : 'light'}
+                    colorScheme={isDark ? "dark" : "light"}
                 >
                     {lat && lng && (
                         <AdvancedMarker position={{ lat, lng }}>
@@ -209,7 +258,9 @@ function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPicke
                     type="button"
                     className="absolute top-3 right-3 z-[40] p-2 bg-white dark:bg-[#1a2845] rounded-xl shadow-lg border border-gray-200 dark:border-[#243460] text-[#0f2044] dark:text-[#7ba7e8] hover:bg-[#0f2044] hover:text-white transition-all active:scale-95"
                 >
-                    <LocateFixed className={`w-5 h-5 ${isLocating ? 'animate-spin text-[#f5b800]' : ''}`} />
+                    <LocateFixed
+                        className={`w-5 h-5 ${isLocating ? "animate-spin text-[#f5b800]" : ""}`}
+                    />
                 </button>
 
                 {/* Status Overlay */}
@@ -217,7 +268,9 @@ function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPicke
                     {!lat && !lng ? (
                         <div className="bg-white/90 dark:bg-[#0f2044]/90 backdrop-blur-md px-6 py-2 rounded-full shadow-2xl border border-white/20">
                             <p className="text-xs font-bold text-[#0f2044] dark:text-gray-200 whitespace-nowrap">
-                                {isRtl ? '📍 انقر على الخريطة لتحديد موقع المدرسة' : '📍 Click map to set school location'}
+                                {isRtl
+                                    ? "📍 انقر على الخريطة لتحديد موقع المدرسة"
+                                    : "📍 Click map to set school location"}
                             </p>
                         </div>
                     ) : (
@@ -227,7 +280,7 @@ function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPicke
                             className="bg-emerald-500/90 backdrop-blur-md px-6 py-2 rounded-full shadow-2xl border border-white/20"
                         >
                             <p className="text-xs font-bold text-white whitespace-nowrap">
-                                {isRtl ? '✅ تم حفظ الموقع' : '✅ Location set'}
+                                {isRtl ? "✅ تم حفظ الموقع" : "✅ Location set"}
                             </p>
                         </motion.div>
                     )}
@@ -239,7 +292,7 @@ function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPicke
                 {lat && lng && (
                     <motion.div
                         initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
+                        animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
                         className="flex items-center gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-800/30"
                     >
@@ -248,7 +301,7 @@ function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPicke
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-                                {isRtl ? 'الموقع المحدد' : 'Selected Location'}
+                                {isRtl ? "الموقع المحدد" : "Selected Location"}
                             </p>
                             <p className="text-[11px] font-bold text-gray-600 dark:text-gray-300 truncate">
                                 {lat.toFixed(6)}, {lng.toFixed(6)}
@@ -256,10 +309,10 @@ function GoogleMapInner({ lat, lng, onChange, isDark, isRtl }: FieldTripMapPicke
                         </div>
                         <button
                             type="button"
-                            onClick={() => onChange(0, 0, '')}
+                            onClick={() => onChange(0, 0, "")}
                             className="text-[11px] font-black text-red-500 hover:text-red-700 underline underline-offset-4"
                         >
-                            {isRtl ? 'مسح' : 'Clear'}
+                            {isRtl ? "مسح" : "Clear"}
                         </button>
                     </motion.div>
                 )}
