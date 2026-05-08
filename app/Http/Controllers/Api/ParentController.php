@@ -114,7 +114,8 @@ class ParentController extends Controller
                 'forthBus.assistant',
                 'backBus.assistant',
                 'lastTripAttendance',
-                'currentEnrollment.classroom.school'
+                'currentEnrollment.classroom.school',
+                'currentEnrollment.classroom.grade'
             ])
             ->get();
 
@@ -172,7 +173,7 @@ class ParentController extends Controller
                 'student_code' => $student->student_code,
                 'status'       => $studentStatus,
                 'suggested_direction' => $suggestedDirection,
-                'grade'                  => $student->grade ?? 'غير محدد',
+                'grade'                  => $student->currentEnrollment?->classroom?->grade?->name ?? 'غير محدد',
                 'trip_count'             => $student->trips_count ?? 0,
                 'attendance_percentage'  => $attendancePercentage,
                 'image_url'              => $imageUrl,
@@ -189,6 +190,12 @@ class ParentController extends Controller
                     'bus_number'   => $activeBus->bus_number,
                     'plate_number' => $activeBus->plate_number,
                     'trip_status'  => $activeBus->trip_status,
+                    'total_students' => $activeBus->students_count,
+                    'latitude'     => $activeBus->latitude,
+                    'longitude'    => $activeBus->longitude,
+                    'departure_time' => $activeBus->activeTrip?->departure_time?->toIso8601String(),
+                    'speed_kmh'      => cache()->get('bus_speed_'.$activeBus->id, 0),
+                    'eta_minutes'    => cache()->get('bus_eta_'.$activeBus->id),
                     'driver' => $activeBus->driver && $activeBus->driver->user ? [
                         'id'    => $activeBus->driver->user->id,
                         'name'  => $activeBus->driver->user->name,
@@ -412,6 +419,39 @@ class ParentController extends Controller
     }
 
     /**
+     * GET /api/parent/location-requests
+     * عرض سجل طلبات تغيير الموقع
+     */
+    public function locationRequestsHistory(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $requests = \App\Models\StudentLocationRequest::where('guardian_id', $user->id)
+            ->with('student')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $data = $requests->map(function ($r) {
+            return [
+                'id' => (string) $r->id,
+                'student_id' => (string) $r->student_id,
+                'student_name' => $r->student?->full_name,
+                'created_at' => $r->created_at->toIso8601String(),
+                'status' => $r->status,
+                'new_latitude' => $r->new_latitude,
+                'new_longitude' => $r->new_longitude,
+                'new_address' => $r->new_address,
+                'rejection_reason' => $r->rejection_reason,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $data,
+        ]);
+    }
+
+    /**
      * POST /api/parent/location/update
      * تحديث الإحداثيات الجغرافية للمنزل
      */
@@ -453,7 +493,7 @@ class ParentController extends Controller
         
         // التحقق من أن الطالب يتبع لولي الأمر
         $student = $user->students()
-            ->where('student_id', $request->student_id)
+            ->where('students.id', $request->student_id)
             ->first();
 
         if (!$student) {
@@ -463,32 +503,44 @@ class ParentController extends Controller
             ], 404);
         }
 
-        Log::info("📍 Student Location Update: Guardian ID {$user->id} updated Student ID {$student->id} to Lat: {$request->latitude}, Lng: {$request->longitude}");
+        Log::info("📍 Student Location Change Request: Guardian ID {$user->id} for Student ID {$student->id} to Lat: {$request->latitude}, Lng: {$request->longitude}");
         
-        // استخدام $request->all() كما طلب المستخدم (مع الفلترة بواسطة $fillable)
-        $oldData = $student->toArray();
-        $student->update($request->all());
+        // إنشاء طلب تغيير الموقع بدلاً من التحديث المباشر
+        $locationRequest = \App\Models\StudentLocationRequest::create([
+            'student_id'   => $student->id,
+            'guardian_id'  => $user->id,
+            'school_id'    => $student->school_id,
+            'old_latitude' => $student->latitude,
+            'old_longitude'=> $student->longitude,
+            'old_address'  => $student->address,
+            'new_latitude' => $request->latitude,
+            'new_longitude'=> $request->longitude,
+            'new_address'  => $request->address,
+            'status'       => 'pending',
+        ]);
 
-        // Notify driver
-        $busId = $student->forth_bus_id ?? $student->back_bus_id;
-        if ($busId) {
-            $bus = \App\Models\Bus::find($busId);
-            if ($bus && $bus->driver) {
-                $notificationService = app(\App\Services\NotificationService::class);
-                $notificationService->sendToUser(
-                    $bus->driver->user,
-                    '?? ????? ???? ??????',
-                    "??? ??? ????? ?????? ???? ?????? {$student->full_name}",
-                    ['type' => 'address_change', 'student_id' => $student->id]
-                );
-            }
+        // إخطار مديري المدرسة بالطلب الجديد
+        try {
+            $notificationService = app(\App\Services\NotificationService::class);
+            $notificationService->notifySchoolAdmins(
+                $student->school_id,
+                'location_request',
+                'طلب تغيير موقع منزل',
+                "قام ولي الأمر {$user->name} بتقديم طلب لتغيير موقع منزل الطالب {$student->full_name}",
+                [
+                    'type' => 'location_request',
+                    'location_request_id' => $locationRequest->id,
+                    'student_id' => $student->id
+                ],
+                $user->name
+            );
+        } catch (\Exception $e) {
+            Log::error("❌ Failed to notify admins about location request: " . $e->getMessage());
         }
-
-        // ── Broadcast + audit are handled automatically by StudentObserver ──
 
         return response()->json([
             'success' => true,
-            'message' => 'تم تحديث موقع منزل الطالب بنجاح.',
+            'message' => 'تم إرسال طلب تغيير الموقع للمدرسة للمراجعة والموافقة.',
         ]);
     }
 }

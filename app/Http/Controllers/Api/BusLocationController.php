@@ -152,20 +152,20 @@ class BusLocationController extends Controller
 
         // Fetch Driver Info
         $driver = $bus->driver;
+        $activeTrip = $bus->activeTrip;
         
-        // Calculate Students on Board (Students who are currently in 'boarded' status on an active trip)
-        $today = now()->startOfDay();
-        $studentsOnBoard = \App\Models\TripAttendance::whereHas('trip', function($q) use ($bus, $today) {
-            $q->where('bus_id', $bus->id)->whereDate('trip_date', $today)->where('status', 'in_progress');
+        // Calculate Students on Board
+        $studentsOnBoard = \App\Models\TripAttendance::whereHas('trip', function($q) use ($bus) {
+            $q->where('bus_id', $bus->id)->whereDate('trip_date', today())->where('status', 'in_progress');
         })->where('status', 'boarded')->count();
 
-        // Per-student boarding status for this bus (for real-time updates)
+        // Per-student boarding status for this bus
         $guardianStudents = [];
         if ($isGuardian) {
             $guardianStudentIds = \App\Models\Student::whereHas('guardians', fn($q) => $q->where('users.id', $user->id))->pluck('id');
             foreach ($guardianStudentIds as $sid) {
                 $lastAttendance = \App\Models\TripAttendance::where('student_id', $sid)
-                    ->whereHas('trip', fn($q) => $q->where('bus_id', $bus->id)->whereDate('trip_date', $today))
+                    ->whereHas('trip', fn($q) => $q->where('bus_id', $bus->id)->whereDate('trip_date', today()))
                     ->latest()
                     ->first();
                 
@@ -182,13 +182,15 @@ class BusLocationController extends Controller
             'bus_id' => $bus->id,
             'latitude' => $bus->latitude ? (double) $bus->latitude : null,
             'longitude' => $bus->longitude ? (double) $bus->longitude : null,
-            'heading' => (double) cache()->get('bus_heading_'.$bus->id, 0), // Retrieve heading from cache
+            'heading' => (double) cache()->get('bus_heading_'.$bus->id, 0),
             'trip_status' => $bus->trip_status,
-            'trip_type' => \App\Models\Trip::where('bus_id', $bus->id)->whereDate('trip_date', today())->where('status', 'in_progress')->value('type'),
+            'trip_type' => $activeTrip ? $activeTrip->type : null,
+            'departure_time' => $activeTrip ? $activeTrip->departure_time?->toIso8601String() : null,
             'last_update' => $bus->last_location_update ? $bus->last_location_update->toIso8601String() : null,
             'bus_number' => $bus->bus_number,
             'plate_number' => $bus->plate_number,
             'speed_kmh' => in_array($bus->trip_status, ['on_route', 'to_school', 'to_home']) ? cache()->get('bus_speed_'.$bus->id, 0) : 0,
+            'eta_minutes' => cache()->get('bus_eta_'.$bus->id),
             'students_on_board' => $studentsOnBoard,
             'student_statuses' => $guardianStudents,
             'driver' => $driver ? [

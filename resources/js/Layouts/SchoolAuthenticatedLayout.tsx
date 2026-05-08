@@ -146,6 +146,11 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "calendar",
   },
   {
+    label: isRTL ? "طلبات تغيير الموقع" : "Location Requests",
+    route: "school.location-requests.index",
+    icon: "navigation",
+  },
+  {
     label: isRTL ? "الإعدادات" : "Settings",
     route: "profile.edit",
     icon: "cog",

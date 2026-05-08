@@ -103,6 +103,7 @@ class NotificationService
                 'notification' => [
                     'sound' => 'default',
                     'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+                    'channel_id' => 'msarat_wasel_channel',
                 ],
             ])
             ->withApnsConfig([
@@ -171,7 +172,23 @@ class NotificationService
 
         $fcmMessage = CloudMessage::new()
             ->withNotification(FcmNotification::create($title, $message))
-            ->withData($stringData);
+            ->withData($stringData)
+            ->withAndroidConfig([
+                'priority' => 'high',
+                'notification' => [
+                    'sound' => 'default',
+                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+                    'channel_id' => 'msarat_wasel_channel',
+                ],
+            ])
+            ->withApnsConfig([
+                'payload' => [
+                    'aps' => [
+                        'sound' => 'default',
+                        'badge' => 1,
+                    ],
+                ],
+            ]);
 
         try {
             $messaging = $this->getMessaging();
@@ -307,6 +324,25 @@ class NotificationService
     }
 
     /**
+     * إرسال إشعار لجميع مديري مدرسة معينة.
+     */
+    public function notifySchoolAdmins(
+        int $schoolId,
+        string $type,
+        string $title,
+        string $message,
+        ?array $data = null,
+        ?string $fromUserName = null
+    ): Collection {
+        $adminIds = User::where('school_id', $schoolId)
+            ->whereHas('roles', fn($q) => $q->where('name', 'school_admin'))
+            ->pluck('id')
+            ->toArray();
+
+        return $this->sendToUsers($adminIds, $type, $title, $message, $data, $fromUserName);
+    }
+
+    /**
      * إرسال إشعار لولي أمر طالب معين.
      * المسار: Student → User (guardian_id يشير مباشرة لجدول users)
      */
@@ -324,15 +360,19 @@ class NotificationService
             return null;
         }
 
-        // Notify the first guardian as fallback or adapt to multiple
-        return $this->sendToUser(
-            userId: $student->guardians->first()->id,
-            type: $type,
-            title: $title,
-            message: $message,
-            data: $data,
-            fromUserName: 'نظام المدرسة'
-        );
+        $notification = null;
+        foreach ($student->guardians as $guardian) {
+            $notification = $this->sendToUser(
+                userId: $guardian->id,
+                type: $type,
+                title: $title,
+                message: $message,
+                data: $data,
+                fromUserName: 'نظام المدرسة'
+            );
+        }
+
+        return $notification;
     }
 
     /**

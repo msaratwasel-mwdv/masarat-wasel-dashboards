@@ -18,7 +18,7 @@ class StudentStatusUpdated implements ShouldBroadcastNow
 
     public int $studentId;
     public string $studentName;
-    public int $guardianId;
+    public array $guardianIds = [];
     public string $busNumber;
 
     public function __construct(
@@ -29,23 +29,29 @@ class StudentStatusUpdated implements ShouldBroadcastNow
         // Optional raw overrides
         $studentId = null,
         $studentName = null,
-        $guardianId = null,
+        $guardianIds = null,
         $busNumber = null
     ) {
         $this->studentId = $studentId ?? ($student instanceof \App\Models\Student ? $student->id : (is_numeric($student) ? (int)$student : 0));
         $this->studentName = $studentName ?? ($student instanceof \App\Models\Student ? $student->full_name : 'جميع الطلاب');
-        $this->guardianId = $guardianId ?? ($student instanceof \App\Models\Student ? ($student->guardian->first()?->id ?? 0) : 0);
+        
+        if ($guardianIds) {
+            $this->guardianIds = is_array($guardianIds) ? $guardianIds : [$guardianIds];
+        } elseif ($student instanceof \App\Models\Student) {
+            $this->guardianIds = $student->guardians->pluck('id')->toArray();
+        }
+        
         $this->busNumber = $busNumber ?? ($bus instanceof \App\Models\Bus ? $bus->bus_number : ($bus ? (string)$bus : 'Unknown'));
     }
 
     /**
-     * القناة الخاصة بولي الأمر — فقط ولي أمر الطالب يستقبل الحدث
+     * القنوات الخاصة بأولياء الأمور — جميع أولياء أمر الطالب يستقبلون الحدث
      */
     public function broadcastOn(): array
     {
-        return [
-            new PrivateChannel('guardian.' . $this->guardianId),
-        ];
+        return array_map(function($id) {
+            return new PrivateChannel('guardian.' . $id);
+        }, $this->guardianIds);
     }
 
     /**

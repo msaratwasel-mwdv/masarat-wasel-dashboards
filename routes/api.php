@@ -104,6 +104,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     // --- طلبات الغياب ---
     Route::post('/parent/absence-requests', [\App\Http\Controllers\Api\ParentController::class, 'storeAbsenceRequest']);
     Route::get('/parent/absence-requests', [\App\Http\Controllers\Api\ParentController::class, 'absenceRequestsHistory']);
+    Route::get('/parent/location-requests', [\App\Http\Controllers\Api\ParentController::class, 'locationRequestsHistory']);
 
     // ═══════════════════════════════════════════════════════════
     // Chat API Routes (Mobile App)
