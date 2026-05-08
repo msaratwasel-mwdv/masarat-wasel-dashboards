@@ -17,6 +17,8 @@ class Driver extends Model
         'license_expiry_date',
         'license_front_image',
         'license_back_image',
+        'id_card_front_image',
+        'id_card_back_image',
         'status',
     ];
 

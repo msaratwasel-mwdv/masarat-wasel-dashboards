@@ -244,9 +244,11 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
             Route::get('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'assignStudentsPage'])->name('buses.students.assign');
             Route::post('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'saveAssignedStudents'])->name('buses.students.save');
 
-            // السائقون والمشرفات (للقراءة فقط)
+            // السائقون والمشرفات
             Route::get('drivers', [\App\Http\Controllers\School\DriverController::class, 'index'])->name('drivers.index');
+            Route::put('drivers/{driver}', [\App\Http\Controllers\School\DriverController::class, 'update'])->name('drivers.update');
             Route::get('assistants', [\App\Http\Controllers\School\AssistantController::class, 'index'])->name('assistants.index');
+            Route::put('assistants/{assistant}', [\App\Http\Controllers\School\AssistantController::class, 'update'])->name('assistants.update');
 
             // طلبات الحافلات
             Route::get('bus-requests', [\App\Http\Controllers\School\BusRequestController::class, 'index'])->name('bus-requests.index');

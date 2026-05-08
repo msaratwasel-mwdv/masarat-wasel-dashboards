@@ -111,6 +111,8 @@ class StaffController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'license_front_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'license_back_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'id_card_front_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'id_card_back_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'address' => 'nullable|string|max:500',
         ]);
 
@@ -142,6 +144,8 @@ class StaffController extends Controller
                 'license_expiry_date' => $request->license_expiry_date,
                 'license_front_image' => $request->hasFile('license_front_image') ? $request->file('license_front_image')->store('drivers/licenses', 'public') : null,
                 'license_back_image' => $request->hasFile('license_back_image') ? $request->file('license_back_image')->store('drivers/licenses', 'public') : null,
+                'id_card_front_image' => $request->hasFile('id_card_front_image') ? $request->file('id_card_front_image')->store('drivers/id_cards', 'public') : null,
+                'id_card_back_image' => $request->hasFile('id_card_back_image') ? $request->file('id_card_back_image')->store('drivers/id_cards', 'public') : null,
                 'status' => 'active',
             ]);
         });
@@ -170,6 +174,8 @@ class StaffController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'license_front_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'license_back_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'id_card_front_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'id_card_back_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'address' => 'nullable|string|max:500',
         ]);
 
@@ -219,6 +225,20 @@ class StaffController extends Controller
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_back_image);
                 }
                 $driverExtData['license_back_image'] = $request->file('license_back_image')->store('drivers/licenses', 'public');
+            }
+
+            if ($request->hasFile('id_card_front_image')) {
+                if ($driver_ext->id_card_front_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->id_card_front_image);
+                }
+                $driverExtData['id_card_front_image'] = $request->file('id_card_front_image')->store('drivers/id_cards', 'public');
+            }
+
+            if ($request->hasFile('id_card_back_image')) {
+                if ($driver_ext->id_card_back_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->id_card_back_image);
+                }
+                $driverExtData['id_card_back_image'] = $request->file('id_card_back_image')->store('drivers/id_cards', 'public');
             }
 
             $driver_ext->update($driverExtData);
