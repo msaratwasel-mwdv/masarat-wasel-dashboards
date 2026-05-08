@@ -5,6 +5,8 @@ import { useTheme } from "@/Contexts/ThemeContext";
 import { User } from "@/types";
 import { toast, ToastContainer, Bounce } from "react-toastify";
 import NotificationDropdown from "@/Components/NotificationDropdown";
+import { useEchoEvent } from "@/hooks/useEcho";
+import { useRealtimeToast } from "@/hooks/useRealtimeToast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
@@ -186,6 +188,7 @@ export default function SchoolAuthenticatedLayout({
 
   const { flash } = usePage<any>().props;
   const { theme, language, toggleTheme, toggleLanguage, isRTL } = useTheme();
+  const { notifyEvent } = useRealtimeToast();
 
   useEffect(() => {
     if (flash?.success) {

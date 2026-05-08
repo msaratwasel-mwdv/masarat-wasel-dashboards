@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Trip;
 use App\Models\SystemEventLog;
+use App\Events\DashboardStatsUpdated;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
@@ -26,6 +27,8 @@ class TripObserver
             Cache::forget('admin_dashboard_stats');
             $monthKey = now()->format('Y-m');
             Cache::forget("analytics:kpis:{$monthKey}");
+            
+            $this->broadcastUpdate();
         }
     }
 
@@ -34,6 +37,7 @@ class TripObserver
         Cache::forget('admin_dashboard_stats');
         $monthKey = now()->format('Y-m');
         Cache::forget("analytics:kpis:{$monthKey}");
+        $this->broadcastUpdate();
     }
 
     public function deleted(Trip $trip): void
@@ -41,5 +45,11 @@ class TripObserver
         Cache::forget('admin_dashboard_stats');
         $monthKey = now()->format('Y-m');
         Cache::forget("analytics:kpis:{$monthKey}");
+        $this->broadcastUpdate();
+    }
+
+    protected function broadcastUpdate(): void
+    {
+        broadcast(new DashboardStatsUpdated('trips', ['admin.dashboard']));
     }
 }

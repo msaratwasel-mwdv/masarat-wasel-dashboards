@@ -97,11 +97,9 @@ interface Bus {
   school_id: number | null;
   driver_id: number | null;
   assistant_id: number | null;
-  field_supervisor_id: number | null;
   route_id: number | null;
   driver?: User;
   assistant?: User;
-  field_supervisor?: User;
   school?: School;
   route?: Route;
   documents?: BusDocument[];
@@ -131,7 +129,6 @@ interface Props {
     status: string;
   };
   availableDrivers: User[];
-  availableFieldSupervisors: User[];
   availableAssistants: User[];
   schools: School[];
   routes: Route[];
@@ -144,7 +141,6 @@ export default function Index({
   counts,
   filters,
   availableDrivers,
-  availableFieldSupervisors,
   availableAssistants,
   schools,
   routes,
@@ -247,7 +243,7 @@ export default function Index({
         year: bus.year,
         capacity: bus.capacity,
         status: bus.status as any,
-        driver_id: bus.driver?.user_id?.toString() || "",
+        driver_id: (bus.driver as any)?.id?.toString() || (bus.driver as any)?.user_id?.toString() || "",
         assistant_id: bus.assistant_id?.toString() || "",
         school_id: bus.school_id?.toString() || "",
         route_id: bus.route_id?.toString() || "",
@@ -321,14 +317,6 @@ export default function Index({
     return [{ ...currentDriver, id: driverId } as any, ...availableDrivers];
   }, [modalState, availableDrivers]);
 
-  const editFieldSupervisorOptions = useMemo(() => {
-    if (modalState.type !== "edit" || !modalState.bus) return availableFieldSupervisors;
-    const currentSupervisor = modalState.bus.field_supervisor;
-    if (!currentSupervisor) return availableFieldSupervisors;
-    const supervisorId = currentSupervisor.id;
-    const alreadyIn = availableFieldSupervisors.some((s) => s.id === supervisorId);
-    return alreadyIn ? availableFieldSupervisors : [currentSupervisor, ...availableFieldSupervisors];
-  }, [modalState, availableFieldSupervisors]);
 
   const editAssistantOptions = useMemo(() => {
     if (modalState.type !== "edit" || !modalState.bus) return availableAssistants;

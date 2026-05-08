@@ -28,6 +28,8 @@ import {
     DS_submitBtn,
     DS_cancelBtn,
 } from '@/lib/DS';
+import { useEchoEvent } from '@/hooks/useEcho';
+import { useRealtimeToast } from '@/hooks/useRealtimeToast';
 
 interface BusRequestsProps {
     auth: any;
@@ -36,6 +38,18 @@ interface BusRequestsProps {
 
 export default function BusRequestsList({ auth, requests: serverRequests }: BusRequestsProps) {
     const { t, isRtl } = useTranslation();
+    const { notifyEvent } = useRealtimeToast();
+
+    // Listen for real-time status updates on bus requests
+    useEchoEvent(
+        'private',
+        `App.Models.User.${auth.user.id}`,
+        '.bus-request.status-changed',
+        (e: any) => {
+            // Toast is now handled globally in SchoolAuthenticatedLayout
+            router.reload({ only: ['requests'], preserveState: true, preserveScroll: true });
+        }
+    );
 
     const requests = serverRequests || [];
 

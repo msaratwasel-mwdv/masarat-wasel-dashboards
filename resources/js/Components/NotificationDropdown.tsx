@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { Bell, CheckCircle, AlertTriangle, Info, Trash2, Bus as BusIcon, User } from "lucide-react";
+import { useEchoEvent } from '@/hooks/useEcho';
+import { useRealtimeToast } from '@/hooks/useRealtimeToast';
 
 interface Notification {
     id: number;
@@ -22,6 +24,9 @@ interface NotificationDropdownProps {
 }
 
 export default function NotificationDropdown({ isRTL = false }: NotificationDropdownProps) {
+    const { auth } = usePage().props as any;
+    const user = auth?.user;
+    const { notifyEvent } = useRealtimeToast();
     const [isOpen, setIsOpen] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -100,16 +105,33 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
         }
     }, [isOpen]);
 
-    // Auto-refresh every 30 seconds
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (!isOpen) {
-                fetchNotifications();
-            }
-        }, 30000);
+    // Listen for real-time notifications via WebSocket (replaces polling)
+    useEchoEvent(
+        'private',
+        `App.Models.User.${user?.id}`,
+        '.notification.pushed',
+        (e: any) => {
+            const newNotif = {
+                id: e.id,
+                type: e.type,
+                title: e.title,
+                message: e.message,
+                data: e.data,
+                icon: e.icon,
+                color: e.color,
+                from_user_name: e.from_user_name,
+                status: e.status,
+                created_at: e.created_at,
+            } as Notification;
 
-        return () => clearInterval(interval);
-    }, [isOpen]);
+            setNotifications(prev => [newNotif, ...prev]);
+            setUnreadCount(e.unread_count);
+            
+            // Trigger toast and sound with proper routing
+            const soundType = ['bus_request', 'bus_request_status'].includes(e.type) ? 'bus_request' : 'notification';
+            notifyEvent(soundType as any, e.title, e.message);
+        }
+    );
 
     // Initial fetch
     useEffect(() => {

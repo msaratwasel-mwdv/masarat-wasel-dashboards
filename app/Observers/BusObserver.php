@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Bus;
+use App\Events\DashboardStatsUpdated;
 use Illuminate\Support\Facades\Cache;
 
 class BusObserver
@@ -29,5 +30,7 @@ class BusObserver
         // Affects analytics (fleet utilization)
         $monthKey = now()->format('Y-m');
         Cache::forget("analytics:kpis:{$monthKey}");
+        
+        broadcast(new DashboardStatsUpdated('buses', ['admin.dashboard']));
     }
 }

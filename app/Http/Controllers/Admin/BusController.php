@@ -27,7 +27,6 @@ class BusController extends Controller
         $query = Bus::withStudentsCount()->with([
             'driver.user:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,image',
             'assistant:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,image',
-            'fieldSupervisor:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,image',
             'school:id,name',
             'route:id,name,code',
             'documents',
@@ -51,7 +50,6 @@ class BusController extends Controller
             'model',
             'school.name',
             'driver.user.name',
-            'fieldSupervisor.name',
             'route.name',
         ], 15, function($bus) {
             return [
@@ -64,7 +62,6 @@ class BusController extends Controller
                 'المسار' => $bus->route ? $bus->route->name : 'غير محدد',
                 'السائق' => $bus->driver?->user?->name ?? 'متاح',
                 'المشرفة (مرافق)' => $bus->assistant ? $bus->assistant->name : 'متاح',
-                'المشرف الميداني' => $bus->fieldSupervisor ? $bus->fieldSupervisor->name : 'متاح',
                 'الحالة' => match($bus->status) {
                     'active' => 'نشط',
                     'maintenance' => 'صيانة',
@@ -95,12 +92,6 @@ class BusController extends Controller
             ->select('id', 'first_name_ar', 'second_name_ar', 'third_name_ar', 'last_name_ar', 'national_id')
             ->get();
 
-        // 4. جلب المشرفين الميدانيين المتاحين
-        $assignedFieldSupervisorIds = Bus::whereNotNull('field_supervisor_id')->pluck('field_supervisor_id')->toArray();
-        $fieldSupervisors = User::whereHas('roles', fn($q) => $q->where('name', 'field_supervisor'))
-            ->whereNotIn('id', $assignedFieldSupervisorIds)
-            ->select('id', 'first_name_ar', 'second_name_ar', 'third_name_ar', 'last_name_ar', 'national_id')
-            ->get();
 
         // 5. جلب مساعدات الباص المتاحات (المشرفات سابقاً)
         $assignedAssistantIds = Bus::whereNotNull('assistant_id')->pluck('assistant_id')->toArray();
@@ -117,6 +108,15 @@ class BusController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Transform the collection to match frontend expectations (driver -> User model)
+        $paginated->getCollection()->transform(function ($bus) {
+            if ($bus->driver) {
+                // Replace the driver relationship with the driver's user model
+                $bus->setRelation('driver', $bus->driver->user);
+            }
+            return $bus;
+        });
+
         return Inertia::render('Admin/Buses/Index', [
             'buses'                => $paginated,
             'counts'               => $counts,
@@ -125,14 +125,13 @@ class BusController extends Controller
                 'status' => $statusFilter,
             ],
             'availableDrivers'     => $drivers,
-            'availableFieldSupervisors' => $fieldSupervisors,
             'availableAssistants'  => $assistants,
             'schools'              => $schools,
             'routes'               => $routes,
         ]);
     }
 
-    public function create()
+/*     public function create()
     {
         $schools = School::where('status', 'Active')->get();
         // NOTE: school_id does NOT exist on users table — filter via extension tables
@@ -147,7 +146,7 @@ class BusController extends Controller
             'drivers' => $drivers,
             'assistants' => $assistants,
         ]);
-    }
+    } */
 
     public function store(Request $request)
     {
@@ -169,16 +168,7 @@ class BusController extends Controller
                     }
                 },
             ],
-            'field_supervisor_id' => [
-                'nullable',
-                'exists:users,id',
-                // يمنع تعيين مشرف مرتبط بباص آخر
-                function ($attribute, $value, $fail) {
-                    if ($value && Bus::where('field_supervisor_id', $value)->exists()) {
-                        $fail('هذا المشرف مُعيَّن لباص آخر بالفعل.');
-                    }
-                },
-            ],
+
             'assistant_id' => [
                 'nullable',
                 'exists:users,id',
@@ -206,7 +196,7 @@ class BusController extends Controller
                 'school_id'           => $request->school_id,
                 'route_id'            => $request->route_id,
                 'driver_id'           => $request->driver_id,
-                'field_supervisor_id' => $request->field_supervisor_id,
+
                 'assistant_id'        => $request->assistant_id,
                 'color'               => $request->color,
             ]);
@@ -258,7 +248,7 @@ class BusController extends Controller
         return redirect()->back()->with('success', 'Bus archived successfully');
     }
 
-    public function edit(Bus $bus)
+/*     public function edit(Bus $bus)
     {
         $schools = School::where('status', 'active')->get();
 
@@ -296,7 +286,7 @@ class BusController extends Controller
             'fieldSupervisors' => $fieldSupervisors,
             'assistants' => $assistants,
         ]);
-    }
+    } */
 
     public function update(Request $request, Bus $bus)
     {
@@ -321,16 +311,7 @@ class BusController extends Controller
                     }
                 },
             ],
-            'field_supervisor_id' => [
-                'nullable',
-                'exists:users,id',
-                // يمنع تعيين مشرف مرتبط بباص آخر (غير هذا الباص)
-                function ($attribute, $value, $fail) use ($busId) {
-                    if ($value && Bus::where('field_supervisor_id', $value)->where('id', '!=', $busId)->exists()) {
-                        $fail('هذا المشرف مُعيَّن لباص آخر بالفعل.');
-                    }
-                },
-            ],
+
             'assistant_id' => [
                 'nullable',
                 'exists:users,id',
@@ -428,10 +409,10 @@ class BusController extends Controller
         $busNumber = $bus->bus_number;
         $frontData = "FRONT-" . $bus->id;
         $backData = "BACK-" . $bus->id;
-        
+
         $frontFileName = 'qrcodes/' . $busNumber . '_front.png';
         $backFileName = 'qrcodes/' . $busNumber . '_back.png';
-        
+
         Storage::disk('public')->makeDirectory('qrcodes');
 
         try {
@@ -441,11 +422,11 @@ class BusController extends Controller
 
             $respFront = Http::timeout(10)->get($qrApiUrlFront);
             $respBack = Http::timeout(10)->get($qrApiUrlBack);
-            
+
             if ($respFront->successful() && $respBack->successful()) {
                 Storage::disk('public')->put($frontFileName, $respFront->body());
                 Storage::disk('public')->put($backFileName, $respBack->body());
-                
+
                 $bus->update([
                     'front_qr' => $frontFileName,
                     'back_qr' => $backFileName
@@ -459,13 +440,13 @@ class BusController extends Controller
         // Fallback to local SVG generation
         $frontFileNameSvg = 'qrcodes/' . $busNumber . '_front.svg';
         $backFileNameSvg = 'qrcodes/' . $busNumber . '_back.svg';
-        
+
         $qrImageFront = QrCode::format('svg')->size(400)->margin(2)->generate($frontData);
         $qrImageBack = QrCode::format('svg')->size(400)->margin(2)->generate($backData);
-        
+
         Storage::disk('public')->put($frontFileNameSvg, $qrImageFront);
         Storage::disk('public')->put($backFileNameSvg, $qrImageBack);
-        
+
         $bus->update([
             'front_qr' => $frontFileNameSvg,
             'back_qr' => $backFileNameSvg

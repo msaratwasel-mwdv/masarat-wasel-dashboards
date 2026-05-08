@@ -91,3 +91,29 @@ Broadcast::channel('bus.{id}', function ($user, $id) {
         return false;
     }
 });
+
+/**
+ * Dashboard real-time stats channels
+ */
+Broadcast::channel('admin.dashboard', function ($user) {
+    return $user->role === 'admin';
+});
+
+Broadcast::channel('school.dashboard.{schoolId}', function ($user, $schoolId) {
+    return $user->role === 'school_admin' && (int) $user->getSchoolId() === (int) $schoolId;
+});
+
+/**
+ * Emergencies channel for admins
+ */
+Broadcast::channel('admin.emergencies', function ($user) {
+    return $user->role === 'admin';
+});
+
+/**
+ * Bus requests channel for admins
+ */
+Broadcast::channel('admin.bus-requests', function ($user) {
+    return $user->role === 'admin';
+});
+

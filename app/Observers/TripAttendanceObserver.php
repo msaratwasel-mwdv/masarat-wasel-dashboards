@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\TripAttendance;
 use App\Models\SystemEventLog;
+use App\Events\DashboardStatsUpdated;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
@@ -23,6 +24,8 @@ class TripAttendanceObserver
             ]);
 
             Cache::forget('admin_dashboard_stats');
+            
+            $this->broadcastUpdate();
         }
     }
 
@@ -39,5 +42,11 @@ class TripAttendanceObserver
         ]);
 
         Cache::forget('admin_dashboard_stats');
+        $this->broadcastUpdate();
+    }
+
+    protected function broadcastUpdate(): void
+    {
+        broadcast(new DashboardStatsUpdated('attendance', ['admin.dashboard']));
     }
 }
