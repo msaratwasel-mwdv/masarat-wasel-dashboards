@@ -22,8 +22,11 @@ class StudentPolicy
             return false;
         }
 
+        // الحصول على معرف المدرسة من خلال الفصل
+        $schoolId = $enrollment->classroom?->school_id ?? $enrollment->school_id;
+
         // إذا تطابقت مدرسة المدير مع مدرسة الطالب، اسمح له
-        return $user->getSchoolId() === $enrollment->school_id;
+        return $user->getSchoolId() === $schoolId;
     }
 
     /**

@@ -205,6 +205,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::get('students-api', [StudentController::class, 'apiIndex'])->name('students.api');
         Route::resource('students', StudentController::class);
         Route::post('students/{student}/update', [StudentController::class, 'update'])->name('students.update_post');
+        Route::get('students/{student}/print', [StudentController::class, 'printCard'])->name('students.print');
 
         Route::post('guardians/search', [StudentController::class, 'searchGuardian'])->name('guardians.search');
         Route::post('guardians', [StudentController::class, 'storeGuardian'])->name('guardians.store');

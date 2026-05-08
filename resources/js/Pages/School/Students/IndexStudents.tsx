@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import { Head, useForm, router, usePage } from "@inertiajs/react";
 import { User, Classroom } from "@/types";
@@ -11,8 +11,10 @@ import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
 import PrintReportHeader from "@/Components/PrintReportHeader";
+import BaseDataTable, { type FilterTab, type PaginationMeta } from "@/Components/BaseDataTable";
+import { createColumnHelper } from "@tanstack/react-table";
 import { motion } from "framer-motion";
-import { Users, CheckCircle2, UserX, UserPlus, Printer } from "lucide-react";
+import { Users, CheckCircle2, UserX, UserPlus, Printer, Edit2, Trash2 } from "lucide-react";
 import {
   DS_card, DS_pageWrapper, DS_pageTitle, DS_statLabel, DS_statValue,
   DS_avatar, DS_tableWrapper, DS_tableBase, DS_tableHead, DS_tableRow, DS_tableTd,
@@ -21,6 +23,7 @@ import {
   DS_statCard, DS_statIcon, DS_badge, DS_filterBtn, DS_tableTh,
   DS_modalHeader, DS_sectionHeader, DS_submitBtn,
   DS_modalContainer, DS_modalHeaderTitle, DS_modalHeaderAccent, DS_modalClose, DS_modalBody,
+  DS_statValue2,
 } from "@/lib/DS";
 
 interface Guardian {
@@ -84,8 +87,18 @@ interface Student {
 
 interface Props {
   auth: { user: User };
-  students: Student[];
-  filters: { search?: string };
+  students: {
+    data: Student[];
+    links: PaginationMeta["links"];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+  };
+  counts: { all: number; active: number; inactive: number };
+  filters: { search?: string; status?: string };
   classrooms: Classroom[];
   buses?: Bus[];
   storage_url: string;
@@ -104,6 +117,7 @@ const PRINT_STYLES = `
 export default function IndexStudents({
   auth,
   students,
+  counts,
   filters,
   classrooms,
   buses = [],
@@ -111,7 +125,6 @@ export default function IndexStudents({
 }: Props) {
   const { t, isRtl } = useTranslation();
   const [search, setSearch] = useState(filters.search || "");
-  const [activeFilter, setActiveFilter] = useState("all");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
@@ -300,16 +313,24 @@ export default function IndexStudents({
     debounce((val: string) => {
       router.get(
         route("school.students.index"),
-        { search: val },
+        { search: val, status: filters.status === "all" ? undefined : filters.status },
         { preserveState: true, preserveScroll: true }
       );
     }, 300),
-    []
+    [filters.status]
   );
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
-    debouncedSearch(e.target.value);
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    debouncedSearch(value);
+  };
+
+  const handleFilterChange = (key: string) => {
+    router.get(
+      route("school.students.index"),
+      { search: filters.search, status: key === "all" ? undefined : key },
+      { preserveState: true, replace: true }
+    );
   };
 
   // Delete
@@ -441,37 +462,139 @@ export default function IndexStudents({
 
   // Debug log للتحقق من المسارات
   useEffect(() => {
-    if (students.length > 0) {
+    if (students.data.length > 0) {
       console.log("Storage URL:", currentStorageUrl);
-      console.log("First student image path:", students[0].image);
+      console.log("First student image path:", students.data[0].image);
       console.log(
         "First student image full URL:",
-        getImageUrl(students[0].image, "student")
+        getImageUrl(students.data[0].image, "student")
       );
 
-      if (students[0].guardians && students[0].guardians.length > 0) {
-        console.log("First guardian image path:", students[0].guardians[0].image);
+      if (students.data[0].guardians && students.data[0].guardians.length > 0) {
+        console.log("First guardian image path:", students.data[0].guardians[0].image);
         console.log(
           "First guardian image full URL:",
-          getImageUrl(students[0].guardians[0].image, "guardian")
+          getImageUrl(students.data[0].guardians[0].image, "guardian")
         );
       }
     }
   }, [students, currentStorageUrl]);
 
-  // Filter
-  const filteredStudents = React.useMemo(() => {
-    let filtered = students;
-    if (activeFilter === "active") filtered = students.filter(s => s.is_active);
-    if (activeFilter === "inactive") filtered = students.filter(s => !s.is_active);
-    return filtered;
-  }, [students, activeFilter]);
+  // --- Column Definitions ---
+  const columnHelper = createColumnHelper<Student>();
 
-  // Counts
-  const counts = {
-    all: students.length,
-    active: students.filter(s => s.is_active).length,
-    inactive: students.filter(s => !s.is_active).length,
+  const columns = useMemo(() => [
+    columnHelper.accessor("full_name", {
+      header: t("Student Name"),
+      cell: (info) => {
+        const student = info.row.original;
+        return (
+          <div className="flex items-center gap-3">
+            <div className={DS_avatar}>
+              {student.image ? <img src={getImageUrl(student.image, "student")} alt={student.full_name} className="w-full h-full object-cover" onError={(e) => handleImageError(e, "student")} /> : student.full_name.charAt(0)}
+            </div>
+            <div className={isRtl ? "text-right" : "text-left"}>
+              <p className="font-semibold text-[#0f2044] dark:text-white text-sm">
+                {!isRtl && student.full_name_en ? student.full_name_en : student.full_name}
+              </p>
+            </div>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor("national_id", {
+      header: t("Civil ID"),
+      cell: (info) => <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{info.getValue() || "—"}</span>,
+    }),
+    columnHelper.accessor("gender", {
+      header: t("Gender"),
+      cell: (info) => {
+        const val = info.getValue();
+        return val === "male" ? (
+          <span className="font-bold text-[#0f2044] dark:text-[#7ba7e8] text-xs">♂ {t("Male")}</span>
+        ) : val === "female" ? (
+          <span className="font-bold text-[#f5b800]/80 dark:text-[#f5b800] text-xs">♀ {t("Female")}</span>
+        ) : "—";
+      },
+    }),
+    columnHelper.display({
+      id: "classroom",
+      header: t("Class"),
+      cell: (info) => <span className="text-gray-700 dark:text-gray-300 text-xs">{info.row.original.current_enrollment?.classroom?.name || "—"}</span>,
+    }),
+    columnHelper.display({
+      id: "forth_bus",
+      header: t("Morning Group"),
+      cell: (info) => <span className="text-gray-700 dark:text-gray-300 text-xs">{info.row.original.forth_bus?.route?.name || "—"}</span>,
+    }),
+    columnHelper.display({
+      id: "back_bus",
+      header: t("Afternoon Group"),
+      cell: (info) => <span className="text-gray-700 dark:text-gray-300 text-xs">{info.row.original.back_bus?.route?.name || "—"}</span>,
+    }),
+    columnHelper.display({
+      id: "guardian_name",
+      header: t("Guardian Name"),
+      cell: (info) => {
+        const student = info.row.original;
+        const g = student.guardians && student.guardians.length > 0 ? student.guardians[0] : null;
+        return <span className="font-semibold text-[#0f2044] dark:text-gray-200 text-xs">{g ? (!isRtl && g.name_en ? g.name_en : g.name) : "—"}</span>;
+      },
+    }),
+    columnHelper.display({
+      id: "guardian_phone",
+      header: t("Guardian Phone"),
+      cell: (info) => {
+        const g = info.row.original.guardians?.[0];
+        return <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{g?.phone || "—"}</span>;
+      },
+    }),
+    columnHelper.accessor("is_active", {
+      header: t("Status"),
+      cell: (info) => <span className={DS_badge(info.getValue())}>{info.getValue() ? t("Active") : t("Inactive")}</span>,
+    }),
+    columnHelper.display({
+      id: "actions",
+      header: t("Actions"),
+      cell: (info) => {
+        const student = info.row.original;
+        return (
+          <div className={`flex items-center gap-2`}>
+            <button onClick={() => openEditModal(student)} className={DS_btnEdit} title={t("Edit")}>
+              <Edit2 size={14} />
+            </button>
+            <button onClick={() => { setStudentToDelete(student); setShowDeleteModal(true); }} className={DS_btnDanger} title={t("Delete")}>
+              <Trash2 size={14} />
+            </button>
+            <button
+              onClick={() => window.open(route("school.students.print", student.id), "_blank")}
+              className="p-2 bg-gray-100 dark:bg-[#0f2044] text-gray-600 dark:text-gray-300 rounded-lg hover:bg-[#0f2044] hover:text-[#f5b800] transition-all shadow-sm"
+              title={t("Print")}
+            >
+              <Printer size={16} />
+            </button>
+          </div>
+        );
+      },
+    }),
+  ], [isRtl]);
+
+  // --- Filter Tabs ---
+  const filterTabs: FilterTab[] = [
+    { key: "all", label: t("All"), count: counts.all },
+    { key: "active", label: t("Active"), count: counts.active, dotColor: "bg-emerald-400" },
+    { key: "inactive", label: t("Inactive"), count: counts.inactive, dotColor: "bg-rose-400" },
+  ];
+
+  // --- Pagination ---
+  const pagination: PaginationMeta = {
+    links: students.links,
+    current_page: students.current_page,
+    last_page: students.last_page,
+    per_page: students.per_page,
+    total: students.total,
+    from: students.from,
+    to: students.to,
   };
 
   // Print
@@ -515,7 +638,7 @@ export default function IndexStudents({
               </tr>
             </thead>
             <tbody>
-              {filteredStudents.map((s, i) => (
+              {students.data.map((s, i) => (
                 <tr key={s.id} className="border-b border-gray-300">
                   <td className="border border-gray-300 p-1.5 text-center text-gray-700 font-semibold">{i + 1}</td>
                   <td className="border border-gray-300 p-1.5 font-bold text-gray-900">{s.full_name}</td>
@@ -534,129 +657,82 @@ export default function IndexStudents({
             </tbody>
           </table>
           <div className="mt-8 flex justify-between items-center text-sm font-bold text-gray-800">
-            <p>{t("Total Students")}: {filteredStudents.length}</p>
+            <p>{t("Total Students")}: {students.data.length}</p>
             <p>{t("Principal Signature")}: ............................</p>
           </div>
         </div>
       </div>
 
-      <div className={DS_pageWrapper}>
+      <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-8`} dir={isRtl ? 'rtl' : 'ltr'}>
+
+        {/* Modern Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+          <div className="flex flex-col">
+            <h1 className={DS_pageTitle}>
+              {t("Students Management")}
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-1.5 h-1.5 bg-[#f5b800] rounded-full" />
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                {students.total} {t("Total Students")}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Stats */}
-        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { label: t("Total Students"), val: counts.all,     icon: <Users className="w-5 h-5" />,        accent: "navy" as const },
-            { label: t("Active"),         val: counts.active,  icon: <CheckCircle2 className="w-5 h-5" />, accent: "gold" as const },
-            { label: t("Inactive"),       val: counts.inactive, icon: <UserX className="w-5 h-5" />,       accent: "red"  as const },
-          ].map((s) => (
-            <div key={s.label} className={`${DS_statCard(s.accent)} ${isRtl ? "flex-row-reverse" : ""}`}>
-              <div className={DS_statIcon(s.accent)}>{s.icon}</div>
-              <div className={isRtl ? "text-right" : "text-left"}>
-                <p className={DS_statLabel}>{s.label}</p>
-                <p className={DS_statValue}>{s.val}</p>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className={DS_statCard('blue')}>
+            <div className={DS_statIcon('blue')}><Users size={20} /></div>
+            <div>
+              <p className={DS_statLabel}>{t("Total Students")}</p>
+              <p className={DS_statValue2('blue')}>{counts.all}</p>
             </div>
-          ))}
-        </motion.div>
-
-        {/* Table Card */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className={DS_card}>
-          {/* Toolbar */}
-          <div className={DS_sectionHeader(isRtl)}>
-            <div className="flex-1 min-w-[200px]">
-              <input
-                type="text"
-                value={search}
-                onChange={handleSearchChange}
-                placeholder={t("Search by Name, ID...")}
-                className={DS_searchInput}
-                dir={isRtl ? "rtl" : "ltr"}
-              />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {[["all", t("All")], ["active", t("Active")], ["inactive", t("Inactive")]].map(([key, lbl]) => (
-                <button key={key} onClick={() => setActiveFilter(key)} className={DS_filterBtn(activeFilter === key)}>{lbl}</button>
-              ))}
-            </div>
-            <button onClick={handlePrint} className={DS_btnSecondary}>
-              <Printer className="w-4 h-4" />
-              {t("Print")}
-            </button>
-            <button onClick={openAddModal} className={DS_btnGold}>
-              <UserPlus className="w-4 h-4" />
-              {t("Enroll New Student")}
-            </button>
           </div>
-
-          {/* Table */}
-          <div className={DS_tableWrapper}>
-            <table className={DS_tableBase}>
-              <thead className={DS_tableHead}>
-                <tr>
-                  {[
-                    t("Student Name"),
-                    t("Civil ID"),
-                    t("Gender"),
-                    t("Class"),
-                    t("Morning Group"),
-                    t("Afternoon Group"),
-                    t("Guardian Name"),
-                    t("Guardian Phone"),
-                    t("Status"),
-                    t("Actions"),
-                  ].map(h => (
-                    <th key={h} className={DS_tableTh(isRtl)}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                {filteredStudents.length === 0 ? (
-                  <tr><td colSpan={10} className="py-16 text-center text-gray-400"><Users className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="font-bold">{t("No students found")}</p></td></tr>
-                ) : filteredStudents.map(student => (
-                  <tr key={student.id} className={DS_tableRow}>
-                    <td className={DS_tableTd}>
-                      <div className="flex items-center gap-3">
-                        <div className={DS_avatar}>
-                          {student.image ? <img src={getImageUrl(student.image, "student")} alt={student.full_name} className="w-full h-full object-cover" onError={(e) => handleImageError(e, "student")} /> : student.full_name.charAt(0)}
-                        </div>
-                        <div className={isRtl ? "text-right" : "text-left"}>
-                          <p className="font-semibold text-[#0f2044] dark:text-white">
-                            {!isRtl && student.full_name_en ? student.full_name_en : student.full_name}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className={`${DS_tableTd} font-mono text-xs text-gray-500 dark:text-gray-400`}>{student.national_id || "-"}</td>
-                    <td className={`${DS_tableTd} text-xs`}>
-                      {student.gender === "male" ? (
-                        <span className="font-bold text-[#0f2044] dark:text-[#7ba7e8]">♂ {t("Male")}</span>
-                      ) : student.gender === "female" ? (
-                        <span className="font-bold text-[#f5b800]/80 dark:text-[#f5b800]">♀ {t("Female")}</span>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className={`${DS_tableTd} text-gray-700 dark:text-gray-300 text-xs`}>{student.current_enrollment?.classroom?.name || "-"}</td>
-                    <td className={`${DS_tableTd} text-gray-700 dark:text-gray-300 text-xs`}>{student.forth_bus?.route?.name || "-"}</td>
-                    <td className={`${DS_tableTd} text-gray-700 dark:text-gray-300 text-xs`}>{student.back_bus?.route?.name || "-"}</td>
-                    <td className={`${DS_tableTd} font-semibold text-[#0f2044] dark:text-gray-200 text-xs`}>{(student.guardians && student.guardians.length > 0) ? (!isRtl && student.guardians[0].name_en ? student.guardians[0].name_en : student.guardians[0].name) : "-"}</td>
-                    <td className={`${DS_tableTd} font-mono text-xs text-gray-500 dark:text-gray-400`}>{(student.guardians && student.guardians.length > 0) ? student.guardians[0].phone : "-"}</td>
-                    <td className={DS_tableTd}>
-                      <span className={DS_badge(student.is_active)}>
-                        {student.is_active ? t("Active") : t("Inactive")}
-                      </span>
-                    </td>
-                    <td className={DS_tableTd}>
-                      <div className={`flex gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
-                        <button onClick={() => openEditModal(student)} className={DS_btnEdit}>{t("Edit")}</button>
-                        <button onClick={() => { setStudentToDelete(student); setShowDeleteModal(true); }} className={DS_btnDanger}>{t("Delete")}</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className={DS_statCard('green')}>
+            <div className={DS_statIcon('green')}><CheckCircle2 size={20} /></div>
+            <div>
+              <p className={DS_statLabel}>{t("Active")}</p>
+              <p className={DS_statValue2('green')}>{counts.active}</p>
+            </div>
           </div>
-        </motion.div>
+          <div className={DS_statCard('red')}>
+            <div className={DS_statIcon('red')}><UserX size={20} /></div>
+            <div>
+              <p className={DS_statLabel}>{t("Inactive")}</p>
+              <p className={DS_statValue2('red')}>{counts.inactive}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center justify-end gap-3 mb-4">
+          <button onClick={openAddModal} className={DS_btnGold}>
+            <UserPlus className="w-4 h-4" />
+            <span>{t("Enroll New Student")}</span>
+          </button>
+        </div>
+
+        {/* Main DataTable */}
+        <div className={DS_card}>
+          <BaseDataTable<Student>
+            columns={columns}
+            data={students.data}
+            pagination={pagination}
+            searchValue={search}
+            onSearchChange={handleSearchChange}
+            searchPlaceholder={t("Search by Name, ID...")}
+            filterTabs={filterTabs}
+            activeFilter={filters.status}
+            onFilterChange={handleFilterChange}
+            headerAction={
+              <button onClick={handlePrint} className={DS_btnSecondary}>
+                <Printer size={16} />
+                <span>{t("Print")}</span>
+              </button>
+            }
+          />
+        </div>
       </div>
 
       {/* Main Modal */}

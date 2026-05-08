@@ -69,9 +69,22 @@ class StudentController extends Controller
     {
         $schoolId = Auth::user()->getSchoolId();
         $search = $request->input('search');
+        $statusFilter = $request->input('status', 'all');
+
+        // Base query for counts (before filtering)
+        $baseQuery = Student::inSchool($schoolId)
+            ->whereHas('enrollments', function($q) {
+                $q->where('is_active', true);
+            });
+
+        $counts = [
+            'all' => (clone $baseQuery)->count(),
+            'active' => (clone $baseQuery)->where('is_active', true)->count(),
+            'inactive' => (clone $baseQuery)->where('is_active', false)->count(),
+        ];
 
         // ⬅️ أضف where لفلترة حسب المدرسة
-        $students = Student::inSchool($schoolId)
+        $query = Student::inSchool($schoolId)
             ->whereHas('enrollments', function($q) {
                 $q->where('is_active', true);
             })
@@ -92,15 +105,26 @@ class StudentController extends Controller
                                 ->orWhere('phone', 'like', "%{$search}%"); // ⬅️ أضف هذا
                         });
                 });
-            })
-            ->orderBy('created_at', 'desc')
-            ->get();
+            });
+
+        // Status filter
+        if ($statusFilter === 'active') {
+            $query->where('is_active', true);
+        } elseif ($statusFilter === 'inactive') {
+            $query->where('is_active', false);
+        }
+
+        $students = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
         $buses = \App\Models\Bus::where('school_id', $schoolId)->orderBy('bus_number')->get(['id', 'bus_number', 'plate_number']);
 
         return Inertia::render('School/Students/IndexStudents', [
             'students' => $students,
-            'filters' => $request->only(['search']),
+            'counts' => $counts,
+            'filters' => [
+                'search' => $request->input('search', ''),
+                'status' => $statusFilter,
+            ],
             'classrooms' => Classroom::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
             'buses' => $buses,
             'guardianResult' => session('guardianResult'),
@@ -447,6 +471,20 @@ class StudentController extends Controller
         $student->delete();
 
         return redirect()->route('school.students.index')->with('success', 'Student deleted successfully.');
+    }
+
+    /**
+     * [Print] طباعة بطاقة الطالب
+     */
+    public function printCard(Student $student)
+    {
+        $student->load(['guardians', 'currentEnrollment.classroom', 'forthBus.route', 'backBus.route']);
+
+        $this->authorize('view', $student);
+
+        return Inertia::render('School/Students/PrintCard', [
+            'student' => $student,
+        ]);
     }
 }
 
