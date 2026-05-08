@@ -287,6 +287,13 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent implicit form submission (e.g., from mobile keyboard "Next/Go") from saving data prematurely.
+    if (currentStep === 1) {
+      setCurrentStep(2);
+      return;
+    }
+
     if (isEditing && currentDriverId) {
       post(route("admin.drivers.update", currentDriverId), {
         forceFormData: true,
@@ -932,7 +939,7 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                                 {isRTL ? "إلغاء" : "Cancel"}
                             </button>
                             {currentStep === 1 ? (
-                                <button type="button" onClick={() => setCurrentStep(2)} className={DS_btnPrimary}>
+                                <button type="button" onClick={(e) => { e.preventDefault(); setCurrentStep(2); }} className={DS_btnPrimary}>
                                     {isRTL ? "متابعة" : "Continue"} <ChevronRight size={16} />
                                 </button>
                             ) : (

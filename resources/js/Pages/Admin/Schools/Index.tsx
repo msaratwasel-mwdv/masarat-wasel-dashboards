@@ -171,6 +171,20 @@ export default function SchoolsIndex({ schools, plans }: Props) {
 
   const submitForm = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent implicit form submission (e.g., from mobile keyboard "Next/Go") from saving data prematurely.
+    if (modalType === "add" && currentStep < 3) {
+      if (currentStep === 1) {
+        setData('create_admin', true);
+      }
+      setCurrentStep(currentStep + 1);
+      return;
+    }
+    if (modalType === "edit" && currentStep < 2) {
+      setCurrentStep(currentStep + 1);
+      return;
+    }
+
     if (modalType === "add") {
       post(route("admin.schools.store"), {
         forceFormData: true,
@@ -716,7 +730,7 @@ export default function SchoolsIndex({ schools, plans }: Props) {
                             {modalType === 'add' && currentStep === 1 && (
                                 <button
                                     type="button"
-                                    onClick={() => { setData('create_admin', true); setCurrentStep(2); }}
+                                    onClick={(e) => { e.preventDefault(); setData('create_admin', true); setCurrentStep(2); }}
                                     className="bg-brand-navy text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
                                 >
                                     {isRTL ? "التالي (إضافة مدير)" : "Next (Add Manager)"}
@@ -726,7 +740,7 @@ export default function SchoolsIndex({ schools, plans }: Props) {
                             {modalType === 'add' && currentStep === 2 && (
                                 <button
                                     type="button"
-                                    onClick={() => setCurrentStep(3)}
+                                    onClick={(e) => { e.preventDefault(); setCurrentStep(3); }}
                                     className="bg-brand-navy text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
                                 >
                                     {isRTL ? "التالي (الاشتراك)" : "Next (Subscription)"}
@@ -746,7 +760,7 @@ export default function SchoolsIndex({ schools, plans }: Props) {
                             {modalType === 'add' && currentStep === 1 && (
                                 <button
                                     type="button"
-                                    onClick={() => { setData('create_admin', false); setCurrentStep(3); }}
+                                    onClick={(e) => { e.preventDefault(); setData('create_admin', false); setCurrentStep(3); }}
                                     className={`px-6 py-2.5 rounded-xl text-sm font-bold border transition-all ${isDark ? "border-gray-700 text-gray-300 hover:bg-gray-800" : "border-gray-200 text-gray-600 hover:bg-white shadow-sm"}`}
                                 >
                                     {isRTL ? "تخطِ واختيار باقة" : "Skip & Select Plan"}
@@ -756,7 +770,7 @@ export default function SchoolsIndex({ schools, plans }: Props) {
                             {modalType === 'edit' && currentStep === 1 && (
                                 <button
                                     type="button"
-                                    onClick={() => setCurrentStep(2)}
+                                    onClick={(e) => { e.preventDefault(); setCurrentStep(2); }}
                                     className="bg-brand-navy text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
                                 >
                                     {isRTL ? "التالي (الخطة)" : "Next (Plan)"}
