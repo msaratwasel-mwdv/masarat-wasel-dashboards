@@ -22,19 +22,6 @@ class CheckTransportAccess
 
         $school = $user->school;
 
-        if ($school) {
-            // Check legacy block status
-            if ($school->transport_status == 0) {
-                return $this->errorResponse($request, 'Your school is currently blocked from accessing the transport system.');
-            }
-
-            // Check new plan feature gating
-            // Access to "Transport" logic generally requires the has_driver_app or has_parent_app features
-            if (!$school->hasFeature('has_driver_app') && !$school->hasFeature('has_parent_app')) {
-                return $this->errorResponse($request, 'مدرستك غير مشتركة في باقة النقل المدرسي.');
-            }
-        }
-
         return $next($request);
     }
 
