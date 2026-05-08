@@ -102,6 +102,8 @@ class AssistantController extends Controller
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|unique:users,phone',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'id_card_front_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'id_card_back_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             // بيانات البروفايل
             'emergency_contact_name' => 'required|string|max:255',
             'emergency_contact_phone' => 'required|string|max:20',
@@ -136,6 +138,8 @@ class AssistantController extends Controller
                 'status' => strtolower($request->status ?? 'active'),
                 'emergency_contact_name' => $request->emergency_contact_name,
                 'emergency_contact_phone' => $request->emergency_contact_phone,
+                'id_card_front_image' => $request->hasFile('id_card_front_image') ? $request->file('id_card_front_image')->store('assistants/id_cards', 'public') : null,
+                'id_card_back_image' => $request->hasFile('id_card_back_image') ? $request->file('id_card_back_image')->store('assistants/id_cards', 'public') : null,
             ]);
         });
 
@@ -157,6 +161,8 @@ class AssistantController extends Controller
             'email' => ['required', 'email', Rule::unique('users')->ignore($assistant->id)],
             'phone' => ['required', Rule::unique('users')->ignore($assistant->id)],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'id_card_front_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'id_card_back_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'emergency_contact_name' => 'required|string',
             'emergency_contact_phone' => 'required|string',
             'status' => 'required|in:active,inactive',
@@ -188,14 +194,32 @@ class AssistantController extends Controller
 
             $assistant->update($data);
 
+            $assistantExtData = [
+                'status' => strtolower($request->status ?? 'active'),
+                'emergency_contact_name' => $request->emergency_contact_name,
+                'emergency_contact_phone' => $request->emergency_contact_phone,
+            ];
+
+            $assistantExtRecord = $assistant->assistant()->firstOrCreate(['user_id' => $assistant->id]);
+
+            if ($request->hasFile('id_card_front_image')) {
+                if ($assistantExtRecord->id_card_front_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($assistantExtRecord->id_card_front_image);
+                }
+                $assistantExtData['id_card_front_image'] = $request->file('id_card_front_image')->store('assistants/id_cards', 'public');
+            }
+
+            if ($request->hasFile('id_card_back_image')) {
+                if ($assistantExtRecord->id_card_back_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($assistantExtRecord->id_card_back_image);
+                }
+                $assistantExtData['id_card_back_image'] = $request->file('id_card_back_image')->store('assistants/id_cards', 'public');
+            }
+
             // Update assistant extension record
             $assistant->assistant()->updateOrCreate(
                 ['user_id' => $assistant->id],
-                [
-                    'status' => strtolower($request->status ?? 'active'),
-                    'emergency_contact_name' => $request->emergency_contact_name,
-                    'emergency_contact_phone' => $request->emergency_contact_phone,
-                ]
+                $assistantExtData
             );
         });
 

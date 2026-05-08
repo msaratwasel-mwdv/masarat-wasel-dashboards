@@ -101,9 +101,13 @@ interface Assistant {
     emergency_contact_name: string;
     emergency_contact_phone: string;
     status: string;
+    id_card_front_image: string | null;
+    id_card_back_image: string | null;
   } | null;
   image?: string | null;
   address?: string | null;
+  id_card_front_image?: string | null;
+  id_card_back_image?: string | null;
   assigned_bus_as_assistant: AssignedBus | null;
 }
 
@@ -146,6 +150,8 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<number | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewIdCardFront, setPreviewIdCardFront] = useState<string | null>(null);
+  const [previewIdCardBack, setPreviewIdCardBack] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedAssistant, setSelectedAssistant] = useState<Assistant | null>(null);
@@ -170,6 +176,8 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
       status: "active",
       address: "",
       image: null as File | null,
+      id_card_front_image: null as File | null,
+      id_card_back_image: null as File | null,
     });
 
   // --- Handlers ---
@@ -205,6 +213,8 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
     setIsEditing(false);
     setCurrentId(null);
     setPreviewImage(null);
+    setPreviewIdCardFront(null);
+    setPreviewIdCardBack(null);
     reset();
     setData("_method", "post");
     clearErrors();
@@ -216,6 +226,8 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
     setIsEditing(true);
     setCurrentId(assistant.id);
     setPreviewImage(assistant.image ? `/storage/${assistant.image}` : null);
+    setPreviewIdCardFront(assistant.id_card_front_image ? `/storage/${assistant.id_card_front_image}` : null);
+    setPreviewIdCardBack(assistant.id_card_back_image ? `/storage/${assistant.id_card_back_image}` : null);
     setData({
       _method: "put",
       first_name_ar: assistant.first_name_ar || "",
@@ -234,6 +246,8 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
       status: assistant.assistant?.status === "active" ? "active" : "inactive",
       address: assistant.address || "",
       image: null,
+      id_card_front_image: null,
+      id_card_back_image: null,
     });
     clearErrors();
     setCurrentStep(1);
@@ -248,6 +262,8 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
   const closeModal = () => {
     setIsModalOpen(false);
     setPreviewImage(null);
+    setPreviewIdCardFront(null);
+    setPreviewIdCardBack(null);
     reset();
   };
 
@@ -663,6 +679,16 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Media Assets */}
+                            <div className="mt-12 pt-8 border-t border-gray-100 dark:border-[#243460]">
+                                <h3 className="text-xs font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] mb-6">{isRTL ? "المستندات والصور" : "Documentary Evidence"}</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                    <MediaCard label={isRTL ? "الهوية (أمام)" : "ID Card Front"} src={selectedAssistant.id_card_front_image || selectedAssistant.assistant?.id_card_front_image} isDark={isDark} isRTL={isRTL} />
+                                    <MediaCard label={isRTL ? "الهوية (خلف)" : "ID Card Back"} src={selectedAssistant.id_card_back_image || selectedAssistant.assistant?.id_card_back_image} isDark={isDark} isRTL={isRTL} />
+                                    <MediaCard label={isRTL ? "صورة المسح" : "Scan Reference"} src={selectedAssistant.image} isDark={isDark} isRTL={isRTL} />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </Modal>
@@ -818,6 +844,27 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
                                         <div className="space-y-1.5">
                                             <label className={DS_label}>{isRTL ? "رقم هاتف الطوارئ" : "Emergency Phone"}</label>
                                             <input type="text" value={data.emergency_contact_phone} onChange={(e) => setData("emergency_contact_phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className={DS_label}>{isRTL ? "الهوية (أمام)" : "ID Card Front Image"}</label>
+                                        <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460]">
+                                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white">
+                                                {data.id_card_front_image ? <img src={URL.createObjectURL(data.id_card_front_image)} className="w-full h-full object-cover" /> : previewIdCardFront ? <img src={previewIdCardFront} className="w-full h-full object-cover" /> : <CreditCard size={18} className="text-gray-300 m-auto mt-3" />}
+                                            </div>
+                                            <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">{isRTL ? "اختيار ملف" : "Choose File"}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("id_card_front_image", e.target.files?.[0] || null)} /></label>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={DS_label}>{isRTL ? "الهوية (خلف)" : "ID Card Back Image"}</label>
+                                        <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460]">
+                                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white">
+                                                {data.id_card_back_image ? <img src={URL.createObjectURL(data.id_card_back_image)} className="w-full h-full object-cover" /> : previewIdCardBack ? <img src={previewIdCardBack} className="w-full h-full object-cover" /> : <CreditCard size={18} className="text-gray-300 m-auto mt-3" />}
+                                            </div>
+                                            <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">{isRTL ? "اختيار ملف" : "Choose File"}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("id_card_back_image", e.target.files?.[0] || null)} /></label>
                                         </div>
                                     </div>
                                 </div>

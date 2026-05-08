@@ -16,6 +16,8 @@ class Assistant extends Model
         'status',
         'emergency_contact_name',
         'emergency_contact_phone',
+        'id_card_front_image',
+        'id_card_back_image',
     ];
 
     // NOTE: 'name' removed from $appends to prevent N+1 reverse-lookup.

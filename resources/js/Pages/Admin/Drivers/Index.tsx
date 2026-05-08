@@ -107,10 +107,14 @@ interface Driver {
     status: string;
     license_front_image: string | null;
     license_back_image: string | null;
+    id_card_front_image: string | null;
+    id_card_back_image: string | null;
   } | null;
   image?: string | null;
   license_front_image?: string | null; 
   license_back_image?: string | null; 
+  id_card_front_image?: string | null;
+  id_card_back_image?: string | null;
   assigned_bus: AssignedBus | null;
 }
 
@@ -155,6 +159,8 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewLicenseFront, setPreviewLicenseFront] = useState<string | null>(null);
   const [previewLicenseBack, setPreviewLicenseBack] = useState<string | null>(null);
+  const [previewIdCardFront, setPreviewIdCardFront] = useState<string | null>(null);
+  const [previewIdCardBack, setPreviewIdCardBack] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
@@ -180,6 +186,8 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
       image: null as File | null,
       license_front_image: null as File | null,
       license_back_image: null as File | null,
+      id_card_front_image: null as File | null,
+      id_card_back_image: null as File | null,
     });
 
   // --- Handlers ---
@@ -217,6 +225,8 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
     setPreviewImage(null);
     setPreviewLicenseFront(null);
     setPreviewLicenseBack(null);
+    setPreviewIdCardFront(null);
+    setPreviewIdCardBack(null);
     reset();
     setData("_method", "post");
     clearErrors();
@@ -230,6 +240,8 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
     setPreviewImage(driver.image ? `/storage/${driver.image}` : null);
     setPreviewLicenseFront(driver.license_front_image ? `/storage/${driver.license_front_image}` : null);
     setPreviewLicenseBack(driver.license_back_image ? `/storage/${driver.license_back_image}` : null);
+    setPreviewIdCardFront(driver.id_card_front_image ? `/storage/${driver.id_card_front_image}` : null);
+    setPreviewIdCardBack(driver.id_card_back_image ? `/storage/${driver.id_card_back_image}` : null);
     setData({
       _method: "put",
       first_name_ar: driver.first_name_ar || "",
@@ -249,6 +261,8 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
       image: null,
       license_front_image: null,
       license_back_image: null,
+      id_card_front_image: null,
+      id_card_back_image: null,
     });
     clearErrors();
     setCurrentStep(1);
@@ -265,6 +279,8 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
     setPreviewImage(null);
     setPreviewLicenseFront(null);
     setPreviewLicenseBack(null);
+    setPreviewIdCardFront(null);
+    setPreviewIdCardBack(null);
     reset();
   };
 
@@ -712,6 +728,8 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                     <MediaCard label={isRTL ? "الرخصة (أمام)" : "License Front"} src={selectedDriver.license_front_image || selectedDriver.driver?.license_front_image} isDark={isDark} isRTL={isRTL} />
                                     <MediaCard label={isRTL ? "الرخصة (خلف)" : "License Back"} src={selectedDriver.license_back_image || selectedDriver.driver?.license_back_image} isDark={isDark} isRTL={isRTL} />
+                                    <MediaCard label={isRTL ? "الهوية (أمام)" : "ID Card Front"} src={selectedDriver.id_card_front_image || selectedDriver.driver?.id_card_front_image} isDark={isDark} isRTL={isRTL} />
+                                    <MediaCard label={isRTL ? "الهوية (خلف)" : "ID Card Back"} src={selectedDriver.id_card_back_image || selectedDriver.driver?.id_card_back_image} isDark={isDark} isRTL={isRTL} />
                                     <MediaCard label={isRTL ? "صورة المسح" : "Scan Reference"} src={selectedDriver.image} isDark={isDark} isRTL={isRTL} />
                                 </div>
                             </div>
@@ -870,6 +888,27 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                                                 {data.license_back_image ? <img src={URL.createObjectURL(data.license_back_image)} className="w-full h-full object-cover" /> : previewLicenseBack ? <img src={previewLicenseBack} className="w-full h-full object-cover" /> : <CreditCard size={18} className="text-gray-300 m-auto mt-3" />}
                                             </div>
                                             <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">{isRTL ? "اختيار ملف" : "Choose File"}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("license_back_image", e.target.files?.[0] || null)} /></label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className={DS_label}>{isRTL ? "الهوية (أمام)" : "ID Card Front Image"}</label>
+                                        <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460]">
+                                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white">
+                                                {data.id_card_front_image ? <img src={URL.createObjectURL(data.id_card_front_image)} className="w-full h-full object-cover" /> : previewIdCardFront ? <img src={previewIdCardFront} className="w-full h-full object-cover" /> : <CreditCard size={18} className="text-gray-300 m-auto mt-3" />}
+                                            </div>
+                                            <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">{isRTL ? "اختيار ملف" : "Choose File"}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("id_card_front_image", e.target.files?.[0] || null)} /></label>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={DS_label}>{isRTL ? "الهوية (خلف)" : "ID Card Back Image"}</label>
+                                        <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460]">
+                                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white">
+                                                {data.id_card_back_image ? <img src={URL.createObjectURL(data.id_card_back_image)} className="w-full h-full object-cover" /> : previewIdCardBack ? <img src={previewIdCardBack} className="w-full h-full object-cover" /> : <CreditCard size={18} className="text-gray-300 m-auto mt-3" />}
+                                            </div>
+                                            <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">{isRTL ? "اختيار ملف" : "Choose File"}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("id_card_back_image", e.target.files?.[0] || null)} /></label>
                                         </div>
                                     </div>
                                 </div>
