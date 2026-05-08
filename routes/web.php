@@ -18,17 +18,26 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
+    $latestEvents = \App\Models\Event::where('is_published', true)
+        ->orderBy('event_date', 'desc')
+        ->take(3)
+        ->get();
+
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => false,
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
+        'latestEvents' => $latestEvents,
     ]);
 });
 
 // Subscription UI Page
 Route::get('/subscription', [\App\Http\Controllers\SubscriptionPageController::class, 'index'])->name('subscription');
 Route::post('/subscription', [\App\Http\Controllers\SubscriptionPageController::class, 'store'])->name('subscription.store');
+
+// Public Events Page
+Route::get('/events', [\App\Http\Controllers\PublicEventController::class, 'index'])->name('events.index');
 
 // ✅ تم حذف روابط الاختبار التالية لأسباب أمنية:
 //    - GET  /seed-test-data        ← كانت تبذر بيانات وتعرض معلومات النظام
@@ -179,6 +188,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('analytics/drivers', [\App\Http\Controllers\Admin\AnalyticsController::class, 'driverAnalytics'])->name('analytics.drivers');
         Route::get('analytics/financial', [\App\Http\Controllers\Admin\AnalyticsController::class, 'financial'])->name('analytics.financial');
         Route::get('analytics/students', [\App\Http\Controllers\Admin\AnalyticsController::class, 'studentInsights'])->name('analytics.students');
+
+        // إدارة الفعاليات والأخبار
+        Route::resource('events', \App\Http\Controllers\Admin\EventController::class);
 
     });
 
