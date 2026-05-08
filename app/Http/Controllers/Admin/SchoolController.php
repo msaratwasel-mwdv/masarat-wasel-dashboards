@@ -18,7 +18,8 @@ class SchoolController extends Controller
             ->get();
 
         return Inertia::render('Admin/Schools/Index', [
-            'schools' => $schools
+            'schools' => $schools,
+            'plans' => \App\Models\Plan::active()->orderBy('sort_order')->get()
         ]);
     }
 

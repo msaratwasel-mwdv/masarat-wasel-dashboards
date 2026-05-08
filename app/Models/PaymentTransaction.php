@@ -5,20 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Invoice extends Model
+class PaymentTransaction extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'school_id',
-        'total_amount',
-        'status',
-        'due_date',
+        'amount',
+        'payment_method',
+        'reference_number',
+        'notes',
+        'paid_at',
     ];
 
     protected $casts = [
-        'total_amount' => 'decimal:2',
-        'due_date' => 'date',
+        'amount' => 'decimal:2',
+        'paid_at' => 'datetime',
     ];
 
     public function school()
@@ -26,13 +28,8 @@ class Invoice extends Model
         return $this->belongsTo(School::class);
     }
 
-    public function items()
+    public function installmentPayments()
     {
-        return $this->hasMany(InvoiceItem::class);
-    }
-
-    public function transactions()
-    {
-        return $this->hasMany(Transaction::class);
+        return $this->hasMany(InstallmentPayment::class);
     }
 }

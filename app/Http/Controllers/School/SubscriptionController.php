@@ -22,37 +22,19 @@ class SubscriptionController extends Controller
     public function plans(Request $request)
     {
         $schoolId = $request->user()->getSchoolId();
+        
         return Inertia::render('School/Subscriptions/Index', [
-            'plans' => Plan::where('is_active', true)->get(),
-            'subscriptions' => Subscription::with(['plan', 'student'])
-                                ->where('school_id', $schoolId)->get(),
-            'students' => Student::where('school_id', $schoolId)->get()
+            'plans' => Plan::active()->orderBy('sort_order')->get(),
+            'billingData' => $this->subscriptionService->getSchoolBillingData($schoolId),
         ]);
     }
 
-    public function subscribeAttendance(Request $request)
+    public function transactions(Request $request)
     {
-        $request->validate(['plan_id' => 'required|exists:plans,id']);
-        try {
-            $this->subscriptionService->subscribeSchoolToAttendance($request->user()->getSchoolId(), $request->plan_id);
-            return redirect()->back()->with('success', 'Subscribed to attendance successfully. Invoice generated pending payment.');
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
-        }
-    }
-
-    public function subscribeTransport(Request $request)
-    {
-        $request->validate([
-            'plan_id' => 'required|exists:plans,id',
-            'student_ids' => 'required|array',
-            'student_ids.*' => 'exists:students,id'
+        $schoolId = $request->user()->getSchoolId();
+        
+        return Inertia::render('School/Transactions/Index', [
+            'billingData' => $this->subscriptionService->getSchoolBillingData($schoolId),
         ]);
-        try {
-            $this->subscriptionService->subscribeStudentsToTransport($request->user()->getSchoolId(), $request->student_ids, $request->plan_id);
-            return redirect()->back()->with('success', 'Students subscribed to transport. Invoice generated pending payment.');
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
-        }
     }
 }

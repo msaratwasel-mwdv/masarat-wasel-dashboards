@@ -21,21 +21,9 @@ class CheckAttendanceSubscription
             return $next($request);
         }
 
-        $schoolId = $user->school_id;
-        if (!$schoolId) {
-            return response()->json(['message' => 'No school assigned to user.'], 403);
-        }
-
-        // Check for active or trialing attendance subscription
-        $hasAccess = Subscription::where('school_id', $schoolId)
-            ->whereHas('plan', function ($q) {
-                $q->where('type', 'attendance');
-            })
-            ->whereIn('status', ['active', 'trialing'])
-            ->where('end_date', '>=', now()->toDateString())
-            ->exists();
-
-        if (!$hasAccess) {
+        $school = $user->school;
+        
+        if (!$school || !$school->hasFeature('has_attendance')) {
             return response()->json([
                 'message' => 'Your school does not have an active Attendance subscription.'
             ], 403);

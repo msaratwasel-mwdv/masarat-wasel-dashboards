@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckUserRole::class,
+            'plan.feature' => \App\Http\Middleware\CheckPlanFeature::class,
         ]);
         //
     })

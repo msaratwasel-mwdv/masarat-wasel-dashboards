@@ -29,6 +29,10 @@ return new class extends Migration
             $table->string('image')->nullable();
             $table->boolean('is_active')->default(true);
 
+            $table->string('address')->nullable();
+            $table->decimal('latitude', 10, 8)->nullable();
+            $table->decimal('longitude', 11, 8)->nullable();
+
             $table->foreignId('forth_bus_id')->nullable()->constrained('buses')->nullOnDelete();
             $table->decimal('forth_latitude', 10, 8)->nullable();
             $table->decimal('forth_longitude', 11, 8)->nullable();

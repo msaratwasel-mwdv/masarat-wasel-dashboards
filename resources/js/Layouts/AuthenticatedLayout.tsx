@@ -148,8 +148,16 @@ const getMenuItems = (isRTL: boolean) => [
         route: "admin.plans.index",
       },
       {
-        label: isRTL ? "الفواتير" : "Invoices",
-        route: "admin.invoices.index",
+        label: isRTL ? "الاشتراكات" : "Subscriptions",
+        route: "admin.subscriptions.index",
+      },
+      {
+        label: isRTL ? "الأقساط والدفعات" : "Installments",
+        route: "admin.installments.index",
+      },
+      {
+        label: isRTL ? "سجل المعاملات" : "Transactions History",
+        route: "admin.transactions.index",
       },
     ],
   },

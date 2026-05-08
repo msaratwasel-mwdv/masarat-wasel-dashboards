@@ -24,6 +24,9 @@ return new class extends Migration
             $table->boolean('has_transport')->default(true); // خدمة النقل
             $table->boolean('has_attendance')->default(true); // خدمة الحضور
 
+            $table->enum('transport_status', ['active', 'blocked'])->default('active');
+            $table->foreignId('plan_id')->nullable()->constrained('plans')->nullOnDelete();
+
             $table->timestamps(); // تاريخ الإنشاء والتعديل
         });
     }

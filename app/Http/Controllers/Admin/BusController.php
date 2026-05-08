@@ -384,12 +384,25 @@ class BusController extends Controller
 
         $schoolId = $request->school_id ?: null;
 
+        if ($schoolId) {
+            $school = School::findOrFail($schoolId);
+            $maxBuses = $school->maxBuses();
+            
+            // If maxBuses is null, it's unlimited. If it's an int, check count.
+            if ($maxBuses !== null) {
+                $currentBusesCount = Bus::where('school_id', $schoolId)->where('id', '!=', $bus->id)->count();
+                if ($currentBusesCount >= $maxBuses) {
+                    return redirect()->back()->with('error', "عذراً، هذه المدرسة استنفذت الحد الأقصى للحافلات المسموح به في باقتها ({$maxBuses} حافلة).");
+                }
+            }
+        }
+
         DB::transaction(function () use ($schoolId, $bus) {
             // 1. Update bus school
             $bus->update(['school_id' => $schoolId]);
         });
 
-        $message = $schoolId ? 'تم إسناد الباص للمدرسة بنجاح' : 'تم سحب الباص للمقر الرئيسي بنجاح';
+        $message = $schoolId ? 'تم إسناد الحافلة للمدرسة بنجاح' : 'تم سحب الحافلة للمقر الرئيسي بنجاح';
         return redirect()->back()->with('success', $message);
     }
 

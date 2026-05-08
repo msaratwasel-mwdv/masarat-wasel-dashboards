@@ -12,7 +12,7 @@ class PlanController extends Controller
     public function index()
     {
         return Inertia::render('Admin/Plans/Index', [
-            'plans' => Plan::all()
+            'plans' => Plan::withCount('subscriptions')->get()
         ]);
     }
 
@@ -20,37 +20,55 @@ class PlanController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string',
-            'description' => 'nullable|string',
-            'type' => 'required|in:attendance,transport',
-            'price' => 'required|numeric|min:0',
-            'billing_cycle' => 'required|in:yearly,monthly,trial',
-            'trial_days' => 'nullable|integer|min:0',
+            'description' => 'required|string',
+            'price_per_student' => 'required|numeric|min:0',
+            'max_buses' => 'nullable|integer|min:1',
+            'has_driver_app' => 'boolean',
+            'has_parent_app' => 'boolean',
+            'has_supervisor_app' => 'boolean',
+            'notifications_limit' => 'nullable|string|in:limited,unlimited',
+            'has_reports' => 'boolean',
+            'has_api_access' => 'boolean',
+            'has_dedicated_support' => 'boolean',
+            'badge' => 'nullable|string',
             'is_active' => 'boolean'
         ]);
 
         Plan::create($validated);
-        return redirect()->back()->with('success', 'Plan created successfully');
+        return redirect()->back()->with('success', 'تم إضافة الخطة بنجاح');
     }
 
     public function update(Request $request, Plan $plan)
     {
         $validated = $request->validate([
             'name' => 'required|string',
-            'description' => 'nullable|string',
-            'type' => 'required|in:attendance,transport',
-            'price' => 'required|numeric|min:0',
-            'billing_cycle' => 'required|in:yearly,monthly,trial',
-            'trial_days' => 'nullable|integer|min:0',
+            'description' => 'required|string',
+            'price_per_student' => 'required|numeric|min:0',
+            'max_buses' => 'nullable|integer|min:1',
+            'has_driver_app' => 'boolean',
+            'has_parent_app' => 'boolean',
+            'has_supervisor_app' => 'boolean',
+            'notifications_limit' => 'nullable|string|in:limited,unlimited',
+            'has_reports' => 'boolean',
+            'has_api_access' => 'boolean',
+            'has_dedicated_support' => 'boolean',
+            'badge' => 'nullable|string',
             'is_active' => 'boolean'
         ]);
 
         $plan->update($validated);
-        return redirect()->back()->with('success', 'Plan updated successfully');
+        return redirect()->back()->with('success', 'تم تحديث الخطة بنجاح');
     }
 
     public function destroy(Plan $plan)
     {
         $plan->delete();
-        return redirect()->back()->with('success', 'Plan deleted successfully');
+        return redirect()->back()->with('success', 'تم حذف الخطة بنجاح');
+    }
+
+    public function toggle(Plan $plan)
+    {
+        $plan->update(['is_active' => !$plan->is_active]);
+        return redirect()->back()->with('success', 'تم تغيير حالة الخطة بنجاح');
     }
 }

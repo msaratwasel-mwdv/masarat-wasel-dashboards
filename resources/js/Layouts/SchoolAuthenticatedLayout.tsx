@@ -130,8 +130,8 @@ const getMenuItems = (isRTL: boolean) => [
         route: "school.plans.index",
       },
       {
-        label: isRTL ? "الفواتير" : "Invoices",
-        route: "school.invoices.index",
+        label: isRTL ? "سجل المعاملات" : "Transactions History",
+        route: "school.transactions.index",
       },
     ],
   },

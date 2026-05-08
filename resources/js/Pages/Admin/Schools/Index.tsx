@@ -39,6 +39,7 @@ import {
   Filter,
 } from "lucide-react";
 import FieldTripMapPicker from "@/Components/FieldTripMapPicker";
+import PlanSelectorGrid from "@/Components/PlanSelectorGrid";
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -53,6 +54,7 @@ interface School {
   status: string;
   has_transport: number;
   has_attendance: number;
+  plan_id?: number | null;
   logo?: string;
   buses_count?: number;
   enrollments_count?: number;
@@ -60,10 +62,11 @@ interface School {
 
 interface Props {
   schools: School[];
+  plans: any[];
 }
 
 
-export default function SchoolsIndex({ schools }: Props) {
+export default function SchoolsIndex({ schools, plans }: Props) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -102,6 +105,7 @@ export default function SchoolsIndex({ schools }: Props) {
     status: "Active",
     has_transport: true,
     has_attendance: true,
+    plan_id: null as number | null,
     logo: null as File | null,
 
     // Step 2: Admin Info
@@ -144,6 +148,7 @@ export default function SchoolsIndex({ schools }: Props) {
       status: school.status,
       has_transport: school.has_transport === 1 || school.has_transport === true,
       has_attendance: school.has_attendance === 1 || school.has_attendance === true,
+      plan_id: school.plan_id || null,
       logo: null,
       create_admin: false,
       admin_name: "",
@@ -368,11 +373,12 @@ export default function SchoolsIndex({ schools }: Props) {
                     {modalType === 'add' && (
                         <div className="mt-8 relative px-12">
                             <div className="absolute left-12 right-12 top-1/2 -translate-y-1/2 h-1 bg-gray-200 dark:bg-gray-800 rounded-full"></div>
-                            <div className="absolute left-12 top-1/2 -translate-y-1/2 h-1 bg-brand-yellow rounded-full transition-all duration-500" style={{ width: currentStep === 1 ? '0%' : '100%' }}></div>
+                            <div className="absolute left-12 top-1/2 -translate-y-1/2 h-1 bg-brand-yellow rounded-full transition-all duration-500" style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%' }}></div>
 
                             <div className="flex justify-between relative z-10">
                                 <StepBubble num={1} active={currentStep >= 1} label={isRTL ? "المدرسة" : "School"} isRTL={isRTL} isDark={isDark} />
                                 <StepBubble num={2} active={currentStep >= 2} label={isRTL ? "المدير" : "Manager"} isRTL={isRTL} isDark={isDark} />
+                                <StepBubble num={3} active={currentStep >= 3} label={isRTL ? "الخطة" : "Plan"} isRTL={isRTL} isDark={isDark} />
                             </div>
                         </div>
                     )}
@@ -517,7 +523,7 @@ export default function SchoolsIndex({ schools }: Props) {
                                         </div>
                                     </div>
                                 </motion.div>
-                            ) : (
+                            ) : currentStep === 2 && modalType === 'add' ? (
                                 <motion.div
                                     key="step2"
                                     initial={{ opacity: 0, x: isRTL ? -20 : 20 }}
@@ -664,6 +670,32 @@ export default function SchoolsIndex({ schools }: Props) {
                                         </div>
                                     </div>
                                 </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="step3"
+                                    initial={{ opacity: 0, x: isRTL ? -20 : 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: isRTL ? 20 : -20 }}
+                                >
+                                    <div className={`p-4 mb-6 rounded-2xl border bg-brand-navy dark:bg-indigo-900 shadow-xl flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
+                                        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white">
+                                            <SchoolIcon className="w-6 h-6" />
+                                        </div>
+                                        <div className={isRTL ? "text-right" : ""}>
+                                            <h4 className="text-white font-bold">{isRTL ? "خطة الاشتراك للمدرسة" : "School Subscription Plan"}</h4>
+                                            <p className="text-white/60 text-xs">{isRTL ? "حدد الخطة المناسبة بناءً على مميزات النظام المطلوبة" : "Select the appropriate plan based on required system features"}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className={isRTL ? "text-right" : "text-left"}>
+                                        <PlanSelectorGrid 
+                                            plans={plans}
+                                            selectedId={data.plan_id}
+                                            onSelect={(id) => setData("plan_id", id)}
+                                        />
+                                        <InputError message={errors.plan_id} className="mt-2" />
+                                    </div>
+                                </motion.div>
                             )}
                         </AnimatePresence>
                     </div>
@@ -675,7 +707,7 @@ export default function SchoolsIndex({ schools }: Props) {
                                 {isRTL ? "إلغاء النافذة" : "Cancel Wizard"}
                             </button>
                         ) : (
-                            <button type="button" onClick={() => setCurrentStep(1)} className={`text-sm font-bold ${isDark ? "text-gray-500 hover:text-white" : "text-gray-400 hover:text-gray-800"}`}>
+                            <button type="button" onClick={() => setCurrentStep(currentStep - 1)} className={`text-sm font-bold ${isDark ? "text-gray-500 hover:text-white" : "text-gray-400 hover:text-gray-800"}`}>
                                 {isRTL ? "العودة للبيانات" : "Previous Step"}
                             </button>
                         )}
@@ -691,7 +723,17 @@ export default function SchoolsIndex({ schools }: Props) {
                                 </button>
                             )}
 
-                            {(modalType === 'edit' || currentStep === 2) && (
+                            {modalType === 'add' && currentStep === 2 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentStep(3)}
+                                    className="bg-brand-navy text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
+                                >
+                                    {isRTL ? "التالي (الاشتراك)" : "Next (Subscription)"}
+                                </button>
+                            )}
+
+                            {((modalType === 'add' && currentStep === 3) || (modalType === 'edit' && currentStep === 2)) && (
                                 <PrimaryButton
                                     type="submit"
                                     disabled={processing}
@@ -703,12 +745,21 @@ export default function SchoolsIndex({ schools }: Props) {
 
                             {modalType === 'add' && currentStep === 1 && (
                                 <button
-                                    type="submit"
-                                    disabled={processing}
-                                    onClick={() => setData('create_admin', false)}
+                                    type="button"
+                                    onClick={() => { setData('create_admin', false); setCurrentStep(3); }}
                                     className={`px-6 py-2.5 rounded-xl text-sm font-bold border transition-all ${isDark ? "border-gray-700 text-gray-300 hover:bg-gray-800" : "border-gray-200 text-gray-600 hover:bg-white shadow-sm"}`}
                                 >
-                                    {isRTL ? "حفظ بدون مدير" : "Save Without Manager"}
+                                    {isRTL ? "تخطِ واختيار باقة" : "Skip & Select Plan"}
+                                </button>
+                            )}
+                            
+                            {modalType === 'edit' && currentStep === 1 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentStep(2)}
+                                    className="bg-brand-navy text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
+                                >
+                                    {isRTL ? "التالي (الخطة)" : "Next (Plan)"}
                                 </button>
                             )}
                         </div>

@@ -259,6 +259,16 @@ class StudentController extends Controller
             'image' => 'nullable|image|max:5120',
         ]);
 
+        $school = Auth::user()->school;
+        $maxStudents = $school->plan?->max_students;
+
+        if ($maxStudents !== null) {
+            $currentStudentsCount = Student::inSchool($schoolId)->count();
+            if ($currentStudentsCount >= $maxStudents) {
+                return redirect()->back()->with('error', "عذراً، مدرستك استنفذت الحد الأقصى للطلاب المسموح به في باقتك ({$maxStudents} طالب).");
+            }
+        }
+
         // استخدام Transaction لضمان سلامة البيانات
         DB::transaction(function () use ($validated, $schoolId, $request) {
             // ⬅️ تحديث بيانات إنشاء الطالب

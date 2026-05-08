@@ -27,9 +27,8 @@ Route::get('/', function () {
 });
 
 // Subscription UI Page
-Route::get('/subscription', function () {
-    return Inertia::render('Subscription');
-})->name('subscription');
+Route::get('/subscription', [\App\Http\Controllers\SubscriptionPageController::class, 'index'])->name('subscription');
+Route::post('/subscription', [\App\Http\Controllers\SubscriptionPageController::class, 'store'])->name('subscription.store');
 
 // 🌱 رابط بذر البيانات التجريبية مباشرة من المتصفح (للتطوير فقط)
 Route::get('/seed-test-data', function () {
@@ -207,8 +206,15 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         
         // Plans & Financials
         Route::resource('plans', \App\Http\Controllers\Admin\PlanController::class);
-        Route::resource('invoices', \App\Http\Controllers\Admin\InvoiceController::class);
-        Route::post('invoices/{invoice}/payment', [\App\Http\Controllers\Admin\InvoiceController::class, 'logPayment'])->name('invoices.payment');
+        Route::post('plans/{plan}/toggle', [\App\Http\Controllers\Admin\PlanController::class, 'toggle'])->name('plans.toggle');
+        
+        Route::get('subscriptions', [\App\Http\Controllers\Admin\SubscriptionController::class, 'index'])->name('subscriptions.index');
+        Route::post('subscriptions/{subscription}/approve', [\App\Http\Controllers\Admin\SubscriptionController::class, 'approve'])->name('subscriptions.approve');
+        Route::post('subscriptions/{subscription}/reject', [\App\Http\Controllers\Admin\SubscriptionController::class, 'reject'])->name('subscriptions.reject');
+        Route::get('installments', [\App\Http\Controllers\Admin\SubscriptionController::class, 'installmentsList'])->name('installments.index');
+        Route::post('installments/{installment}/pay', [\App\Http\Controllers\Admin\SubscriptionController::class, 'payInstallment'])->name('subscriptions.installments.pay');
+        Route::get('transactions', [\App\Http\Controllers\Admin\TransactionController::class, 'index'])->name('transactions.index');
+
 
         // مديرو المدارس - قائمة شاملة
         Route::get('school-admins', [SchoolUserController::class, 'index'])->name('school-admins.index');
@@ -353,19 +359,21 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
             ->except(['create', 'edit', 'show']);
 
         // 5. الحضور
-        Route::get('students/{student}/attendance', [StudentController::class, 'attendanceHistory'])->name('students.attendance');
+        Route::middleware(['plan.feature:has_attendance'])->group(function () {
+            Route::get('students/{student}/attendance', [StudentController::class, 'attendanceHistory'])->name('students.attendance');
 
-        Route::prefix('attendance')->group(function () {
-            Route::get('/', [AttendanceController::class, 'index'])->name('attendance.index');
-            Route::post('/', [AttendanceController::class, 'store'])->name('attendance.store');
-            Route::get('/{id}', [AttendanceController::class, 'show'])->name('attendance.show');
-            Route::delete('/{id}', [AttendanceController::class, 'destroy'])->name('attendance.destroy');
-            Route::post('/bulk', [AttendanceController::class, 'bulkStore'])->name('attendance.bulk');
+            Route::prefix('attendance')->group(function () {
+                Route::get('/', [AttendanceController::class, 'index'])->name('attendance.index');
+                Route::post('/', [AttendanceController::class, 'store'])->name('attendance.store');
+                Route::get('/{id}', [AttendanceController::class, 'show'])->name('attendance.show');
+                Route::delete('/{id}', [AttendanceController::class, 'destroy'])->name('attendance.destroy');
+                Route::post('/bulk', [AttendanceController::class, 'bulkStore'])->name('attendance.bulk');
+            });
+
+            // 5.5 طلبات الغياب
+            Route::get('absence-requests', [\App\Http\Controllers\School\AbsenceRequestController::class, 'index'])->name('absence-requests.index');
+            Route::post('absence-requests/{absenceRequest}/process', [\App\Http\Controllers\School\AbsenceRequestController::class, 'process'])->name('absence-requests.process');
         });
-
-        // 5.5 طلبات الغياب
-        Route::get('absence-requests', [\App\Http\Controllers\School\AbsenceRequestController::class, 'index'])->name('absence-requests.index');
-        Route::post('absence-requests/{absenceRequest}/process', [\App\Http\Controllers\School\AbsenceRequestController::class, 'process'])->name('absence-requests.process');
 
         Route::middleware([\App\Http\Middleware\CheckTransportAccess::class])->group(function () {
             // 6. الحافلات والرحلات
@@ -396,23 +404,26 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
 
 
             Route::resource('routes', \App\Http\Controllers\School\RouteController::class);
-            Route::resource('field-trips', \App\Http\Controllers\School\FieldTripController::class);
+            
+            // Field Trips gating
+            Route::middleware(['plan.feature:has_field_trips'])->group(function() {
+                Route::resource('field-trips', \App\Http\Controllers\School\FieldTripController::class);
+            });
 
             // Trips Dashboard
             Route::get('trips-dashboard', [\App\Http\Controllers\School\TripDashboardController::class, 'index'])->name('trips.dashboard');
             Route::get('trips/{trip}', [\App\Http\Controllers\School\TripDashboardController::class, 'show'])->name('trips.show');
 
             // Trip Reports
-            Route::get('trip-reports', [\App\Http\Controllers\School\TripReportController::class, 'index'])->name('trip-reports.index');
-            Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');
+            Route::middleware(['plan.feature:has_reports'])->group(function() {
+                Route::get('trip-reports', [\App\Http\Controllers\School\TripReportController::class, 'index'])->name('trip-reports.index');
+                Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');
+            });
         });
 
         // Subscriptions & Plans
         Route::get('plans', [\App\Http\Controllers\School\SubscriptionController::class, 'plans'])->name('plans.index');
-        Route::get('subscriptions', [\App\Http\Controllers\School\SubscriptionController::class, 'mySubscriptions'])->name('subscriptions.index');
-        Route::post('subscriptions/attendance', [\App\Http\Controllers\School\SubscriptionController::class, 'subscribeAttendance'])->name('subscriptions.attendance');
-        Route::post('subscriptions/transport', [\App\Http\Controllers\School\SubscriptionController::class, 'subscribeTransport'])->name('subscriptions.transport');
-        Route::get('invoices', [\App\Http\Controllers\School\InvoiceController::class, 'index'])->name('invoices.index');
+        Route::get('transactions', [\App\Http\Controllers\School\SubscriptionController::class, 'transactions'])->name('transactions.index');
 
         // School Settings
         Route::post('settings/school', [\App\Http\Controllers\School\SchoolSettingsController::class, 'update'])->name('settings.school.update');

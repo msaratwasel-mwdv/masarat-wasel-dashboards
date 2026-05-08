@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('bus_requests', function (Blueprint $table) {
             $table->id();
             $table->foreignId('school_id')->constrained()->onDelete('cascade');
-            $table->enum('request_type', ['permanent', 'temporary'])->default('temporary');
+            $table->enum('request_type', ['permanent', 'temporary', 'field_trip'])->default('temporary');
             $table->foreignId('bus_id')->nullable()->constrained('buses')->onDelete('set null');
             $table->integer('seats')->default(20);
             $table->decimal('cost', 10, 2)->nullable();

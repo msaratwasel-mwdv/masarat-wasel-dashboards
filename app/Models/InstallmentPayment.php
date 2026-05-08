@@ -5,28 +5,27 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class InvoiceItem extends Model
+class InstallmentPayment extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'invoice_id',
-        'subscription_id',
+        'payment_transaction_id',
+        'installment_id',
         'amount',
-        'description',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
     ];
 
-    public function invoice()
+    public function paymentTransaction()
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->belongsTo(PaymentTransaction::class);
     }
 
-    public function subscription()
+    public function installment()
     {
-        return $this->belongsTo(Subscription::class);
+        return $this->belongsTo(Installment::class);
     }
 }

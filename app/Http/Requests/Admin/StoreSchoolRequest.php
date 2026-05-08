@@ -31,6 +31,7 @@ class StoreSchoolRequest extends FormRequest
 
             'has_transport' => 'boolean',
             'has_attendance' => 'boolean',
+            'plan_id' => ['nullable', 'exists:plans,id'],
 
             // Optional Admin Data (Step 2)
             'admin_name' => ['nullable', 'required_if:create_admin,true', 'string', 'max:255'],

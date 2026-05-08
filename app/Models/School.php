@@ -21,6 +21,7 @@ class School extends Model
         'has_transport',
         'has_attendance',
         'transport_status',
+        'plan_id',
     ];
 
     /**
@@ -85,6 +86,45 @@ class School extends Model
     public function fieldTrips(): HasMany
     {
         return $this->hasMany(FieldTrip::class);
+    }
+
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    public function currentSubscription()
+    {
+        return $this->hasOne(Subscription::class)->whereIn('status', ['active', 'trialing'])->latest();
+    }
+
+    public function hasFeature(string $feature): bool
+    {
+        if (!$this->plan_id) return false;
+        
+        $plan = $this->plan;
+        if (!$plan) return false;
+        
+        return (bool) $plan->{$feature};
+    }
+
+    public function maxBuses(): ?int
+    {
+        if (!$this->plan_id || !$this->plan) return 0;
+        return $this->plan->max_buses;
+    }
+
+    public function totalOwed(): float
+    {
+        // Calculate pending installments amount directly
+        return $this->installments()
+            ->whereIn('status', ['pending', 'overdue'])
+            ->sum('amount');
+    }
+
+    public function installments()
+    {
+        return $this->hasMany(Installment::class);
     }
 }
 

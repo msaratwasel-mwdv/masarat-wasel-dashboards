@@ -12,7 +12,6 @@ class Subscription extends Model
     protected $fillable = [
         'plan_id',
         'school_id',
-        'student_id',
         'status',
         'start_date',
         'end_date',
@@ -33,8 +32,24 @@ class Subscription extends Model
         return $this->belongsTo(School::class);
     }
 
-    public function student()
+    public function installments()
     {
-        return $this->belongsTo(Student::class);
+        return $this->hasMany(Installment::class);
+    }
+
+
+    public function scopeActive($query)
+    {
+        return $query->whereIn('status', ['active', 'trialing']);
+    }
+
+    public function scopeForSchool($query, $schoolId)
+    {
+        return $query->where('school_id', $schoolId);
+    }
+
+    public function isPendingApproval()
+    {
+        return $this->status === 'pending_approval';
     }
 }

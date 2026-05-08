@@ -12,8 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('plan_id')->constrained()->onDelete('cascade');
             $table->foreignId('school_id')->constrained()->onDelete('cascade');
-            $table->foreignId('student_id')->nullable()->constrained()->onDelete('cascade');
-            $table->enum('status', ['active', 'expired', 'cancelled', 'trialing', 'pending_payment']);
+            $table->enum('status', ['active', 'expired', 'cancelled', 'paused', 'pending_approval']);
             $table->date('start_date');
             $table->date('end_date');
             $table->timestamps();

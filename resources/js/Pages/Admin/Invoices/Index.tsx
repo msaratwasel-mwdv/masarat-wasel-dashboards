@@ -63,7 +63,9 @@ export default function InvoicesIndex({ invoices }: { invoices: any[] }) {
                                                 {isFullyPaid ? (isRTL ? 'مدفوعة' : 'Paid') : (isRTL ? 'غير مدفوعة' : 'Unpaid')}
                                             </span>
                                         </td>
-                                        <td className={`p-3 font-mono text-xs ${isRTL ? 'text-right' : 'text-left'} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{invoice.due_date}</td>
+                                        <td className={`p-3 font-mono text-xs ${isRTL ? 'text-right' : 'text-left'} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                                        </td>
                                         <td className={`p-3 ${isRTL ? 'text-right' : 'text-left'}`}>
                                             {!isFullyPaid && (
                                                 <button onClick={() => openPaymentModal(invoice)} className="text-[11px] bg-blue-500/10 text-blue-500 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-500 hover:text-white transition-all whitespace-nowrap inline-flex items-center gap-1">
@@ -113,7 +115,7 @@ export default function InvoicesIndex({ invoices }: { invoices: any[] }) {
                                         {isRTL ? 'إلغاء' : 'Cancel'}
                                     </button>
                                     <button type="submit" className="flex-1 p-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black shadow-lg shadow-emerald-500/20">
-                                        {isRTL ? 'تأكيد הדفع' : 'Confirm Payment'}
+                                        {isRTL ? 'تأكيد الدفع' : 'Confirm Payment'}
                                     </button>
                                 </div>
                             </form>

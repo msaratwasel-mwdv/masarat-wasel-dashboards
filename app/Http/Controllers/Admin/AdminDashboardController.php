@@ -239,6 +239,12 @@ class AdminDashboardController extends Controller
             ->select('id', 'bus_number', 'plate_number', 'school_id')
             ->get();
 
+        // 8. Pending Subscriptions (NEW)
+        $pendingSubscriptions = \App\Models\Subscription::with(['school.users', 'plan'])
+            ->where('status', 'pending_approval')
+            ->latest()
+            ->get();
+
         return Inertia::render('Admin/Dashboard', [
             'stats' => $stats,
             'alerts' => $alerts,
@@ -248,6 +254,7 @@ class AdminDashboardController extends Controller
             'tripsTrend' => $tripsTrend,
             'fleetDistribution' => $fleetDistribution,
             'recentActivities' => $recentActivities,
+            'pendingSubscriptions' => $pendingSubscriptions,
         ]);
     }
 }
