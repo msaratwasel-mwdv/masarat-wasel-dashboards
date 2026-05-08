@@ -540,10 +540,10 @@ class DailyTripApiController extends Controller
     public function passengers(Request $request, Bus $bus)
     {
         /** @var Bus $bus */
-        // تحديد نوع الرحلة المقترح حسب الرحلة النشطة أو المعلقة لهذا اليوم
-        /** @var Trip|null $activeTrip */
+        // تحديد نوع الرحلة المقترح حسب الرحلة النشطة أو المعلقة لهذا اليوم أو غداً
+        $date = today();
         $activeTrip = Trip::where('bus_id', $bus->id)
-            ->whereDate('trip_date', today())
+            ->whereDate('trip_date', $date)
             ->whereIn('status', ['pending', 'in_progress', 'awaiting_confirmation', 'awaiting_video', 'finished'])
             ->orderByRaw("CASE 
                 WHEN status = 'in_progress' THEN 1 
@@ -554,6 +554,22 @@ class DailyTripApiController extends Controller
                 ELSE 6 END")
             ->orderBy('updated_at', 'desc')
             ->first();
+
+        if (!$activeTrip) {
+            $date = \Carbon\Carbon::tomorrow();
+            $activeTrip = Trip::where('bus_id', $bus->id)
+                ->whereDate('trip_date', $date)
+                ->whereIn('status', ['pending', 'in_progress', 'awaiting_confirmation', 'awaiting_video', 'finished'])
+                ->orderByRaw("CASE 
+                    WHEN status = 'in_progress' THEN 1 
+                    WHEN status = 'awaiting_video' THEN 2 
+                    WHEN status = 'awaiting_confirmation' THEN 3
+                    WHEN status = 'pending' THEN 4
+                    WHEN status = 'finished' THEN 5
+                    ELSE 6 END")
+                ->orderBy('updated_at', 'desc')
+                ->first();
+        }
         $suggestedTripType = $activeTrip?->type === 'back' ? 'afternoon' : 'morning';
 
         // السماح بطلب نوع رحلة محدد عبر Query Param
@@ -1252,10 +1268,9 @@ class DailyTripApiController extends Controller
 
     private function getActiveTrip(Bus $bus)
     {
-        /** @var Bus $bus */
         return Trip::where('bus_id', $bus->id)
-            ->whereDate('trip_date', today())
             ->where('status', 'in_progress')
+            ->latest('updated_at')
             ->first();
     }
 }
