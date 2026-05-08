@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    // ── Google Maps ───────────────────────────────────────────────
+    'google_maps' => [
+        'key' => env('Maps_API_KEY'), // Server-side key (backend only)
+    ],
+
 ];

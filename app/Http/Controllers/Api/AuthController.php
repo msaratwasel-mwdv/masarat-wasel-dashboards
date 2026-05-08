@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -79,11 +80,10 @@ class AuthController extends Controller
             ]);
         }
 
-        // حفظ التوكن الخاص بـ Firebase إن وجد
+        // ✅ updateFcmToken() تحفظ في الجدول الصحيح حسب دور المستخدم
+        // ❌ update(['fcm_token'=>...]) لا تفعل شيئاً لأن fcm_token غير موجود في $fillable
         if ($request->has('fcm_token') && !empty($request->fcm_token)) {
-            $user->update([
-                'fcm_token' => $request->fcm_token,
-            ]);
+            $user->updateFcmToken($request->fcm_token);
         }
 
         // حذف التوكنات القديمة لنفس الجهاز لتجنب التراكم
@@ -133,8 +133,8 @@ class AuthController extends Controller
     {
         $user = $request->user();
         if ($user) {
-            // مسح توكن الإشعارات
-            $user->update(['fcm_token' => null]);
+            // ✅ مسح توكن الإشعارات بالطريقة الصحيحة
+            $user->updateFcmToken(null);
 
             /** @var \Laravel\Sanctum\PersonalAccessToken $token */
             $token = $user->currentAccessToken();
@@ -196,9 +196,8 @@ class AuthController extends Controller
             'fcm_token' => 'required|string|max:500',
         ]);
 
-        $request->user()->update([
-            'fcm_token' => $request->fcm_token,
-        ]);
+        // ✅ updateFcmToken() تحفظ في الجدول الصحيح
+        $request->user()->updateFcmToken($request->fcm_token);
 
         return response()->json(['success' => true, 'message' => 'تم تسجيل FCM Token بنجاح.']);
     }
@@ -211,7 +210,11 @@ class AuthController extends Controller
     {
         $request->validate([
             'current_password' => 'required|string',
-            'new_password'     => 'required|string|min:6|confirmed',
+            // ✅ متطلبات كلمة مرور احترافية:
+            // - 8 أحرف كحد أدنى
+            // - حرف كبير وحرف صغير على الأقل
+            // - رقم واحد على الأقل
+            'new_password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
         ], [
             'current_password.required' => 'كلمة السر الحالية مطلوبة.',
             'new_password.required'     => 'كلمة السر الجديدة مطلوبة.',

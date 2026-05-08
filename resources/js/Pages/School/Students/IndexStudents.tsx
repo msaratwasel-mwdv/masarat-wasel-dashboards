@@ -619,8 +619,9 @@ export default function IndexStudents({
                           {student.image ? <img src={getImageUrl(student.image, "student")} alt={student.full_name} className="w-full h-full object-cover" onError={(e) => handleImageError(e, "student")} /> : student.full_name.charAt(0)}
                         </div>
                         <div className={isRtl ? "text-right" : "text-left"}>
-                          <p className="font-semibold text-[#0f2044] dark:text-white">{student.full_name}</p>
-                          {student.full_name_en && <p className="text-xs text-gray-400">{student.full_name_en}</p>}
+                          <p className="font-semibold text-[#0f2044] dark:text-white">
+                            {!isRtl && student.full_name_en ? student.full_name_en : student.full_name}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -637,7 +638,7 @@ export default function IndexStudents({
                     <td className={`${DS_tableTd} text-gray-700 dark:text-gray-300 text-xs`}>{student.current_enrollment?.classroom?.name || "-"}</td>
                     <td className={`${DS_tableTd} text-gray-700 dark:text-gray-300 text-xs`}>{student.forth_bus?.route?.name || "-"}</td>
                     <td className={`${DS_tableTd} text-gray-700 dark:text-gray-300 text-xs`}>{student.back_bus?.route?.name || "-"}</td>
-                    <td className={`${DS_tableTd} font-semibold text-[#0f2044] dark:text-gray-200 text-xs`}>{(student.guardians && student.guardians.length > 0) ? student.guardians[0].name : "-"}</td>
+                    <td className={`${DS_tableTd} font-semibold text-[#0f2044] dark:text-gray-200 text-xs`}>{(student.guardians && student.guardians.length > 0) ? (!isRtl && student.guardians[0].name_en ? student.guardians[0].name_en : student.guardians[0].name) : "-"}</td>
                     <td className={`${DS_tableTd} font-mono text-xs text-gray-500 dark:text-gray-400`}>{(student.guardians && student.guardians.length > 0) ? student.guardians[0].phone : "-"}</td>
                     <td className={DS_tableTd}>
                       <span className={DS_badge(student.is_active)}>
@@ -1145,7 +1146,7 @@ export default function IndexStudents({
                                 className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4 text-left"
                                 dir="ltr"
                                 required
-                                placeholder={`${part} Name`}
+                                placeholder={t(`${part} Name`)}
                               />
                             </div>
                           );

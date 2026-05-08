@@ -11,7 +11,9 @@ class GoogleMapsService
 
     public function __construct()
     {
-        $key = env('Maps_API_KEY');
+        // ✅ config() يعمل دائماً، حتى بعد php artisan config:cache
+        // ❌ env() تعيد null بعد config:cache وهذا يسبب توقف الخريطة في Production
+        $key = config('services.google_maps.key');
         if ($key) {
             try {
                 $this->client = new Client(['key' => $key]);
@@ -19,7 +21,7 @@ class GoogleMapsService
                 Log::error("Google Maps Client Init Error: " . $e->getMessage());
             }
         } else {
-            Log::warning("Google Maps API Key missing in .env (Maps_API_KEY)");
+            Log::warning("Google Maps API Key missing. Add 'Maps_API_KEY' to .env");
         }
     }
 

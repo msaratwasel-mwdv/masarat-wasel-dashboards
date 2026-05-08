@@ -32,7 +32,7 @@ export const DS_btnSecondary = "flex items-center gap-2 px-4 py-2 rounded-[14px]
 export const DS_btnEdit = "px-3 py-1.5 rounded-[10px] bg-[#0f2044]/[0.06] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8] text-xs font-bold hover:bg-[#0f2044]/[0.12] dark:hover:bg-[#0f2044]/50 transition-all";
 export const DS_btnDanger = "px-3 py-1.5 rounded-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-all";
 
-export const DS_modalContainer = "rounded-[22px] shadow-2xl overflow-hidden";
+export const DS_modalContainer = "rounded-[22px] shadow-2xl overflow-visible";
 export const DS_modalHeaderTitle = "text-lg font-bold text-white";
 export const DS_modalHeaderAccent = "w-2 h-6 bg-[#f5b800] rounded-full flex-shrink-0";
 export const DS_modalClose = "p-1.5 rounded-[10px] bg-white/10 text-white hover:bg-white/20 transition-all";
@@ -84,11 +84,11 @@ export function DS_tableTh(isRtl: boolean): string {
 }
 
 export function DS_modalHeader(isRtl: boolean): string {
-  return `px-6 py-5 bg-[#0f2044] flex items-center justify-between`;
+  return `px-6 py-5 bg-[#0f2044] flex items-center justify-between rounded-t-[22px]`;
 }
 
 export function DS_modalFooter(isRtl: boolean): string {
-  return `px-6 py-5 bg-gray-50/50 dark:bg-[#0f2044]/20 border-t border-gray-100 dark:border-[#243460] flex items-center justify-end gap-3`;
+  return `px-6 py-5 bg-gray-50/50 dark:bg-[#0f2044]/20 border-t border-gray-100 dark:border-[#243460] flex items-center justify-end gap-3 rounded-b-[22px]`;
 }
 
 export function DS_sectionHeader(isRtl: boolean): string {

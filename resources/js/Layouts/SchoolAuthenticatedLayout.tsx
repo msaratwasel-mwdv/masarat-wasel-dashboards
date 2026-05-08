@@ -83,7 +83,7 @@ const getMenuItems = (isRTL: boolean) => [
         route: "school.buses.students.assign",
       },
       {
-        label: isRTL ? "السائقون" : "Drivers",
+        label: isRTL ? "السائقين" : "Drivers",
         route: "school.drivers.index",
       },
       {

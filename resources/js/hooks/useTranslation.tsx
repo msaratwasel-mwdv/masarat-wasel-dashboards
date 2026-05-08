@@ -620,6 +620,15 @@ const dictionary = {
     en: "No students found",
   },
   Search: { ar: "بحث", en: "Search" },
+  "Student Name (Arabic)": { ar: "اسم الطالب (بالعربي)", en: "Student Name (Arabic)" },
+  "Student Name (English)": { ar: "اسم الطالب (بالإنجليزي)", en: "Student Name (English)" },
+  "first Name": { ar: "الاسم الأول", en: "First Name" },
+  "second Name": { ar: "الاسم الثاني", en: "Second Name" },
+  "third Name": { ar: "الاسم الثالث", en: "Third Name" },
+  "last Name": { ar: "اسم العائلة", en: "Last Name" },
+  "No bus assigned": { ar: "لم يتم تعيين حافلة", en: "No bus assigned" },
+  "Click to upload student photo": { ar: "اضغط لرفع صورة الطالب", en: "Click to upload student photo" },
+  "Select Class": { ar: "اختر الفصل", en: "Select Class" },
 
   // Buses Page
   "Buses Management": { ar: "إدارة الحافلات", en: "Buses Management" },

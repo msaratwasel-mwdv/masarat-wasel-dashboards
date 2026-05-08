@@ -47,3 +47,39 @@ setup_chat_test.php
 *.docx
 *.bak
 dump.sql
+
+# ✅ إضافات جديدة — Task #9 (Week 1 Security)
+# ملفات Debug والاختبار المؤقتة
+check_*.php
+create_dummy_*.php
+verify_*.php
+replace_*.php
+read_docx.php
+regenerate_*.php
+dashboard_output.txt
+scratch/
+
+# ملفات FCM Token الخطأ (تم إنشاؤها عن طريق الخطأ)
+fcm_token
+-fcm_token;
+*-fcm_token*
+
+# ملفات النسخ الاحتياطي (لا تنتمي لـ Git)
+*.rar
+*.zip
+*.zip.bak
+database/migrations.rar
+database/migrations.zip
+
+# ملفات السكريبت المؤقتة
+*.cjs
+add_print.cjs
+fix_*.cjs
+localize.cjs
+
+# ملفات مؤقتة أخرى
+tash pop
+"with real-time fixes"
+git
+getColumnListing*
+toArray*
