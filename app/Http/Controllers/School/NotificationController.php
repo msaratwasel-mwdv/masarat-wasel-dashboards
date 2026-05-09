@@ -350,6 +350,7 @@ class NotificationController extends Controller
 
             // إرسال الإشعار فعلياً عبر Firebase
             if (!empty($fcmTokens)) {
+                \Illuminate\Support\Facades\Log::info('[NotificationController] Found tokens for parent: ' . count($fcmTokens));
                 try {
                     $notificationService = app(\App\Services\NotificationService::class);
                     $notificationService->sendMulticast(
@@ -372,6 +373,11 @@ class NotificationController extends Controller
                 }
             } else {
                 $notification->update(['status' => 'sent', 'sent_count' => 0]);
+            }
+
+            // 4. بث الحدث لحظياً عبر Websockets (Reverb) لكل مستخدم
+            foreach ($recipients as $recipient) {
+                event(new \App\Events\NotificationPushed($notification, $recipient->id));
             }
 
             return redirect()->route('school.notifications.index')

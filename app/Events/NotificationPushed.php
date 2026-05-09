@@ -14,13 +14,21 @@ class NotificationPushed implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public Notification $notification)
-    {}
+    public ?int $targetUserId = null;
+
+    public function __construct(public Notification $notification, ?int $targetUserId = null)
+    {
+        $this->targetUserId = $targetUserId ?? $notification->user_id;
+    }
 
     public function broadcastOn(): array
     {
+        if (!$this->targetUserId) {
+            return [];
+        }
+        
         return [
-            new PrivateChannel('App.Models.User.' . $this->notification->user_id),
+            new PrivateChannel('App.Models.User.' . $this->targetUserId),
         ];
     }
 
@@ -31,11 +39,18 @@ class NotificationPushed implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        $unreadCount = Cache::remember("user_{$this->notification->user_id}_notifications_count", 60 * 24, function () {
-            return Notification::where('user_id', $this->notification->user_id)
-                ->where('status', 'unread')
+        $unreadCount = 0;
+        if ($this->targetUserId) {
+            $unreadCount = Notification::where(function($q) {
+                    $q->where('user_id', $this->targetUserId)
+                      ->where('status', 'unread');
+                })
+                ->orWhereHas('recipients', function($q) {
+                    $q->where('user_id', $this->targetUserId)
+                      ->whereNull('read_at');
+                })
                 ->count();
-        });
+        }
 
         return [
             'id' => $this->notification->id,

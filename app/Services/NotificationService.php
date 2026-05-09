@@ -74,6 +74,9 @@ class NotificationService
         } catch (\Exception $e) {
             Log::error('[FCM] Send Error: ' . $e->getMessage());
         }
+        
+        // 3. بث الحدث لحظياً عبر Websockets (Reverb)
+        event(new \App\Events\NotificationPushed($notification, $userId));
 
         return $notification;
     }
@@ -158,6 +161,11 @@ class NotificationService
             }
         } catch (\Exception $e) {
             Log::error('[FCM] Bulk Send Error: ' . $e->getMessage());
+        }
+
+        // 4. بث الحدث لحظياً عبر Websockets (Reverb) لكل مستخدم
+        foreach ($notifications as $notification) {
+            event(new \App\Events\NotificationPushed($notification));
         }
 
         return $notifications;
