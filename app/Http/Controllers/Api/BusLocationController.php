@@ -132,21 +132,31 @@ class BusLocationController extends Controller
      */
     public function show(Request $request, Bus $bus)
     {
-        // التحقق من الصلاحية: السائق أو ولي أمر أحد الطلاب في الباص
+        // التحقق من الصلاحية: السائق أو المشرف أو ولي أمر أحد الطلاب في الباص أو مسؤول المدرسة
         $user = $request->user();
         
-        $isDriver = $bus->hasCrewMember($user->id);
+        $isCrew = $bus->hasCrewMember($user->id);
         $isGuardian = false;
+        $isSchoolStaff = false;
 
-        if (!$isDriver) {
+        if (!$isCrew) {
+            // التحقق من ولي الأمر
             $isGuardian = \App\Models\Student::whereHas('guardians', fn($q) => $q->where('users.id', $user->id))
                 ->where(function($q) use ($bus) {
                     $q->where('forth_bus_id', $bus->id)
                       ->orWhere('back_bus_id', $bus->id);
                 })->exists();
+
+            // التحقق من طاقم المدرسة (المشرف الميداني أو مدير المدرسة)
+            if (!$isGuardian) {
+                $userSchoolId = $user->getSchoolIdEfficient();
+                if ($userSchoolId && $userSchoolId == $bus->school_id) {
+                    $isSchoolStaff = $user->hasRole('field_supervisor') || $user->hasRole('school_admin');
+                }
+            }
         }
 
-        if (!$isDriver && !$isGuardian) {
+        if (!$isCrew && !$isGuardian && !$isSchoolStaff) {
             return response()->json(['message' => 'غير مصرح لك بمتابعة هذا الباص.'], 403);
         }
 
