@@ -325,16 +325,24 @@ class NotificationController extends Controller
 
             // Create recipient records
             foreach ($recipients as $parentUser) {
-                $token = $parentUser->fcm_token ?? null;
-
-                $notification->recipients()->create([
-                    'user_id' => $parentUser->id,
-                    'fcm_token' => $token,
-                    'status' => 'pending',
-                ]);
-
-                if ($token) {
-                    $fcmTokens[] = $token;
+                // Get all tokens for this user
+                $userTokens = $parentUser->fcmTokens()->pluck('token')->toArray();
+                
+                if (empty($userTokens)) {
+                    $notification->recipients()->create([
+                        'user_id' => $parentUser->id,
+                        'fcm_token' => null,
+                        'status' => 'failed', // Or pending
+                    ]);
+                } else {
+                    foreach ($userTokens as $token) {
+                        $notification->recipients()->create([
+                            'user_id' => $parentUser->id,
+                            'fcm_token' => $token,
+                            'status' => 'pending',
+                        ]);
+                        $fcmTokens[] = $token;
+                    }
                 }
             }
 
@@ -342,6 +350,7 @@ class NotificationController extends Controller
 
             // إرسال الإشعار فعلياً عبر Firebase
             if (!empty($fcmTokens)) {
+                \Illuminate\Support\Facades\Log::info('[NotificationController] Found tokens for parent: ' . count($fcmTokens));
                 try {
                     $notificationService = app(\App\Services\NotificationService::class);
                     $notificationService->sendMulticast(
@@ -364,6 +373,11 @@ class NotificationController extends Controller
                 }
             } else {
                 $notification->update(['status' => 'sent', 'sent_count' => 0]);
+            }
+
+            // 4. بث الحدث لحظياً عبر Websockets (Reverb) لكل مستخدم
+            foreach ($recipients as $recipient) {
+                event(new \App\Events\NotificationPushed($notification, $recipient->id));
             }
 
             return redirect()->route('school.notifications.index')

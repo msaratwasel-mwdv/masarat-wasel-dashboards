@@ -53,9 +53,26 @@ class AbsenceRequestController extends Controller
             'processed_by' => Auth::id(),
         ]);
 
-        // إذا تمت الموافقة، يمكن إضافة الكود هنا لتحديث جدول الحضور (Attendance) يدوياً إذا رغبت
-        // ولكن غالباً الحضور يتم تسجيله يومياً من قبل المعلم أو النظام
-        // الطلب يخدم فقط كعذر مسبق.
+        // إرسال إشعار لولي الأمر
+        $service = app(\App\Services\NotificationService::class);
+        $statusAr = $validated['status'] === 'approved' ? 'مقبول' : 'مرفوض';
+        $title = "تحديث طلب غياب: {$statusAr}";
+        $message = "تم {$statusAr} طلب غياب الطالب {$absenceRequest->student->first_name_ar}";
+        if ($validated['status'] === 'rejected' && $validated['rejection_reason']) {
+            $message .= ". السبب: " . $validated['rejection_reason'];
+        }
+
+        $service->sendToUser(
+            $absenceRequest->guardian_id,
+            'absence_request_processed',
+            $title,
+            $message,
+            [
+                'request_id' => $absenceRequest->id,
+                'status' => $validated['status'],
+                'student_id' => $absenceRequest->student_id,
+            ]
+        );
 
         return redirect()->back()->with('success', 'تم تحديث حالة الطلب بنجاح.');
     }

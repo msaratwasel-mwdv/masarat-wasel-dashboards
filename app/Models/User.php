@@ -83,6 +83,11 @@ class User extends Authenticatable
         return $this->belongsToMany(Role::class, 'user_roles');
     }
 
+    public function fcmTokens(): HasMany
+    {
+        return $this->hasMany(FcmToken::class);
+    }
+
     /**
      * Get the user's primary role name (first role).
      * Uses the pre-loaded roles collection (no extra query if eager loaded).
@@ -334,48 +339,47 @@ class User extends Authenticatable
     }
 
     // ── FCM ─────────────────────────────────────────────
+    // Centralized multi-device FCM support via fcm_tokens table.
 
     /**
-     * Accessor for fcm_token.
-     * NOTE: fcm_token does NOT exist on the users table.
+     * Accessor for fcm_token (Legacy support).
+     * Returns the primary (most recent) token as a string.
      */
     public function getFcmTokenAttribute(): ?string
     {
-        return $this->routeNotificationForFcm(null);
+        return $this->fcmTokens()->latest('updated_at')->value('token');
     }
 
     /**
      * Route notifications for the FCM channel.
-     * NOTE: fcm_token does NOT exist on the users table.
-     *       It lives on each extension table (drivers.fcm_token, guardians.fcm_token, etc.)
+     * Returns all registered device tokens for this user.
      *
-     * @param  \Illuminate\Notifications\Notification  $notification
-     * @return string|null
+     * @param  \Illuminate\Notifications\Notification|null  $notification
+     * @return array
      */
-    public function routeNotificationForFcm($notification): ?string
+    public function routeNotificationForFcm($notification = null): array
     {
-        // Resolve from the appropriate extension table based on role
-        return $this->driver?->fcm_token
-            ?? $this->fieldSupervisor?->fcm_token
-            ?? $this->teacher?->fcm_token
-            ?? $this->assistant?->fcm_token
-            ?? $this->guardian?->fcm_token
-            ?? null;
+        return $this->fcmTokens()->pluck('token')->unique()->filter()->toArray();
     }
 
-    public function updateFcmToken(?string $token): void
+    /**
+     * Register or update an FCM token for the user.
+     * Centralized multi-device support.
+     */
+    public function updateFcmToken(?string $token, ?string $deviceType = null, ?string $deviceName = null): void
     {
-        if ($this->hasRole('driver')) {
-            $this->driver()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
-        } elseif ($this->hasRole('field_supervisor')) {
-            $this->fieldSupervisor()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
-        } elseif ($this->hasRole('assistant')) {
-            $this->assistant()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
-        } elseif ($this->hasRole('teacher')) {
-            $this->teacher()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
-        } elseif ($this->hasRole('parent')) {
-            $this->guardian()->updateOrCreate(['user_id' => $this->id], ['fcm_token' => $token]);
-        }
+        if (!$token) return;
+
+        // Search globally for the token to handle device handovers between users
+        \App\Models\FcmToken::updateOrCreate(
+            ['token' => $token],
+            [
+                'user_id'     => $this->id,
+                'device_type' => $deviceType,
+                'device_name' => $deviceName,
+                'updated_at'  => now(),
+            ]
+        );
     }
 
     // ── Classrooms (Teacher role) ───────────────────────

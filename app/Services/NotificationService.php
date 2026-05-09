@@ -56,10 +56,10 @@ class NotificationService
         try {
             $user = User::find($userId);
             if ($user) {
-                $fcmToken = $user->routeNotificationForFcm(null);
-                if ($fcmToken) {
-                    $this->sendFcmNotification(
-                        fcmToken: $fcmToken,
+                $fcmTokens = $user->routeNotificationForFcm(null);
+                if (!empty($fcmTokens)) {
+                    $this->sendMulticast(
+                        fcmTokens: $fcmTokens,
                         title: $title,
                         message: $message,
                         data: array_merge($data ?? [], [
@@ -68,12 +68,15 @@ class NotificationService
                         ])
                     );
                 } else {
-                    Log::warning('[FCM] المستخدم ' . $userId . ' لا يمتلك fcm_token مسجّلاً.');
+                    Log::warning('[FCM] المستخدم ' . $userId . ' لا يمتلك fcm_tokens مسجّلة.');
                 }
             }
         } catch (\Exception $e) {
             Log::error('[FCM] Send Error: ' . $e->getMessage());
         }
+        
+        // 3. بث الحدث لحظياً عبر Websockets (Reverb)
+        event(new \App\Events\NotificationPushed($notification, $userId));
 
         return $notification;
     }
@@ -92,45 +95,7 @@ class NotificationService
         string $message,
         array $data = []
     ): void {
-        // تحويل جميع القيم إلى string لأن FCM data payload يقبل strings فقط
-        $stringData = array_map('strval', $data);
-
-        $fcmMessage = CloudMessage::new()
-            ->withNotification(FcmNotification::create($title, $message))
-            ->withData($stringData)
-            ->withAndroidConfig([
-                'priority' => 'high',
-                'notification' => [
-                    'sound' => 'default',
-                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-                    'channel_id' => 'msarat_wasel_channel',
-                ],
-            ])
-            ->withApnsConfig([
-                'payload' => [
-                    'aps' => [
-                        'sound' => 'default',
-                        'badge' => 1,
-                    ],
-                ],
-            ]);
-
-        Log::info('[FCM] Sending notification via Multicast (Single Token)', [
-            'token'   => substr($fcmToken, 0, 20) . '...',
-            'title'   => $title,
-            'message' => $message,
-            'data'    => $stringData,
-        ]);
-
-        $messaging = $this->getMessaging();
-        if (!$messaging) {
-            Log::error('[FCM] Cannot send notification: Messaging service not available.');
-            return;
-        }
-
-        $messaging->sendMulticast($fcmMessage, [$fcmToken]);
-
-        Log::info('[FCM] Notification request sent.');
+        $this->sendMulticast([$fcmToken], $title, $message, $data);
     }
 
     /**
@@ -178,11 +143,13 @@ class NotificationService
             $users = User::whereIn('id', $userIds)->get();
             $fcmTokens = [];
             foreach ($users as $user) {
-                $token = $user->routeNotificationForFcm(null);
-                if ($token) {
-                    $fcmTokens[] = $token;
+                $tokens = $user->routeNotificationForFcm(null);
+                if (!empty($tokens)) {
+                    $fcmTokens = array_merge($fcmTokens, $tokens);
                 }
             }
+
+            $fcmTokens = array_unique($fcmTokens);
 
             if (!empty($fcmTokens)) {
                 $this->sendMulticast(
@@ -194,6 +161,11 @@ class NotificationService
             }
         } catch (\Exception $e) {
             Log::error('[FCM] Bulk Send Error: ' . $e->getMessage());
+        }
+
+        // 4. بث الحدث لحظياً عبر Websockets (Reverb) لكل مستخدم
+        foreach ($notifications as $notification) {
+            event(new \App\Events\NotificationPushed($notification));
         }
 
         return $notifications;
@@ -208,6 +180,8 @@ class NotificationService
         string $message,
         array $data = []
     ): void {
+        $fcmTokens = array_values(array_unique(array_filter($fcmTokens)));
+        
         if (empty($fcmTokens)) {
             return;
         }
@@ -222,7 +196,7 @@ class NotificationService
                 'notification' => [
                     'sound' => 'default',
                     'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-                    'channel_id' => 'msarat_wasel_channel',
+                    'channel_id' => 'msarat_wasel_high_importance_v2',
                 ],
             ])
             ->withApnsConfig([
@@ -253,10 +227,23 @@ class NotificationService
 
             if ($failureCount > 0) {
                 foreach ($report->failures()->getItems() as $failure) {
+                    $tokenValue = $failure->target()->value();
+                    $errorMessage = $failure->error()->getMessage();
+
                     Log::error('[FCM] Individual failure', [
-                        'token' => substr($failure->target()->value(), 0, 15) . '...',
-                        'error' => $failure->error()->getMessage(),
+                        'token' => substr($tokenValue, 0, 20) . '...',
+                        'error' => $errorMessage,
                     ]);
+
+                    // Cleanup tokens that are definitely invalid/expired
+                    if (str_contains($errorMessage, 'Registration token is invalid') || 
+                        str_contains($errorMessage, 'The registration token is not a valid FCM registration token') ||
+                        str_contains($errorMessage, 'Unregistered') ||
+                        str_contains($errorMessage, 'Requested entity was not found')) {
+                        
+                        \App\Models\FcmToken::where('token', $tokenValue)->delete();
+                        Log::info('[FCM] Deleted stale/invalid token: ' . substr($tokenValue, 0, 20) . '...');
+                    }
                 }
             }
         } catch (\Exception $e) {
