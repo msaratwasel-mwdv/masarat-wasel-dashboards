@@ -83,7 +83,11 @@ class AuthController extends Controller
         // ✅ updateFcmToken() تحفظ في الجدول الصحيح حسب دور المستخدم
         // ❌ update(['fcm_token'=>...]) لا تفعل شيئاً لأن fcm_token غير موجود في $fillable
         if ($request->has('fcm_token') && !empty($request->fcm_token)) {
-            $user->updateFcmToken($request->fcm_token);
+            $user->updateFcmToken(
+                $request->fcm_token,
+                $request->input('device_type', 'android'), // Default to android as most users are on android
+                $request->device_name
+            );
         }
 
         // حذف التوكنات القديمة لنفس الجهاز لتجنب التراكم
@@ -134,7 +138,10 @@ class AuthController extends Controller
         $user = $request->user();
         if ($user) {
             // ✅ مسح توكن الإشعارات بالطريقة الصحيحة
-            $user->updateFcmToken(null);
+            // Remove token for current device on logout
+            if ($request->has('fcm_token')) {
+                $user->fcmTokens()->where('token', $request->fcm_token)->delete();
+            }
 
             /** @var \Laravel\Sanctum\PersonalAccessToken $token */
             $token = $user->currentAccessToken();
@@ -197,7 +204,11 @@ class AuthController extends Controller
         ]);
 
         // ✅ updateFcmToken() تحفظ في الجدول الصحيح
-        $request->user()->updateFcmToken($request->fcm_token);
+        $request->user()->updateFcmToken(
+            $request->fcm_token,
+            $request->input('device_type'),
+            $request->input('device_name')
+        );
 
         return response()->json(['success' => true, 'message' => 'تم تسجيل FCM Token بنجاح.']);
     }

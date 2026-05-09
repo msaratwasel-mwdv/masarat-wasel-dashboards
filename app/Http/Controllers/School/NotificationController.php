@@ -325,16 +325,24 @@ class NotificationController extends Controller
 
             // Create recipient records
             foreach ($recipients as $parentUser) {
-                $token = $parentUser->fcm_token ?? null;
-
-                $notification->recipients()->create([
-                    'user_id' => $parentUser->id,
-                    'fcm_token' => $token,
-                    'status' => 'pending',
-                ]);
-
-                if ($token) {
-                    $fcmTokens[] = $token;
+                // Get all tokens for this user
+                $userTokens = $parentUser->fcmTokens()->pluck('token')->toArray();
+                
+                if (empty($userTokens)) {
+                    $notification->recipients()->create([
+                        'user_id' => $parentUser->id,
+                        'fcm_token' => null,
+                        'status' => 'failed', // Or pending
+                    ]);
+                } else {
+                    foreach ($userTokens as $token) {
+                        $notification->recipients()->create([
+                            'user_id' => $parentUser->id,
+                            'fcm_token' => $token,
+                            'status' => 'pending',
+                        ]);
+                        $fcmTokens[] = $token;
+                    }
                 }
             }
 
