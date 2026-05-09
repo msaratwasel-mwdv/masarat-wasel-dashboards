@@ -166,7 +166,7 @@ class Student extends Model
      */
     public function getSchoolIdAttribute()
     {
-        return $this->currentEnrollment?->classroom?->school_id;
+        return $this->currentEnrollment?->classroom?->grade?->school_id;
     }
 
     /**
@@ -219,7 +219,7 @@ class Student extends Model
     public function scopeInSchool($query, $schoolId)
     {
         return $query->whereHas('enrollments.classroom', function($q) use ($schoolId) {
-            $q->where('school_id', $schoolId);
+            $q->atSchool($schoolId);
         });
     }
 }

@@ -35,6 +35,31 @@ const dictionary = {
     ar: "هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.",
     en: "Are you sure you want to delete this? This action cannot be undone.",
   },
+  "Are you sure you want to permanently delete :name? This action cannot be undone.": {
+    ar: "هل أنت متأكد؟ لن يعود :name مرتبطاً بك. لا يمكن التراجع عن هذا الإجراء.",
+    en: "Are you sure you want to permanently delete :name? This action cannot be undone.",
+  },
+  "Note: This is the only student related to this guardian. Removing them will cause the guardian to be hidden from this list.": {
+    ar: "تنبيه: هذا هو الطالب الوحيد لدى ولي الأمر. عند إلغاء الارتباط، لن يظهر ولي الأمر في هذه القائمة مرة أخرى.",
+    en: "Note: This is the last student related to this guardian. Removing them will cause the guardian to be hidden from this list.",
+  },
+  "Account is deactivated. this guardian will no longer receive notifications": {
+    ar: "سيتم تعطيل الحساب. لن يتلقى ولي الأمر هذا أي إشعارات بعد الآن.",
+    en: "Account is deactivated. this guardian will no longer receive notifications",
+  },
+  "Active Account": { ar: "نشط", en: "Active Account" },
+  "Teacher can login and manage classes": {
+    ar: "يمكن للمعلم تسجيل الدخول وإدارة الفصول",
+    en: "Teacher can login and manage classes",
+  },
+  "Account is suspended": {
+    ar: "الحساب معطل",
+    en: "Account is suspended",
+  },
+  "Account is active and can login": {
+    ar: "الحساب نشط ويمكنه تسجيل الدخول",
+    en: "Account is active and can login",
+  },
   "Masarat Wasel": { ar: "مسارات وصل", en: "Masarat Wasel" },
   "Search by National ID": {
     ar: "بحث برقم الهوية",
@@ -475,7 +500,6 @@ const dictionary = {
     ar: "رفع صورة ولي الأمر",
     en: "Upload Guardian Photo",
   },
-  "Not Assigned": { ar: "غير معين", en: "Not Assigned" },
   "No Supervisor": { ar: "لا يوجد مشرف", en: "No Supervisor" },
   "Student Profile": { ar: "ملف الطالب", en: "Student Profile" },
 
@@ -1707,7 +1731,6 @@ const dictionary = {
   "Unassigned Route": { ar: "مسار غير مخصص", en: "Unassigned Route" },
   "Unassigned": { ar: "غير مخصص", en: "Unassigned" },
   "Assistant": { ar: "مساعد", en: "Assistant" },
-  "Not Assigned": { ar: "غير معين", en: "Not Assigned" },
   "Special Operations": { ar: "عمليات خاصة", en: "Special Operations" },
   "No active field trips": { ar: "لا توجد رحلات ميدانية نشطة", en: "No active field trips" },
   "Operational Insight": { ar: "رؤية تشغيلية", en: "Operational Insight" },
@@ -1804,11 +1827,45 @@ const dictionary = {
   "No attendance data for this trip": { ar: "لا توجد بيانات حضور لهذه الرحلة", en: "No attendance data for this trip" },
   "Custom Route": { ar: "مسار مخصص", en: "Custom Route" },
   "Unassigned": { ar: "غير معين", en: "Unassigned" },
-  "Not Assigned": { ar: "لم يُعيَّن", en: "Not Assigned" },
   "Check In": { ar: "وقت الصعود", en: "Check In" },
   "Check Out": { ar: "وقت النزول", en: "Check Out" },
   "Code": { ar: "الرقم", en: "Code" },
   "ID": { ar: "الرقم", en: "ID" },
+
+   // New Keys
+   "Morning Route": { ar: "حافلة الذهاب", en: "Morning Route" },
+   "Afternoon Route": { ar: "حافلة العودة", en: "Afternoon Route" },
+   "View Record": { ar: "عرض السجل", en: "View Record" },
+   "Mother": { ar: "الأم", en: "Mother" },
+   "Father": { ar: "الأب", en: "Father" },
+   "Uncle": { ar: "العم / الخال", en: "Uncle" },
+   "Aunt": { ar: "العمة / الخالة", en: "Aunt" },
+   "Grandparent": { ar: "الجد / الجدة", en: "Grandparent" },
+   "Sibling": { ar: "الأخ / الأخت", en: "Sibling" },
+   "Other": { ar: "آخر", en: "Other" },
+   "Guardian": { ar: "ولي الأمر", en: "Guardian" },
+   "Relationship": { ar: "صلة القرابة", en: "Relationship" },
+   "Select Class": { ar: "اختر الفصل", en: "Select Class" },
+   "Select Grade": { ar: "اختر المرحلة", en: "Select Grade" },
+
+   // Lowercase keys for relationship types
+   "mother": { ar: "الأم", en: "Mother" },
+   "father": { ar: "الأب", en: "Father" },
+   "uncle": { ar: "العم / الخال", en: "Uncle" },
+   "aunt": { ar: "العمة / الخالة", en: "Aunt" },
+   "grandparent": { ar: "الجد / الجدة", en: "Grandparent" },
+   "sibling": { ar: "الأخ / الأخت", en: "Sibling" },
+   "other": { ar: "آخر", en: "Other" },
+   "guardian": { ar: "ولي الأمر", en: "Guardian" },
+   "Add Guardian": { ar: "إضافة ولي أمر", en: "Add Guardian" },
+   "This guardian will be deleted. Are you sure?": { ar: "سيتم حذف ولي الأمر. هل أنت متأكد؟", en: "This guardian will be deleted. Are you sure?" },
+   "Parent added successfully.": { ar: "تم إضافة ولي الأمر بنجاح.", en: "Parent added successfully." },
+   "Parent updated successfully.": { ar: "تم تحديث بيانات ولي الأمر بنجاح.", en: "Parent updated successfully." },
+   "Parent detached from school students successfully.": { ar: "تم فصل ولي الأمر عن طلاب المدرسة بنجاح.", en: "Parent detached from school students successfully." },
+   "Student detached successfully.": { ar: "تم إلغاء ربط الطالب بنجاح.", en: "Student detached successfully." },
+   "Account Status": { ar: "حالة الحساب", en: "Account Status" },
+   "Account is active and can login": { ar: "الحساب نشط ويمكن تسجيل الدخول", en: "Account is active and can login" },
+   "Account is deactivated. this guardian will no longer receive notifications": { ar: "تم تعطيل الحساب. لن يتلقى ولي الأمر هذا أي إشعارات بعد الآن", en: "Account is deactivated. this guardian will no longer receive notifications" },
 
 } as Record<string, { ar: string; en: string }>;
 

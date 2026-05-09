@@ -474,7 +474,7 @@ class User extends Authenticatable
               ->orWhereHas('assignedBus', fn($sq) => $sq->where('school_id', $schoolId))
               ->orWhereHas('assignedBusAsAssistant', fn($sq) => $sq->where('school_id', $schoolId))
               ->orWhereHas('assignedBusAsFieldSupervisor', fn($sq) => $sq->where('school_id', $schoolId))
-              ->orWhereHas('students.enrollments.classroom', fn($sq) => $sq->where('school_id', $schoolId));
+              ->orWhereHas('students.enrollments.classroom', fn($sq) => $sq->atSchool($schoolId));
         });
     }
 }

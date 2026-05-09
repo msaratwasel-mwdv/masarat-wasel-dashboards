@@ -5,7 +5,7 @@ import useTranslation from '@/hooks/useTranslation';
 import LocationPicker from '@/Components/LocationPicker';
 import Modal from '@/Components/Modal';
 import { motion } from 'framer-motion';
-import { Route as RouteIcon, Search, Plus, MapPin, Edit, Trash2 } from 'lucide-react';
+import { Route as RouteIcon, Search, Plus, MapPin, Edit, Trash2, Eye, MoreVertical, X, Bus, Users, Map, Hash } from 'lucide-react';
 import {
     DS_pageWrapper,
     DS_pageTitle,
@@ -26,7 +26,12 @@ import {
     DS_modalHeader,
     DS_submitBtn,
     DS_cancelBtn,
+    DS_modalClose,
+    DS_badge,
+    DS_labelCls,
+    DS_btnEdit,
 } from '@/lib/DS';
+import Dropdown from '@/Components/Dropdown';
 
 interface RouteProps {
     id: number;
@@ -48,7 +53,9 @@ interface IndexProps {
 export default function Index({ auth, routes }: IndexProps) {
     const { t, isRtl } = useTranslation();
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [editingRoute, setEditingRoute] = useState<RouteProps | null>(null);
+    const [viewRoute, setViewRoute] = useState<RouteProps | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
     const { data, setData, post, put, processing, reset, errors } = useForm({
@@ -84,6 +91,11 @@ export default function Index({ auth, routes }: IndexProps) {
         }
     };
 
+    const openView = (route: RouteProps) => {
+        setViewRoute(route);
+        setIsViewModalOpen(true);
+    };
+
     const handleEdit = (route: RouteProps) => {
         setEditingRoute(route);
         setData({
@@ -93,12 +105,17 @@ export default function Index({ auth, routes }: IndexProps) {
             latitude: route.latitude ? Number(route.latitude) : null,
             longitude: route.longitude ? Number(route.longitude) : null,
         });
+        setIsViewModalOpen(false);
         setShowCreateModal(true);
     };
 
     const handleDelete = (id: number) => {
         if (confirm(t('Are you sure you want to delete this route?'))) {
-            router.delete(route('school.routes.destroy', id));
+            router.delete(route('school.routes.destroy', id), {
+                onSuccess: () => {
+                    setIsViewModalOpen(false);
+                }
+            });
         }
     };
 
@@ -198,11 +215,8 @@ export default function Index({ auth, routes }: IndexProps) {
                                             </td>
                                             <td className={DS_tableTd}>
                                                 <div className="flex items-center justify-center gap-2">
-                                                    <button onClick={() => handleEdit(route)} className="p-2 text-gray-500 hover:text-[#0f2044] hover:bg-[#0f2044]/5 dark:hover:text-white dark:hover:bg-[#243460] rounded-[10px] transition-all" title={t('Edit Route')}>
-                                                        <Edit className="w-4 h-4" />
-                                                    </button>
-                                                    <button onClick={() => handleDelete(route.id)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/20 rounded-[10px] transition-all" title={t('Delete')}>
-                                                        <Trash2 className="w-4 h-4" />
+                                                    <button onClick={() => openView(route)} className={DS_btnEdit} title={t('View Route')}>
+                                                        <Eye className="w-4 h-4" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -224,6 +238,140 @@ export default function Index({ auth, routes }: IndexProps) {
                     </div>
                 </motion.div>
             </div>
+
+            {/* View Modal */}
+            <Modal show={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} maxWidth="2xl">
+                {/* Modal Header */}
+                <div className={DS_modalHeader(isRtl)}>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white/20 rounded-[12px] flex items-center justify-center">
+                            <RouteIcon className="w-5 h-5 text-white" />
+                        </div>
+                        <div className={isRtl ? "text-right" : "text-left"}>
+                            <h3 className="text-xl font-bold text-white">
+                                {viewRoute?.name}
+                            </h3>
+                            <p className="text-[#7ba7e8] text-sm font-semibold">{viewRoute?.code || t('No Code')}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                        <Dropdown>
+                            <Dropdown.Trigger>
+                                <button className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all">
+                                    <MoreVertical className="w-5 h-5" />
+                                </button>
+                            </Dropdown.Trigger>
+                            <Dropdown.Content align={isRtl ? "left" : "right"} width="32" contentClasses="py-2 bg-white dark:bg-[#1a2845] shadow-2xl rounded-[16px] border border-gray-100 dark:border-[#243460]">
+                                <button onClick={() => viewRoute && handleEdit(viewRoute)} className="w-full px-4 py-2.5 text-sm font-bold text-[#0f2044] dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-start flex items-center gap-2">
+                                    <Edit className="w-4 h-4 text-blue-500" />
+                                    {t("Edit")}
+                                </button>
+                                <button 
+                                    onClick={() => viewRoute && handleDelete(viewRoute.id)} 
+                                    className="w-full px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-start flex items-center gap-2"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    {t("Delete")}
+                                </button>
+                            </Dropdown.Content>
+                        </Dropdown>
+                        <button onClick={() => setIsViewModalOpen(false)} className={DS_modalClose}><X className="w-5 h-5" /></button>
+                    </div>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-8 space-y-8 overflow-y-auto max-h-[80vh]">
+                    {/* Header Card */}
+                    <div className="flex items-center gap-6 p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm">
+                        <div className="w-20 h-20 rounded-[22px] bg-white dark:bg-[#0f2044] border-4 border-white dark:border-[#243460] flex items-center justify-center shadow-lg text-[#f5b800]">
+                            <RouteIcon size={40} />
+                        </div>
+                        <div>
+                            <h4 className="text-2xl font-black text-[#0f2044] dark:text-white mb-1">
+                                {viewRoute?.name}
+                            </h4>
+                            <div className="flex items-center gap-3">
+                                <span className={DS_badge(true)}>{t("Active")}</span>
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{viewRoute?.code}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                            <div className="w-12 h-12 rounded-[14px] bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600"><Users className="w-6 h-6" /></div>
+                            <div>
+                                <p className={DS_labelCls}>{t("Morning Students")}</p>
+                                <p className="font-bold text-[#0f2044] dark:text-white text-lg">{viewRoute?.morning_students_count}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                            <div className="w-12 h-12 rounded-[14px] bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600"><Users className="w-6 h-6" /></div>
+                            <div>
+                                <p className={DS_labelCls}>{t("Afternoon Students")}</p>
+                                <p className="font-bold text-[#0f2044] dark:text-white text-lg">{viewRoute?.afternoon_students_count}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                            <div className="w-12 h-12 rounded-[14px] bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600"><Bus className="w-6 h-6" /></div>
+                            <div>
+                                <p className={DS_labelCls}>{t("Buses")}</p>
+                                <p className="font-bold text-[#0f2044] dark:text-white text-lg">{viewRoute?.buses_count}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                            <div className="w-12 h-12 rounded-[14px] bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600"><Hash className="w-6 h-6" /></div>
+                            <div>
+                                <p className={DS_labelCls}>{t("Code")}</p>
+                                <p className="font-bold text-[#0f2044] dark:text-white text-lg">{viewRoute?.code || "—"}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Location & Description */}
+                    <div className="space-y-6">
+                        {viewRoute?.description && (
+                            <div className="p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                <h5 className="font-bold text-[#0f2044] dark:text-white mb-2 flex items-center gap-2">
+                                    <Map className="w-4 h-4 text-[#f5b800]" /> {t("Description")}
+                                </h5>
+                                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                                    {viewRoute.description}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                            <h5 className="font-bold text-[#0f2044] dark:text-white mb-4 flex items-center gap-2">
+                                <MapPin className="w-4 h-4 text-emerald-500" /> {t("Route Location")}
+                            </h5>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">{t("Latitude")}</p>
+                                    <p className="font-mono text-sm font-bold text-[#0f2044] dark:text-white">{viewRoute?.latitude || "—"}</p>
+                                </div>
+                                <div className="p-3 rounded-xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">{t("Longitude")}</p>
+                                    <p className="font-mono text-sm font-bold text-[#0f2044] dark:text-white">{viewRoute?.longitude || "—"}</p>
+                                </div>
+                            </div>
+                            
+                            {viewRoute?.latitude && viewRoute?.longitude && (
+                                <div className="rounded-[20px] overflow-hidden border border-gray-100 dark:border-gray-700 h-48">
+                                    <LocationPicker 
+                                        lat={Number(viewRoute.latitude)} 
+                                        lng={Number(viewRoute.longitude)} 
+                                        onChange={() => {}}
+                                        readonly={true}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Create/Edit Modal */}
             <Modal show={showCreateModal} onClose={() => setShowCreateModal(false)} maxWidth="lg">

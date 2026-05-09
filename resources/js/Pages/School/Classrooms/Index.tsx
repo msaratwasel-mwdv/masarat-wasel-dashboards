@@ -11,7 +11,7 @@ import {
   ListboxOptions,
 } from "@headlessui/react";
 import { motion } from "framer-motion";
-import { Plus, Search, BookOpen, GraduationCap, X, AlertTriangle, Pencil, Trash2, ChevronDown } from "lucide-react";
+import { Plus, Search, BookOpen, GraduationCap, X, AlertTriangle, Edit2, Trash2, ChevronDown, Users, Layers } from "lucide-react";
 import {
   DS_card, DS_pageWrapper, DS_pageTitle,
   DS_tableWrapper, DS_tableBase, DS_tableHead, DS_tableRow, DS_tableTd,
@@ -28,6 +28,7 @@ export interface Classroom {
   grade_name?: string;
   school_id: number;
   teachers?: { user_id: number; name: string; email?: string }[];
+  students_count?: number;
 }
 
 export interface Grade {
@@ -35,6 +36,8 @@ export interface Grade {
   name: string;
   teacher_id?: number;
   teacher_name?: string;
+  classrooms_count?: number;
+  students_count?: number;
 }
 
 interface Teacher {
@@ -231,6 +234,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                 <tr>
                   <th className={DS_tableTh(isRtl)}>{activeTab === "classrooms" ? t("Class Name") : t("Grade Name")}</th>
                   <th className={DS_tableTh(isRtl)}>{activeTab === "classrooms" ? t("Grade") : t("Responsible Teacher")}</th>
+                  <th className={DS_tableTh(isRtl)}>{t("Statistics")}</th>
                   <th className={DS_tableTh(isRtl)}>{t("Actions")}</th>
                 </tr>
               </thead>
@@ -251,9 +255,21 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                         )}
                       </td>
                       <td className={DS_tableTd}>
+                        <div className="flex items-center gap-2">
+                           <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold">
+                             <Users size={12} />
+                             {c.students_count || 0} {t("Students")}
+                           </div>
+                        </div>
+                      </td>
+                      <td className={DS_tableTd}>
                         <div className={`flex gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
-                          <button onClick={() => openEditModal(c)} className={DS_btnEdit}>{t("Edit")}</button>
-                          <button onClick={() => confirmDelete(c)} className={DS_btnDanger}>{t("Delete")}</button>
+                          <button onClick={() => openEditModal(c)} className={DS_btnEdit} title={t("Edit")}>
+                            <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => confirmDelete(c)} className={DS_btnDanger} title={t("Delete")}>
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -274,9 +290,25 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                         )}
                       </td>
                       <td className={DS_tableTd}>
+                        <div className="flex items-center gap-2">
+                           <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[11px] font-bold">
+                             <Layers size={12} />
+                             {g.classrooms_count || 0} {t("Classes")}
+                           </div>
+                           <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold">
+                             <Users size={12} />
+                             {g.students_count || 0} {t("Students")}
+                           </div>
+                        </div>
+                      </td>
+                      <td className={DS_tableTd}>
                         <div className={`flex gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
-                          <button onClick={() => openEditModal(g)} className={DS_btnEdit}>{t("Edit")}</button>
-                          <button onClick={() => confirmDelete(g)} className={DS_btnDanger}>{t("Delete")}</button>
+                          <button onClick={() => openEditModal(g)} className={DS_btnEdit} title={t("Edit")}>
+                            <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => confirmDelete(g)} className={DS_btnDanger} title={t("Delete")}>
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -294,8 +326,10 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
       <Modal show={showAddModal} onClose={() => setShowAddModal(false)} maxWidth="md">
         <div className={DS_modalContainer}>
           <div className={DS_modalHeader(isRtl)}>
-            <div className="flex items-center gap-3">
-              <div className={DS_modalHeaderAccent} />
+            <div className={`flex items-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
+              <div className="w-10 h-10 rounded-xl bg-[#f5b800] flex items-center justify-center">
+                <Plus className="w-5 h-5 text-[#0f2044]" />
+              </div>
               <h2 className={DS_modalHeaderTitle}>
                 {activeTab === "classrooms" ? t("Add New Class") : t("Add New Grade")}
               </h2>
@@ -385,7 +419,9 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
         <div className={DS_modalContainer}>
           <div className={DS_modalHeader(isRtl)}>
             <div className={`flex items-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
-              <div className={DS_modalHeaderAccent} />
+              <div className="w-10 h-10 rounded-xl bg-[#f5b800] flex items-center justify-center">
+                <Edit2 className="w-5 h-5 text-[#0f2044]" />
+              </div>
               <h2 className={DS_modalHeaderTitle}>
                 {activeTab === "classrooms" ? t("Edit Class") : t("Edit Grade")}
               </h2>

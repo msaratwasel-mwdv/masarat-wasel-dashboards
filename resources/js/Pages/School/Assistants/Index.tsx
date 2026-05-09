@@ -8,7 +8,7 @@ import InputError from "@/Components/InputError";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Search, User, PhoneCall, CheckCircle, XCircle, Eye, Edit2, CreditCard,
-  Phone, Mail, MapPin, X, ArrowLeft, ChevronRight, Printer
+  Phone, Mail, MapPin, X, ArrowLeft, ChevronRight, Printer, MoreVertical, Trash2, FileText
 } from "lucide-react";
 import {
   DS_pageWrapper, DS_pageTitle, DS_card, DS_tableWrapper, DS_tableBase,
@@ -16,9 +16,10 @@ import {
   DS_modalContainer, DS_modalHeader, DS_modalHeaderTitle, DS_modalHeaderAccent,
   DS_modalClose, DS_modalBody, DS_modalFooter, DS_input, DS_label,
   DS_btnPrimary, DS_btnGold, DS_btnSecondary, DS_btnEdit, DS_btnDanger,
-  DS_sectionHeader
+  DS_sectionHeader, DS_confirmModal, DS_cancelBtn, DS_badge, DS_labelCls
 } from "@/lib/DS";
 import PrintReportHeader from "@/Components/PrintReportHeader";
+import Dropdown from "@/Components/Dropdown";
 
 // ─── Print CSS ──────────────────────────────────────────────────
 const PRINT_STYLES = `
@@ -40,6 +41,8 @@ export default function AssistantsIndex({ auth, assistants, filters }: any) {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedAssistant, setSelectedAssistant] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [assistantToDelete, setAssistantToDelete] = useState<any>(null);
   const [currentId, setCurrentId] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -101,6 +104,14 @@ export default function AssistantsIndex({ auth, assistants, filters }: any) {
     post(route("school.assistants.update", currentId!), {
       forceFormData: true,
       onSuccess: () => closeModal(),
+    });
+  };
+
+  const handleDelete = () => {
+    if (!assistantToDelete) return;
+    router.delete(route("school.assistants.destroy", assistantToDelete.id), {
+      preserveScroll: true,
+      onSuccess: () => setShowDeleteModal(false),
     });
   };
 
@@ -190,7 +201,6 @@ export default function AssistantsIndex({ auth, assistants, filters }: any) {
                     <td className={DS_tableTd}>
                       <div className="flex gap-2">
                         <button onClick={() => { setSelectedAssistant(assistant); setShowDetailsModal(true); }} className={DS_btnEdit}><Eye size={16} /></button>
-                        <button onClick={() => openEditModal(assistant)} className={DS_btnEdit}><Edit2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -206,45 +216,108 @@ export default function AssistantsIndex({ auth, assistants, filters }: any) {
         {/* --- View Details Modal --- */}
         <AnimatePresence>
             {showDetailsModal && selectedAssistant && (
-                <Modal show={showDetailsModal} onClose={() => setShowDetailsModal(false)} maxWidth="3xl">
-                    <div className={DS_modalContainer}>
-                        <div className={DS_modalHeader(isRTL)}>
-                            <div className="flex items-center gap-3">
-                                <div className={DS_modalHeaderAccent} />
-                                <h3 className={DS_modalHeaderTitle}>{isRTL ? "ملف المشرفة" : "Supervisor Dossier"}</h3>
+                <Modal show={showDetailsModal} onClose={() => setShowDetailsModal(false)} maxWidth="2xl">
+                    <div className={DS_modalHeader(isRTL)}>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white/20 rounded-[12px] overflow-hidden flex items-center justify-center border border-white/10">
+                                {selectedAssistant?.image ? (
+                                    <img src={`/storage/${selectedAssistant.image}`} className="w-full h-full object-cover" />
+                                ) : (
+                                    <User className="w-5 h-5 text-white" />
+                                )}
                             </div>
-                            <button onClick={() => setShowDetailsModal(false)} className={DS_modalClose}><X size={18} /></button>
+                            <div className={isRTL ? "text-right" : "text-left"}>
+                                <h3 className="text-xl font-bold text-white">
+                                    {!isRTL && selectedAssistant?.name_en ? selectedAssistant?.name_en : selectedAssistant?.name}
+                                </h3>
+                                <p className="text-[#7ba7e8] text-sm font-semibold">{selectedAssistant?.national_id}</p>
+                            </div>
                         </div>
-                        <div className={DS_modalBody}>
-                            <div className="flex flex-col sm:flex-row gap-8">
-                                <div className="flex-shrink-0 flex flex-col items-center">
-                                    <div className="w-28 h-28 rounded-2xl overflow-hidden bg-[#0f2044]/5 border-2 border-gray-100 dark:border-[#243460] shadow-lg">
-                                        {selectedAssistant.image ? <img src={`/storage/${selectedAssistant.image}`} className="w-full h-full object-cover" /> : <User className="m-auto mt-8 text-gray-300" size={40} />}
-                                    </div>
-                                    <h4 className="mt-4 text-sm font-black text-[#0f2044] dark:text-white text-center">{selectedAssistant.name}</h4>
-                                    {selectedAssistant.name_en && <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{selectedAssistant.name_en}</p>}
-                                </div>
-                                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                                    <div className="space-y-4">
-                                        <InfoRow icon={<CreditCard size={14} />} label={isRTL ? "الرقم المدني" : "Civil ID"} value={selectedAssistant.national_id || "—"} isDark={isDark} />
-                                        <InfoRow icon={<Mail size={14} />} label={isRTL ? "البريد" : "Email"} value={selectedAssistant.email || "—"} isDark={isDark} />
-                                        <InfoRow icon={<Phone size={14} />} label={isRTL ? "الجوال" : "Phone"} value={selectedAssistant.phone || "—"} isDark={isDark} />
-                                        <InfoRow icon={<MapPin size={14} />} label={isRTL ? "العنوان" : "Address"} value={selectedAssistant.address || "—"} isDark={isDark} />
-                                    </div>
-                                    <div className="space-y-4">
-                                        <InfoRow icon={<Phone size={14} />} label={isRTL ? "جهة طوارئ" : "Emergency Contact"} value={selectedAssistant.emergency_contact_name || "—"} isDark={isDark} />
-                                        <InfoRow icon={<Phone size={14} />} label={isRTL ? "هاتف الطوارئ" : "Emergency Phone"} value={selectedAssistant.emergency_contact_phone || "—"} isDark={isDark} highlight={true} />
-                                    </div>
+                        <div className="flex items-center gap-2">
+                            <Dropdown>
+                                <Dropdown.Trigger>
+                                    <button className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all">
+                                        <MoreVertical className="w-5 h-5" />
+                                    </button>
+                                </Dropdown.Trigger>
+                                <Dropdown.Content align={isRTL ? "left" : "right"} width="32" contentClasses="py-2 bg-white dark:bg-[#1a2845] shadow-2xl rounded-[16px] border border-gray-100 dark:border-[#243460]">
+                                    <button onClick={() => { setShowDetailsModal(false); openEditModal(selectedAssistant); }} className="w-full px-4 py-2.5 text-sm font-bold text-[#0f2044] dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-start flex items-center gap-2">
+                                        <Edit2 className="w-4 h-4 text-blue-500" />
+                                        {isRTL ? "تعديل" : "Edit"}
+                                    </button>
+                                    <button 
+                                        onClick={() => { 
+                                            setShowDetailsModal(false);
+                                            setAssistantToDelete(selectedAssistant); 
+                                            setShowDeleteModal(true); 
+                                        }} 
+                                        className="w-full px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-start flex items-center gap-2"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        {isRTL ? "حذف" : "Delete"}
+                                    </button>
+                                </Dropdown.Content>
+                            </Dropdown>
+                            <button onClick={() => setShowDetailsModal(false)} className={DS_modalClose}><X className="w-5 h-5" /></button>
+                        </div>
+                    </div>
+                    
+                    <div className="p-8 space-y-8 overflow-y-auto max-h-[80vh]">
+                        {/* Profile Card */}
+                        <div className="flex items-center gap-6 p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm">
+                            <div className="w-24 h-24 rounded-[22px] border-4 border-white dark:border-[#243460] overflow-hidden shadow-lg">
+                                <img src={selectedAssistant.image ? `/storage/${selectedAssistant.image}` : "/images/default-avatar.png"} className="w-full h-full object-cover" />
+                            </div>
+                            <div>
+                                <h4 className="text-2xl font-black text-[#0f2044] dark:text-white mb-1">
+                                    {!isRTL && selectedAssistant?.name_en ? selectedAssistant?.name_en : selectedAssistant?.name}
+                                </h4>
+                                <div className="flex items-center gap-3">
+                                    <span className={DS_badge(selectedAssistant?.status === 'active')}>{selectedAssistant?.status === 'active' ? (isRTL ? "نشط" : "Active") : (isRTL ? "غير نشط" : "Inactive")}</span>
                                 </div>
                             </div>
-                            {/* Media Assets */}
-                            <div className="mt-12 pt-8 border-t border-gray-100 dark:border-[#243460]">
-                                <h3 className="text-xs font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] mb-6">{isRTL ? "المستندات والصور" : "Documentary Evidence"}</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                    <MediaCard label={isRTL ? "الهوية (أمام)" : "ID Card Front"} src={selectedAssistant.id_card_front_image || selectedAssistant.assistant?.id_card_front_image} isDark={isDark} isRTL={isRTL} />
-                                    <MediaCard label={isRTL ? "الهوية (خلف)" : "ID Card Back"} src={selectedAssistant.id_card_back_image || selectedAssistant.assistant?.id_card_back_image} isDark={isDark} isRTL={isRTL} />
-                                    <MediaCard label={isRTL ? "الصورة الشخصية" : "Profile Photo"} src={selectedAssistant.image} isDark={isDark} isRTL={isRTL} />
-                                </div>
+                        </div>
+
+                        {/* Grid Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                <div className="w-12 h-12 rounded-[14px] bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600"><CreditCard className="w-6 h-6" /></div>
+                                <div><p className={DS_labelCls}>{isRTL ? "الرقم المدني" : "Civil ID"}</p><p className="font-bold text-[#0f2044] dark:text-white">{selectedAssistant?.national_id || "—"}</p></div>
+                            </div>
+                            <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                <div className="w-12 h-12 rounded-[14px] bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600"><Phone className="w-6 h-6" /></div>
+                                <div><p className={DS_labelCls}>{isRTL ? "الجوال" : "Phone"}</p><p className="font-bold text-[#0f2044] dark:text-white" dir="ltr">{selectedAssistant?.phone || "—"}</p></div>
+                            </div>
+                            <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                <div className="w-12 h-12 rounded-[14px] bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600"><Mail className="w-6 h-6" /></div>
+                                <div><p className={DS_labelCls}>{isRTL ? "البريد" : "Email"}</p><p className="font-bold text-[#0f2044] dark:text-white truncate">{selectedAssistant?.email || "—"}</p></div>
+                            </div>
+                            <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                <div className="w-12 h-12 rounded-[14px] bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600"><MapPin className="w-6 h-6" /></div>
+                                <div><p className={DS_labelCls}>{isRTL ? "العنوان" : "Address"}</p><p className="font-bold text-[#0f2044] dark:text-white truncate">{selectedAssistant?.address || "—"}</p></div>
+                            </div>
+                        </div>
+
+                        {/* Emergency Contact */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="flex items-center gap-4 p-4 rounded-[18px] bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/20">
+                                <div className="w-12 h-12 rounded-[14px] bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center text-rose-600"><PhoneCall className="w-6 h-6" /></div>
+                                <div><p className="text-[10px] font-bold text-rose-400 mb-1 uppercase tracking-widest">{isRTL ? "جهة طوارئ" : "Emergency Contact"}</p><p className="font-bold text-rose-700 dark:text-rose-400">{selectedAssistant?.emergency_contact_name || "—"}</p></div>
+                            </div>
+                            <div className="flex items-center gap-4 p-4 rounded-[18px] bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/20">
+                                <div className="w-12 h-12 rounded-[14px] bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center text-rose-600"><PhoneCall className="w-6 h-6" /></div>
+                                <div><p className="text-[10px] font-bold text-rose-400 mb-1 uppercase tracking-widest">{isRTL ? "هاتف الطوارئ" : "Emergency Phone"}</p><p className="font-bold text-rose-700 dark:text-rose-400" dir="ltr">{selectedAssistant?.emergency_contact_phone || "—"}</p></div>
+                            </div>
+                        </div>
+
+                        {/* Media Assets */}
+                        <div className="mt-8 pt-8 border-t border-gray-100 dark:border-[#243460]">
+                            <h3 className="font-bold text-[#0f2044] dark:text-white flex items-center gap-2 mb-6">
+                                <FileText className="w-5 h-5 text-[#f5b800]" /> {isRTL ? "المستندات والصور" : "Documentary Evidence"}
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <MediaCard label={isRTL ? "الهوية (أمام)" : "ID Card Front"} src={selectedAssistant.id_card_front_image || selectedAssistant.assistant?.id_card_front_image} isDark={isDark} isRTL={isRTL} />
+                                <MediaCard label={isRTL ? "الهوية (خلف)" : "ID Card Back"} src={selectedAssistant.id_card_back_image || selectedAssistant.assistant?.id_card_back_image} isDark={isDark} isRTL={isRTL} />
                             </div>
                         </div>
                     </div>
@@ -263,24 +336,37 @@ export default function AssistantsIndex({ auth, assistants, filters }: any) {
                     <button onClick={closeModal} className={DS_modalClose}><ArrowLeft size={18} className={isRTL ? 'rotate-180' : ''} /></button>
                 </div>
 
-                {/* Stepper */}
-                <div className="bg-[#0f2044]/5 dark:bg-[#0f2044]/30 px-10 py-6 border-b border-gray-100 dark:border-[#243460]">
-                    <div className="relative flex items-center justify-between">
-                        <div className="absolute inset-x-10 top-1/2 -translate-y-1/2 h-0.5 bg-gray-200 dark:bg-[#243460]" />
-                        <div className="absolute left-10 top-1/2 -translate-y-1/2 h-0.5 bg-[#f5b800] transition-all duration-500" style={{ width: currentStep === 1 ? '0%' : '100%' }} />
-                        <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg transition-all ${currentStep >= 1 ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] text-gray-400'}`}>1</div>
-                        <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg transition-all ${currentStep >= 2 ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] text-gray-400'}`}>2</div>
-                    </div>
-                    <div className="flex justify-between mt-3 px-4">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-[#0f2044] dark:text-[#f5b800]">{isRTL ? "الهوية الشخصية" : "Personal Identity"}</span>
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${currentStep === 2 ? 'text-[#0f2044] dark:text-[#f5b800]' : 'text-gray-400'}`}>{isRTL ? "بيانات العمل والطوارئ" : "Contact & Emergency"}</span>
-                    </div>
-                </div>
-
                 <form onSubmit={submit}>
-                    <div className={DS_modalBody}>
-                        {currentStep === 1 && (
-                            <motion.div initial={{ opacity: 0, x: isRTL ? 20 : -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <div className={`${DS_modalBody} max-h-[75vh] overflow-y-auto space-y-8`}>
+                        <div className="space-y-6">
+                                {/* Profile photo */}
+                                <div className="flex items-center gap-6 p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm">
+                                    <div className="w-24 h-24 rounded-[22px] border-4 border-white dark:border-[#243460] overflow-hidden shadow-lg flex-shrink-0 relative group bg-white">
+                                        {data.image ? (
+                                            <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
+                                        ) : previewImage ? (
+                                            <img src={previewImage} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <User size={32} className="text-gray-300 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                                        )}
+                                        <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
+                                            <span className="text-[10px] font-bold text-white uppercase tracking-wider">{isRTL ? "تغيير" : "Change"}</span>
+                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => setData("image", e.target.files?.[0] || null)} />
+                                        </label>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="text-sm font-black text-[#0f2044] dark:text-white mb-1">
+                                            {isRTL ? "صورة الملف الشخصي" : "Profile Picture"}
+                                        </h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs leading-relaxed mb-3">
+                                            {isRTL ? "يُفضل استخدام صورة بخلفية بيضاء أو رمادية فاتحة." : "A clear photo with a white or light gray background is recommended."}
+                                        </p>
+                                        <label className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white dark:bg-[#0f2044] border border-gray-200 dark:border-[#243460] text-xs font-bold text-[#0f2044] dark:text-gray-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1a2845] transition-all shadow-sm">
+                                            {isRTL ? "اختيار صورة جديدة" : "Upload New Photo"}
+                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => setData("image", e.target.files?.[0] || null)} />
+                                        </label>
+                                    </div>
+                                </div>
                                 {/* Arabic Names */}
                                 <div className="space-y-4">
                                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">{isRTL ? "الاسم بناءً على الهوية (عربي)" : "Official Name (Arabic)"}</h4>
@@ -301,21 +387,10 @@ export default function AssistantsIndex({ auth, assistants, filters }: any) {
                                         <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label><input type="text" value={data.last_name_en} onChange={(e) => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" /></div>
                                     </div>
                                 </div>
-                                {/* Profile photo */}
-                                <div className="space-y-2">
-                                    <label className={DS_label}>{isRTL ? "الصورة الشخصية" : "Profile Photo"}</label>
-                                    <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460]">
-                                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-white">
-                                            {data.image ? <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" /> : previewImage ? <img src={previewImage} className="w-full h-full object-cover" /> : <User size={18} className="text-gray-300 m-auto mt-3" />}
-                                        </div>
-                                        <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">{isRTL ? "اختيار ملف" : "Choose File"}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("image", e.target.files?.[0] || null)} /></label>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
+                            </div>
 
-                        {currentStep === 2 && (
-                            <motion.div initial={{ opacity: 0, x: isRTL ? -20 : 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                            <div className="border-t border-gray-100 dark:border-[#243460] pt-6 space-y-6">
+                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{isRTL ? "البيانات الإضافية والمستندات" : "Contact & Emergency"}</h4>
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "رقم الهوية" : "National ID"}</label><input type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required /><InputError message={errors.national_id} /></div>
                                     <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "رقم الجوال" : "Phone"}</label><input type="text" value={data.phone} onChange={(e) => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required /><InputError message={errors.phone} /></div>
@@ -364,22 +439,12 @@ export default function AssistantsIndex({ auth, assistants, filters }: any) {
                                         </div>
                                     </div>
                                 </div>
-                            </motion.div>
-                        )}
+                            </div>
                     </div>
 
-                    <div className={DS_modalFooter(isRTL)}>
-                        {currentStep === 2 && (
-                            <button type="button" onClick={() => setCurrentStep(1)} className={DS_btnSecondary}>{isRTL ? "رجوع" : "Back"}</button>
-                        )}
-                        <div className="ml-auto flex items-center gap-3">
-                            <button type="button" onClick={closeModal} className="text-xs font-bold text-gray-400 hover:text-[#0f2044] transition-colors">{isRTL ? "إلغاء" : "Cancel"}</button>
-                            {currentStep === 1 ? (
-                                <button type="button" onClick={() => setCurrentStep(2)} className={DS_btnPrimary}>{isRTL ? "متابعة" : "Continue"} <ChevronRight size={16} /></button>
-                            ) : (
-                                <button type="submit" disabled={processing} className={DS_btnGold}>{isRTL ? "حفظ التعديلات" : "Save Changes"}</button>
-                            )}
-                        </div>
+                    <div className={`${DS_modalFooter(isRTL)} !justify-between`}>
+                        <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-bold text-gray-400 hover:text-[#0f2044] dark:hover:text-white transition-colors">{isRTL ? "إلغاء" : "Cancel"}</button>
+                        <button type="submit" disabled={processing} className={DS_btnGold}>{isRTL ? "حفظ التعديلات" : "Save Changes"}</button>
                     </div>
                 </form>
             </div>
@@ -430,6 +495,37 @@ export default function AssistantsIndex({ auth, assistants, filters }: any) {
             <p>{isRTL ? "التوقيع الرسمي" : "Official Signature"}: ............................</p>
         </div>
       </div>
+
+      {/* Delete Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className={DS_confirmModal}>
+            <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">⚠️</span>
+            </div>
+            <h3 className="text-xl font-bold text-[#0f2044] dark:text-white mb-2 text-center">
+              {isRTL ? "تأكيد الحذف" : "Confirm Deletion"}
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 text-center">
+              {isRTL ? "هل أنت متأكد من أنك تريد حذف هذه المشرفة؟" : "Are you sure you want to delete this supervisor?"}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className={`flex-1 py-3 ${DS_cancelBtn}`}
+              >
+                {isRTL ? "إلغاء" : "Cancel"}
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-3 rounded-[14px] bg-red-600 hover:bg-red-700 text-white font-bold transition-all shadow"
+              >
+                {isRTL ? "نعم، احذف" : "Yes, Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </SchoolAuthenticatedLayout>
   );
 }

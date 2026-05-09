@@ -227,6 +227,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::resource('parents', \App\Http\Controllers\School\GuardianController::class)
             ->parameters(['parents' => 'parent'])
             ->except(['create', 'edit', 'show']);
+        Route::delete('parents/{parent}/students/{student}', [\App\Http\Controllers\School\GuardianController::class, 'detachStudent'])->name('parents.students.detach');
 
         // 5. الحضور
         Route::middleware(['plan.feature:has_attendance'])->group(function () {

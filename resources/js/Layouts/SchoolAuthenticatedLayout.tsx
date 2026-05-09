@@ -7,6 +7,7 @@ import { toast, ToastContainer, Bounce } from "react-toastify";
 import NotificationDropdown from "@/Components/NotificationDropdown";
 import { useEchoEvent } from "@/hooks/useEcho";
 import { useRealtimeToast } from "@/hooks/useRealtimeToast";
+import useTranslation from "@/hooks/useTranslation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
@@ -194,10 +195,11 @@ export default function SchoolAuthenticatedLayout({
   const { flash } = usePage<any>().props;
   const { theme, language, toggleTheme, toggleLanguage, isRTL } = useTheme();
   const { notifyEvent } = useRealtimeToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (flash?.success) {
-      toast.success(flash.success, {
+      toast.success(t(flash.success), {
         position: "top-center",
         autoClose: 3000,
         transition: Bounce,
@@ -208,7 +210,7 @@ export default function SchoolAuthenticatedLayout({
       });
     }
     if (flash?.error) {
-      toast.error(flash.error, {
+      toast.error(t(flash.error), {
         position: "top-center",
         autoClose: 4000,
         transition: Bounce,
@@ -370,11 +372,6 @@ export default function SchoolAuthenticatedLayout({
           onScroll={handleSidebarScroll}
           className="flex-1 px-3 space-y-1.5 mt-8 overflow-y-auto custom-scrollbar"
         >
-          {!isCollapsed && (
-            <p className={`px-4 text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-4 ${isRTL ? "text-right" : "text-left"}`}>
-              {isRTL ? "القائمة الرئيسية" : "Main Menu"}
-            </p>
-          )}
 
           {menuItems.map((item) => {
             const hasActiveChild = item.subItems?.some(sub => sub.route && route().current(sub.route));
@@ -417,7 +414,7 @@ export default function SchoolAuthenticatedLayout({
 
                     {isActive && (
                       <motion.div
-                        layoutId="school-active-indicator"
+                        layoutId="active-indicator"
                         className={`absolute w-1 h-6 bg-brand-yellow rounded-full ${isRTL ? "left-0" : "right-0"}`}
                       />
                     )}
@@ -474,7 +471,7 @@ export default function SchoolAuthenticatedLayout({
 
                 {isActive && (
                   <motion.div
-                    layoutId="school-active-indicator"
+                    layoutId="active-indicator"
                     className={`absolute w-1 h-6 bg-brand-yellow rounded-full ${isRTL ? "left-0" : "right-0"}`}
                   />
                 )}
@@ -499,12 +496,12 @@ export default function SchoolAuthenticatedLayout({
 
             <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"} ${flexDirection} min-w-0`}>
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-yellow to-yellow-600 flex items-center justify-center text-white font-bold shadow-lg shrink-0">
-                {user.name.charAt(0).toUpperCase()}
+                {(!isRTL && user.name_en ? user.name_en : user.name).charAt(0).toUpperCase()}
               </div>
               {!isCollapsed && (
                 <div className={`flex flex-col ${isRTL ? "text-right" : "text-left"} overflow-hidden min-w-0`}>
                   <span className="text-sm font-bold text-white truncate" dir="auto">
-                    {user.name}
+                    {!isRTL && user.name_en ? user.name_en : user.name}
                   </span>
                   <span className="text-[10px] text-gray-400 uppercase font-medium">
                     {isRTL ? "مدير المدرسة" : "School Admin"}
@@ -645,7 +642,7 @@ export default function SchoolAuthenticatedLayout({
             <div className={`flex items-center gap-3 ${isRTL ? "pr-4 md:pr-6 border-r" : "pl-4 md:pl-6 border-l"} border-gray-100 dark:border-gray-700`}>
               <div className={`hidden sm:block ${isRTL ? "text-right" : "text-left"}`}>
                 <p className="text-[13px] font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap truncate max-w-[120px] leading-none mb-1" dir="auto">
-                  {user.name}
+                  {!isRTL && user.name_en ? user.name_en : user.name}
                 </p>
                 <div className={`flex items-center gap-1.5 ${flexDirection} opacity-50`}>
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />

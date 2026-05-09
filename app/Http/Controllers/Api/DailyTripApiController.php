@@ -651,7 +651,7 @@ class DailyTripApiController extends Controller
                 'classroom' => [
                     'id' => $student->currentEnrollment?->classroom_id,
                     'name' => $student->currentEnrollment?->classroom?->name,
-                    'school_id' => $student->currentEnrollment?->classroom?->school_id,
+                    'school_id' => $student->currentEnrollment?->classroom?->grade?->school_id,
                 ],
                 'parentName' => $student->guardian->first()?->name ?? 'غير محدد',
                 'parentPhone' => $student->guardian->first()?->phone ?? 'غير محدد',

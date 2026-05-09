@@ -7,12 +7,17 @@ import InputError from "@/Components/InputError";
 import useTranslation from "@/hooks/useTranslation";
 import PrintReportHeader from "@/Components/PrintReportHeader";
 import { motion } from "framer-motion";
-import { Users, CheckCircle2, UserX, UserPlus, Printer, X, GraduationCap } from "lucide-react";
+import { 
+  Users, CheckCircle2, UserX, UserPlus, Printer, X, GraduationCap, Edit2, Trash2,
+  Eye, MoreVertical, Phone, Mail, Fingerprint
+} from "lucide-react";
+import Dropdown from "@/Components/Dropdown";
+import Toggle from "@/Components/Toggle";
 import {
   DS_card, DS_pageWrapper, DS_pageTitle, DS_statLabel, DS_statValue,
   DS_avatar, DS_tableWrapper, DS_tableBase, DS_tableHead, DS_tableRow, DS_tableTd,
   DS_searchInput, DS_btnGold, DS_btnSecondary, DS_btnEdit, DS_btnDanger,
-  DS_inputCls, DS_labelCls, DS_cancelBtn, DS_confirmModal,
+  DS_inputCls, DS_selectCls, DS_labelCls, DS_cancelBtn, DS_confirmModal,
   DS_statCard, DS_statIcon, DS_badge, DS_filterBtn, DS_tableTh,
   DS_modalHeader, DS_sectionHeader, DS_submitBtn,
   DS_modalContainer, DS_modalHeaderTitle, DS_modalHeaderAccent, DS_modalClose, DS_modalBody,
@@ -70,10 +75,9 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
   const [search, setSearch] = useState(filters.search || "");
   const [activeFilter, setActiveFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentId, setCurrentId] = useState<number | null>(null);
+  const [modalMode, setModalMode] = useState<"view" | "edit" | "create">("view");
+  const [currentTeacher, setCurrentTeacher] = useState<Teacher | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
 
@@ -112,14 +116,25 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
   }, [teachers, activeFilter]);
 
   // ── Modal Helpers ─────────────────────────────────────────────
-  const openAddModal = () => {
-    setIsEditing(false); setCurrentId(null); setPreviewImage(null);
-    reset(); setData("_method", "post"); clearErrors(); setCurrentStep(1); setIsModalOpen(true);
+  const openAdd = () => {
+    setModalMode("create");
+    setCurrentTeacher(null);
+    reset();
+    setData("_method", "post");
+    setPreviewImage(null);
+    clearErrors();
+    setIsModalOpen(true);
   };
 
-  const openEditModal = (teacher: Teacher) => {
-    setIsEditing(true); setCurrentId(teacher.id);
-    setPreviewImage(teacher.image ? `/storage/${teacher.image}` : null);
+  const openView = (teacher: Teacher) => {
+    setCurrentTeacher(teacher);
+    setModalMode("view");
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (teacher: Teacher) => {
+    setModalMode("edit");
+    setCurrentTeacher(teacher);
     setData({
       _method: "put",
       first_name_ar: teacher.first_name_ar || "",
@@ -138,25 +153,44 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
       image: null,
       grade_id: teacher.grade_id || "",
     });
-    clearErrors(); setCurrentStep(1); setIsModalOpen(true);
+    setPreviewImage(teacher.image ? `/storage/${teacher.image}` : null);
+    clearErrors();
+    setIsModalOpen(true);
   };
 
-  const closeModal = () => { setIsModalOpen(false); setPreviewImage(null); reset(); };
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setPreviewImage(null);
+    reset();
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isEditing && currentId) {
-      post(route("school.teachers.update", currentId), { forceFormData: true, onSuccess: () => closeModal() });
+    if (modalMode === "edit" && currentTeacher) {
+      post(route("school.teachers.update", currentTeacher.id), {
+        forceFormData: true,
+        onSuccess: () => closeModal(),
+      });
     } else {
-      post(route("school.teachers.store"), { onSuccess: () => closeModal() });
+      post(route("school.teachers.store"), {
+        onSuccess: () => closeModal(),
+      });
     }
   };
 
-  const confirmDelete = (teacher: Teacher) => { setTeacherToDelete(teacher); setShowDeleteModal(true); };
+  const confirmDelete = (teacher: Teacher) => {
+    setTeacherToDelete(teacher);
+    setShowDeleteModal(true);
+  };
+
   const handleDelete = () => {
     if (teacherToDelete) {
       router.delete(route("school.teachers.destroy", teacherToDelete.id), {
-        onSuccess: () => { setShowDeleteModal(false); setTeacherToDelete(null); }
+        onSuccess: () => {
+          setShowDeleteModal(false);
+          setTeacherToDelete(null);
+          setIsModalOpen(false);
+        },
       });
     }
   };
@@ -204,7 +238,7 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
               {filtered.map((teacher, i) => (
                 <tr key={teacher.id} className="border-b border-gray-300">
                   <td className="border border-gray-300 p-2 text-center text-gray-700 font-semibold">{i + 1}</td>
-                  <td className="border border-gray-300 p-2 font-bold text-gray-900">{teacher.name}</td>
+                  <td className="border border-gray-300 p-2 font-bold text-gray-900">{!isRtl && teacher.name_en ? teacher.name_en : teacher.name}</td>
                   <td className="border border-gray-300 p-2 font-mono text-gray-700">{teacher.national_id}</td>
                   <td className="border border-gray-300 p-2 font-mono text-gray-700" dir="ltr">{teacher.phone}</td>
                   <td className="border border-gray-300 p-2 text-gray-700">{teacher.grade_name || "—"}</td>
@@ -231,7 +265,7 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
             { label: t("Total Teachers"), val: counts.all,     icon: <Users className="w-5 h-5" />,        accent: "navy" as const },
-            { label: t("Active"),         val: counts.active,  icon: <CheckCircle2 className="w-5 h-5" />, accent: "gold" as const },
+            { label: t("Active"),         val: counts.active,  icon: <CheckCircle2 className="w-5 h-5" />, accent: "green" as const },
             { label: t("Inactive"),       val: counts.inactive, icon: <UserX className="w-5 h-5" />,       accent: "red"  as const },
           ].map(s => (
             <div key={s.label} className={`${DS_statCard(s.accent)} ${isRtl ? "flex-row-reverse" : ""}`}>
@@ -267,10 +301,12 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
               ))}
             </div>
             <button onClick={() => window.print()} className={DS_btnSecondary}>
-              <Printer className="w-4 h-4" />{t("Print")}
+              <Printer className="w-4 h-4" />
+              <span>{t("Print")}</span>
             </button>
-            <button onClick={openAddModal} className={DS_btnGold}>
-              <UserPlus className="w-4 h-4" />{t("+ Add New Teacher")}
+            <button onClick={openAdd} className={DS_btnGold}>
+              <UserPlus className="w-4 h-4" />
+              <span>{t("Add New Teacher")}</span>
             </button>
           </div>
 
@@ -300,8 +336,8 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
                           }
                         </div>
                         <div className={isRtl ? "text-right" : "text-left"}>
-                          <p className="font-semibold text-[#0f2044] dark:text-white">{teacher.name}</p>
-                          {teacher.name_en && <p className="text-xs text-gray-400">{teacher.name_en}</p>}
+                          <p className="font-semibold text-[#0f2044] dark:text-white">{!isRtl && teacher.name_en ? teacher.name_en : teacher.name}</p>
+                          {(!isRtl && teacher.name_en ? teacher.name : teacher.name_en) ? <p className="text-xs text-gray-400">{!isRtl && teacher.name_en ? teacher.name : teacher.name_en}</p> : null}
                         </div>
                       </div>
                     </td>
@@ -324,8 +360,9 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
                     </td>
                     <td className={DS_tableTd}>
                       <div className={`flex gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
-                        <button onClick={() => openEditModal(teacher)} className={DS_btnEdit}>{t("Edit")}</button>
-                        <button onClick={() => confirmDelete(teacher)} className={DS_btnDanger}>{t("Delete")}</button>
+                        <button onClick={() => openView(teacher)} className={DS_btnEdit} title={t("View Record")}>
+                          <Eye size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -338,151 +375,145 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
 
       {/* ── Add / Edit Modal ──────────────────────────────────────── */}
       <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
-        <div className={DS_modalContainer}>
-          {/* Header with step indicator */}
-          <div className={DS_modalHeader(isRtl)}>
-            <div className={`flex items-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
-              <div className={DS_modalHeaderAccent} />
-              <h2 className={DS_modalHeaderTitle}>
-                {isEditing ? t("Edit Teacher Details") : t("Register New Teacher")}
-              </h2>
+        {/* Modal Header */}
+        <div className={DS_modalHeader(isRtl)}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-[12px] flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-white" />
             </div>
-            <div className={`flex items-center gap-6 ${isRtl ? "flex-row-reverse" : ""}`}>
-              {/* Step indicator */}
-              <div className="flex items-center gap-2">
-                {[1, 2].map(s => (
-                  <div key={s} className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentStep >= s ? "bg-[#f5b800] text-[#0f2044]" : "bg-white/20 text-white/50"}`}>
-                    {s}
-                  </div>
-                ))}
-              </div>
-              <button onClick={closeModal} className={DS_modalClose}><X className="w-4 h-4" /></button>
+            <div className={isRtl ? "text-right" : "text-left"}>
+              <h3 className="text-xl font-bold text-white">
+                {modalMode === "view" ? currentTeacher?.name : (modalMode === "edit" ? t("Edit Teacher") : t("Add New Teacher"))}
+              </h3>
+              {modalMode === "view" && <p className="text-[#7ba7e8] text-sm font-semibold">{currentTeacher?.national_id}</p>}
             </div>
           </div>
+          
+          <div className="flex items-center gap-2">
+            {modalMode === "view" && (
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => currentTeacher && openEdit(currentTeacher)} 
+                  className="px-4 py-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all flex items-center gap-2 text-sm font-bold border border-white/10"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">{t("Edit")}</span>
+                </button>
+                <Dropdown>
+                  <Dropdown.Trigger>
+                    <button className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all">
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+                  </Dropdown.Trigger>
+                  <Dropdown.Content align={isRtl ? "left" : "right"} width="32" contentClasses="py-2 bg-white dark:bg-[#1a2845] shadow-2xl rounded-[16px] border border-gray-100 dark:border-[#243460]">
+                    <button onClick={() => currentTeacher && confirmDelete(currentTeacher)} className="w-full px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-start flex items-center gap-2">
+                      <Trash2 className="w-4 h-4" />
+                      {t("Delete")}
+                    </button>
+                  </Dropdown.Content>
+                </Dropdown>
+              </div>
+            )}
+            <button onClick={closeModal} className={DS_modalClose}><X className="w-5 h-5" /></button>
+          </div>
+        </div>
 
-          <form onSubmit={submit} className={DS_modalBody}>
-            {/* Step 1: Name fields */}
-            {currentStep === 1 && (
-              <div className="space-y-5">
-                {/* Image upload */}
-                <div className={`flex items-center gap-4 p-4 rounded-[16px] bg-[#0f2044]/[0.04] dark:bg-[#0f2044]/20 ${isRtl ? "flex-row-reverse" : ""}`}>
-                  <div className="w-20 h-20 rounded-[14px] bg-white dark:bg-[#0f2044]/30 border border-[#0f2044]/10 dark:border-[#243460] flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {data.image
-                      ? <img src={URL.createObjectURL(data.image)} alt="Preview" className="w-full h-full object-cover" />
-                      : previewImage
-                      ? <img src={previewImage} alt="Current" className="w-full h-full object-cover" />
-                      : <Users className="w-8 h-8 text-[#0f2044]/30 dark:text-[#7ba7e8]/30" />
-                    }
-                  </div>
-                  <div className={isRtl ? "text-right" : "text-left"}>
-                    <p className="text-sm font-bold text-[#0f2044] dark:text-white mb-2">{t("Profile Picture")}</p>
-                    <label className="cursor-pointer inline-block px-4 py-2 bg-[#f5b800] hover:bg-[#e0a900] text-[#0f2044] rounded-[12px] text-xs font-bold transition-all">
-                      {t("Upload Photo")}
-                      <input type="file" className="hidden" accept="image/*" onChange={e => setData("image", e.target.files?.[0] || null)} />
-                    </label>
-                    <InputError message={errors.image} className="mt-1" />
+        {/* Modal Body */}
+        <div className={`p-8 ${modalMode === "view" ? "space-y-8" : "space-y-4"} overflow-y-auto max-h-[80vh]`}>
+          {modalMode === "view" ? (
+            /* View Mode Body */
+            <>
+              {/* Profile Card */}
+              <div className="flex items-center gap-6 p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm">
+                <div className={DS_avatar + " w-24 h-24 rounded-[22px] border-4 border-white dark:border-[#243460] overflow-hidden shadow-lg"}>
+                  {currentTeacher?.image ? <img src={`/storage/${currentTeacher.image}`} className="w-full h-full object-cover" alt={currentTeacher.name} /> : currentTeacher?.name.charAt(0)}
+                </div>
+                <div>
+                  <h4 className="text-2xl font-black text-[#0f2044] dark:text-white mb-1">
+                    {!isRtl && currentTeacher?.name_en ? currentTeacher?.name_en : currentTeacher?.name}
+                  </h4>
+                  <div className="flex items-center gap-3">
+                    <span className={DS_badge(currentTeacher?.is_active || false)}>{currentTeacher?.is_active ? t("Active") : t("Inactive")}</span>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-[#0f2044]/[0.07] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8]">
+                      {currentTeacher?.grade_name || t("No Grade")}
+                    </span>
                   </div>
                 </div>
+              </div>
 
-                {/* Arabic Name */}
-                <div>
-                  <p className={`text-xs font-bold uppercase tracking-wider text-[#0f2044]/50 dark:text-[#7ba7e8]/60 border-b border-[#0f2044]/10 dark:border-[#243460] pb-2 mb-3 ${isRtl ? "text-right" : "text-left"}`}>
-                    {t("Name (Arabic)")}
-                  </p>
+              {/* Info Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                  <div className="w-12 h-12 rounded-[14px] bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600"><Fingerprint className="w-6 h-6" /></div>
+                  <div><p className={DS_labelCls}>{t("Civil ID")}</p><p className="font-bold text-[#0f2044] dark:text-white">{currentTeacher?.national_id}</p></div>
+                </div>
+                <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                  <div className="w-12 h-12 rounded-[14px] bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600"><Phone className="w-6 h-6" /></div>
+                  <div><p className={DS_labelCls}>{t("Phone Number")}</p><p className="font-bold text-[#0f2044] dark:text-white" dir="ltr">{currentTeacher?.phone}</p></div>
+                </div>
+                <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                  <div className="w-12 h-12 rounded-[14px] bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600"><Mail className="w-6 h-6" /></div>
+                  <div className="min-w-0"><p className={DS_labelCls}>{t("Email")}</p><p className="font-bold text-[#0f2044] dark:text-white truncate">{currentTeacher?.email || "—"}</p></div>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Edit / Create Mode Body */
+            <form onSubmit={submit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Arabic Name Parts */}
+                <div className="md:col-span-2 space-y-3">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t("Name (Arabic)")} *</label>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    {['first_name_ar', 'second_name_ar', 'third_name_ar', 'last_name_ar'].map(key => (
-                      <div key={key}>
-                        <label className={DS_labelCls}>{t(key.replace(/_ar$/, '').replace(/_/g, ' '))}</label>
-                        <input type="text" value={(data as any)[key]} onChange={e => setData(key as any, e.target.value)} dir="rtl" className={DS_inputCls} required={key.includes('first') || key.includes('last')} />
-                        <InputError message={(errors as any)[key]} className="mt-1" />
-                      </div>
+                    {["first", "second", "third", "last"].map(p => (
+                      <input key={p} type="text" value={(data as any)[`${p}_name_ar`]} onChange={e => setData(`${p}_name_ar` as any, e.target.value)} className={DS_inputCls} placeholder={t(`${p} Name`)} dir="rtl" required />
+                    ))}
+                  </div>
+                </div>
+                {/* English Name Parts */}
+                <div className="md:col-span-2 space-y-3 pt-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t("Name (English)")}</label>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    {["first", "second", "third", "last"].map(p => (
+                      <input key={p} type="text" value={(data as any)[`${p}_name_en`]} onChange={e => setData(`${p}_name_en` as any, e.target.value)} className={DS_inputCls} placeholder={t(`${p} Name`)} dir="ltr" />
                     ))}
                   </div>
                 </div>
 
-                {/* English Name */}
+                <div><label className={DS_labelCls}>{t("Civil ID")} *</label><input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} className={DS_inputCls} required /></div>
+                <div><label className={DS_labelCls}>{t("Phone")} *</label><input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} className={DS_inputCls} required /></div>
+                <div><label className={DS_labelCls}>{t("Email")}</label><input type="email" value={data.email} onChange={e => setData("email", e.target.value)} className={DS_inputCls} /></div>
                 <div>
-                  <p className={`text-xs font-bold uppercase tracking-wider text-[#0f2044]/50 dark:text-[#7ba7e8]/60 border-b border-[#0f2044]/10 dark:border-[#243460] pb-2 mb-3 ${isRtl ? "text-right" : "text-left"}`}>
-                    {t("Name (English)")}
-                  </p>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    {['first_name_en', 'second_name_en', 'third_name_en', 'last_name_en'].map(key => (
-                      <div key={key}>
-                        <label className={DS_labelCls}>{t(key.replace(/_en$/, '').replace(/_/g, ' '))}</label>
-                        <input type="text" value={(data as any)[key]} onChange={e => setData(key as any, e.target.value)} dir="ltr" className={DS_inputCls} />
-                        <InputError message={(errors as any)[key]} className="mt-1" />
-                      </div>
-                    ))}
-                  </div>
+                  <label className={DS_labelCls}>{t("Grade")} *</label>
+                  <select value={data.grade_id} onChange={e => setData("grade_id", e.target.value)} className={DS_selectCls} required>
+                    <option value="">{t("Select Grade")}</option>
+                    {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  </select>
+                </div>
+                <div><label className={DS_labelCls}>{t("Password")} {modalMode === "edit" ? `(${t("Leave blank to keep current")})` : "*"}</label><input type="password" value={data.password} onChange={e => setData("password", e.target.value)} className={DS_inputCls} required={modalMode === "create"} /></div>
+                
+                <div className="md:col-span-2">
+                  <Toggle 
+                    label={t("Status")}
+                    description={data.is_active ? t("Active Teacher Account") : t("Deactivated Teacher Account")}
+                    enabled={data.is_active}
+                    onChange={v => setData("is_active", v)}
+                  />
                 </div>
               </div>
-            )}
 
-            {/* Step 2: Contact & Preferences */}
-            {currentStep === 2 && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className={DS_labelCls}>{t("Civil ID")}</label>
-                    <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} dir="ltr" required className={DS_inputCls} />
-                    <InputError message={errors.national_id} className="mt-1" />
-                  </div>
-                  <div>
-                    <label className={DS_labelCls}>{t("Phone Number")}</label>
-                    <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} dir="ltr" placeholder="5X XXX XXXX" required className={DS_inputCls} />
-                    <InputError message={errors.phone} className="mt-1" />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className={DS_labelCls}>{t("Email")}</label>
-                    <input type="email" value={data.email} onChange={e => setData("email", e.target.value)} dir="ltr" className={DS_inputCls} />
-                    <InputError message={errors.email} className="mt-1" />
-                  </div>
-                  <div>
-                    <label className={DS_labelCls}>{t("Grade Responsible For")}</label>
-                    <select value={data.grade_id} onChange={e => setData("grade_id", e.target.value)} className={DS_inputCls}>
-                      <option value="">{t("Unassigned")}</option>
-                      {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                    </select>
-                    <InputError message={errors.grade_id} className="mt-1" />
-                  </div>
-                  <div className="flex items-center gap-3 pt-5">
-                    <input
-                      type="checkbox"
-                      id="is_active"
-                      checked={data.is_active}
-                      onChange={e => setData("is_active", e.target.checked)}
-                      className="w-4 h-4 rounded accent-[#f5b800]"
-                    />
-                    <label htmlFor="is_active" className="text-sm font-bold text-[#0f2044] dark:text-white">{t("Active Account")}</label>
-                  </div>
-                </div>
+              <div className="flex justify-between pt-6 border-t border-gray-100 dark:border-white/5">
+                <button type="button" onClick={() => (modalMode === "edit" ? setModalMode("view") : closeModal())} className={DS_cancelBtn}>{t("Cancel")}</button>
+                <button type="submit" disabled={processing} className={DS_submitBtn(processing)}>{modalMode === "edit" ? t("Save Changes") : t("Add Teacher")}</button>
               </div>
-            )}
-
-            {/* Footer Buttons */}
-            <div className="flex justify-between items-center pt-4 border-t border-[#0f2044]/10 dark:border-[#243460] mt-2">
-              <button type="button" onClick={currentStep === 1 ? closeModal : () => setCurrentStep(1)} className={DS_cancelBtn}>
-                {currentStep === 1 ? t("Cancel") : t("Back")}
-              </button>
-              <div className="flex gap-3">
-                {currentStep === 1 ? (
-                  <button type="button" onClick={() => setCurrentStep(2)} className={DS_btnGold}>
-                    {t("Next")}
-                  </button>
-                ) : (
-                  <button type="submit" disabled={processing} className={DS_submitBtn(processing)}>
-                    {isEditing ? t("Save Changes") : t("Add Teacher")}
-                  </button>
-                )}
-              </div>
-            </div>
-          </form>
+            </form>
+          )}
         </div>
       </Modal>
 
       {/* ── Delete Modal ──────────────────────────────────────────── */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowDeleteModal(false)}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setShowDeleteModal(false)}>
           <div className={DS_confirmModal} onClick={e => e.stopPropagation()}>
             <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl">⚠️</span>

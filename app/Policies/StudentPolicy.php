@@ -31,7 +31,7 @@ class StudentPolicy
         }
 
         // الحصول على معرف المدرسة من خلال الفصل أو enrollment
-        $schoolId = $enrollment->classroom?->school_id ?? $enrollment->school_id;
+        $schoolId = $enrollment->classroom?->grade?->school_id;
 
         // مقارنة بعد التحويل لـ int لتجنب مشاكل PostgreSQL
         return (int) $userSchoolId === (int) $schoolId;
