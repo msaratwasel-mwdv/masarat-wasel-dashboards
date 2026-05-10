@@ -81,6 +81,7 @@ class AuthController extends Controller
         }
 
         // ✅ updateFcmToken() تحفظ في الجدول الصحيح حسب دور المستخدم
+        // ❌ update(['fcm_token'=>...]) لا تفعل شيئاً لأن fcm_token غير موجود في $fillable
         if ($request->has('fcm_token') && !empty($request->fcm_token)) {
             try {
                 $user->updateFcmToken(
@@ -92,7 +93,7 @@ class AuthController extends Controller
                     $request->input('preferred_language')
                 );
             } catch (\Throwable $e) {
-                Log::error("[FCM Login] Failed to update token: " . $e->getMessage());
+                Log::error("[Auth] FCM token update failed during login: " . $e->getMessage());
             }
         }
 
