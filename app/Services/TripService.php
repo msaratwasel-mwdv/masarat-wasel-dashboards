@@ -310,18 +310,22 @@ class TripService
         if ($status === 'boarded') {
             $updateData['check_in_time'] = now();
             $this->notificationService->notifyStudentGuardian(
-                $studentId,
-                'bus_boarding',
-                '🚌 ركب الحافلة',
-                'تم تسجيل ركوب الطالب في رحلة ' . ($trip->type === 'forth' ? 'الذهاب' : 'العودة')
+                studentId: $studentId,
+                type: 'bus_boarding',
+                title: '🚌 ركب الحافلة',
+                message: 'تم تسجيل ركوب الطالب في رحلة ' . ($trip->type === 'forth' ? 'الذهاب' : 'العودة'),
+                titleEn: '🚌 Boarded the bus',
+                messageEn: 'The student has been recorded as boarded for the ' . ($trip->type === 'forth' ? 'forth' : 'back') . ' trip.'
             );
         } elseif ($status === 'dropped') {
             $updateData['check_out_time'] = now();
             $this->notificationService->notifyStudentGuardian(
-                $studentId,
-                'bus_alighting',
-                '✅ نزل من الحافلة',
-                'تم تسجيل نزول الطالب من الرحلة بأمان'
+                studentId: $studentId,
+                type: 'bus_alighting',
+                title: '✅ نزل من الحافلة',
+                message: 'تم تسجيل نزول الطالب من الرحلة بأمان',
+                titleEn: '✅ Alighted from the bus',
+                messageEn: 'The student has been recorded as safely alighted from the trip.'
             );
         }
 

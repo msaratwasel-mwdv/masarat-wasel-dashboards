@@ -364,12 +364,21 @@ class ParentController extends Controller
                 'full_day'  => 'يوم كامل',
             ][$request->type] ?? 'يوم كامل';
 
+            $typeNamesEn = [
+                'morning'   => 'Morning only',
+                'afternoon' => 'Afternoon only',
+                'full_day'  => 'Full day',
+            ];
+            $typeNameEn = $typeNamesEn[$request->type] ?? 'Full day';
+
             foreach ($staffUserIds as $userId) {
                 $this->notificationService->sendToUser(
                     userId: $userId,
                     type: 'student_absence',
                     title: "تنبيه غياب ($typeName): {$student->full_name}",
                     message: "أفاد ولي الأمر بغياب الطالب ($typeName) يوم ({$request->date}). يرجى عدم المرور بالمنزل.",
+                    titleEn: "Absence Alert ($typeNameEn): {$student->full_name_en}",
+                    messageEn: "The guardian reported the student's absence ($typeNameEn) on ({$request->date}). Please do not stop at the house.",
                     data: [
                         'student_id'   => (string) $student->id,
                         'student_name' => $student->full_name,
@@ -529,16 +538,19 @@ class ParentController extends Controller
         try {
             $notificationService = app(\App\Services\NotificationService::class);
             $notificationService->notifySchoolAdmins(
-                $student->school_id,
-                'location_request',
-                'طلب تغيير موقع منزل',
-                "قام ولي الأمر {$user->name} بتقديم طلب لتغيير موقع منزل الطالب {$student->full_name}",
-                [
+                schoolId: $student->school_id,
+                type: 'location_request',
+                title: 'طلب تغيير موقع منزل',
+                message: "قام ولي الأمر {$user->name} بتقديم طلب لتغيير موقع منزل الطالب {$student->full_name}",
+                titleEn: 'Home Location Change Request',
+                messageEn: "Guardian {$user->name_en} submitted a request to change the home location for student {$student->full_name_en}",
+                data: [
                     'type' => 'location_request',
                     'location_request_id' => $locationRequest->id,
                     'student_id' => $student->id
                 ],
-                $user->name
+                fromUserName: $user->name,
+                fromUserNameEn: $user->name_en
             );
         } catch (\Exception $e) {
             Log::error("❌ Failed to notify admins about location request: " . $e->getMessage());

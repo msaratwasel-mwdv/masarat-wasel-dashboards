@@ -340,6 +340,7 @@ class ChatController extends Controller
                 ->first();
 
             if ($otherParticipant) {
+                $senderNameEn = $user->name_en ?: $user->name;
                 $this->notificationService->sendToUser(
                     userId: $otherParticipant->id,
                     type: 'new_message',
@@ -349,8 +350,12 @@ class ChatController extends Controller
                         'conversation_id' => (string) $conversation->id,
                         'sender_id'       => (string) $user->id,
                         'sender_name'     => $user->name,
+                        'sender_name_en'  => $senderNameEn,
                     ],
-                    fromUserName: $user->name
+                    fromUserName: $user->name,
+                    titleEn: 'New message from ' . $senderNameEn,
+                    messageEn: $message->body ?: 'Sent an attachment',
+                    fromUserNameEn: $senderNameEn
                 );
             }
         } catch (\Exception $e) {

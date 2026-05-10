@@ -42,6 +42,9 @@ class User extends Authenticatable
         'latitude',
         'longitude',
         'whatsapp_consent',
+        'preferred_language',
+        'role',
+        'is_active',
     ];
 
     /**
@@ -365,22 +368,63 @@ class User extends Authenticatable
 
     /**
      * Register or update an FCM token for the user.
-     * Centralized multi-device support.
+     * Centralized multi-device support with device identity tracking.
      */
-    public function updateFcmToken(?string $token, ?string $deviceType = null, ?string $deviceName = null): void
-    {
-        if (!$token) return;
+    public function updateFcmToken(
+        string $fcmToken,
+        ?string $deviceType = null,
+        ?string $deviceName = null,
+        ?string $deviceId = null,
+        ?string $appBundleId = null,
+        ?string $preferredLanguage = null
+    ): void {
+        if (!$fcmToken) {
+            return;
+        }
 
-        // Search globally for the token to handle device handovers between users
+        // 1. Cleanup: Ensure this token is not associated with any other user
+        // (Prevents duplicate delivery if a user logs in on a shared device)
+        \App\Models\FcmToken::where('token', $fcmToken)
+            ->where('user_id', '!=', $this->id)
+            ->delete();
+
+        // 2. Lookup by Device ID + Bundle ID if available, otherwise fallback to token
+        // This ensures one entry per physical device per APP per user.
+        $query = ($deviceId && $appBundleId)
+            ? ['device_id' => $deviceId, 'user_id' => $this->id, 'app_bundle_id' => $appBundleId] 
+            : ['token' => $fcmToken, 'user_id' => $this->id];
+ 
+        $updateData = [
+            'token'         => $fcmToken,
+            'device_id'     => $deviceId,
+            'device_type'   => $deviceType,
+            'device_name'   => $deviceName,
+            'app_bundle_id' => $appBundleId,
+        ];
+
+        if ($preferredLanguage !== null) {
+            $updateData['preferred_language'] = $preferredLanguage;
+        }
+
         \App\Models\FcmToken::updateOrCreate(
-            ['token' => $token],
-            [
-                'user_id'     => $this->id,
-                'device_type' => $deviceType,
-                'device_name' => $deviceName,
-                'updated_at'  => now(),
-            ]
+            $query,
+            $updateData
         );
+
+        \Illuminate\Support\Facades\Log::debug("[FCM] Token updated for user {$this->id}", [
+            'device_id'   => $deviceId,
+            'device_name' => $deviceName,
+            'has_token'   => true,
+            'preferred_language' => $preferredLanguage
+        ]);
+    }
+
+    /**
+     * Get tokens with their associated app bundle IDs.
+     */
+    public function getFcmTokensWithBundleIds(): \Illuminate\Support\Collection
+    {
+        return $this->fcmTokens()->select(['token', 'app_bundle_id', 'device_type', 'preferred_language'])->get();
     }
 
     // ── Classrooms (Teacher role) ───────────────────────

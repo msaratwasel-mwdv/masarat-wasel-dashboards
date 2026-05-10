@@ -60,9 +60,11 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\BusExpense::observe($analyticsObserver);
         \App\Models\Violation::observe($analyticsObserver);
         \App\Models\Delay::observe($analyticsObserver);
-
         // Register WhatsApp Event Subscriber
         Event::subscribe(\App\Listeners\WhatsAppEventSubscriber::class);
+
+        \Log::debug("AppServiceProvider: Booting... Registering Broadcast routes with Sanctum.");
+        \Illuminate\Support\Facades\Broadcast::routes(['middleware' => ['api', 'auth:sanctum']]);
     }
 }
 

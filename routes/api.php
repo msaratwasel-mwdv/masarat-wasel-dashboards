@@ -56,6 +56,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::post('/auth/change-password', [AuthController::class, 'changePassword']); // تغيير كلمة السر
     Route::post('/auth/profile/update', [AuthController::class, 'updateProfile']);    // تحديث البيانات
     Route::post('/auth/profile/avatar', [AuthController::class, 'updateAvatar']);    // تحديث الصورة
+    Route::post('/auth/profile/language', [AuthController::class, 'updateLanguage']); // تحديث اللغة المفضلة
 
     Route::middleware([\App\Http\Middleware\CheckTransportAccess::class])->group(function () {
         // --- ركوب/نزول الطلاب (للمشرف والسائق) ---

@@ -128,11 +128,21 @@ class TeacherController extends Controller
                 default   => $request->status,
             };
 
+            $statusEn = match ($request->status) {
+                'present' => 'present',
+                'absent'  => 'absent',
+                'late'    => 'late',
+                'excused' => 'excused',
+                default   => $request->status,
+            };
+
             $this->notificationService->notifyStudentGuardian(
                 studentId: $student->id,
                 type: 'school_attendance',
                 title: 'تحديث سجل الحضور المدرسي',
                 message: "تم تسجيل {$student->full_name} {$statusAr} اليوم.",
+                titleEn: 'School Attendance Update',
+                messageEn: "{$student->full_name_en} has been marked as {$statusEn} today.",
                 data: [
                     'student_id'   => (string) $student->id,
                     'student_name' => $student->full_name,
