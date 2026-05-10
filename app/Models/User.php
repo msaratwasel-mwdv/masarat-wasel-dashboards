@@ -369,14 +369,8 @@ class User extends Authenticatable
      * Register or update an FCM token for the user.
      * Centralized multi-device support with device identity tracking.
      */
-    public function updateFcmToken(
-        string $fcmToken,
-        ?string $deviceType = null,
-        ?string $deviceName = null,
-        ?string $deviceId = null,
-        ?string $appBundleId = null,
-        ?string $preferredLanguage = null
-    ): void {
+    public function updateFcmToken($fcmToken, $deviceType = 'android', $deviceName = null, $deviceId = null, $appBundleId = null, $preferredLanguage = null): void
+    {
         if (!$fcmToken) {
             return;
         }
@@ -387,14 +381,9 @@ class User extends Authenticatable
             ->where('user_id', '!=', $this->id)
             ->delete();
 
-        // 2. Lookup by Device ID + Bundle ID if available, otherwise fallback to token
-        // This ensures one entry per physical device per APP per user.
-        $query = ($deviceId && $appBundleId)
-            ? ['device_id' => $deviceId, 'user_id' => $this->id, 'app_bundle_id' => $appBundleId] 
-            : ['token' => $fcmToken, 'user_id' => $this->id];
- 
+        // 2. We use the TOKEN as the primary key for search to avoid Unique Violation
         $updateData = [
-            'token'         => $fcmToken,
+            'user_id'       => $this->id,
             'device_id'     => $deviceId,
             'device_type'   => $deviceType,
             'device_name'   => $deviceName,
@@ -406,7 +395,7 @@ class User extends Authenticatable
         }
 
         \App\Models\FcmToken::updateOrCreate(
-            $query,
+            ['token' => $fcmToken], // Search by token only because it's UNIQUE
             $updateData
         );
 
