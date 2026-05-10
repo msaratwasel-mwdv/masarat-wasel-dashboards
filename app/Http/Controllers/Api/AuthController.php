@@ -207,15 +207,20 @@ class AuthController extends Controller
             'preferred_language' => 'nullable|string|in:ar,en',
         ]);
 
-        // ✅ updateFcmToken() تحفظ في الجدول الصحيح
-        $request->user()->updateFcmToken(
-            $request->fcm_token,
-            $request->input('device_type'),
-            $request->input('device_name'),
-            $request->input('device_id'),
-            $request->input('app_bundle_id'),
-            $request->input('preferred_language')
-        );
+        try {
+            // ✅ updateFcmToken() تحفظ في الجدول الصحيح
+            $request->user()->updateFcmToken(
+                $request->fcm_token,
+                $request->input('device_type'),
+                $request->input('device_name'),
+                $request->input('device_id'),
+                $request->input('app_bundle_id'),
+                $request->input('preferred_language')
+            );
+        } catch (\Throwable $e) {
+            Log::error("[FCM] Failed to register token: " . $e->getMessage());
+            // نرجع نجاح لأننا لا نريد منع المستخدم من دخول التطبيق بسبب خطأ في التنبيهات
+        }
 
         return response()->json(['success' => true, 'message' => 'تم تسجيل FCM Token بنجاح.']);
     }
@@ -373,16 +378,20 @@ class AuthController extends Controller
 
         $user = $request->user();
 
-        // 1. Update the user's profile language
-        $user->update([
-            'preferred_language' => $request->language,
-        ]);
+        try {
+            // 1. Update the user's profile language
+            $user->update([
+                'preferred_language' => $request->language,
+            ]);
 
-        // 2. Also update ALL FCM tokens for this user
-        //    so notification dispatch uses the correct language
-        $user->fcmTokens()->update([
-            'preferred_language' => $request->language,
-        ]);
+            // 2. Also update ALL FCM tokens for this user
+            //    so notification dispatch uses the correct language
+            $user->fcmTokens()->update([
+                'preferred_language' => $request->language,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("[Language] Failed to update preferred language: " . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,
