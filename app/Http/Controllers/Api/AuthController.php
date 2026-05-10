@@ -83,18 +83,14 @@ class AuthController extends Controller
         // ✅ updateFcmToken() تحفظ في الجدول الصحيح حسب دور المستخدم
         // ❌ update(['fcm_token'=>...]) لا تفعل شيئاً لأن fcm_token غير موجود في $fillable
         if ($request->has('fcm_token') && !empty($request->fcm_token)) {
-            try {
-                $user->updateFcmToken(
-                    $request->fcm_token,
-                    $request->input('device_type', 'android'),
-                    $request->device_name,
-                    $request->input('device_id'),
-                    $request->input('app_bundle_id'),
-                    $request->input('preferred_language')
-                );
-            } catch (\Throwable $e) {
-                Log::error("[Auth] FCM token update failed during login: " . $e->getMessage());
-            }
+            $user->updateFcmToken(
+                $request->fcm_token,
+                $request->input('device_type', 'android'),
+                $request->device_name,
+                $request->input('device_id'),
+                $request->input('app_bundle_id'),
+                $request->input('preferred_language')
+            );
         }
 
         // حذف التوكنات القديمة لنفس الجهاز لتجنب التراكم
