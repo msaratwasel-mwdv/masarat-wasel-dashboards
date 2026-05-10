@@ -293,7 +293,9 @@ class NotificationController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
+            'title_en' => 'nullable|string|max:255',
             'message' => 'required|string',
+            'message_en' => 'nullable|string',
             'type' => 'required|string', 
             'recipient_type' => 'required|string',
             'recipient_filter' => 'nullable|array',
@@ -303,12 +305,27 @@ class NotificationController extends Controller
         $schoolId = Auth::user()->school_id;
         $recipients = $this->getRecipients($schoolId, $validated['recipient_type'], $validated['recipient_filter'] ?? []);
 
+        // Idempotency check: prevent duplicate submissions within 10 seconds
+        $recentDuplicate = Notification::where('sender_id', Auth::id())
+            ->where('title', $validated['title'])
+            ->where('message', $validated['message'])
+            ->where('created_at', '>=', now()->subSeconds(10))
+            ->first();
+
+        if ($recentDuplicate) {
+            return redirect()->back()->with('error', 'تم إرسال هذا الإشعار مسبقاً.');
+        }
+
         DB::beginTransaction();
         try {
+            $correlationId = \Illuminate\Support\Str::uuid()->toString();
+
             // Create the notification
             $notification = Notification::create([
                 'title' => $validated['title'],
+                'title_en' => $validated['title_en'] ?? '',
                 'message' => $validated['message'],
+                'message_en' => $validated['message_en'] ?? '',
                 'type' => $validated['type'],
                 'template_type' => $validated['type'],
                 'sender_id' => Auth::id(),
@@ -318,56 +335,97 @@ class NotificationController extends Controller
                 'status' => 'pending',
                 'data' => [
                     'template_id' => $validated['template_id'] ?? null,
+                    'correlation_id' => $correlationId,
                 ]
             ]);
 
-            $fcmTokens = [];
+            $tokensAr = [];
+            $tokensEn = [];
+            $allTokenCount = 0;
 
-            // Create recipient records
+            // Create recipient records AND group tokens by language
             foreach ($recipients as $parentUser) {
-                // Get all tokens for this user
-                $userTokens = $parentUser->fcmTokens()->pluck('token')->toArray();
+                // Get all token records with preferred_language
+                $tokenRecords = $parentUser->fcmTokens()
+                    ->select(['token', 'preferred_language'])
+                    ->get();
                 
-                if (empty($userTokens)) {
+                if ($tokenRecords->isEmpty()) {
                     $notification->recipients()->create([
                         'user_id' => $parentUser->id,
                         'fcm_token' => null,
-                        'status' => 'failed', // Or pending
+                        'status' => 'failed',
                     ]);
                 } else {
-                    foreach ($userTokens as $token) {
+                    foreach ($tokenRecords as $record) {
                         $notification->recipients()->create([
                             'user_id' => $parentUser->id,
-                            'fcm_token' => $token,
+                            'fcm_token' => $record->token,
                             'status' => 'pending',
                         ]);
-                        $fcmTokens[] = $token;
+                        // Group by language: English tokens vs Arabic tokens
+                        if ($record->preferred_language === 'en') {
+                            $tokensEn[] = $record->token;
+                        } else {
+                            $tokensAr[] = $record->token;
+                        }
+                        $allTokenCount++;
                     }
                 }
             }
 
             DB::commit();
 
-            // إرسال الإشعار فعلياً عبر Firebase
-            if (!empty($fcmTokens)) {
-                \Illuminate\Support\Facades\Log::info('[NotificationController] Found tokens for parent: ' . count($fcmTokens));
+            $titleEn = $validated['title_en'] ?? '';
+            $messageEn = $validated['message_en'] ?? '';
+
+            // إرسال الإشعار فعلياً عبر Firebase — مفصول حسب اللغة
+            if ($allTokenCount > 0) {
+                \Illuminate\Support\Facades\Log::info("[NotificationController] Sending: AR=" . count($tokensAr) . ", EN=" . count($tokensEn));
                 try {
                     $notificationService = app(\App\Services\NotificationService::class);
-                    $notificationService->sendMulticast(
-                        $fcmTokens,
-                        $validated['title'],
-                        $validated['message'],
-                        [
-                            'notification_id' => (string) $notification->id,
-                            'type' => $validated['type'],
-                            'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
-                        ]
-                    );
+
+                    $basePayload = [
+                        'notification_id' => (string) $notification->id,
+                        'type' => $validated['type'],
+                        'title_en' => $titleEn,
+                        'message_en' => $messageEn,
+                        'correlation_id' => $correlationId,
+                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
+                    ];
+
+                    // إرسال النسخة العربية للأجهزة العربية
+                    if (!empty($tokensAr)) {
+                        $notificationService->sendMulticast(
+                            $tokensAr,
+                            $validated['title'],
+                            $validated['message'],
+                            $basePayload
+                        );
+                    }
+
+                    // إرسال النسخة الإنجليزية للأجهزة الإنجليزية
+                    if (!empty($tokensEn) && !empty($titleEn)) {
+                        $notificationService->sendMulticast(
+                            $tokensEn,
+                            $titleEn,
+                            $messageEn,
+                            $basePayload
+                        );
+                    } elseif (!empty($tokensEn)) {
+                        // Fallback: لا يوجد محتوى إنجليزي، أرسل العربي
+                        $notificationService->sendMulticast(
+                            $tokensEn,
+                            $validated['title'],
+                            $validated['message'],
+                            $basePayload
+                        );
+                    }
                     
-                    $notification->update(['status' => 'sent', 'sent_count' => count($fcmTokens)]);
+                    $notification->update(['status' => 'sent', 'sent_count' => $allTokenCount]);
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::error('Firebase Notification Error: ' . $e->getMessage());
-                    $notification->update(['status' => 'failed', 'failed_count' => count($fcmTokens), 'sent_count' => 0]);
+                    $notification->update(['status' => 'failed', 'failed_count' => $allTokenCount, 'sent_count' => 0]);
                     return redirect()->route('school.notifications.index')
                         ->with('success', 'تم حفظ الإشعار في النظام، ولكن تعذر الإرسال للهواتف (لم يتم إعداد Firebase بعد).');
                 }
@@ -377,7 +435,7 @@ class NotificationController extends Controller
 
             // 4. بث الحدث لحظياً عبر Websockets (Reverb) لكل مستخدم
             foreach ($recipients as $recipient) {
-                event(new \App\Events\NotificationPushed($notification, $recipient->id));
+                event(new \App\Events\NotificationPushed($notification, $recipient->id, $correlationId));
             }
 
             return redirect()->route('school.notifications.index')

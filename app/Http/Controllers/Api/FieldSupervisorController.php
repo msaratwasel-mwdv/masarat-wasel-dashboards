@@ -317,6 +317,28 @@ class FieldSupervisorController extends Controller
                     'color'            => $color,
                 ]);
 
+                $typeLabelsEn = [
+                    'sos'        => 'SOS Emergency',
+                    'behavioral' => 'Behavioral Report',
+                    'health'     => 'Health Report',
+                    'technical'  => 'Technical Issue',
+                    'traffic'    => 'Traffic Accident',
+                ];
+                $typeLabelEn = $typeLabelsEn[$request->type] ?? 'Report';
+                
+                $roleNamesEn = [
+                    'field_supervisor' => 'Field Supervisor',
+                    'assistant'        => 'Bus Assistant',
+                    'driver'           => 'Driver',
+                    'school_admin'     => 'School Admin',
+                    'admin'            => 'General Admin'
+                ];
+                $reporterRoleNameEn = $roleNamesEn[$request->user()->role] ?? 'User';
+                $reporterNameEn = $request->user()->name_en ?? $reporterName;
+
+                $titleEn = ($request->type === 'sos' ? '🚨 ' : '⚠️ ') . "{$typeLabelEn} - Bus {$busNumber}";
+                $messageEn = "Reported by ({$reporterRoleNameEn}) {$reporterNameEn}. Details: {$request->description}";
+
                 foreach ($recipientUserIds as $userId) {
                     \App\Models\NotificationRecipient::create([
                         'notification_id' => $notification->id,
@@ -326,7 +348,15 @@ class FieldSupervisorController extends Controller
                     ]);
                     
                     // إرسال عبر Push Notification
-                    $this->notificationService->sendToUser($userId, 'incident', $notification->title, $notification->message, $notification->data);
+                    $this->notificationService->sendToUser(
+                        userId: $userId, 
+                        type: 'incident', 
+                        title: $notification->title, 
+                        message: $notification->message, 
+                        data: $notification->data,
+                        titleEn: $titleEn,
+                        messageEn: $messageEn
+                    );
                 }
             }
         } catch (\Exception $e) {

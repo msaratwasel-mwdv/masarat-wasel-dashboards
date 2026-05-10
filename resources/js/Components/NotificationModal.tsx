@@ -83,8 +83,10 @@ export default function NotificationModal({
 
     transform((data) => {
         const transformed: Record<string, any> = {
-            title: data.title_ar || data.title_en,
-            message: data.body_ar || data.body_en,
+            title: data.title_ar,
+            title_en: data.title_en,
+            message: data.body_ar,
+            message_en: data.body_en,
             type: data.type,
             recipient_type: data.recipient_type,
             recipient_filter: { ...data.recipient_filter },

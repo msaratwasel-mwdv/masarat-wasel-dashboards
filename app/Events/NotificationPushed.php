@@ -15,10 +15,12 @@ class NotificationPushed implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public ?int $targetUserId = null;
+    public ?string $correlationId = null;
 
-    public function __construct(public Notification $notification, ?int $targetUserId = null)
+    public function __construct(public Notification $notification, ?int $targetUserId = null, ?string $correlationId = null)
     {
         $this->targetUserId = $targetUserId ?? $notification->user_id;
+        $this->correlationId = $correlationId;
     }
 
     public function broadcastOn(): array
@@ -56,14 +58,18 @@ class NotificationPushed implements ShouldBroadcast
             'id' => $this->notification->id,
             'type' => $this->notification->type,
             'title' => $this->notification->title,
+            'title_en' => $this->notification->title_en,
             'message' => $this->notification->message,
+            'message_en' => $this->notification->message_en,
             'data' => $this->notification->data,
             'icon' => $this->notification->icon,
             'color' => $this->notification->color,
             'from_user_name' => $this->notification->from_user_name,
+            'from_user_name_en' => $this->notification->from_user_name_en,
             'status' => $this->notification->status,
             'created_at' => $this->notification->created_at->toIso8601String(),
             'unread_count' => $unreadCount,
+            'correlation_id' => $this->correlationId,
         ];
     }
 }

@@ -85,8 +85,11 @@ class AuthController extends Controller
         if ($request->has('fcm_token') && !empty($request->fcm_token)) {
             $user->updateFcmToken(
                 $request->fcm_token,
-                $request->input('device_type', 'android'), // Default to android as most users are on android
-                $request->device_name
+                $request->input('device_type', 'android'),
+                $request->device_name,
+                $request->input('device_id'),
+                $request->input('app_bundle_id'),
+                $request->input('preferred_language')
             );
         }
 
@@ -201,13 +204,17 @@ class AuthController extends Controller
     {
         $request->validate([
             'fcm_token' => 'required|string|max:500',
+            'preferred_language' => 'nullable|string|in:ar,en',
         ]);
 
         // ✅ updateFcmToken() تحفظ في الجدول الصحيح
         $request->user()->updateFcmToken(
             $request->fcm_token,
             $request->input('device_type'),
-            $request->input('device_name')
+            $request->input('device_name'),
+            $request->input('device_id'),
+            $request->input('app_bundle_id'),
+            $request->input('preferred_language')
         );
 
         return response()->json(['success' => true, 'message' => 'تم تسجيل FCM Token بنجاح.']);
@@ -351,8 +358,36 @@ class AuthController extends Controller
                 return $classroom->school->name;
             }
         }
-
         return null;
+    }
+
+    /**
+     * تحديث اللغة المفضلة (ar / en)
+     * POST /api/auth/profile/language
+     */
+    public function updateLanguage(Request $request): JsonResponse
+    {
+        $request->validate([
+            'language' => 'required|string|in:ar,en',
+        ]);
+
+        $user = $request->user();
+
+        // 1. Update the user's profile language
+        $user->update([
+            'preferred_language' => $request->language,
+        ]);
+
+        // 2. Also update ALL FCM tokens for this user
+        //    so notification dispatch uses the correct language
+        $user->fcmTokens()->update([
+            'preferred_language' => $request->language,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث اللغة بنجاح.',
+        ]);
     }
 }
 

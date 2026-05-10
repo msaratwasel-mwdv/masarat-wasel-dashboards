@@ -51,7 +51,9 @@ export default function Create({
 
     const { data, setData, post, processing, errors, reset } = useForm({
         title: "",
+        title_en: "",
         message: "",
+        message_en: "",
         template_id: "",
         recipient_type: "all_parents",
         recipient_filter: {} as any,
@@ -67,8 +69,10 @@ export default function Create({
             if (template) {
                 setData({
                     ...data,
-                    title: template.title_ar, // You can detect language
+                    title: template.title_ar,
+                    title_en: template.title_en,
                     message: template.body_ar,
+                    message_en: template.body_en,
                     type: template.template_type,
                 });
             }
@@ -143,45 +147,83 @@ export default function Create({
                     </div>
 
                     {/* Title */}
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                            📝 {t("Title")}{" "}
-                            <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={data.title}
-                            onChange={(e) => setData("title", e.target.value)}
-                            className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent font-medium"
-                            placeholder={t("Enter notification title")}
-                            required
-                        />
-                        {errors.title && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.title}
-                            </p>
-                        )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
+                                📝 {t("Title (Arabic)")}{" "}
+                                <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={data.title}
+                                onChange={(e) => setData("title", e.target.value)}
+                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent font-medium"
+                                placeholder={t("Enter notification title")}
+                                required
+                            />
+                            {errors.title && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.title}
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
+                                📝 {t("Title (English)")}{" "}
+                            </label>
+                            <input
+                                type="text"
+                                value={data.title_en}
+                                onChange={(e) => setData("title_en", e.target.value)}
+                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent font-medium"
+                                placeholder={t("Enter English title")}
+                            />
+                            {errors.title_en && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.title_en}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Message */}
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
-                            💬 {t("Message")}{" "}
-                            <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                            value={data.message}
-                            onChange={(e) => setData("message", e.target.value)}
-                            rows={5}
-                            className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[25px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent font-medium"
-                            placeholder={t("Enter notification message")}
-                            required
-                        />
-                        {errors.message && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.message}
-                            </p>
-                        )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
+                                💬 {t("Message (Arabic)")}{" "}
+                                <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                value={data.message}
+                                onChange={(e) => setData("message", e.target.value)}
+                                rows={5}
+                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[25px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent font-medium"
+                                placeholder={t("Enter notification message")}
+                                required
+                            />
+                            {errors.message && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.message}
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 ml-2">
+                                💬 {t("Message (English)")}{" "}
+                            </label>
+                            <textarea
+                                value={data.message_en}
+                                onChange={(e) => setData("message_en", e.target.value)}
+                                rows={5}
+                                className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[25px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent font-medium"
+                                placeholder={t("Enter English message")}
+                            />
+                            {errors.message_en && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.message_en}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Type */}

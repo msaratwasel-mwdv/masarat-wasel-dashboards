@@ -36,14 +36,20 @@ class GuardianNotificationController extends Controller
             }
 
             return [
-                'id'         => $n->id,
-                'type'       => $n->type,
-                'title'      => $n->title,
-                'message'    => $n->message,
-                'data'       => $n->data ?? [],
-                'status'     => $isRead ? 'read' : 'unread',
-                'read'       => $isRead,
-                'created_at' => $n->created_at?->toIso8601String(),
+                'id'                => $n->id,
+                'type'              => $n->type,
+                'title'             => $n->title,
+                'title_en'          => $n->title_en,
+                'message'           => $n->message,
+                'message_en'        => $n->message_en,
+                'data'              => $n->data ?? [],
+                'status'            => $isRead ? 'read' : 'unread',
+                'read'              => $isRead,
+                'from_user_name'    => $n->from_user_name,
+                'from_user_name_en' => $n->from_user_name_en,
+                'icon'              => $n->icon,
+                'color'             => $n->color,
+                'created_at'        => $n->created_at?->toIso8601String(),
             ];
         })->values();
 
@@ -71,10 +77,23 @@ class GuardianNotificationController extends Controller
      */
     public function markAsRead(Request $request, int $id)
     {
-        $notification = Notification::where('user_id', $request->user()->id)
+        $userId = $request->user()->id;
+        
+        $notification = Notification::where(function ($query) use ($userId) {
+                $query->where('user_id', $userId)
+                      ->orWhereHas('recipients', function ($q) use ($userId) {
+                          $q->where('user_id', $userId);
+                      });
+            })
             ->findOrFail($id);
 
-        $notification->markAsRead();
+        if ($notification->user_id === $userId) {
+            $notification->markAsRead();
+        } else {
+            $notification->recipients()->where('user_id', $userId)->update([
+                'read_at' => now(),
+            ]);
+        }
 
         return response()->json(['message' => 'تم وضع الإشعار كمقروء.']);
     }
