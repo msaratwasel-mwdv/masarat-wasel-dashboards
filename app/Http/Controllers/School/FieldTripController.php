@@ -32,7 +32,7 @@ class FieldTripController extends Controller
             ->get();
 
         // Fetch Classrooms with Students for selection
-        $classrooms = Classroom::where('school_id', $schoolId)
+        $classrooms = Classroom::atSchool($schoolId)
             ->with(['students' => function ($q) {
                 $q->select('students.id', 'first_name_ar', 'last_name_ar', 'student_code');
             }])

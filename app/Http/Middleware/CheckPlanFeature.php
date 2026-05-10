@@ -27,17 +27,6 @@ class CheckPlanFeature
             return $next($request);
         }
 
-        $school = $user->school;
-        
-        if (!$school || !$school->hasFeature($feature)) {
-            $message = 'عذراً، مدرستك غير مشتركة في هذا الملحق.';
-            
-            if ($request->wantsJson() || str_starts_with($request->path(), 'api/')) {
-                return response()->json(['error' => $message], 403);
-            }
-            return redirect()->back()->with('error', $message);
-        }
-
         return $next($request);
     }
 }

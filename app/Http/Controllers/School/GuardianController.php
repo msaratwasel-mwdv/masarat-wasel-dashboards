@@ -27,12 +27,12 @@ class GuardianController extends Controller
         // student_school_enrollments has no school_id — must go through classroom
         $guardians = User::withRole('parent')
             ->whereHas('students.enrollments.classroom', function ($q) use ($schoolId) {
-                $q->where('school_id', $schoolId);
+                $q->atSchool($schoolId);
             })
             ->with([
                 'guardian:user_id,status',
                 'students' => function ($q) use ($schoolId) {
-                    $q->whereHas('enrollments.classroom', fn($eq) => $eq->where('school_id', $schoolId))
+                    $q->whereHas('enrollments.classroom', fn($eq) => $eq->atSchool($schoolId))
                       ->with(['currentEnrollment.classroom:id,name']);
                 },
             ])
@@ -62,13 +62,14 @@ class GuardianController extends Controller
                         'id'         => $s->id,
                         'name'       => $s->name ?? trim("{$s->first_name_ar} {$s->last_name_ar}"),
                         'national_id'=> $s->national_id,
+                        'student_code' => $s->student_code,
                         'image'      => $s->image,
                         'classroom'  => $s->currentEnrollment?->classroom?->name ?? '—',
                     ]),
                 ];
             });
 
-        return Inertia::render('School/Parents/Index', [
+        return Inertia::render('School/Guardians/Index', [
             'guardians' => $guardians,
             'filters'   => $request->only(['search']),
         ]);
@@ -118,7 +119,7 @@ class GuardianController extends Controller
             ]);
         });
 
-        return redirect()->back()->with('success', 'تم إضافة ولي الأمر بنجاح.');
+        return redirect()->back()->with('success', 'Parent added successfully.');
     }
 
     /**
@@ -162,19 +163,35 @@ class GuardianController extends Controller
             }
         });
 
-        return redirect()->back()->with('success', 'تم تحديث بيانات ولي الأمر بنجاح.');
+        return redirect()->back()->with('success', 'Parent updated successfully.');
     }
 
     /**
-     * [Delete] حذف ولي الأمر (تعطيل فقط لتجنب تعارض قاعدة البيانات)
+     * [Delete] فصل ولي الأمر عن طلاب المدرسة
      */
     public function destroy(User $parent)
     {
-        // تعطيل بدل الحذف لحماية سلامة البيانات مع الطلاب
-        if ($parent->guardian) {
-            $parent->guardian->update(['status' => 'inactive']);
+        $schoolId = Auth::user()->getSchoolId();
+
+        // استخراج معرّفات الطلاب التابعين لهذا الولي والمسجلين في هذه المدرسة
+        $studentsInSchool = $parent->students()->whereHas('enrollments.classroom', function ($q) use ($schoolId) {
+            $q->atSchool($schoolId);
+        })->pluck('students.id');
+
+        // إلغاء ربط هؤلاء الطلاب بولي الأمر
+        if ($studentsInSchool->isNotEmpty()) {
+            $parent->students()->detach($studentsInSchool);
         }
 
-        return redirect()->back()->with('success', 'تم تعطيل ولي الأمر بنجاح.');
+        return redirect()->back()->with('success', 'Parent detached from school students successfully.');
+    }
+
+    /**
+     * [Relationship] إلغاء ربط طالب بولي أمر (بدون حذف الطالب)
+     */
+    public function detachStudent(User $parent, \App\Models\Student $student)
+    {
+        $parent->students()->detach($student->id);
+        return redirect()->back()->with('success', 'Student detached successfully.');
     }
 }

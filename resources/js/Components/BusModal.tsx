@@ -153,8 +153,8 @@ export default function BusModal({ show, onClose, bus, drivers = [], assistants 
                     {errors.route_id && <p className="mt-4 text-sm text-red-500 text-center font-bold">{errors.route_id}</p>}
                 </div>
 
-                <div className={`flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700 ${isRtl ? 'justify-start' : 'justify-end'}`}>
-                    <button type="button" onClick={onClose} className={DS_cancelBtn}>
+                <div className="flex justify-between items-center gap-3 pt-4 mt-6 border-t border-gray-100 dark:border-gray-700">
+                    <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-bold text-gray-400 hover:text-[#0f2044] dark:hover:text-white transition-colors">
                         {t('Cancel')}
                     </button>
                     <button type="submit" disabled={processing} className={DS_submitBtn(processing)}>

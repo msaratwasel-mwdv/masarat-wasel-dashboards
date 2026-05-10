@@ -12,11 +12,13 @@ export default function Modal({
   maxWidth = "2xl",
   closeable = true,
   onClose = () => {},
+  zIndex = 50,
 }: PropsWithChildren<{
   show: boolean;
   maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl";
   closeable?: boolean;
   onClose: CallableFunction;
+  zIndex?: number;
 }>) {
   const close = () => {
     if (closeable) {
@@ -39,8 +41,8 @@ export default function Modal({
     <Transition show={show} leave="duration-200">
       <Dialog
         as="div"
-        id="modal"
-        className="fixed inset-0 z-50 flex transform items-center overflow-y-auto px-4 py-6 transition-all sm:px-0"
+        style={{ zIndex }}
+        className="fixed inset-0 flex transform items-center overflow-y-auto px-4 py-6 transition-all sm:px-0"
         onClose={close}
       >
         <TransitionChild

@@ -7,6 +7,7 @@ import { toast, ToastContainer, Bounce } from "react-toastify";
 import NotificationDropdown from "@/Components/NotificationDropdown";
 import { useEchoEvent } from "@/hooks/useEcho";
 import { useRealtimeToast } from "@/hooks/useRealtimeToast";
+import useTranslation from "@/hooks/useTranslation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
@@ -298,11 +299,12 @@ export default function Authenticated({
     );
   };
 
+  const { t } = useTranslation();
   const { flash } = usePage<any>().props;
 
   useEffect(() => {
     if (flash?.success) {
-      toast.success(flash.success, {
+      toast.success(t(flash.success), {
         position: "top-center",
         autoClose: 3000,
         transition: Bounce,
@@ -313,7 +315,7 @@ export default function Authenticated({
       });
     }
     if (flash?.error) {
-      toast.error(flash.error, {
+      toast.error(t(flash.error), {
         position: "top-center",
         autoClose: 4000,
         transition: Bounce,
@@ -323,7 +325,7 @@ export default function Authenticated({
         theme: theme === 'dark' ? 'dark' : 'light',
       });
     }
-  }, [flash, theme]);
+  }, [flash, theme, t]);
 
   // Layout calculations
   const rtlClasses = isRTL ? "rtl" : "ltr";
@@ -434,12 +436,6 @@ export default function Authenticated({
           onScroll={handleSidebarScroll}
           className="flex-1 px-3 space-y-1.5 mt-8 overflow-y-auto custom-scrollbar"
         >
-          {!isCollapsed && (
-            <p className={`px-4 text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-4 ${isRTL ? "text-right" : "text-left"}`}>
-              {isRTL ? "القائمة الرئيسية" : "Main Menu"}
-            </p>
-          )}
-
           {menuItems.map((item) => {
             const hasActiveChild = item.subItems?.some(sub => sub.route && route().current(sub.route));
             const isActive = !!(item.route && route().current(item.route)) || !!hasActiveChild;

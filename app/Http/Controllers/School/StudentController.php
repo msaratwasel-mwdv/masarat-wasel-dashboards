@@ -29,7 +29,7 @@ class StudentController extends Controller
 
         $students = Student::inSchool($schoolId)
             ->with([
-                'guardians:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,first_name_en,second_name_en,third_name_en,last_name_en,phone,national_id,address,image',
+                'guardians:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,first_name_en,second_name_en,third_name_en,last_name_en,phone,national_id,address,image,email',
                 'currentEnrollment.classroom:id,name'
             ])
             ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id']);
@@ -89,7 +89,7 @@ class StudentController extends Controller
                 $q->where('is_active', true);
             })
             ->with([
-                'guardians:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,first_name_en,second_name_en,third_name_en,last_name_en,phone,national_id,address,image',
+                'guardians:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,first_name_en,second_name_en,third_name_en,last_name_en,phone,national_id,address,image,email',
                 'currentEnrollment.classroom:id,name',
                 'forthBus.route', 'backBus.route'
             ])
@@ -125,7 +125,7 @@ class StudentController extends Controller
                 'search' => $request->input('search', ''),
                 'status' => $statusFilter,
             ],
-            'classrooms' => Classroom::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
+            'classrooms' => Classroom::atSchool($schoolId)->orderBy('name')->get(['id', 'name']),
             'buses' => $buses,
             'guardianResult' => session('guardianResult'),
         ]);
@@ -138,7 +138,7 @@ class StudentController extends Controller
         $schoolId = Auth::user()->getSchoolId();
 
         // جلب الفصول المتاحة في مدرسة المدير لوضعها في قائمة منسدلة
-        $classrooms = Classroom::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']);
+        $classrooms = Classroom::atSchool($schoolId)->orderBy('name')->get(['id', 'name']);
 
         // جلب المشرفين المتاحين في نفس المدرسة
         $supervisors = User::atSchool($schoolId)
@@ -213,7 +213,7 @@ class StudentController extends Controller
             $validated['name'] = $validated['name_en'];
         }
 
-        DB::transaction(function () use ($validated, $request) {
+        $guardian = DB::transaction(function () use ($validated, $request) {
             $nameParts = User::parseFullName($validated['name'] ?? '');
             $enNameParts = User::parseFullName($validated['name_en'] ?? '');
 
@@ -244,6 +244,8 @@ class StudentController extends Controller
 
             // Create Guardian extension record
             \App\Models\Guardian::create(['user_id' => $guardian->id]);
+
+            return $guardian;
         });
 
         return redirect()->back()->with([
@@ -276,22 +278,23 @@ class StudentController extends Controller
             'student_code' => 'nullable|string|max:50|unique:students,student_code',
             'national_id' => 'required|string|max:50|unique:students,national_id',
             'gender' => 'required|in:male,female',
-            'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
-            'guardian_id' => 'required|integer|exists:users,id',
+            'classroom_id' => [
+                'required', 
+                Rule::exists('classrooms', 'id')->where(function($q) use ($schoolId) {
+                    $q->whereIn('grade_id', function($sub) use ($schoolId) {
+                        $sub->select('id')->from('grades')->where('school_id', $schoolId);
+                    });
+                })
+            ],
             'forth_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
             'back_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
             'image' => 'nullable|image|max:5120',
+            'guardians' => 'required|array|min:1',
+            'guardians.*.guardian_id' => 'required|integer|exists:users,id',
+            'guardians.*.relationship_type' => 'nullable|string|max:255',
         ]);
 
         $school = Auth::user()->school;
-        $maxStudents = $school->plan?->max_students;
-
-        if ($maxStudents !== null) {
-            $currentStudentsCount = Student::inSchool($schoolId)->count();
-            if ($currentStudentsCount >= $maxStudents) {
-                return redirect()->back()->with('error', "عذراً، مدرستك استنفذت الحد الأقصى للطلاب المسموح به في باقتك ({$maxStudents} طالب).");
-            }
-        }
 
         // استخدام Transaction لضمان سلامة البيانات
         DB::transaction(function () use ($validated, $schoolId, $request) {
@@ -319,7 +322,12 @@ class StudentController extends Controller
 
             $student = Student::create($studentData);
 
-            $student->guardians()->attach($validated['guardian_id'], ['relationship_type' => 'Primary']);
+            // Attach guardians with pivot data
+            foreach ($validated['guardians'] as $g) {
+                $student->guardians()->attach($g['guardian_id'], [
+                    'relationship_type' => $g['relationship_type'],
+                ]);
+            }
 
             $student->enrollments()->create([
                 'classroom_id' => $validated['classroom_id'],
@@ -361,7 +369,7 @@ class StudentController extends Controller
 
         return Inertia::render('School/Students/EditStudent', [
             'student' => $student->load(['currentEnrollment', 'guardians', 'forthBus.route', 'backBus.route']),
-            'classrooms' => Classroom::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
+            'classrooms' => Classroom::atSchool($schoolId)->orderBy('name')->get(['id', 'name']),
             'buses' => $buses,
         ]);
     }
@@ -389,20 +397,28 @@ class StudentController extends Controller
             'last_name_en' => 'required|string|max:255',
             'national_id' => ['nullable', 'string', 'max:50', Rule::unique('students')->ignore($student->id)],
             'gender' => 'required|in:male,female',
-            'classroom_id' => ['required', Rule::exists('classrooms', 'id')->where('school_id', $schoolId)],
+            'classroom_id' => [
+                'required', 
+                Rule::exists('classrooms', 'id')->where(function($q) use ($schoolId) {
+                    $q->whereIn('grade_id', function($sub) use ($schoolId) {
+                        $sub->select('id')->from('grades')->where('school_id', $schoolId);
+                    });
+                })
+            ],
             'forth_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
             'back_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
             'is_active' => 'required|boolean',
             'image' => 'nullable|image|max:5120',
 
-            // Guardian Data (now referencing users table)
-            'guardian.name' => 'required|string|max:255',
-            'guardian.name_en' => 'nullable|string|max:255',
-            'guardian.national_id' => ['required', 'string', 'max:50', Rule::unique('users', 'national_id')->ignore($guardianId)],
-            'guardian.phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($guardianId)],
-            'guardian.address' => 'nullable|string|max:255',
-            'guardian.home_number' => 'nullable|string|max:50',
-            'guardian.image' => 'nullable|image|max:5120',
+            // Multi-Guardian Data
+            'guardians' => 'required|array|min:1',
+            'guardians.*.guardian_id' => 'required|integer|exists:users,id',
+            'guardians.*.relationship_type' => 'nullable|string|max:255',
+            'guardians.*.name' => 'required|string|max:255',
+            'guardians.*.name_en' => 'nullable|string|max:255',
+            'guardians.*.phone' => 'required|string|max:50',
+            'guardians.*.address' => 'nullable|string|max:255',
+            'guardians.*.home_number' => 'nullable|string|max:50',
         ]);
 
         DB::transaction(function () use ($validated, $request, $student) {
@@ -439,23 +455,26 @@ class StudentController extends Controller
                 ]);
             }
 
-            $guardianData = [
-                'first_name_ar' => $validated['guardian']['name'],
-                'first_name_en' => $validated['guardian']['name_en'],
-                'national_id' => $validated['guardian']['national_id'],
-                'phone' => $validated['guardian']['phone'],
-                'address' => $validated['guardian']['address'],
-                'home_number' => $validated['guardian']['home_number'],
-            ];
+            // Sync Guardians
+            $syncData = [];
+            foreach ($validated['guardians'] as $g) {
+                $syncData[$g['guardian_id']] = [
+                    'relationship_type' => $g['relationship_type'],
+                ];
 
-            if ($request->hasFile('guardian.image')) {
-                $guardianData['image'] = $request->file('guardian.image')->store('guardians', 'public');
+                // Also update the guardian's user record
+                $guardianUser = \App\Models\User::find($g['guardian_id']);
+                if ($guardianUser) {
+                    $guardianUser->update([
+                        'first_name_ar' => $g['name'],
+                        'first_name_en' => $g['name_en'],
+                        'phone' => $g['phone'],
+                        'address' => $g['address'],
+                        'home_number' => $g['home_number'],
+                    ]);
+                }
             }
-
-            $guardian = $student->guardians()->first();
-            if ($guardian) {
-                $guardian->update($guardianData);
-            }
+            $student->guardians()->sync($syncData);
         });
 
         return redirect()->route('school.students.index')->with('success', 'Student updated successfully.');

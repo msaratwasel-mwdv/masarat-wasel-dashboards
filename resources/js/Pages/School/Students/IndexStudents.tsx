@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
-import { Head, useForm, router, usePage } from "@inertiajs/react";
+import { Head, useForm, router, usePage, Link } from "@inertiajs/react";
 import { User, Classroom } from "@/types";
 import useTranslation from "@/hooks/useTranslation";
 import { debounce } from "lodash";
@@ -11,16 +11,23 @@ import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
 import PrintReportHeader from "@/Components/PrintReportHeader";
+import Dropdown from "@/Components/Dropdown";
+import Toggle from "@/Components/Toggle";
 import BaseDataTable, { type FilterTab, type PaginationMeta } from "@/Components/BaseDataTable";
 import { createColumnHelper } from "@tanstack/react-table";
 import { toast } from "react-toastify";
-import { motion } from "framer-motion";
-import { Users, CheckCircle2, UserX, UserPlus, Printer, Edit2, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Users, CheckCircle2, UserX, UserPlus, Printer, Edit2, Trash2, Search, Loader2, 
+  UserCheck, ClipboardCheck, HelpCircle, ArrowRight, Camera, ShieldCheck, 
+  Bus as BusIcon, GraduationCap, Plus, Eye, MoreVertical, Mail, Phone, MapPin,
+  Fingerprint, X
+} from "lucide-react";
 import {
   DS_card, DS_pageWrapper, DS_pageTitle, DS_statLabel, DS_statValue,
   DS_avatar, DS_tableWrapper, DS_tableBase, DS_tableHead, DS_tableRow, DS_tableTd,
   DS_searchInput, DS_btnGold, DS_btnSecondary, DS_btnEdit, DS_btnDanger,
-  DS_inputCls, DS_labelCls, DS_cancelBtn, DS_confirmModal,
+  DS_inputCls, DS_selectCls, DS_labelCls, DS_cancelBtn, DS_confirmModal,
   DS_statCard, DS_statIcon, DS_badge, DS_filterBtn, DS_tableTh,
   DS_modalHeader, DS_sectionHeader, DS_submitBtn,
   DS_modalContainer, DS_modalHeaderTitle, DS_modalHeaderAccent, DS_modalClose, DS_modalBody,
@@ -37,7 +44,30 @@ interface Guardian {
   home_number?: string;
   image?: string;
   email?: string;
+  pivot?: { relationship_type?: string };
 }
+
+interface GuardianEntry {
+  national_id: string;
+  name: string;
+  name_en: string;
+  phone: string;
+  email: string;
+  address: string;
+  home_number: string;
+  relationship_type: string;
+  guardian_id: string;
+  verified: boolean;
+  hasSearched: boolean;
+  isSearching: boolean;
+}
+
+const RELATIONSHIP_TYPES = ['father', 'mother', 'uncle', 'aunt', 'grandparent', 'sibling', 'other'] as const;
+
+const emptyGuardianEntry = (): GuardianEntry => ({
+  national_id: '', name: '', name_en: '', phone: '', email: '', address: '', home_number: '',
+  relationship_type: 'father', guardian_id: '', verified: false, hasSearched: false, isSearching: false,
+});
 
 interface Supervisor {
   id: number;
@@ -130,22 +160,121 @@ export default function IndexStudents({
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
   // Modal State
-  const [showModal, setShowModal] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"view" | "edit" | "create">("view");
+  const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
+  const [editingGuardianIndex, setEditingGuardianIndex] = useState<number>(-1);
 
   // Creation Step State
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [guardianResult, setGuardianResult] = useState<{
-    found: boolean;
-    guardian: Guardian | null;
-  } | null>(null);
-  const [guardianImagePreview, setGuardianImagePreview] = useState<
-    string | null
-  >(null);
-  const [studentImagePreview, setStudentImagePreview] = useState<string | null>(
-    null
-  );
+  const [studentImagePreview, setStudentImagePreview] = useState<string | null>(null);
+  const [createStep, setCreateStep] = useState<1 | 2>(1);
+
+  // Multi-guardian state
+  const [guardianEntries, setGuardianEntries] = useState<GuardianEntry[]>([emptyGuardianEntry()]);
+
+  // Form
+  const studentForm = useForm({
+    first_name_ar: "", second_name_ar: "", third_name_ar: "", last_name_ar: "",
+    first_name_en: "", second_name_en: "", third_name_en: "", last_name_en: "",
+    national_id: "", gender: "male", classroom_id: "",
+    forth_bus_id: "", back_bus_id: "", image: null as File | null,
+    is_active: true,
+  });
+
+  const resetForms = () => {
+    studentForm.reset();
+    studentForm.clearErrors();
+    setStudentImagePreview(null);
+    setCreateStep(1);
+    setGuardianEntries([emptyGuardianEntry()]);
+  };
+
+  const openAdd = () => {
+    setModalMode("create");
+    setCreateStep(1);
+    setGuardianEntries([emptyGuardianEntry()]);
+    studentForm.reset();
+    setStudentImagePreview(null);
+    setIsModalOpen(true);
+  };
+
+  const openView = (s: Student) => {
+    setCurrentStudent(s);
+    setModalMode("view");
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (student: Student) => {
+    setModalMode("edit");
+    setCurrentStudent(student);
+    resetForms();
+
+    // Populate guardian entries from student's guardians
+    const entries: GuardianEntry[] = (student.guardians || []).map(g => ({
+      national_id: g.national_id || '',
+      name: g.name || '',
+      name_en: g.name_en || '',
+      phone: g.phone || '',
+      email: g.email || '',
+      address: g.address || '',
+      home_number: g.home_number || '',
+      relationship_type: g.pivot?.relationship_type || 'father',
+      guardian_id: g.id.toString(),
+      verified: true,
+      hasSearched: true,
+      isSearching: false,
+    }));
+    if (entries.length === 0) entries.push(emptyGuardianEntry());
+    setGuardianEntries(entries);
+
+    studentForm.setData({
+      first_name_ar: student.first_name_ar || '',
+      second_name_ar: student.second_name_ar || '',
+      third_name_ar: student.third_name_ar || '',
+      last_name_ar: student.last_name_ar || '',
+      first_name_en: student.first_name_en || '',
+      second_name_en: student.second_name_en || '',
+      third_name_en: student.third_name_en || '',
+      last_name_en: student.last_name_en || '',
+      national_id: student.national_id || '',
+      gender: student.gender || 'male',
+      classroom_id: student.current_enrollment?.classroom?.id?.toString() || '',
+      forth_bus_id: student.forth_bus_id?.toString() || '',
+      back_bus_id: student.back_bus_id?.toString() || '',
+      is_active: student.is_active,
+    });
+
+    setStudentImagePreview(student.image ? getImageUrl(student.image, "student") : null);
+    setCreateStep(2); // Default to student info for edit mode
+    setEditingGuardianIndex(-1);
+    setIsModalOpen(true);
+  };
+
+  const handleEditGuardian = (index: number) => {
+    if (currentStudent) {
+      openEdit(currentStudent);
+      setCreateStep(1);
+      setEditingGuardianIndex(index);
+    }
+  };
+
+  const handleAddGuardian = () => {
+    if (currentStudent) {
+      openEdit(currentStudent);
+      setCreateStep(1);
+      const newEntry = emptyGuardianEntry();
+      setGuardianEntries(prev => [...prev, newEntry]); 
+      setEditingGuardianIndex(guardianEntries.length);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    studentForm.reset();
+    setCreateStep(1);
+    setGuardianEntries([emptyGuardianEntry()]);
+    setStudentImagePreview(null);
+  };
 
   // Get storage URL from props or fallback
   const getStorageUrl = (): string => {
@@ -201,112 +330,92 @@ export default function IndexStudents({
     return `${currentStorageUrl}/${cleanPath}`;
   };
 
-  // Forms
-  const guardianSearchForm = useForm({ national_id: "" });
-  const guardianCreateForm = useForm({
-    name: "",
-    name_en: "",
-    national_id: "",
-    phone: "",
-    email: "",
-    address: "",
-    home_number: "",
-    image: null as File | null,
-  });
-
-  const studentForm = useForm({
-    first_name_ar: "",
-    second_name_ar: "",
-    third_name_ar: "",
-    last_name_ar: "",
-    first_name_en: "",
-    second_name_en: "",
-    third_name_en: "",
-    last_name_en: "",
-    national_id: "",
-    gender: "male",
-    classroom_id: "",
-    guardian_id: "",
-    forth_bus_id: "",
-    back_bus_id: "",
-    image: null as File | null,
-    is_active: true,
-    // For editing guardian inside student modal
-    guardian: {
-      name: "",
-      name_en: "",
-      national_id: "",
-      phone: "",
-      address: "",
-      home_number: "",
-      image: null as File | null,
-    },
-  });
-
-  // Reset all forms
-  const resetForms = () => {
-    guardianSearchForm.reset();
-    guardianSearchForm.clearErrors();
-    guardianCreateForm.reset();
-    guardianCreateForm.clearErrors();
-    studentForm.reset();
-    studentForm.clearErrors();
-    setGuardianResult(null);
-    setGuardianImagePreview(null);
-    setStudentImagePreview(null);
-    setStep(1);
+  // Helper to update a single guardian entry
+  const updateGuardianEntry = (index: number, data: Partial<GuardianEntry>) => {
+    setGuardianEntries(prev => prev.map((g, i) => i === index ? { ...g, ...data } : g));
   };
 
-  const openAddModal = () => {
-    setIsEditing(false);
-    setEditingStudent(null);
-    resetForms();
-    setStep(1);
-    setShowModal(true);
+  const addGuardianEntry = () => {
+    setGuardianEntries(prev => [...prev, emptyGuardianEntry()]);
   };
 
-  const openEditModal = (student: Student) => {
-    setIsEditing(true);
-    setEditingStudent(student);
-    resetForms();
+  const removeGuardianEntry = (index: number) => {
+    if (guardianEntries.length <= 1) return;
+    setGuardianEntries(prev => prev.filter((_, i) => i !== index));
+  };
 
-    // Populate Form
-    const currentGuardian = student.guardians && student.guardians.length > 0 ? student.guardians[0] : null;
-
-    studentForm.setData({
-      first_name_ar: student.first_name_ar || "",
-      second_name_ar: student.second_name_ar || "",
-      third_name_ar: student.third_name_ar || "",
-      last_name_ar: student.last_name_ar || "",
-      first_name_en: student.first_name_en || "",
-      second_name_en: student.second_name_en || "",
-      third_name_en: student.third_name_en || "",
-      last_name_en: student.last_name_en || "",
-      national_id: student.national_id || "",
-      gender: student.gender || "male",
-      classroom_id: student.current_enrollment?.classroom?.id?.toString() || "",
-      guardian_id: currentGuardian?.id?.toString() || "",
-      forth_bus_id: student.forth_bus_id?.toString() || "",
-      back_bus_id: student.back_bus_id?.toString() || "",
-      image: null,
-      is_active: student.is_active,
-      guardian: {
-        name: currentGuardian?.name || "",
-        name_en: currentGuardian?.name_en || "",
-        national_id: currentGuardian?.national_id || "",
-        phone: currentGuardian?.phone || "",
-        address: currentGuardian?.address || "",
-        home_number: currentGuardian?.home_number || "",
-        image: null,
+  // Guardian Verification (per entry)
+  const handleGuardianLookup = (index: number) => {
+    const entry = guardianEntries[index];
+    if (!entry.national_id || entry.national_id.length < 5) return;
+    updateGuardianEntry(index, { isSearching: true });
+    router.post(route('school.guardians.search'), { national_id: entry.national_id }, {
+      preserveScroll: true,
+      onSuccess: (page: any) => {
+        const res = page.props.guardianResult;
+        if (res?.found && res.guardian) {
+          toast.success(t('Existing guardian found'));
+          updateGuardianEntry(index, {
+            name: res.guardian.name || '', name_en: res.guardian.name_en || '',
+            phone: res.guardian.phone || '', email: res.guardian.email || '',
+            address: res.guardian.address || '', home_number: res.guardian.home_number || '',
+            guardian_id: res.guardian.id.toString(), verified: true, hasSearched: true, isSearching: false,
+          });
+        } else {
+          toast.info(t('Guardian not found. Please enter details.'));
+          updateGuardianEntry(index, { verified: false, guardian_id: '', hasSearched: true, isSearching: false });
+        }
       },
+      onError: () => updateGuardianEntry(index, { isSearching: false }),
     });
-
-    setShowModal(true);
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-    resetForms();
+  // Step 1 submit: ensure all guardians are verified or create new ones, then go to step 2
+  const handleGuardiansSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Check all entries have searched
+    const allReady = guardianEntries.every(g => g.hasSearched);
+    if (!allReady) { toast.error(t('Please verify all guardian Civil IDs')); return; }
+
+    // For entries without guardian_id (new guardians), we need to create them
+    const unregistered = guardianEntries.filter(g => !g.guardian_id);
+    if (unregistered.length === 0) {
+      if (modalMode === "edit") {
+        handleSubmitStudent(e);
+      } else {
+        setCreateStep(2);
+      }
+      return;
+    }
+
+    // Create unregistered guardians sequentially
+    for (const entry of guardianEntries) {
+      if (entry.guardian_id) continue;
+      const idx = guardianEntries.indexOf(entry);
+      try {
+        await new Promise<void>((resolve, reject) => {
+          router.post(route('school.guardians.store'), {
+            name: entry.name, name_en: entry.name_en, national_id: entry.national_id,
+            phone: entry.phone, email: entry.email, address: entry.address, home_number: entry.home_number,
+          }, {
+            preserveScroll: true,
+            onSuccess: (page: any) => {
+              const res = page.props.guardianResult;
+              if (res?.found && res.guardian) {
+                updateGuardianEntry(idx, { guardian_id: res.guardian.id.toString(), verified: true });
+              }
+              resolve();
+            },
+            onError: () => reject(),
+          });
+        });
+      } catch { return; }
+    }
+    if (modalMode === "edit") {
+      handleSubmitStudent(e);
+    } else {
+      setCreateStep(2);
+    }
   };
 
   // --- Search Debounce ---
@@ -348,10 +457,27 @@ export default function IndexStudents({
   const handleSubmitStudent = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isEditing && editingStudent) {
+    // Prepare data
+    const data = {
+      ...studentForm.data,
+      guardians: guardianEntries.map(g => ({
+        guardian_id: g.guardian_id,
+        name: g.name,
+        name_en: g.name_en,
+        phone: g.phone,
+        email: g.email,
+        address: g.address,
+        home_number: g.home_number,
+        national_id: g.national_id,
+        relationship_type: g.relationship_type,
+      })),
+    };
+
+    if (modalMode === "edit" && currentStudent) {
       // Update
-      studentForm.post(
-        route("school.students.update_post", editingStudent.id),
+      router.post(
+        route("school.students.update_post", currentStudent.id),
+        data,
         {
           preserveScroll: true,
           onSuccess: closeModal,
@@ -360,64 +486,10 @@ export default function IndexStudents({
       );
     } else {
       // Create
-      studentForm.post(route("school.students.store"), {
+      router.post(route("school.students.store"), data, {
         preserveScroll: true,
         onSuccess: closeModal,
       });
-    }
-  };
-
-  // Handle Guardian Search
-  const handleGuardianSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    guardianSearchForm.post(route("school.guardians.search"), {
-      preserveScroll: true,
-      onSuccess: (page: any) => {
-        const res = page.props.guardianResult;
-        setGuardianResult(res);
-        if (res?.found && res.guardian) {
-          studentForm.setData("guardian_id", res.guardian.id.toString());
-          setStep(3);
-        } else if (res && !res.found) {
-          guardianCreateForm.setData(
-            "national_id",
-            guardianSearchForm.data.national_id
-          );
-          setStep(2);
-        }
-      },
-    });
-  };
-
-  // Handle Guardian Create
-  const handleGuardianCreate = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    guardianCreateForm.post(route("school.guardians.store"), {
-      preserveScroll: true,
-      onSuccess: (page: any) => {
-        const res = page.props.guardianResult;
-        if (res?.found && res.guardian) {
-          studentForm.setData("guardian_id", res.guardian.id.toString());
-          setStep(3);
-        }
-      },
-    });
-  };
-
-  // Handle Guardian Image Change
-  const handleGuardianImageChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      guardianCreateForm.setData("image", file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setGuardianImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -432,12 +504,6 @@ export default function IndexStudents({
       };
       reader.readAsDataURL(file);
     }
-  };
-
-  // Remove Guardian Image
-  const removeGuardianImage = () => {
-    guardianCreateForm.setData("image", null);
-    setGuardianImagePreview(null);
   };
 
   // Remove Student Image
@@ -538,16 +604,24 @@ export default function IndexStudents({
       header: t("Guardian Name"),
       cell: (info) => {
         const student = info.row.original;
-        const g = student.guardians && student.guardians.length > 0 ? student.guardians[0] : null;
-        return <span className="font-semibold text-[#0f2044] dark:text-gray-200 text-xs">{g ? (!isRtl && g.name_en ? g.name_en : g.name) : "—"}</span>;
+        const primaryG = student.guardians?.[0];
+        if (!primaryG) return "—";
+        const name = !isRtl && primaryG.name_en ? primaryG.name_en : primaryG.name;
+        const rel = primaryG.pivot?.relationship_type ? ` (${t(primaryG.pivot.relationship_type.charAt(0).toUpperCase() + primaryG.pivot.relationship_type.slice(1))})` : '';
+        return (
+          <div className="flex flex-col">
+            <span className="font-semibold text-[#0f2044] dark:text-gray-200 text-xs">{name}</span>
+            <span className="text-[10px] text-gray-400 font-bold">{rel}</span>
+          </div>
+        );
       },
     }),
     columnHelper.display({
       id: "guardian_phone",
       header: t("Guardian Phone"),
       cell: (info) => {
-        const g = info.row.original.guardians?.[0];
-        return <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{g?.phone || "—"}</span>;
+        const primaryG = info.row.original.guardians?.[0];
+        return <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{primaryG?.phone || "—"}</span>;
       },
     }),
     columnHelper.accessor("is_active", {
@@ -560,12 +634,9 @@ export default function IndexStudents({
       cell: (info) => {
         const student = info.row.original;
         return (
-          <div className={`flex items-center gap-2`}>
-            <button onClick={() => openEditModal(student)} className={DS_btnEdit} title={t("Edit")}>
-              <Edit2 size={14} />
-            </button>
-            <button onClick={() => { setStudentToDelete(student); setShowDeleteModal(true); }} className={DS_btnDanger} title={t("Delete")}>
-              <Trash2 size={14} />
+          <div className={`flex items-center gap-2 ${isRtl ? 'justify-start' : 'justify-end'}`}>
+            <button onClick={() => openView(student)} className={DS_btnEdit} title={t("View Record")}>
+              <Eye size={14} />
             </button>
             <button
               onClick={() => {
@@ -712,7 +783,7 @@ export default function IndexStudents({
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center justify-end gap-3 mb-4">
-          <button onClick={openAddModal} className={DS_btnGold}>
+          <button onClick={openAdd} className={DS_btnGold}>
             <UserPlus className="w-4 h-4" />
             <span>{t("Enroll New Student")}</span>
           </button>
@@ -740,698 +811,300 @@ export default function IndexStudents({
         </div>
       </div>
 
-      {/* Main Modal */}
-      {showModal && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={closeModal}
-        >
-          <div
-            className="bg-white dark:bg-[#1a2845] rounded-[22px] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="bg-[#0f2044] p-6 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-2xl font-bold text-white">
-                    {isEditing
-                      ? t("Edit Student")
-                      : step === 1
-                        ? t("Guardian Verification")
-                        : step === 2
-                          ? t("Create New Guardian")
-                          : t("Student Details")}
-                  </h3>
-                  {!isEditing && (
-                    <p className="mt-1 text-sm text-blue-100">
-                      {step === 1 && t("Guardian Verification")}
-                      {step === 2 && t("Create New Guardian")}
-                      {step === 3 && t("Enter student details")}
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={closeModal}
-                  className="p-2 transition-colors rounded-lg text-white/80 hover:text-white hover:bg-white/10"
-                >
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M6 18L18 6M6 6l12 12"
-                    ></path>
-                  </svg>
-                </button>
-              </div>
+      {/* Unified Student Modal */}
+      <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
+        {/* Modal Header */}
+        <div className={DS_modalHeader(isRtl)}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-[12px] flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-white" />
             </div>
-
-            {/* Content Wrapper */}
-            <div className="p-8 space-y-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
-              {/* Step 1: Search Guardian */}
-              {!isEditing && step === 1 && (
-                <div className="space-y-6">
-                  <div className="p-6 bg-cyan-50 dark:bg-cyan-900/10 rounded-[25px] border border-cyan-100 dark:border-cyan-800">
-                    <h4 className="text-lg font-bold text-[#0e7490] dark:text-cyan-400 mb-2">
-                      {t("Search Guardian")}
-                    </h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {t("Search by Civil ID to find existing guardian.")}
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleGuardianSearch} className="space-y-4">
-                    <div>
-                      <InputLabel
-                        value={t("Civil ID")}
-                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                      />
-                      <div className="flex gap-3">
-                        <TextInput
-                          value={guardianSearchForm.data.national_id}
-                          onChange={(e) =>
-                            guardianSearchForm.setData(
-                              "national_id",
-                              e.target.value
-                            )
-                          }
-                          className="flex-1 px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                          placeholder="10xxxxxxxxx"
-                          required
-                        />
-                        <button
-                          type="submit"
-                          disabled={guardianSearchForm.processing}
-                          className="px-8 py-4 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {guardianSearchForm.processing
-                            ? t("Searching...")
-                            : t("Search")}
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-
-                  {/* Search Results */}
-                  {guardianResult && (
-                    <div
-                      className={`p-6 rounded-[25px] border ${guardianResult.found
-                        ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700"
-                        : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700"
-                        }`}
-                    >
-                      {guardianResult.found && guardianResult.guardian ? (
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-bold text-green-700 dark:text-green-400 text-lg">
-                              ✓ {t("Guardian Found")}
-                            </p>
-                            <p className="mt-2 text-sm font-bold text-gray-700 dark:text-gray-300">
-                              {guardianResult.guardian.name}
-                            </p>
-                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                              {t("Civil ID")}:{" "}
-                              {guardianResult.guardian.national_id}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => setStep(3)}
-                            className="px-6 py-3 bg-green-600 text-white font-bold rounded-[25px] hover:bg-green-700 shadow-md hover:shadow-lg transition-all"
-                          >
-                            {t("Select & Continue")}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-bold text-amber-700 dark:text-amber-400 text-lg">
-                              ⚠️ {t("Guardian Not Found")}
-                            </p>
-                            <p className="text-sm text-amber-600 dark:text-amber-300 mt-1">
-                              {t("Please create a new guardian")}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => setStep(2)}
-                            className="px-6 py-3 bg-[#0e7490] text-white font-bold rounded-[25px] hover:bg-[#155e75] shadow-md hover:shadow-lg transition-all"
-                          >
-                            {t("Create New Guardian")}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Step 2: Create Guardian */}
-              {!isEditing && step === 2 && (
-                <div className="space-y-6">
-                  <div className="text-start rtl:text-start">
-                    <h4 className="mb-2 text-lg font-bold text-gray-800 dark:text-white">
-                      {t("Create New Guardian")}
-                    </h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {t("Enter new guardian details")}
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleGuardianCreate} className="space-y-6">
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                      {/* الاسم بالعربي */}
-                      <div className="md:col-span-2">
-                        <InputLabel
-                          value={t("Guardian Name (Arabic)") + " *"}
-                          className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                        />
-                        <TextInput
-                          value={guardianCreateForm.data.name}
-                          onChange={(e) =>
-                            guardianCreateForm.setData("name", e.target.value)
-                          }
-                          className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                          required
-                        />
-                        <InputError message={guardianCreateForm.errors.name} />
-                      </div>
-
-                      {/* الاسم بالإنجليزي */}
-                      <div className="md:col-span-2">
-                        <InputLabel
-                          value={t("Guardian Name (English)")}
-                          className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                        />
-                        <TextInput
-                          value={guardianCreateForm.data.name_en}
-                          onChange={(e) =>
-                            guardianCreateForm.setData(
-                              "name_en",
-                              e.target.value
-                            )
-                          }
-                          className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                        />
-                      </div>
-
-                      {/* الرقم المدني */}
-                      <div>
-                        <InputLabel
-                          value={t("Civil ID") + " *"}
-                          className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                        />
-                        <TextInput
-                          value={guardianCreateForm.data.national_id}
-                          onChange={(e) =>
-                            guardianCreateForm.setData(
-                              "national_id",
-                              e.target.value
-                            )
-                          }
-                          className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                          required
-                        />
-                        <InputError
-                          message={guardianCreateForm.errors.national_id}
-                        />
-                      </div>
-
-                      {/* رقم الهاتف */}
-                      <div>
-                        <InputLabel
-                          value={t("Phone Number") + " *"}
-                          className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                        />
-                        <TextInput
-                          value={guardianCreateForm.data.phone}
-                          onChange={(e) =>
-                            guardianCreateForm.setData("phone", e.target.value)
-                          }
-                          className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                          required
-                          placeholder="+968XXXXXXXXX"
-                        />
-                        <InputError message={guardianCreateForm.errors.phone} />
-                      </div>
-
-                      {/* البريد الإلكتروني */}
-                      <div className="md:col-span-2">
-                        <InputLabel
-                          value={t("Email")}
-                          className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                        />
-                        <TextInput
-                          type="email"
-                          value={guardianCreateForm.data.email}
-                          onChange={(e) =>
-                            guardianCreateForm.setData("email", e.target.value)
-                          }
-                          className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                          placeholder="example@email.com"
-                        />
-                      </div>
-
-                      {/* العنوان */}
-                      <div className="md:col-span-2">
-                        <InputLabel
-                          value={t("Address")}
-                          className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                        />
-                        <TextInput
-                          value={guardianCreateForm.data.address}
-                          onChange={(e) =>
-                            guardianCreateForm.setData(
-                              "address",
-                              e.target.value
-                            )
-                          }
-                          className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                        />
-                      </div>
-
-                      {/* رقم المنزل */}
-                      <div>
-                        <InputLabel
-                          value={t("Home Number")}
-                          className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                        />
-                        <TextInput
-                          value={guardianCreateForm.data.home_number}
-                          onChange={(e) =>
-                            guardianCreateForm.setData(
-                              "home_number",
-                              e.target.value
-                            )
-                          }
-                          className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                        />
-                      </div>
-
-                      {/* صورة ولي الأمر */}
-                      <div className="md:col-span-2">
-                        <InputLabel value={t("Guardian Photo")} />
-                        <div className="relative flex flex-col items-center justify-center gap-4 p-6 transition-colors border-2 border-gray-300 border-dashed cursor-pointer dark:border-gray-600 rounded-[25px] hover:border-[#0e7490] dark:hover:border-cyan-400">
-                          {guardianCreateForm.data.image ||
-                            guardianImagePreview ? (
-                            <div className="flex items-center w-full gap-4">
-                              <div className="w-20 h-20 overflow-hidden border border-gray-200 rounded-lg dark:border-gray-700">
-                                <img
-                                  src={
-                                    guardianImagePreview ||
-                                    (guardianCreateForm.data.image
-                                      ? URL.createObjectURL(
-                                        guardianCreateForm.data.image
-                                      )
-                                      : "")
-                                  }
-                                  className="object-cover w-full h-full"
-                                  alt={t("Guardian Photo")}
-                                />
-                              </div>
-                              <div className="flex-1">
-                                <p className="font-medium text-gray-900 dark:text-white">
-                                  {guardianCreateForm.data.image?.name ||
-                                    t("Guardian Photo")}
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={removeGuardianImage}
-                                  className="mt-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                                >
-                                  {t("Remove")}
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="text-3xl text-gray-400">📷</div>
-                              <div className="text-center">
-                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                  {t("Click to upload guardian photo")}
-                                </p>
-                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                  PNG, JPG {t("up to 5MB")}
-                                </p>
-                              </div>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                onChange={handleGuardianImageChange}
-                              />
-                            </>
-                          )}
-                        </div>
-                        <InputError message={guardianCreateForm.errors.image} />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between pt-6 border-t border-gray-100 dark:border-gray-700">
-                      <button
-                        type="button"
-                        onClick={() => setStep(1)}
-                        className="px-6 py-3 font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-[25px] transition-all"
-                      >
-                        {t("Back")}
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={guardianCreateForm.processing}
-                        className="px-8 py-3 bg-[#0e7490] text-white font-bold rounded-[35px] hover:bg-[#155e75] transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
-                      >
-                        {guardianCreateForm.processing
-                          ? t("Saving...")
-                          : t("Create Guardian")}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {/* Step 3: Student Details (Or Edit Mode) */}
-              {(step === 3 || isEditing) && (
-                <form
-                  onSubmit={handleSubmitStudent}
-                  className="space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar pr-2"
-                >
-                  {isEditing && (
-                    <div className="p-6 mb-6 border border-cyan-100 bg-cyan-50 dark:bg-cyan-900/10 dark:border-cyan-800 rounded-[25px]">
-                      <h4 className="mb-4 text-lg font-bold text-[#0e7490] dark:text-cyan-400">
-                        {t("Guardian Information")}
-                      </h4>
-
-                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                        <div className="md:col-span-2">
-                          <InputLabel
-                            value={t("Guardian Name")}
-                            className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                          />
-                          <TextInput
-                            value={studentForm.data.guardian.name}
-                            onChange={(e) =>
-                              studentForm.setData("guardian", {
-                                ...studentForm.data.guardian,
-                                name: e.target.value,
-                              })
-                            }
-                            className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-white dark:bg-gray-800 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                          />
-                          <InputError
-                            message={
-                              studentForm.errors["guardian.name"] as string
-                            }
-                          />
-                        </div>
-
-                        <div>
-                          <InputLabel
-                            value={t("Guardian Phone")}
-                            className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                          />
-                          <TextInput
-                            value={studentForm.data.guardian.phone}
-                            onChange={(e) =>
-                              studentForm.setData("guardian", {
-                                ...studentForm.data.guardian,
-                                phone: e.target.value,
-                              })
-                            }
-                            className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-white dark:bg-gray-800 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                          />
-                        </div>
-
-                        <div>
-                          <InputLabel
-                            value={t("Civil ID")}
-                            className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                          />
-                          <TextInput
-                            value={studentForm.data.guardian.national_id}
-                            onChange={(e) =>
-                              studentForm.setData("guardian", {
-                                ...studentForm.data.guardian,
-                                national_id: e.target.value,
-                              })
-                            }
-                            className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-white dark:bg-gray-800 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <h4 className="mb-4 text-lg font-bold text-gray-800 dark:text-white">
-                    {t("Student Information")}
-                  </h4>
-
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <div className="md:col-span-2">
-                      <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {t("Student Name (Arabic)")} *
-                      </label>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {["first", "second", "third", "last"].map((part) => {
-                          const fieldName = `${part}_name_ar` as keyof typeof studentForm.data;
-                          return (
-                            <div key={fieldName}>
-                              <input
-                                value={studentForm.data[fieldName] as string}
-                                onChange={(e) => studentForm.setData(fieldName, e.target.value)}
-                                className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
-                                required
-                                placeholder={t(`${part} Name`)}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {t("Student Name (English)")} *
-                      </label>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {["first", "second", "third", "last"].map((part) => {
-                          const fieldName = `${part}_name_en` as keyof typeof studentForm.data;
-                          return (
-                            <div key={fieldName}>
-                              <input
-                                value={studentForm.data[fieldName] as string}
-                                onChange={(e) => studentForm.setData(fieldName, e.target.value)}
-                                className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4 text-left"
-                                dir="ltr"
-                                required
-                                placeholder={t(`${part} Name`)}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div>
-                      <InputLabel
-                        value={t("Civil ID") + " *"}
-                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                      />
-                      <TextInput
-                        value={studentForm.data.national_id}
-                        onChange={(e) =>
-                          studentForm.setData("national_id", e.target.value)
-                        }
-                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                        required
-                      />
-                      <InputError message={studentForm.errors.national_id} />
-                    </div>
-
-                    <div>
-                      <InputLabel
-                        value={t("Gender") + " *"}
-                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                      />
-                      <select
-                        value={studentForm.data.gender}
-                        onChange={(e) =>
-                          studentForm.setData("gender", e.target.value)
-                        }
-                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                      >
-                        <option value="male">{t("Male")}</option>
-                        <option value="female">{t("Female")}</option>
-                      </select>
-                      <InputError message={studentForm.errors.gender} />
-                    </div>
-
-                    <div>
-                      <InputLabel
-                        value={t("Class") + " *"}
-                        className="mb-2 font-bold text-gray-700 dark:text-gray-300"
-                      />
-                      <select
-                        value={studentForm.data.classroom_id}
-                        onChange={(e) =>
-                          studentForm.setData("classroom_id", e.target.value)
-                        }
-                        className="w-full px-6 py-4 border border-gray-200 dark:border-gray-600 rounded-[35px] bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-[#0e7490] focus:border-transparent"
-                        required
-                      >
-                        <option value="">{t("Select Class")}</option>
-                        {classrooms.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                      <InputError message={studentForm.errors.classroom_id} />
-                    </div>
-
-                    {/* Bus Selection */}
-                    {buses.length > 0 && (
-                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
-                        <div>
-                          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {t("Morning Bus Assignment")} ({t("Optional")})
-                          </label>
-                          <select
-                            value={studentForm.data.forth_bus_id}
-                            onChange={(e) =>
-                              studentForm.setData("forth_bus_id", e.target.value)
-                            }
-                            className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
-                          >
-                            <option value="">{t("No bus assigned")}</option>
-                            {buses.map((b) => (
-                              <option key={b.id} value={b.id}>
-                                {b.bus_number} - {b.plate_number}
-                              </option>
-                            ))}
-                          </select>
-                          <InputError message={studentForm.errors.forth_bus_id as string} />
-                        </div>
-
-                        <div>
-                          <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {t("Afternoon Bus Assignment")} ({t("Optional")})
-                          </label>
-                          <select
-                            value={studentForm.data.back_bus_id}
-                            onChange={(e) =>
-                              studentForm.setData("back_bus_id", e.target.value)
-                            }
-                            className="w-full bg-white/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:text-white py-3 px-4"
-                          >
-                            <option value="">{t("No bus assigned")}</option>
-                            {buses.map((b) => (
-                              <option key={b.id} value={b.id}>
-                                {b.bus_number} - {b.plate_number}
-                              </option>
-                            ))}
-                          </select>
-                          <InputError message={studentForm.errors.back_bus_id as string} />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* صورة الطالب */}
-                    <div className="md:col-span-2">
-                      <InputLabel value={t("Student Photo")} />
-                      <div className="relative flex flex-col items-center justify-center gap-4 p-6 transition-colors border-2 border-gray-300 border-dashed cursor-pointer dark:border-gray-600 rounded-[25px] hover:border-[#0e7490] dark:hover:border-cyan-400">
-                        {studentForm.data.image || studentImagePreview ? (
-                          <div className="flex items-center w-full gap-4">
-                            <div className="w-20 h-20 overflow-hidden border border-gray-200 rounded-lg dark:border-gray-700">
-                              <img
-                                src={
-                                  studentImagePreview ||
-                                  (studentForm.data.image
-                                    ? URL.createObjectURL(
-                                      studentForm.data.image
-                                    )
-                                    : "")
-                                }
-                                className="object-cover w-full h-full"
-                                alt={t("Student Photo")}
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-medium text-gray-900 dark:text-white">
-                                {studentForm.data.image?.name ||
-                                  t("Student Photo")}
-                              </p>
-                              <button
-                                type="button"
-                                onClick={removeStudentImage}
-                                className="mt-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                              >
-                                {t("Remove")}
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="text-3xl text-gray-400">👤</div>
-                            <div className="text-center">
-                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {t("Click to upload student photo")}
-                              </p>
-                              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                PNG, JPG {t("up to 5MB")}
-                              </p>
-                            </div>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="absolute inset-0 opacity-0 cursor-pointer"
-                              onChange={handleStudentImageChange}
-                            />
-                          </>
-                        )}
-                      </div>
-                      <InputError message={studentForm.errors.image} />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100 dark:border-gray-700">
-                    {!isEditing && (
-                      <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className={DS_cancelBtn}
-                    >
-                      {t("Back")}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className={DS_cancelBtn}
-                  >
-                    {t("Cancel")}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={studentForm.processing}
-                    className={DS_submitBtn(studentForm.processing)}
-                  >
-                    {isEditing ? t("Save Changes") : t("Enroll Student")}
-                  </button>
-                </div>
-                </form>
+            <div className={isRtl ? "text-right" : "text-left"}>
+              <h3 className="text-xl font-bold text-white">
+                {modalMode === "view" ? currentStudent?.full_name : (modalMode === "edit" ? t("Edit Student") : t("Enroll New Student"))}
+              </h3>
+              {modalMode === "view" && <p className="text-[#7ba7e8] text-sm font-semibold">{currentStudent?.national_id}</p>}
+              {(modalMode === "create" || modalMode === "edit") && (
+                <p className="text-[#7ba7e8] text-xs font-bold uppercase tracking-wider">
+                  {createStep === 1 ? t("Guardian Information") : t("Student Information")}
+                </p>
               )}
             </div>
           </div>
+          
+          <div className="flex items-center gap-2">
+            {modalMode === "view" && (
+              <Dropdown>
+                <Dropdown.Trigger>
+                  <button className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all">
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                </Dropdown.Trigger>
+                <Dropdown.Content align={isRtl ? "left" : "right"} width="32" contentClasses="py-2 bg-white dark:bg-[#1a2845] shadow-2xl rounded-[16px] border border-gray-100 dark:border-[#243460]">
+                  <button onClick={() => currentStudent && openEdit(currentStudent)} className="w-full px-4 py-2.5 text-sm font-bold text-[#0f2044] dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-start flex items-center gap-2">
+                    <Edit2 className="w-4 h-4 text-blue-500" />
+                    {t("Edit")}
+                  </button>
+                  <button 
+                    onClick={() => { 
+                      if (currentStudent) {
+                        setStudentToDelete(currentStudent); 
+                        setShowDeleteModal(true); 
+                      }
+                    }} 
+                    className="w-full px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-start flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {t("Delete")}
+                  </button>
+                </Dropdown.Content>
+              </Dropdown>
+            )}
+            <button onClick={closeModal} className={DS_modalClose}><X className="w-5 h-5" /></button>
+          </div>
         </div>
-      )}
+
+        {/* Modal Body */}
+        <div className={`p-8 ${modalMode === "view" ? "space-y-8" : "space-y-4"} overflow-y-auto max-h-[80vh]`}>
+          {modalMode === "view" ? (
+            /* View Mode Body */
+            <>
+              {/* Profile Card */}
+              <div className="flex items-center gap-6 p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm">
+                <div className="w-24 h-24 rounded-[22px] border-4 border-white dark:border-[#243460] overflow-hidden shadow-lg">
+                  <img src={getImageUrl(currentStudent?.image, "student")} className="w-full h-full object-cover" alt={currentStudent?.full_name} />
+                </div>
+                <div>
+                  <h4 className="text-2xl font-black text-[#0f2044] dark:text-white mb-1">
+                    {!isRtl && currentStudent?.full_name_en ? currentStudent?.full_name_en : currentStudent?.full_name}
+                  </h4>
+                  <div className="flex items-center gap-3">
+                    <span className={DS_badge(currentStudent?.is_active || false)}>{currentStudent?.is_active ? t("Active") : t("Inactive")}</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{currentStudent?.gender === 'male' ? t("Male") : t("Female")}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                  <div className="w-12 h-12 rounded-[14px] bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600"><Fingerprint className="w-6 h-6" /></div>
+                  <div><p className={DS_labelCls}>{t("Civil ID")}</p><p className="font-bold text-[#0f2044] dark:text-white">{currentStudent?.national_id}</p></div>
+                </div>
+                <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                  <div className="w-12 h-12 rounded-[14px] bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600"><GraduationCap className="w-6 h-6" /></div>
+                  <div><p className={DS_labelCls}>{t("Class")}</p><p className="font-bold text-[#0f2044] dark:text-white">{currentStudent?.current_enrollment?.classroom?.name || "—"}</p></div>
+                </div>
+                <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                  <div className="w-12 h-12 rounded-[14px] bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600"><BusIcon className="w-6 h-6" /></div>
+                  <div><p className={DS_labelCls}>{t("Morning Route")}</p><p className="font-bold text-[#0f2044] dark:text-white">{currentStudent?.forth_bus?.route?.name || "—"}</p></div>
+                </div>
+                <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                  <div className="w-12 h-12 rounded-[14px] bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600"><BusIcon className="w-6 h-6" /></div>
+                  <div><p className={DS_labelCls}>{t("Afternoon Route")}</p><p className="font-bold text-[#0f2044] dark:text-white">{currentStudent?.back_bus?.route?.name || "—"}</p></div>
+                </div>
+              </div>
+
+              {/* Guardians */}
+              <div>
+                  <h4 className="font-bold text-[#0f2044] dark:text-white flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-[#f5b800]" /> {t("Guardians")}
+                    </div>
+                    <button 
+                      onClick={handleAddGuardian}
+                      className="p-1.5 rounded-lg bg-[#f5b800]/10 text-[#7a5c00] hover:bg-[#f5b800]/20 transition-all flex items-center gap-1 text-[10px] font-bold"
+                      title={t("Add Guardian")}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{t("Add")}</span>
+                    </button>
+                  </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   {currentStudent?.guardians?.map((g, idx) => (
+                    <div key={g.id} className="p-4 rounded-[18px] bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all relative group">
+                      <button 
+                        onClick={() => handleEditGuardian(idx)} 
+                        className="absolute top-4 right-4 p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                        title={t("Edit Guardian")}
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className={DS_avatar}>{g.image ? <img src={getImageUrl(g.image, "guardian")} alt={g.name} className="w-full h-full object-cover" /> : g.name.charAt(0)}</div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-[#0f2044] dark:text-white truncate">{!isRtl && g.name_en ? g.name_en : g.name}</p>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t(g.pivot?.relationship_type || "Guardian")}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2 pt-3 border-t border-gray-50 dark:border-white/5">
+                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400"><Phone className="w-3 h-3" /> <span dir="ltr">{g.phone}</span></div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400"><Mail className="w-3 h-3" /> <span className="truncate">{g.email || "—"}</span></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Edit / Create Mode Body */
+            <div className="space-y-6">
+              {/* Step Indicator (Only for Create or when explicitly editing guardians) */}
+              {(modalMode === "create" || (modalMode === "edit" && createStep === 1)) && (
+                <div className="flex items-center justify-center gap-4 mb-6">
+                  {[1, 2].map(s => (
+                    <div key={s} className="flex items-center gap-2">
+                      <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center font-bold transition-all ${createStep === s ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : (createStep > s ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-400')}`}>
+                        {createStep > s ? <CheckCircle2 className="w-5 h-5" /> : s}
+                      </div>
+                      <span className={`text-xs font-bold ${createStep === s ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}>
+                        {s === 1 ? t("Guardian") : t("Student")}
+                      </span>
+                      {s === 1 && <div className={`w-8 h-px ${createStep > 1 ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-white/10'}`} />}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {createStep === 1 ? (
+                /* Guardian Form */
+                <form onSubmit={handleGuardiansSubmit} className="space-y-6">
+                  {/* Reuse Existing Guardian Form Logic but styled */}
+                  <div className="space-y-6">
+                    {guardianEntries.map((entry, idx) => {
+                      // In edit mode, if we are editing a specific guardian, hide others
+                      if (modalMode === "edit" && editingGuardianIndex !== -1 && idx !== editingGuardianIndex) return null;
+                      
+                      return (
+                        <div key={idx} className="p-6 rounded-[22px] bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/5 relative">
+                          {guardianEntries.length > 1 && modalMode === "create" && (
+                            <button type="button" onClick={() => removeGuardianEntry(idx)} className="absolute top-4 right-4 p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          <h5 className="font-bold text-sm text-[#0f2044] dark:text-white mb-4 flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4 text-emerald-500" /> {t("Guardian")} {modalMode === "create" ? `#${idx + 1}` : ""}
+                          </h5>
+                          
+                          <div className="mb-4">
+                            <label className={DS_labelCls}>{t("Civil ID")} *</label>
+                            <div className="flex gap-2">
+                              <input type="text" value={entry.national_id} onChange={e => updateGuardianEntry(idx, { national_id: e.target.value, hasSearched: false, verified: false })} className={DS_inputCls} placeholder="10xxxxxxxx" />
+                              <button type="button" onClick={() => handleGuardianLookup(idx)} disabled={entry.isSearching} className="px-4 py-2 bg-[#0f2044] text-white rounded-[14px] font-bold text-xs hover:bg-[#1a2e5a] transition-all disabled:opacity-50">
+                                {entry.isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : t("Verify")}
+                              </button>
+                            </div>
+                          </div>
+
+                          {(entry.hasSearched || modalMode === "edit") && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div><label className={DS_labelCls}>{t("Name (Arabic)")} *</label><input type="text" value={entry.name} onChange={e => updateGuardianEntry(idx, { name: e.target.value })} className={DS_inputCls} dir="rtl" required /></div>
+                              <div><label className={DS_labelCls}>{t("Name (English)")}</label><input type="text" value={entry.name_en} onChange={e => updateGuardianEntry(idx, { name_en: e.target.value })} className={DS_inputCls} dir="ltr" /></div>
+                              <div><label className={DS_labelCls}>{t("Relationship")} *</label>
+                                <select value={entry.relationship_type} onChange={e => updateGuardianEntry(idx, { relationship_type: e.target.value })} className={DS_selectCls}>
+                                  {RELATIONSHIP_TYPES.map(r => <option key={r} value={r}>{t(r.charAt(0).toUpperCase() + r.slice(1))}</option>)}
+                                </select>
+                              </div>
+                              <div><label className={DS_labelCls}>{t("Phone")} *</label><input type="text" value={entry.phone} onChange={e => updateGuardianEntry(idx, { phone: e.target.value })} className={DS_inputCls} dir="ltr" required /></div>
+                              <div><label className={DS_labelCls}>{t("Email")}</label><input type="email" value={entry.email} onChange={e => updateGuardianEntry(idx, { email: e.target.value })} className={DS_inputCls} dir="ltr" /></div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {modalMode === "create" && (
+                      <button type="button" onClick={addGuardianEntry} className="w-full py-4 border-2 border-dashed border-gray-200 dark:border-white/5 rounded-[22px] text-gray-400 font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                        <Plus className="w-5 h-5" /> {t("Add Another Guardian")}
+                      </button>
+                    )}
+                  </div>
+                  <div className={`flex ${modalMode === "edit" ? "justify-end" : "justify-end"} pt-4`}>
+                    <button type="submit" disabled={studentForm.processing} className={DS_submitBtn(studentForm.processing)}>
+                      {modalMode === "edit" ? t("Save Changes") : t("Continue")} {modalMode === "create" && <ArrowRight className={`w-4 h-4 ${isRtl ? 'rotate-180' : ''}`} />}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                /* Student Form */
+                <form onSubmit={handleSubmitStudent} className="space-y-6">
+                   <div className="p-6 rounded-[22px] bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/5 space-y-6">
+                      <div>
+                        <label className={DS_labelCls}>{t("Gender")} *</label>
+                        <div className="flex gap-2">
+                          {['male', 'female'].map(g => (
+                            <button key={g} type="button" onClick={() => studentForm.setData("gender", g)} className={`flex-1 py-2.5 rounded-xl font-bold text-xs border-2 transition-all ${studentForm.data.gender === g ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20' : 'bg-white dark:bg-white/5 text-gray-400 border-gray-100 dark:border-white/5'}`}>
+                              {g === 'male' ? t("Male") : t("Female")}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2 grid grid-cols-2 lg:grid-cols-4 gap-2">
+                           {["first", "second", "third", "last"].map(p => (
+                             <div key={p}><label className="text-[10px] font-bold text-gray-400 mb-1 block">{t(`${p} Name`)} (Ar)</label>
+                             <input type="text" value={(studentForm.data as any)[`${p}_name_ar`]} onChange={e => studentForm.setData(`${p}_name_ar` as any, e.target.value)} className={DS_inputCls} dir="rtl" required /></div>
+                           ))}
+                        </div>
+                        <div className="md:col-span-2 grid grid-cols-2 lg:grid-cols-4 gap-2 pt-2">
+                           {["first", "second", "third", "last"].map(p => (
+                             <div key={p}><label className="text-[10px] font-bold text-gray-400 mb-1 block">{t(`${p} Name`)} (En)</label>
+                             <input type="text" value={(studentForm.data as any)[`${p}_name_en`]} onChange={e => studentForm.setData(`${p}_name_en` as any, e.target.value)} className={`${DS_inputCls} text-left`} dir="ltr" /></div>
+                           ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label className={DS_labelCls}>{t("Civil ID")} *</label><input type="text" value={studentForm.data.national_id} onChange={e => studentForm.setData("national_id", e.target.value)} className={DS_inputCls} dir="ltr" required /></div>
+                        <div><label className={DS_labelCls}>{t("Class")} *</label>
+                          <select value={studentForm.data.classroom_id} onChange={e => studentForm.setData("classroom_id", e.target.value)} className={DS_selectCls} required>
+                            <option value="">{t("Select Class")}</option>
+                            {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label className={DS_labelCls}>{t("Morning Route")}</label>
+                          <select value={studentForm.data.forth_bus_id} onChange={e => studentForm.setData("forth_bus_id", e.target.value)} className={DS_selectCls}>
+                            <option value="">{t("None")}</option>
+                            {buses.map(b => <option key={b.id} value={b.id}>{b.bus_number} - {b.plate_number}</option>)}
+                          </select>
+                        </div>
+                        <div><label className={DS_labelCls}>{t("Afternoon Route")}</label>
+                          <select value={studentForm.data.back_bus_id} onChange={e => studentForm.setData("back_bus_id", e.target.value)} className={DS_selectCls}>
+                            <option value="">{t("None")}</option>
+                            {buses.map(b => <option key={b.id} value={b.id}>{b.bus_number} - {b.plate_number}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      <Toggle 
+                        label={t("Status")}
+                        description={studentForm.data.is_active ? t("Active Student") : t("Suspended Student")}
+                        enabled={studentForm.data.is_active}
+                        onChange={v => studentForm.setData("is_active", v)}
+                      />
+                   </div>
+
+                   <div className={`flex ${modalMode === "create" ? "justify-between" : "justify-end"} pt-4`}>
+                      {modalMode === "create" && (
+                        <button type="button" onClick={() => setCreateStep(1)} className={DS_cancelBtn}>{t("Back")}</button>
+                      )}
+                      <button type="submit" disabled={studentForm.processing} className={DS_submitBtn(studentForm.processing)}>
+                        {modalMode === "edit" ? t("Save Changes") : t("Enroll Student")}
+                      </button>
+                   </div>
+                </form>
+              )}
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* Delete Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
           <div className={DS_confirmModal}>
             <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl">⚠️</span>

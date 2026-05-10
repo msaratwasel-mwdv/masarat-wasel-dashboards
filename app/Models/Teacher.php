@@ -14,7 +14,6 @@ class Teacher extends Model
 
     protected $fillable = [
         'user_id',
-        'school_id',
         'grade_id',
         'fcm_token',
     ];
@@ -31,9 +30,16 @@ class Teacher extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function school(): BelongsTo
+    public function school(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
     {
-        return $this->belongsTo(School::class);
+        return $this->hasOneThrough(
+            School::class,
+            Grade::class,
+            'id',       // Foreign key on grades table
+            'id',       // Foreign key on schools table
+            'grade_id', // Local key on teachers table
+            'school_id' // Local key on grades table
+        );
     }
 
     public function grade(): BelongsTo

@@ -90,7 +90,7 @@ class NotificationController extends Controller
 
         // Data for Modal
         $templates = NotificationTemplate::active()->get();
-        $classrooms = Classroom::where('school_id', $schoolId)->get();
+        $classrooms = Classroom::atSchool($schoolId)->get();
         $buses = Bus::where('school_id', $schoolId)->get();
 
         // Parents — باستخدام الـ Scopes للتعامل مع الهيكلية الجديدة
@@ -153,7 +153,7 @@ class NotificationController extends Controller
         ];
 
         $templates = NotificationTemplate::active()->get();
-        $classrooms = Classroom::where('school_id', $schoolId)->get();
+        $classrooms = Classroom::atSchool($schoolId)->get();
         $buses = Bus::where('school_id', $schoolId)->get();
         $parents = User::atSchool($schoolId)
             ->withRole('parent')
@@ -249,7 +249,7 @@ class NotificationController extends Controller
         $schoolId = Auth::user()->school_id;
 
         $templates = NotificationTemplate::active()->get();
-        $classrooms = Classroom::where('school_id', $schoolId)->get();
+        $classrooms = Classroom::atSchool($schoolId)->get();
         $buses = Bus::where('school_id', $schoolId)->get();
         // تم إضافة guardians هنا لأن الواجهة Create.tsx تتوقعها في الـ Props
         $guardians = User::atSchool($schoolId)->withRole('parent')->get();

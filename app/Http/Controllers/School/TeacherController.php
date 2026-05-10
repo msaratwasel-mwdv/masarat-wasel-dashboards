@@ -20,7 +20,7 @@ class TeacherController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
-        $schoolId = $user->school_id;
+        $schoolId = $user->getSchoolId();
         $search = $request->input('search');
 
         $teachers = User::query()
@@ -64,6 +64,7 @@ class TeacherController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
+        $schoolId = $user->getSchoolId();
 
         $validated = $request->validate([
             'first_name_ar' => 'required|string|max:255',
@@ -119,7 +120,7 @@ class TeacherController extends Controller
             // Create teacher record
             \App\Models\Teacher::create([
                 'user_id' => $teacherUser->id,
-                'school_id' => $user->school_id,
+                'school_id' => $schoolId,
                 'grade_id' => $validated['grade_id'] ?? null,
                 'status' => 'active',
             ]);
@@ -139,7 +140,7 @@ class TeacherController extends Controller
         $user = Auth::user();
 
         if (
-            $teacher->school_id !== $user->school_id ||
+            $teacher->getSchoolId() !== $user->getSchoolId() ||
             !$teacher->hasRole('teacher')
         ) {
             abort(403);
@@ -228,7 +229,7 @@ class TeacherController extends Controller
         $user = Auth::user();
 
         if (
-            $teacher->school_id !== $user->school_id ||
+            $teacher->getSchoolId() !== $user->getSchoolId() ||
             !$teacher->hasRole('teacher')
         ) {
             abort(403);

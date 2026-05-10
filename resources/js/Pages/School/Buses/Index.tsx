@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import SchoolAuthenticatedLayout from '@/Layouts/SchoolAuthenticatedLayout';
 import useTranslation from '@/hooks/useTranslation';
-import { motion } from 'framer-motion';
-import { Bus as BusIcon, CheckCircle2, Wrench, Search, ChevronDown, LayoutGrid, List, Plus, Users, Tag, User, UserPlus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Bus as BusIcon, CheckCircle2, Wrench, Search, ChevronDown, LayoutGrid, List, Plus, Users, Tag, User, UserPlus, Eye, X, Fingerprint } from 'lucide-react';
+import Modal from '@/Components/Modal';
 import {
     DS_pageWrapper,
     DS_pageTitle,
@@ -21,6 +22,11 @@ import {
     DS_tableRow,
     DS_tableTh,
     DS_tableTd,
+    DS_tableTd,
+    DS_modalHeader,
+    DS_modalClose,
+    DS_badge,
+    DS_labelCls,
 } from '@/lib/DS';
 
 interface Bus {
@@ -45,6 +51,8 @@ export default function Index({ auth, buses }: BusesProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'maintenance' | 'inactive'>('all');
     const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
 
     // Filter buses
     const filteredBuses = buses.filter(bus => {
@@ -219,6 +227,12 @@ export default function Index({ auth, buses }: BusesProps) {
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/5">
+                                                    <button onClick={() => { setSelectedBus(bus); setIsModalOpen(true); }} className="w-full py-2.5 rounded-[12px] flex items-center justify-center gap-2 text-sm font-bold bg-[#0f2044]/5 dark:bg-white/5 text-[#0f2044] dark:text-white hover:bg-[#0f2044]/10 dark:hover:bg-white/10 transition-all">
+                                                        <Eye size={16} />
+                                                        {t('View Details')}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     ))
@@ -244,6 +258,7 @@ export default function Index({ auth, buses }: BusesProps) {
                                             <th className={DS_tableTh(isRtl)}>{t('Driver')}</th>
                                             <th className={DS_tableTh(isRtl)}>{t('Assistant')}</th>
                                             <th className={DS_tableTh(isRtl)}>{t('Status')}</th>
+                                            <th className={DS_tableTh(isRtl)}>{t('Actions')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -281,6 +296,11 @@ export default function Index({ auth, buses }: BusesProps) {
                                                     <td className={DS_tableTd}>
                                                         {getStatusBadge(bus.status)}
                                                     </td>
+                                                    <td className={DS_tableTd}>
+                                                        <button onClick={() => { setSelectedBus(bus); setIsModalOpen(true); }} className="p-2 rounded-xl text-gray-500 hover:text-[#0f2044] dark:hover:text-white bg-gray-50 dark:bg-gray-800 hover:bg-[#0f2044]/10 dark:hover:bg-white/10 transition-all">
+                                                            <Eye size={16} />
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))
                                         ) : (
@@ -297,6 +317,66 @@ export default function Index({ auth, buses }: BusesProps) {
                     </div>
                 </motion.div>
             </div>
+
+            {/* --- View Details Modal --- */}
+            <AnimatePresence>
+                {isModalOpen && selectedBus && (
+                    <Modal show={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="2xl">
+                        <div className={DS_modalHeader(isRtl)}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white/20 rounded-[12px] flex items-center justify-center">
+                                    <BusIcon className="w-5 h-5 text-white" />
+                                </div>
+                                <div className={isRtl ? "text-right" : "text-left"}>
+                                    <h3 className="text-xl font-bold text-white">
+                                        {selectedBus.bus_number}
+                                    </h3>
+                                    <p className="text-[#7ba7e8] text-sm font-semibold">{selectedBus.plate_number}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsModalOpen(false)} className={DS_modalClose}><X className="w-5 h-5" /></button>
+                        </div>
+                        
+                        <div className="p-8 space-y-8 overflow-y-auto max-h-[80vh]">
+                            <div className="flex items-center gap-6 p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm">
+                                <div className="w-24 h-24 rounded-[22px] border-4 border-white dark:border-[#243460] overflow-hidden shadow-lg bg-[#0f2044] flex items-center justify-center">
+                                    <BusIcon className="w-10 h-10 text-white" />
+                                </div>
+                                <div>
+                                    <h4 className="text-2xl font-black text-[#0f2044] dark:text-white mb-2">
+                                        {selectedBus.bus_number}
+                                    </h4>
+                                    <div className="flex items-center gap-3">
+                                        {getStatusBadge(selectedBus.status)}
+                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-[#0f2044]/[0.07] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8]">
+                                            {t(selectedBus.type === 'permanent' ? 'Permanent' : 'Temporary')}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                    <div className="w-12 h-12 rounded-[14px] bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600"><Fingerprint className="w-6 h-6" /></div>
+                                    <div><p className={DS_labelCls}>{t('Plate Number')}</p><p className="font-bold text-[#0f2044] dark:text-white">{selectedBus.plate_number}</p></div>
+                                </div>
+                                <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                    <div className="w-12 h-12 rounded-[14px] bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600"><Users className="w-6 h-6" /></div>
+                                    <div><p className={DS_labelCls}>{t('Capacity')}</p><p className="font-bold text-[#0f2044] dark:text-white">{selectedBus.capacity} {t('Student')}</p></div>
+                                </div>
+                                <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                    <div className="w-12 h-12 rounded-[14px] bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600"><User className="w-6 h-6" /></div>
+                                    <div className="min-w-0"><p className={DS_labelCls}>{t('Driver')}</p><p className="font-bold text-[#0f2044] dark:text-white truncate">{selectedBus.driver ? selectedBus.driver.name : t('No Driver')}</p></div>
+                                </div>
+                                <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                    <div className="w-12 h-12 rounded-[14px] bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600"><UserPlus className="w-6 h-6" /></div>
+                                    <div className="min-w-0"><p className={DS_labelCls}>{t('Assistant')}</p><p className="font-bold text-[#0f2044] dark:text-white truncate">{selectedBus.assistant ? selectedBus.assistant.name : t('Not Assigned')}</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    </Modal>
+                )}
+            </AnimatePresence>
         </SchoolAuthenticatedLayout>
     );
 }

@@ -57,7 +57,7 @@ const Content = ({
     children,
 }: PropsWithChildren<{
     align?: 'left' | 'right';
-    width?: '48';
+    width?: '32' | '40' | '48' | string;
     contentClasses?: string;
 }>) => {
     const { open, setOpen } = useContext(DropDownContext);
@@ -72,8 +72,14 @@ const Content = ({
 
     let widthClasses = '';
 
-    if (width === '48') {
+    if (width === '32') {
+        widthClasses = 'w-32';
+    } else if (width === '40') {
+        widthClasses = 'w-40';
+    } else if (width === '48') {
         widthClasses = 'w-48';
+    } else {
+        widthClasses = 'w-' + width;
     }
 
     return (

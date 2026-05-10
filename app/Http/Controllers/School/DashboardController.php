@@ -21,7 +21,7 @@ class DashboardController extends Controller
 
         // 1. Basic Stats
         $studentsCount = Student::inSchool($schoolId)->count();
-        $classesCount = Classroom::where('school_id', $schoolId)->count();
+        $classesCount = Classroom::atSchool($schoolId)->count();
         $totalBuses = \App\Models\Bus::where('school_id', $schoolId)->count();
         $activeBuses = \App\Models\Bus::where('school_id', $schoolId)->where('status', 'active')->count();
         $routesCount = \App\Models\Route::where('school_id', $schoolId)->count();
@@ -69,7 +69,7 @@ class DashboardController extends Controller
         }
 
         // 4. Student Distribution by class
-        $classDistribution = Classroom::where('school_id', $schoolId)
+        $classDistribution = Classroom::atSchool($schoolId)
             ->withCount(['students'])
             ->get()
             ->map(fn($c) => [

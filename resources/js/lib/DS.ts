@@ -11,7 +11,7 @@ export const DS_card = "bg-white dark:bg-[#1a2845] rounded-[20px] shadow-sm bord
 export const DS_pageWrapper = "pb-8 space-y-6 print:hidden";
 export const DS_pageTitle = "font-extrabold text-xl text-[#0f2044] dark:text-white";
 export const DS_statLabel = "text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500";
-export const DS_statValue = "text-2xl font-black text-[#0f2044] dark:text-white mt-0.5";
+export const DS_statValue = "text-xl font-black text-[#0f2044] dark:text-white mt-0.5";
 export const DS_avatar = "w-9 h-9 rounded-full bg-[#0f2044]/10 dark:bg-[#0f2044]/40 text-[#0f2044] dark:text-[#7ba7e8] flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0";
 export const DS_tableWrapper = "overflow-x-auto";
 export const DS_tableBase = "w-full text-sm";
@@ -39,9 +39,10 @@ export const DS_modalClose = "p-1.5 rounded-[10px] bg-white/10 text-white hover:
 export const DS_modalBody = "p-6 space-y-4";
 
 export const DS_inputCls = "w-full rounded-[18px] px-4 py-2.5 text-sm bg-[#0f2044]/[0.05] dark:bg-[#0f2044]/30 border border-[#0f2044]/[0.10] dark:border-[#243460] text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#f5b800] transition-all placeholder-gray-400";
+export const DS_selectCls = "w-full rounded-[18px] px-8 py-2.5 text-sm bg-[#0f2044]/[0.05] dark:bg-[#0f2044]/30 border border-[#0f2044]/[0.10] dark:border-[#243460] text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#f5b800] transition-all placeholder-gray-400 cursor-pointer";
 export const DS_labelCls = "block text-[10px] font-bold uppercase tracking-wider mb-1.5 text-[#0f2044]/60 dark:text-[#7ba7e8]/70";
 export const DS_input = DS_inputCls;
-export const DS_select = DS_inputCls;
+export const DS_select = DS_selectCls;
 export const DS_label = DS_labelCls;
 export const DS_cancelBtn = "px-5 py-2.5 rounded-[14px] bg-[#0f2044]/[0.07] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-gray-300 text-sm font-bold hover:bg-[#0f2044]/[0.14] transition-all";
 
@@ -50,7 +51,7 @@ export const DS_confirmModal = "bg-white dark:bg-[#1a2845] p-8 rounded-[22px] w-
 
 // ── Dynamic Tokens (Functions) ────────────────────────────────────
 export function DS_statCard(accent: "navy" | "gold" | "red" | "green" | "blue"): string {
-  const base = "flex items-center gap-4 p-5 rounded-[20px] border shadow-sm";
+  const base = "flex items-center gap-3 p-3.5 rounded-[16px] border shadow-sm";
   if (accent === "gold")  return `${base} bg-white dark:bg-[#1a2845] border-[#f5b800]/20 dark:border-[#f5b800]/10`;
   if (accent === "red")   return `${base} bg-white dark:bg-[#1a2845] border-red-100 dark:border-red-900/20`;
   if (accent === "green") return `${base} bg-white dark:bg-[#1a2845] border-emerald-100 dark:border-emerald-900/20`;
@@ -59,7 +60,7 @@ export function DS_statCard(accent: "navy" | "gold" | "red" | "green" | "blue"):
 }
 
 export function DS_statIcon(accent: "navy" | "gold" | "red" | "green" | "blue"): string {
-  const base = "w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0";
+  const base = "w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0";
   if (accent === "gold")  return `${base} bg-[#f5b800]/10 dark:bg-[#f5b800]/20 text-[#b38600]`;
   if (accent === "red")   return `${base} bg-red-50 dark:bg-red-900/20 text-red-500`;
   if (accent === "green") return `${base} bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600`;
@@ -69,8 +70,8 @@ export function DS_statIcon(accent: "navy" | "gold" | "red" | "green" | "blue"):
 
 export function DS_badge(active: boolean): string {
   return active
-    ? "px-2.5 py-1 rounded-full text-xs font-bold bg-[#f5b800]/20 text-[#7a5c00] dark:bg-[#f5b800]/10 dark:text-[#f5b800]"
-    : "px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400";
+    ? "px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
+    : "px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400";
 }
 
 export function DS_filterBtn(active: boolean): string {
@@ -111,9 +112,9 @@ export function DS_tripTab(active: boolean, variant: "morning" | "afternoon"): s
 }
 
 export function DS_statValue2(accent: "navy" | "gold" | "red" | "green" | "blue"): string {
-  if (accent === "gold")  return "text-2xl font-black text-[#b38600] dark:text-[#f5b800] mt-0.5";
-  if (accent === "red")   return "text-2xl font-black text-red-600 dark:text-red-400 mt-0.5";
-  if (accent === "green") return "text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5";
-  if (accent === "blue")  return "text-2xl font-black text-sky-600 dark:text-sky-400 mt-0.5";
-  return "text-2xl font-black text-[#0f2044] dark:text-white mt-0.5";
+  if (accent === "gold")  return "text-xl font-black text-[#b38600] dark:text-[#f5b800] mt-0.5";
+  if (accent === "red")   return "text-xl font-black text-red-600 dark:text-red-400 mt-0.5";
+  if (accent === "green") return "text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5";
+  if (accent === "blue")  return "text-xl font-black text-sky-600 dark:text-sky-400 mt-0.5";
+  return "text-xl font-black text-[#0f2044] dark:text-white mt-0.5";
 }

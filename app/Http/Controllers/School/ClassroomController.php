@@ -16,7 +16,7 @@ class ClassroomController extends Controller
     public function apiIndex()
     {
         $schoolId = Auth::user()->getSchoolId();
-        $classrooms = Classroom::where('school_id', $schoolId)
+        $classrooms = Classroom::atSchool($schoolId)
             ->with(['grade', 'teachers.user'])
             ->orderBy('name')
             ->get(['id', 'name', 'grade_id']);
@@ -44,11 +44,10 @@ class ClassroomController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
-
         $schoolId = $user->getSchoolId();
         $search = $request->input('search');
 
-        $classrooms = Classroom::where('school_id', $schoolId)
+        $classrooms = Classroom::atSchool($schoolId)
             ->when($search, function ($query, $search) {
                 $query->where(function($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%");
@@ -56,6 +55,7 @@ class ClassroomController extends Controller
             })
             ->latest()
             ->with(['grade', 'teachers.user']) 
+            ->withCount('students')
             ->get()
             ->map(function($c) {
                 return [
@@ -63,7 +63,8 @@ class ClassroomController extends Controller
                     'name' => $c->name,
                     'grade_id' => $c->grade_id,
                     'grade_name' => $c->grade?->name,
-                    'school_id' => $c->school_id,
+                    'school_id' => $c->grade?->school_id,
+                    'students_count' => $c->students_count,
                     'teachers' => $c->teachers->map(function($t) {
                         return [
                             'user_id' => $t->user_id,
@@ -74,7 +75,8 @@ class ClassroomController extends Controller
             });
 
         $grades = Grade::where('school_id', $schoolId)
-            ->with(['teacher.user'])
+            ->with(['teacher.user', 'classrooms.students'])
+            ->withCount('classrooms')
             ->orderBy('name')
             ->get()
             ->map(function($g) {
@@ -83,6 +85,10 @@ class ClassroomController extends Controller
                     'name' => $g->name,
                     'teacher_id' => $g->teacher?->user_id,
                     'teacher_name' => $g->teacher?->name,
+                    'classrooms_count' => $g->classrooms_count,
+                    'students_count' => $g->classrooms->sum(function($c) {
+                        return $c->students->count();
+                    }),
                 ];
             });
 
@@ -103,7 +109,9 @@ class ClassroomController extends Controller
             'classrooms' => $classrooms,
             'grades' => $grades,
             'teachers' => $availableTeachers,
-            'filters' => $request->only(['search']),
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 
@@ -113,7 +121,7 @@ class ClassroomController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if ($classroom->school_id !== $user->getSchoolId()) {
+        if ($classroom->grade?->school_id !== $user->getSchoolId()) {
             abort(403);
         }
 
@@ -135,7 +143,6 @@ class ClassroomController extends Controller
                 'id' => $classroom->id,
                 'name' => $classroom->name,
                 'grade_level' => $classroom->grade_level,
-                'school_id' => $classroom->school_id,
                 'teachers' => $classroom->teachers->map(function($t) {
                     return [
                         'user_id' => $t->user_id,
@@ -153,7 +160,7 @@ class ClassroomController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if ($classroom->school_id !== $user->getSchoolId()) {
+        if ($classroom->grade?->school_id !== $user->getSchoolId()) {
             abort(403);
         }
         $validated = $request->validate([
@@ -180,7 +187,6 @@ class ClassroomController extends Controller
         Classroom::create([
             'name' => $validated['name'],
             'grade_id' => $validated['grade_id'],
-            'school_id' => $user->getSchoolId(),
         ]);
 
         return redirect()->back()->with('success', 'Class created successfully');
@@ -263,7 +269,7 @@ class ClassroomController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if ($classroom->school_id !== $user->getSchoolId()) {
+        if ($classroom->grade?->school_id !== $user->getSchoolId()) {
             abort(403);
         }
 
