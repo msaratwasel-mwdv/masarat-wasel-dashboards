@@ -84,8 +84,8 @@ export default function PlanOption({
                         </div>
                         <div className={`text-[9px] font-black uppercase tracking-widest mt-1 ${selected ? "text-brand-yellow" : (isDark ? "text-slate-400" : "text-brand-navy/50")}`}>
                             {isAr 
-                                ? (billingCycle === 'monthly' ? 'لكل طالب / شهرياً' : 'لكل طالب / قسط شهري (سنوي)') 
-                                : (billingCycle === 'monthly' ? '/ Per Student Monthly' : '/ Per Student Monthly (Yearly)')
+                                ? (billingCycle === 'monthly' ? 'لكل طالب / شهرياً' : 'لكل طالب / سنوياً') 
+                                : (billingCycle === 'monthly' ? '/ Per Student Monthly' : '/ Per Student Yearly')
                             }
                         </div>
                         {billingCycle === 'yearly' && (
