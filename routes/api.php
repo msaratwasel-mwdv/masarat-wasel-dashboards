@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\GuardianNotificationController;
 use App\Http\Controllers\WhatsApp\WebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 /*
 |--------------------------------------------------------------------------

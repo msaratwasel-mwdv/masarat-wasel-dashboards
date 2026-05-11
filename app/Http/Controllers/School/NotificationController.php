@@ -320,12 +320,34 @@ class NotificationController extends Controller
         try {
             $correlationId = \Illuminate\Support\Str::uuid()->toString();
 
+            // Detect and replace placeholders like {bus_number}
+            $finalTitle = $validated['title'];
+            $finalMessage = $validated['message'];
+            $finalTitleEn = $validated['title_en'] ?? '';
+            $finalMessageEn = $validated['message_en'] ?? '';
+
+            if (str_contains($finalMessage, '{bus_number}') || str_contains($finalTitle, '{bus_number}')) {
+                $busNumber = '';
+                if (!empty($validated['recipient_filter']['bus_ids'])) {
+                    $bus = \App\Models\Bus::find($validated['recipient_filter']['bus_ids'][0]);
+                    if ($bus) {
+                        $busNumber = $bus->bus_number;
+                    }
+                }
+                
+                $finalTitle = str_replace('{bus_number}', $busNumber, $finalTitle);
+                $finalMessage = str_replace('{bus_number}', $busNumber, $finalMessage);
+                $finalTitleEn = str_replace('{bus_number}', $busNumber, $finalTitleEn);
+                $finalMessageEn = str_replace('{bus_number}', $busNumber, $finalMessageEn);
+            }
+
+
             // Create the notification
             $notification = Notification::create([
-                'title' => $validated['title'],
-                'title_en' => $validated['title_en'] ?? '',
-                'message' => $validated['message'],
-                'message_en' => $validated['message_en'] ?? '',
+                'title' => $finalTitle,
+                'title_en' => $finalTitleEn,
+                'message' => $finalMessage,
+                'message_en' => $finalMessageEn,
                 'type' => $validated['type'],
                 'template_type' => $validated['type'],
                 'sender_id' => Auth::id(),
@@ -388,8 +410,8 @@ class NotificationController extends Controller
                     $basePayload = [
                         'notification_id' => (string) $notification->id,
                         'type' => $validated['type'],
-                        'title_en' => $titleEn,
-                        'message_en' => $messageEn,
+                        'title_en' => $finalTitleEn,
+                        'message_en' => $finalMessageEn,
                         'correlation_id' => $correlationId,
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
                     ];
@@ -398,26 +420,26 @@ class NotificationController extends Controller
                     if (!empty($tokensAr)) {
                         $notificationService->sendMulticast(
                             $tokensAr,
-                            $validated['title'],
-                            $validated['message'],
+                            $finalTitle,
+                            $finalMessage,
                             $basePayload
                         );
                     }
 
                     // إرسال النسخة الإنجليزية للأجهزة الإنجليزية
-                    if (!empty($tokensEn) && !empty($titleEn)) {
+                    if (!empty($tokensEn) && !empty($finalTitleEn)) {
                         $notificationService->sendMulticast(
                             $tokensEn,
-                            $titleEn,
-                            $messageEn,
+                            $finalTitleEn,
+                            $finalMessageEn,
                             $basePayload
                         );
                     } elseif (!empty($tokensEn)) {
                         // Fallback: لا يوجد محتوى إنجليزي، أرسل العربي
                         $notificationService->sendMulticast(
                             $tokensEn,
-                            $validated['title'],
-                            $validated['message'],
+                            $finalTitle,
+                            $finalMessage,
                             $basePayload
                         );
                     }
