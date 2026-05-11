@@ -35,6 +35,8 @@ export default function Subscription({ plans }: any) {
   const [lang, setLang] = useState<"ar" | "en">("ar");
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly");
+
   const { data, setData, post, processing, errors, reset, clearErrors } =
     useForm({
       email: "",
@@ -48,8 +50,13 @@ export default function Subscription({ plans }: any) {
       phone: "",
       language: "ar",
       plan_id: selectedPlanId,
+      billing_cycle: "yearly",
       notes: "",
     });
+
+  useEffect(() => {
+    setData("billing_cycle", billingCycle);
+  }, [billingCycle]);
 
   useEffect(() => {
     setData("language", lang);
@@ -109,7 +116,7 @@ export default function Subscription({ plans }: any) {
 
       {/* --- Navigation --- */}
       <nav className={`sticky top-0 z-50 border-b ${isDark ? 'bg-slate-900/90 border-slate-800 backdrop-blur-xl' : 'bg-white/80 border-slate-200/50 backdrop-blur-xl'}`}>
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="max-w-[1400px] mx-auto px-6 h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
              <div className="w-11 h-11 bg-white p-1 rounded-xl shadow-sm border border-slate-100 italic transition-transform hover:scale-105 overflow-hidden">
                 <img src="/assets/images/masarat-wasel-logo.jpg" alt="Logo" className="w-full h-full object-contain rounded-lg" />
@@ -155,7 +162,7 @@ export default function Subscription({ plans }: any) {
       </nav>
 
       {/* --- Subscription Content --- */}
-      <main className="max-w-7xl mx-auto px-6 pt-16 pb-32">
+      <main className="max-w-[1400px] mx-auto px-6 pt-16 pb-32">
         <motion.div 
            initial="hidden"
            animate="visible"
@@ -393,17 +400,21 @@ export default function Subscription({ plans }: any) {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                              <div className="space-y-3">
                                 <label className={`text-sm font-black ${isDark ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "رقم الجوال النشط" : "Active Phone Number"}</label>
-                                <div className={`flex shadow-sm rounded-2xl overflow-hidden border transition-all ${isDark ? 'bg-slate-700 border-slate-600 focus-within:ring-brand-yellow/20 focus-within:border-brand-yellow' : 'bg-slate-50 border-slate-100 focus-within:ring-brand-navy/20 focus-within:border-brand-navy'}`}>
-                                   <select className={`bg-transparent pr-8 border-none font-bold text-sm w-28 focus:ring-0 ${isDark ? 'text-slate-300' : 'text-slate-500'}`} dir="ltr">
-                                      <option>🇴🇲 +968</option>
-                                      <option>🇸🇦 +966</option>
-                                      <option>🇦🇪 +971</option>
-                                   </select>
+                                <div className={`flex items-center shadow-sm rounded-2xl overflow-hidden border transition-all h-[58px] ${isDark ? 'bg-slate-700 border-slate-600 focus-within:ring-brand-yellow/20 focus-within:border-brand-yellow' : 'bg-slate-50 border-slate-100 focus-within:ring-brand-navy/20 focus-within:border-brand-navy'}`} dir="ltr">
+                                   <div className={`px-3 border-e h-full flex items-center shrink-0 ${isDark ? 'border-slate-600 bg-slate-800/30' : 'border-slate-200 bg-slate-100/30'}`}>
+                                      <select className={`bg-transparent border-none font-bold text-xs focus:ring-0 cursor-pointer py-0 px-1 w-24 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                         <option value="+968">🇴🇲 +968</option>
+                                         <option value="+966">🇸🇦 +966</option>
+                                         <option value="+971">🇦🇪 +971</option>
+                                         <option value="+974">🇶🇦 +974</option>
+                                         <option value="+973">🇧🇭 +973</option>
+                                         <option value="+965">🇰🇼 +965</option>
+                                      </select>
+                                   </div>
                                    <input 
                                       type="tel" 
-                                      className={`flex-1 bg-transparent border-none py-4 px-4 font-bold focus:ring-0 ${isDark ? 'text-white placeholder:text-slate-500' : 'text-brand-navy placeholder:text-slate-300'}`} 
-                                      placeholder="xxxx xxxx" 
-                                      dir="ltr" 
+                                      className={`flex-1 bg-transparent border-none h-full px-4 font-black text-base focus:ring-0 ${isDark ? 'text-white placeholder:text-slate-500' : 'text-brand-navy placeholder:text-slate-400'}`} 
+                                      placeholder="7xxx xxxx" 
                                       required 
                                       value={data.phone}
                                       onChange={(e) => setData("phone", e.target.value)}
@@ -433,17 +444,43 @@ export default function Subscription({ plans }: any) {
 
                        {/* Step 4: Packages */}
                        <div className="space-y-8">
-                          <div className="flex items-center gap-4">
-                             <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><Briefcase size={24}/></div>
-                             <h2 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "اختر خطة الاشتراك" : "Choose Subscription Plan"}</h2>
-                          </div>
-                          
-                          <PlanSelectorGrid 
-                              plans={plans}
-                              selectedId={selectedPlanId}
-                              onSelect={(id: number) => setSelectedPlanId(id)}
-                          />
-                       </div>
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                              <div className="flex items-center gap-4">
+                                 <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><Briefcase size={24}/></div>
+                                 <h2 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "اختر خطة الاشتراك" : "Choose Subscription Plan"}</h2>
+                              </div>
+
+                              {/* Billing Cycle Switch */}
+                              <div className={`p-1.5 rounded-2xl flex items-center gap-1 border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-100 border-slate-200'}`}>
+                                 <button
+                                    type="button"
+                                    onClick={() => setBillingCycle("monthly")}
+                                    className={`px-6 py-2 rounded-xl text-sm font-black transition-all ${billingCycle === 'monthly' ? (isDark ? 'bg-brand-yellow text-brand-dark shadow-lg' : 'bg-brand-navy text-white shadow-lg') : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-brand-navy')}`}
+                                 >
+                                    {isAr ? "شهرياً" : "Monthly"}
+                                 </button>
+                                 <button
+                                    type="button"
+                                    onClick={() => setBillingCycle("yearly")}
+                                    className={`px-6 py-2 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${billingCycle === 'yearly' ? (isDark ? 'bg-brand-yellow text-brand-dark shadow-lg' : 'bg-brand-navy text-white shadow-lg') : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-brand-navy')}`}
+                                 >
+                                    {isAr ? "سنوياً" : "Yearly"}
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${billingCycle === 'yearly' ? (isDark ? 'bg-brand-dark/20' : 'bg-white/20') : (isDark ? 'bg-brand-yellow/20 text-brand-yellow' : 'bg-emerald-100 text-emerald-600')}`}>
+                                       {isAr ? "وفر 20%" : "Save 20%"}
+                                    </span>
+                                 </button>
+                              </div>
+                           </div>
+                           
+                           <PlanSelectorGrid 
+                               plans={plans}
+                               selectedId={selectedPlanId}
+                               onSelect={(id: number) => setSelectedPlanId(id)}
+                               billingCycle={billingCycle}
+                               lang={lang}
+                               theme={theme}
+                           />
+                        </div>
 
                        <div className="space-y-3">
                           <label className={`text-sm font-black ${isDark ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "ملاحظات إضافية" : "Additional Notes"}</label>
@@ -467,7 +504,7 @@ export default function Subscription({ plans }: any) {
                        </p>
                        <button 
                           disabled={processing}
-                          className="w-full max-w-md py-5 bg-brand-navy text-white text-xl font-black rounded-[1.5rem] shadow-2xl shadow-brand-navy/30 hover:shadow-brand-navy/50 hover:-translate-y-1 transition-all disabled:opacity-50 disabled:translate-y-0 flex items-center justify-center gap-4"
+                          className="w-full max-md py-5 bg-brand-navy text-white text-xl font-black rounded-[1.5rem] shadow-2xl shadow-brand-navy/30 hover:shadow-brand-navy/50 hover:-translate-y-1 transition-all disabled:opacity-50 disabled:translate-y-0 flex items-center justify-center gap-4"
                        >
                           {processing ? <Loader2 className="animate-spin" size={24}/> : <>{isAr ? "إرسال الطلب الآن" : "Submit Request Now"} <ArrowRight className={dir === 'rtl' ? 'rotate-180' : ''} size={24}/></>}
                        </button>
@@ -491,16 +528,43 @@ export default function Subscription({ plans }: any) {
           </div>
       </footer>
 
-      {/* --- Floating Support Icon --- */}
+      {/* --- Enhanced Floating Support Button --- */}
       <a 
          href="https://wa.me/96879967769" 
          target="_blank"
          rel="noreferrer"
-         className={`fixed bottom-8 ${dir === 'rtl' ? 'left-8' : 'right-8'} z-50 w-16 h-16 bg-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform border-4 border-brand-yellow`}
-         title={isAr ? "تحدث مع الدعم الفني" : "Customer Support"}
+         className={`fixed bottom-8 ${dir === 'rtl' ? 'left-8' : 'right-8'} z-50 group flex items-center gap-4`}
       >
-          <div className="w-full h-full rounded-full bg-slate-100 flex items-center justify-center text-brand-navy">
-              <UserCircle2 size={32} />
+          <div className={`hidden md:flex flex-col items-end opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0 ${dir === 'rtl' ? 'items-start' : 'items-end'}`}>
+              <div className={`px-4 py-2 rounded-2xl shadow-2xl text-sm font-black whitespace-nowrap ${
+                  isDark ? 'bg-slate-800 text-white border border-slate-700' : 'bg-white text-brand-navy border border-slate-100'
+              }`}>
+                  {isAr ? "تحتاج مساعدة؟ تواصل معنا" : "Need help? Contact us"}
+              </div>
+          </div>
+
+          <div className="relative">
+              {/* Pulsing Outer Ring */}
+              <div className="absolute inset-0 rounded-full bg-brand-yellow/40 animate-ping scale-150" />
+              <div className="absolute inset-0 rounded-full bg-brand-yellow/20 animate-pulse scale-125" />
+              
+              {/* Main Avatar Container */}
+              <div className={`relative w-20 h-20 rounded-full border-4 border-brand-yellow shadow-[0_0_40px_rgba(255,191,0,0.4)] overflow-hidden hover:scale-110 transition-transform duration-500 hover:rotate-6 ${
+                  isDark ? 'bg-slate-800' : 'bg-white'
+              }`}>
+                  <img
+                      src="/assets/images/omani-support-avatar.png"
+                      alt="Support"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-3xl">👨‍💼</div>';
+                      }}
+                  />
+                  {/* Live Status Indicator */}
+                  <div className="absolute bottom-2 right-2 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse" />
+              </div>
           </div>
       </a>
     </div>

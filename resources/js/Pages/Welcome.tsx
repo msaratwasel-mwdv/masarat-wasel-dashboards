@@ -424,19 +424,21 @@ export default function Welcome({
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                             <div>
                                 <h4 className="text-3xl font-black mb-6 text-brand-yellow">
-                                    {isAr ? "مستويات الأمان" : "Security Levels"}
+                                    {isAr ? "5 مستويات للأمان" : "5 Security Levels"}
                                 </h4>
                                 <ul className="space-y-4">
                                     {[
-                                        isAr ? "تتبع جغرافي مباشر" : "Live Geo-tracking",
-                                        isAr ? "مراقبة السرعة وسلوك السائقين" : "Speed & Behavior Monitoring",
-                                        isAr ? "إجراءات التفقد النهائي للطلبة" : "Final Student Inspection Procedures",
-                                        isAr ? "سجل الحضور والغياب والأرشفة الإلكترونية" : "Attendance Records & Digital Archiving",
-                                        isAr ? "التتبع المرئي المباشر" : "Live Visual Tracking",
+                                        { ar: "تتبع جغرافي ذكي ولحظي", en: "Smart Real-time Geo-tracking" },
+                                        { ar: "مراقبة متقدمة لسلوك القيادة", en: "Advanced Driver Behavior Monitoring" },
+                                        { ar: "نظام التحقق الذكي من خلو الحافلة", en: "Smart Bus-Empty Verification System" },
+                                        { ar: "أتمتة الحضور والتحضير الرقمي", en: "Digital Attendance & Roll-call Automation" },
+                                        { ar: "منظومة الرصد المرئي المباشر", en: "Live Visual Monitoring System" },
                                     ].map((item, i) => (
-                                        <li key={i} className="flex items-center gap-3 font-bold text-lg text-slate-200">
-                                            <CheckCircle className="text-emerald-400 shrink-0" size={24} />
-                                            {item}
+                                        <li key={i} className="flex items-center gap-4 font-bold text-lg text-slate-200 group">
+                                            <div className="w-8 h-8 rounded-lg bg-brand-yellow/20 flex items-center justify-center text-brand-yellow group-hover:scale-110 transition-transform">
+                                                <CheckCircle size={18} />
+                                            </div>
+                                            {isAr ? item.ar : item.en}
                                         </li>
                                     ))}
                                 </ul>
@@ -552,13 +554,13 @@ export default function Welcome({
                     </div>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
                         {[
-                            { label: isAr ? "رحلة آمنة يومياً" : "Safe Daily Trips", val: "50,000+", icon: "🚌" },
-                            { label: isAr ? "مدرسة مشتركة" : "Partner Schools", val: "200+", icon: "🏫" },
-                            { label: isAr ? "طالب مسجل" : "Registered Students", val: "15,000+", icon: "👨‍🎓" },
+                            { label: isAr ? "رحلة آمنة يومياً" : "Safe Daily Trips", val: "100", icon: "🚌" },
+                            { label: isAr ? "طالب مسجل" : "Registered Students", val: "2,000", icon: "👨‍🎓" },
+                            { label: isAr ? "مدرسة مسجلة" : "Registered Schools", val: "30", icon: "🏫" },
                             { label: isAr ? "نسبة رضا العملاء" : "Customer Satisfaction", val: "98%", icon: "⭐" },
                         ].map((stat, i) => (
-                            <div key={i} className="bg-white/10 border border-white/20 rounded-3xl p-8 hover:bg-white/15 transition-colors">
-                                <div className="text-3xl mb-3">{stat.icon}</div>
+                            <div key={i} className="bg-white/10 border border-white/20 rounded-3xl p-8 hover:bg-white/15 transition-all hover:-translate-y-2 group">
+                                <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">{stat.icon}</div>
                                 <div className="text-4xl lg:text-5xl font-black text-brand-yellow mb-3">
                                     {stat.val}
                                 </div>
@@ -747,38 +749,42 @@ export default function Welcome({
                 </div>
             </footer>
 
-            {/* --- Floating Support Icon (Omani Character) --- */}
+            {/* --- Enhanced Floating Support Button --- */}
             <a 
                href="https://wa.me/96879967769" 
                target="_blank"
                rel="noreferrer"
-               className={`fixed bottom-8 ${dir === 'rtl' ? 'left-8' : 'right-8'} z-50 group`}
-               title={isAr ? "تحدث مع الدعم الفني" : "Customer Support"}
+               className={`fixed bottom-8 ${dir === 'rtl' ? 'left-8' : 'right-8'} z-50 group flex items-center gap-4`}
             >
-                <div className="relative">
-                    {/* Tooltip */}
-                    <div className={`absolute bottom-full mb-3 ${dir === 'rtl' ? 'left-0' : 'right-0'} px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg ${
-                        theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-brand-navy text-white'
+                <div className={`hidden md:flex flex-col items-end opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0 ${dir === 'rtl' ? 'items-start' : 'items-end'}`}>
+                    <div className={`px-4 py-2 rounded-2xl shadow-2xl text-sm font-black whitespace-nowrap ${
+                        theme === 'dark' ? 'bg-slate-800 text-white border border-slate-700' : 'bg-white text-brand-navy border border-slate-100'
                     }`}>
-                        {isAr ? "الدعم الفني 💬" : "Support Chat 💬"}
+                        {isAr ? "تحتاج مساعدة؟ تواصل معنا" : "Need help? Contact us"}
                     </div>
-                    {/* Pulsing Ring */}
-                    <div className="absolute inset-0 rounded-full bg-brand-yellow/30 animate-ping" />
-                    {/* Avatar Circle */}
-                    <div className={`relative w-16 h-16 rounded-full border-4 border-brand-yellow shadow-2xl overflow-hidden hover:scale-110 transition-transform duration-300 ${
+                </div>
+
+                <div className="relative">
+                    {/* Pulsing Outer Ring */}
+                    <div className="absolute inset-0 rounded-full bg-brand-yellow/40 animate-ping scale-150" />
+                    <div className="absolute inset-0 rounded-full bg-brand-yellow/20 animate-pulse scale-125" />
+                    
+                    {/* Main Avatar Container */}
+                    <div className={`relative w-20 h-20 rounded-full border-4 border-brand-yellow shadow-[0_0_40px_rgba(255,191,0,0.4)] overflow-hidden hover:scale-110 transition-transform duration-500 hover:rotate-6 ${
                         theme === 'dark' ? 'bg-slate-800' : 'bg-white'
                     }`}>
                         <img
                             src="/assets/images/omani-support-avatar.png"
-                            alt={isAr ? "الدعم الفني" : "Support"}
+                            alt="Support"
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                                // Fallback if image doesn't load
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
-                                target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-brand-navy text-2xl font-black">👨‍💼</div>';
+                                target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-3xl">👨‍💼</div>';
                             }}
                         />
+                        {/* Live Status Indicator */}
+                        <div className="absolute bottom-2 right-2 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse" />
                     </div>
                 </div>
             </a>

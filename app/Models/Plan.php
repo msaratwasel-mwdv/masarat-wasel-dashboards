@@ -11,8 +11,13 @@ class Plan extends Model
 
     protected $fillable = [
         'name',
+        'name_ar',
+        'name_en',
         'description',
+        'description_ar',
+        'description_en',
         'price_per_student',
+        'price_per_student_yearly',
         'is_active',
         'max_buses',
         'has_driver_app',
@@ -24,11 +29,15 @@ class Plan extends Model
         'has_dedicated_support',
         'sort_order',
         'badge',
+        'badge_ar',
+        'badge_en',
         'currency',
     ];
 
     protected $appends = [
         'feature_list',
+        'feature_list_ar',
+        'feature_list_en',
     ];
 
     protected $casts = [
@@ -51,25 +60,56 @@ class Plan extends Model
 
     public function getFeatureListAttribute()
     {
+        // Default to Arabic features if no locale set, or just return Ar
+        return $this->getFeatureListArAttribute();
+    }
+
+    public function getFeatureListArAttribute()
+    {
         $features = [];
         
         if ($this->max_buses) {
-            $features[] = __("Up to :count buses", ['count' => $this->max_buses]);
+            $features[] = "حتى " . $this->max_buses . " حافلة";
         } else {
-            $features[] = __("Unlimited Buses");
+            $features[] = "حافلات غير محدودة";
         }
 
-        if ($this->has_driver_app) $features[] = __("Driver App");
-        if ($this->has_parent_app) $features[] = __("Parent App");
-        if ($this->has_supervisor_app) $features[] = __("Supervisor App");
+        if ($this->has_driver_app) $features[] = "تطبيق السائق";
+        if ($this->has_parent_app) $features[] = "تطبيق ولي الأمر";
+        if ($this->has_supervisor_app) $features[] = "تطبيق المشرفة";
         
         if ($this->notifications_limit) {
-            $features[] = $this->notifications_limit === 'unlimited' ? __("Unlimited Notifications") : __("System Notifications");
+            $features[] = $this->notifications_limit === 'unlimited' ? "إشعارات غير محدودة" : "إشعارات النظام";
         }
 
-        if ($this->has_reports) $features[] = __("Advanced Reports");
-        if ($this->has_api_access) $features[] = __("API Access");
-        if ($this->has_dedicated_support) $features[] = __("Dedicated Support 24/7");
+        if ($this->has_reports) $features[] = "تقارير متقدمة";
+        if ($this->has_api_access) $features[] = "الوصول للـ API";
+        if ($this->has_dedicated_support) $features[] = "دعم فني مخصص 24/7";
+
+        return $features;
+    }
+
+    public function getFeatureListEnAttribute()
+    {
+        $features = [];
+        
+        if ($this->max_buses) {
+            $features[] = "Up to " . $this->max_buses . " buses";
+        } else {
+            $features[] = "Unlimited Buses";
+        }
+
+        if ($this->has_driver_app) $features[] = "Driver App";
+        if ($this->has_parent_app) $features[] = "Parent App";
+        if ($this->has_supervisor_app) $features[] = "Supervisor App";
+        
+        if ($this->notifications_limit) {
+            $features[] = $this->notifications_limit === 'unlimited' ? "Unlimited Notifications" : "System Notifications";
+        }
+
+        if ($this->has_reports) $features[] = "Advanced Reports";
+        if ($this->has_api_access) $features[] = "API Access";
+        if ($this->has_dedicated_support) $features[] = "Dedicated Support 24/7";
 
         return $features;
     }

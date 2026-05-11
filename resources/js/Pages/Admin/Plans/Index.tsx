@@ -26,6 +26,7 @@ import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
 import { useForm } from "@inertiajs/react";
+import OmaniRial from '@/Components/OmaniRial';
 
 export default function PlansIndex({ plans }: any) {
     const { isRTL } = useTheme();
@@ -34,8 +35,13 @@ export default function PlansIndex({ plans }: any) {
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         name: '',
+        name_ar: '',
+        name_en: '',
         description: '',
+        description_ar: '',
+        description_en: '',
         price_per_student: 0,
+        price_per_student_yearly: 0,
         max_buses: '',
         has_driver_app: false,
         has_parent_app: false,
@@ -45,6 +51,8 @@ export default function PlansIndex({ plans }: any) {
         has_api_access: false,
         has_dedicated_support: false,
         badge: '',
+        badge_ar: '',
+        badge_en: '',
         is_active: true
     });
 
@@ -53,8 +61,13 @@ export default function PlansIndex({ plans }: any) {
         setEditingPlan(plan);
         setData({
             name: plan.name || '',
+            name_ar: plan.name_ar || '',
+            name_en: plan.name_en || '',
             description: plan.description || '',
+            description_ar: plan.description_ar || '',
+            description_en: plan.description_en || '',
             price_per_student: plan.price_per_student || 0,
+            price_per_student_yearly: plan.price_per_student_yearly || 0,
             max_buses: plan.max_buses || '',
             has_driver_app: !!plan.has_driver_app,
             has_parent_app: !!plan.has_parent_app,
@@ -64,6 +77,8 @@ export default function PlansIndex({ plans }: any) {
             has_api_access: !!plan.has_api_access,
             has_dedicated_support: !!plan.has_dedicated_support,
             badge: plan.badge || '',
+            badge_ar: plan.badge_ar || '',
+            badge_en: plan.badge_en || '',
             is_active: !!plan.is_active
         });
     };
@@ -84,20 +99,18 @@ export default function PlansIndex({ plans }: any) {
     const submitForm = (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Convert empty string bounds to null for validation
-        const submitData = {
-            ...data,
-            max_buses: data.max_buses === '' ? null : data.max_buses,
-        };
+        // Auto-sync internal fields with English values to avoid redundancy in the UI
+        data.name = data.name_en || data.name_ar || 'Plan';
+        data.description = data.description_en || data.description_ar || '';
+        data.badge = data.badge_en || data.badge_ar || '';
 
         if (editingPlan) {
-            router.put(route('admin.plans.update', editingPlan.id), submitData, {
+            put(route("admin.plans.update", editingPlan.id), {
                 onSuccess: () => closeModal(),
             });
         } else {
-            post(route('admin.plans.store'), {
+            post(route("admin.plans.store"), {
                 onSuccess: () => closeModal(),
-                data: submitData
             });
         }
     };
@@ -154,10 +167,10 @@ export default function PlansIndex({ plans }: any) {
                                             </span>
                                         )}
                                         <h4 className="text-xl font-black text-slate-800">
-                                            {plan.name}
+                                            {isRTL ? (plan.name_ar || plan.name) : (plan.name_en || plan.name)}
                                         </h4>
                                         <p className="text-xs text-slate-500 mt-1 line-clamp-1">
-                                            {plan.description}
+                                            {isRTL ? (plan.description_ar || plan.description) : (plan.description_en || plan.description)}
                                         </p>
                                     </div>
                                     <div className="flex bg-slate-50 rounded-lg p-1 border border-slate-100">
@@ -190,13 +203,25 @@ export default function PlansIndex({ plans }: any) {
                                     </div>
                                 </div>
 
-                                <div className="flex items-baseline gap-1 my-6" dir="ltr">
-                                    <span className="text-4xl font-black text-brand-navy">
-                                        ${plan.price_per_student}
-                                    </span>
-                                    <span className="text-sm font-bold text-slate-400">
-                                        {isRTL ? '/ طالب / شهر' : '/ student / month'}
-                                    </span>
+                                <div className="my-6 space-y-1">
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-3xl font-black text-brand-navy">
+                                            {plan.price_per_student_yearly}
+                                        </span>
+                                        <OmaniRial size="1.8rem" className="-translate-y-0.5" />
+                                        <span className="text-xs font-bold text-slate-400">
+                                            {isRTL ? '/ طالب / سنوي' : '/ student / yearly'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 opacity-60">
+                                        <span className="text-sm font-black text-slate-500">
+                                            {plan.price_per_student}
+                                        </span>
+                                        <OmaniRial size="1.1rem" className="-translate-y-0.5" />
+                                        <span className="text-[10px] font-bold text-slate-400">
+                                            {isRTL ? '/ طالب / شهر' : '/ student / month'}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div className="bg-slate-50 rounded-2xl p-4 mb-6 flex items-center justify-between border border-slate-100">
@@ -267,110 +292,132 @@ export default function PlansIndex({ plans }: any) {
                 </div>
             </div>
 
-            <Modal show={isCreateModalOpen || editingPlan !== null} onClose={closeModal} maxWidth="2xl">
-                <form onSubmit={submitForm} className="p-6">
-                    <div className={`flex justify-between items-center mb-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                        <h2 className="text-xl font-black text-slate-800">
-                            {editingPlan ? (isRTL ? 'تعديل الخطة' : 'Edit Plan') : (isRTL ? 'إضافة خطة جديدة' : 'Add New Plan')}
-                        </h2>
-                        <button type="button" onClick={closeModal} className="text-slate-400 hover:text-rose-500 transition-colors">
-                            <XCircle size={24} />
+            <Modal show={isCreateModalOpen || editingPlan !== null} onClose={closeModal} maxWidth="3xl">
+                <form onSubmit={submitForm} className="p-0 overflow-hidden">
+                    {/* Header */}
+                    <div className={`bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-brand-navy/10 text-brand-navy rounded-xl flex items-center justify-center">
+                                <PackageOpen size={20} />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-black text-slate-800 leading-tight">
+                                    {editingPlan ? (isRTL ? 'تعديل الباقة' : 'Edit Plan') : (isRTL ? 'إضافة باقة' : 'Add Plan')}
+                                </h2>
+                                <p className="text-[10px] font-bold text-slate-500">
+                                    {isRTL ? 'الأسماء، الأسعار والمميزات' : 'Names, pricing, and features'}
+                                </p>
+                            </div>
+                        </div>
+                        <button type="button" onClick={closeModal} className="text-slate-400 hover:bg-slate-200 p-2 rounded-xl transition-all">
+                            <XCircle size={22} />
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" dir={isRTL ? 'rtl' : 'ltr'}>
-                        <div className="col-span-full">
-                            <InputLabel value={isRTL ? "اسم الخطة" : "Plan Name"} />
-                            <TextInput 
-                                value={data.name} 
-                                onChange={e => setData('name', e.target.value)} 
-                                className="w-full mt-1" 
-                                required 
-                            />
-                            <InputError message={errors.name} className="mt-1" />
+                    <div className="p-6 max-h-[75vh] overflow-y-auto" dir={isRTL ? 'rtl' : 'ltr'}>
+                        {/* Section 1: Basic Info */}
+                        <div className="mb-6">
+                            <h3 className="text-xs font-black text-brand-navy uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <span className="w-4 h-px bg-brand-navy/20"></span>
+                                {isRTL ? 'المعلومات والنصوص' : 'Content Info'}
+                                <span className="flex-1 h-px bg-brand-navy/10"></span>
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <InputLabel value={isRTL ? "الاسم (عربي)" : "Name (Arabic)"} className="text-[10px]" />
+                                        <TextInput value={data.name_ar} onChange={e => setData('name_ar', e.target.value)} className="w-full mt-1 text-xs" required />
+                                    </div>
+                                    <div>
+                                        <InputLabel value={isRTL ? "الاسم (إنجليزي)" : "Name (English)"} className="text-[10px]" />
+                                        <TextInput value={data.name_en} onChange={e => setData('name_en', e.target.value)} className="w-full mt-1 text-xs" required />
+                                    </div>
+                                </div>
+
+                                <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <InputLabel value={isRTL ? "الوصف (عربي)" : "Desc (Arabic)"} className="text-[10px]" />
+                                        <TextInput value={data.description_ar} onChange={e => setData('description_ar', e.target.value)} className="w-full mt-1 text-xs" />
+                                    </div>
+                                    <div>
+                                        <InputLabel value={isRTL ? "الوصف (إنجليزي)" : "Desc (English)"} className="text-[10px]" />
+                                        <TextInput value={data.description_en} onChange={e => setData('description_en', e.target.value)} className="w-full mt-1 text-xs" />
+                                    </div>
+                                </div>
+
+                                <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <InputLabel value={isRTL ? "الوسام (عربي)" : "Badge (Arabic)"} className="text-[10px]" />
+                                        <TextInput value={data.badge_ar} onChange={e => setData('badge_ar', e.target.value)} className="w-full mt-1 text-xs" />
+                                    </div>
+                                    <div>
+                                        <InputLabel value={isRTL ? "الوسام (إنجليزي)" : "Badge (English)"} className="text-[10px]" />
+                                        <TextInput value={data.badge_en} onChange={e => setData('badge_en', e.target.value)} className="w-full mt-1 text-xs" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="col-span-full">
-                            <InputLabel value={isRTL ? "الوصف" : "Description"} />
-                            <TextInput 
-                                value={data.description} 
-                                onChange={e => setData('description', e.target.value)} 
-                                className="w-full mt-1" 
-                                required 
-                            />
-                            <InputError message={errors.description} className="mt-1" />
+                        {/* Section 2: Pricing */}
+                        <div className="mb-6">
+                            <h3 className="text-xs font-black text-brand-navy uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <span className="w-4 h-px bg-brand-navy/20"></span>
+                                {isRTL ? 'الأسعار والحدود' : 'Pricing & Limits'}
+                                <span className="flex-1 h-px bg-brand-navy/10"></span>
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <div>
+                                    <InputLabel value={isRTL ? "السعر الشهري" : "Monthly Price"} className="text-[10px] font-bold" />
+                                    <TextInput type="number" step="0.01" value={data.price_per_student} onChange={e => setData('price_per_student', e.target.value)} className="w-full mt-1 text-sm font-black" required />
+                                </div>
+                                <div>
+                                    <InputLabel value={isRTL ? "السعر السنوي" : "Yearly Price"} className="text-[10px] font-bold" />
+                                    <TextInput type="number" step="0.01" value={data.price_per_student_yearly} onChange={e => setData('price_per_student_yearly', e.target.value)} className="w-full mt-1 text-sm font-black" required />
+                                </div>
+                                <div>
+                                    <InputLabel value={isRTL ? "الحافلات" : "Max Buses"} className="text-[10px] font-bold" />
+                                    <TextInput type="number" value={data.max_buses} onChange={e => setData('max_buses', e.target.value)} className="w-full mt-1 text-sm font-black" />
+                                </div>
+                            </div>
                         </div>
 
+                        {/* Section 3: Features */}
                         <div>
-                            <InputLabel value={isRTL ? "سعر الطالب" : "Student Price"} />
-                            <TextInput 
-                                type="number" 
-                                step="0.01" 
-                                value={data.price_per_student} 
-                                onChange={e => setData('price_per_student', Number(e.target.value))} 
-                                className="w-full mt-1" 
-                                required 
-                            />
-                            <InputError message={errors.price_per_student} className="mt-1" />
-                        </div>
-
-                        <div>
-                            <InputLabel value={isRTL ? "الحد الأقصى للحافلات" : "Max Buses"} />
-                            <TextInput 
-                                type="number" 
-                                value={data.max_buses} 
-                                onChange={e => setData('max_buses', e.target.value)} 
-                                className="w-full mt-1" 
-                                placeholder={isRTL ? "اتركه فارغاً لغير محدود" : "Leave empty for unlimited"}
-                            />
-                            <InputError message={errors.max_buses} className="mt-1" />
-                        </div>
-
-                        <div>
-                            <InputLabel value={isRTL ? "الوسام (شارة)" : "Badge (e.g. Popular)"} />
-                            <TextInput 
-                                value={data.badge} 
-                                onChange={e => setData('badge', e.target.value)} 
-                                className="w-full mt-1" 
-                            />
-                            <InputError message={errors.badge} className="mt-1" />
-                        </div>
-
-                        {/* Features Toggles */}
-                        <div className="col-span-full mt-4">
-                            <h4 className="font-bold text-slate-700 mb-3">{isRTL ? 'مميزات الخطة' : 'Plan Features'}</h4>
-                            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
+                            <h3 className="text-xs font-black text-brand-navy uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <span className="w-4 h-px bg-brand-navy/20"></span>
+                                {isRTL ? 'المميزات' : 'Features'}
+                                <span className="flex-1 h-px bg-brand-navy/10"></span>
+                            </h3>
+                            <div className="grid grid-cols-2 gap-2">
                                 {[
-                                    { id: 'has_driver_app', label: isRTL ? 'تطبيق السائق' : 'Driver App' },
-                                    { id: 'has_parent_app', label: isRTL ? 'تطبيق ولي الأمر' : 'Parent App' },
-                                    { id: 'has_supervisor_app', label: isRTL ? 'تطبيق المشرفة' : 'Supervisor App' },
-                                    { id: 'has_reports', label: isRTL ? 'تقارير متقدمة' : 'Advanced Reports' },
-                                    { id: 'has_api_access', label: isRTL ? 'تكامل API' : 'API Access' },
-                                    { id: 'has_dedicated_support', label: isRTL ? 'دعم فني مخصص' : 'Dedicated Support' },
+                                    { id: 'has_driver_app', label: isRTL ? 'تطبيق السائق' : 'Driver App', icon: <Smartphone size={14} /> },
+                                    { id: 'has_parent_app', label: isRTL ? 'تطبيق ولي الأمر' : 'Parent App', icon: <Smartphone size={14} /> },
+                                    { id: 'has_supervisor_app', label: isRTL ? 'تطبيق المشرفة' : 'Supervisor App', icon: <Smartphone size={14} /> },
+                                    { id: 'has_reports', label: isRTL ? 'تقارير' : 'Reports', icon: <Activity size={14} /> },
+                                    { id: 'has_api_access', label: isRTL ? 'API' : 'API', icon: <Key size={14} /> },
+                                    { id: 'has_dedicated_support', label: isRTL ? 'دعم فني' : 'Support', icon: <LifeBuoy size={14} /> },
                                 ].map((feat) => (
-                                    <label key={feat.id} className="flex items-center gap-2 cursor-pointer">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={!!data[feat.id as keyof typeof data]}
-                                            onChange={(e) => setData(feat.id as any, e.target.checked)}
-                                            className="rounded text-brand-navy focus:ring-brand-navy text-sm border-slate-300"
-                                        />
-                                        <span className="text-sm font-bold text-slate-600 block w-full truncate">
+                                    <label key={feat.id} className={`flex items-center gap-2 p-2 px-3 rounded-xl border cursor-pointer transition-all ${data[feat.id as keyof typeof data] ? 'border-brand-navy bg-brand-navy/5' : 'border-slate-100'}`}>
+                                        <input type="checkbox" checked={!!data[feat.id as keyof typeof data]} onChange={(e) => setData(feat.id as any, e.target.checked)} className="rounded text-brand-navy w-4 h-4" />
+                                        <div className="flex items-center gap-2 text-[11px] font-bold text-slate-700">
+                                            <div className="text-slate-400">{feat.icon}</div>
                                             {feat.label}
-                                        </span>
+                                        </div>
                                     </label>
                                 ))}
                             </div>
                         </div>
                     </div>
 
-                    <div className={`flex gap-3 pt-4 border-t border-slate-100 ${isRTL ? 'flex-row' : 'flex-row-reverse'}`}>
-                        <PrimaryButton disabled={processing} className="px-8 shadow-md">
-                            {isRTL ? 'حفظ الخطة' : 'Save Plan'}
-                        </PrimaryButton>
-                        <SecondaryButton onClick={closeModal}>
-                            {isRTL ? 'إلغاء' : 'Cancel'}
-                        </SecondaryButton>
+                    <div className={`flex items-center justify-between p-4 bg-slate-50 border-t border-slate-100 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                        <div className="flex gap-2">
+                            <PrimaryButton disabled={processing} className="px-6 py-2.5 rounded-lg text-sm shadow-md">
+                                {isRTL ? 'حفظ' : 'Save'}
+                            </PrimaryButton>
+                            <SecondaryButton onClick={closeModal} className="px-6 py-2.5 rounded-lg text-sm">
+                                {isRTL ? 'إلغاء' : 'Cancel'}
+                            </SecondaryButton>
+                        </div>
                     </div>
                 </form>
             </Modal>
