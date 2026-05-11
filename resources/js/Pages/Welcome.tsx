@@ -339,7 +339,7 @@ export default function Welcome({
                             >
                                 <video
                                     ref={videoRef}
-                                    src="/assets/images/welcome_video.webm"
+                                    src="/assets/images/intro_video.webm"
                                     className="w-full h-full object-contain transition-transform duration-700"
                                     playsInline
                                     loop
