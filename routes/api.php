@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\BusLocationController;
 use App\Http\Controllers\Api\GuardianNotificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 /*
 |--------------------------------------------------------------------------

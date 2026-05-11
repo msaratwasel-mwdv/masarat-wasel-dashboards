@@ -318,7 +318,7 @@ class NotificationService
         $androidNotificationConfig = [
             'sound' => 'default',
             'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-            'channel_id' => 'msarat_wasel_high_importance_v2',
+            'channel_id' => 'msarat_wasel_high_importance_v3',
             'notification_priority' => 'PRIORITY_MAX',
             'visibility' => 'PUBLIC',
         ];
