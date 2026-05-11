@@ -63,8 +63,8 @@ const dictionary = {
   },
   "Masarat Wasel": { ar: "مسارات وصل", en: "Masarat Wasel" },
   "Search by National ID": {
-    ar: "بحث برقم الهوية",
-    en: "Search by National ID",
+    ar: "بحث بالرقم المدني",
+    en: "Search by Civil ID",
   },
   Active: { ar: "نشط", en: "Active" },
   Inactive: { ar: "غير نشط", en: "Inactive" },
@@ -333,10 +333,10 @@ const dictionary = {
   "Sending...": { ar: "جارٍ الإرسال...", en: "Sending..." },
   "Legal Name": { ar: "الاسم الكامل", en: "Legal Name" },
   "Contact #": { ar: "رقم الجوال", en: "Contact #" },
-  "ID / Passport": { ar: "رقم الهوية / جواز السفر", en: "ID / Passport" },
+  "ID / Passport": { ar: "الرقم المدني / جواز السفر", en: "ID / Passport" },
   "Register Member": { ar: "إضافة المرافق", en: "Register Member" },
   "Full name...": { ar: "الاسم الكامل...", en: "Full name..." },
-  "ID number...": { ar: "رقم الهوية...", en: "ID number..." },
+  "ID number...": { ar: "الرقم المدني...", en: "ID number..." },
   "Field Trip Details": { ar: "تفاصيل الرحلة الميدانية", en: "Field Trip Details" },
   "Inspect": { ar: "معاينة", en: "Inspect" },
 
@@ -461,7 +461,7 @@ const dictionary = {
     en: "Enter supervisor details",
   },
   Name: { ar: "الاسم", en: "Name" },
-  "National ID": { ar: "رقم الهوية", en: "National ID" },
+  "National ID": { ar: "الرقم المدني", en: "Civil ID" },
   Email: { ar: "البريد الإلكتروني", en: "Email" },
   "Phone Number": { ar: "رقم الهاتف", en: "Phone Number" },
   "Search by Name, ID...": {
@@ -546,8 +546,8 @@ const dictionary = {
     en: "Guardian Verification",
   },
   "Search by name, National ID or Father ID...": {
-    ar: "ابحث بالاسم أو رقم الهوية...",
-    en: "Search by name, National ID or Father ID...",
+    ar: "ابحث بالاسم أو الرقم المدني...",
+    en: "Search by name, Civil ID or Father ID...",
   },
   "Guardian Found": { ar: "تم العثور على ولي الأمر", en: "Guardian Found" },
   "Guardian Not Found": {
@@ -692,8 +692,8 @@ const dictionary = {
     en: "Search by ID (Student / Guardian / Supervisor)",
   },
   "Enter National ID...": {
-    ar: "أدخل رقم الهوية...",
-    en: "Enter National ID...",
+    ar: "أدخل الرقم المدني...",
+    en: "Enter Civil ID...",
   },
   "Reset Filters": { ar: "إعادة تعيين", en: "Reset Filters" },
   "Student Found": { ar: "تم العثور على طالب", en: "Student Found" },
@@ -1110,8 +1110,8 @@ const dictionary = {
     en: "Warning: Bus is over capacity!",
   },
   "Search by name or national ID...": {
-    ar: "البحث بالاسم أو رقم الهوية...",
-    en: "Search by name or national ID...",
+    ar: "البحث بالاسم أو الرقم المدني...",
+    en: "Search by name or civil ID...",
   },
   "Select All Morning": { ar: "تحديد كل الذهاب", en: "Select All Morning" },
   "Unselect All Morning": {
@@ -1646,7 +1646,7 @@ const dictionary = {
   "School Faculty": { ar: "هيئة التدريس", en: "School Faculty" },
   "Full name...": { ar: "الاسم الكامل...", en: "Full name..." },
   "7XXXXXXXX": { ar: "7XXXXXXXX", en: "7XXXXXXXX" },
-  "ID number...": { ar: "رقم الهوية...", en: "ID number..." },
+  "ID number...": { ar: "الرقم المدني...", en: "ID number..." },
 
   // Notifications Missing Keys
   "Broadcast Center": { ar: "مركز البث", en: "Broadcast Center" },
@@ -1867,6 +1867,111 @@ const dictionary = {
    "Account Status": { ar: "حالة الحساب", en: "Account Status" },
    "Account is active and can login": { ar: "الحساب نشط ويمكن تسجيل الدخول", en: "Account is active and can login" },
    "Account is deactivated. this guardian will no longer receive notifications": { ar: "تم تعطيل الحساب. لن يتلقى ولي الأمر هذا أي إشعارات بعد الآن", en: "Account is deactivated. this guardian will no longer receive notifications" },
+
+   // ─── Backend Flash Messages (Admin Controllers) ───
+   // Bus Controller
+   "Bus added successfully": { ar: "تم إضافة الحافلة بنجاح", en: "Bus added successfully" },
+   "Bus archived successfully": { ar: "تم أرشفة الحافلة بنجاح", en: "Bus archived successfully" },
+   "Document deleted": { ar: "تم حذف المستند بنجاح", en: "Document deleted" },
+
+   // Route Controller
+   "Route created successfully": { ar: "تم إنشاء المسار بنجاح", en: "Route created successfully" },
+   "Route updated successfully": { ar: "تم تحديث المسار بنجاح", en: "Route updated successfully" },
+   "Route deleted successfully": { ar: "تم حذف المسار بنجاح", en: "Route deleted successfully" },
+   "Cannot delete route assigned to buses": { ar: "لا يمكن حذف مسار مرتبط بحافلات", en: "Cannot delete route assigned to buses" },
+
+   // Drivers (StaffController)
+   "Driver registered successfully": { ar: "تم تسجيل السائق بنجاح", en: "Driver registered successfully" },
+   "Driver information updated successfully": { ar: "تم تحديث بيانات السائق بنجاح", en: "Driver information updated successfully" },
+   "Driver deleted successfully": { ar: "تم حذف السائق بنجاح", en: "Driver deleted successfully" },
+
+   // Assistants (Bus Supervisors)
+   "Assistant registered successfully": { ar: "تم تسجيل مشرفة الحافلة بنجاح", en: "Assistant registered successfully" },
+   "Assistant updated successfully": { ar: "تم تحديث بيانات مشرفة الحافلة بنجاح", en: "Assistant updated successfully" },
+   "Assistant deleted successfully": { ar: "تم حذف مشرفة الحافلة بنجاح", en: "Assistant deleted successfully" },
+
+   // Field Supervisors
+   "Field Supervisor registered successfully": { ar: "تم تسجيل المشرف الميداني بنجاح", en: "Field Supervisor registered successfully" },
+   "Field Supervisor updated successfully": { ar: "تم تحديث بيانات المشرف الميداني بنجاح", en: "Field Supervisor updated successfully" },
+   "Field Supervisor deleted successfully": { ar: "تم حذف المشرف الميداني بنجاح", en: "Field Supervisor deleted successfully" },
+
+   // Daily Trips
+   "Daily trip created successfully.": { ar: "تم إنشاء الرحلة اليومية بنجاح", en: "Daily trip created successfully." },
+   "Trip updated successfully.": { ar: "تم تحديث الرحلة بنجاح", en: "Trip updated successfully." },
+   "Trip deleted successfully.": { ar: "تم حذف الرحلة بنجاح", en: "Trip deleted successfully." },
+
+   // Schools
+   "School created successfully": { ar: "تمت إضافة المدرسة بنجاح", en: "School created successfully" },
+   "School created successfully with admin": { ar: "تمت إضافة المدرسة مع مدير بنجاح", en: "School created successfully with admin" },
+   "School updated successfully": { ar: "تم تحديث بيانات المدرسة بنجاح", en: "School updated successfully" },
+   "School deleted successfully": { ar: "تم حذف المدرسة بنجاح", en: "School deleted successfully" },
+   "تم تحديث حالة المدرسة بنجاح": { ar: "تم تحديث حالة المدرسة بنجاح", en: "School status updated successfully" },
+
+   // School Managers (SchoolUserController)
+   "تم تعيين مدير للمدرسة بنجاح": { ar: "تم تعيين مدير للمدرسة بنجاح", en: "School manager assigned successfully" },
+   "تم تحديث بيانات المدير بنجاح": { ar: "تم تحديث بيانات المدير بنجاح", en: "Manager info updated successfully" },
+   "تم حذف المدير بنجاح": { ar: "تم حذف المدير بنجاح", en: "Manager deleted successfully" },
+   "تم استيراد مدراء المدارس بنجاح وتحديث القائمة.": { ar: "تم استيراد مدراء المدارس بنجاح وتحديث القائمة", en: "School managers imported successfully" },
+
+   // Routes
+   "Route created successfully": { ar: "تمت إضافة المسار بنجاح", en: "Route created successfully" },
+   "Route updated successfully": { ar: "تم تحديث المسار بنجاح", en: "Route updated successfully" },
+   "Route deleted successfully": { ar: "تم حذف المسار بنجاح", en: "Route deleted successfully" },
+   "Cannot delete route assigned to buses": { ar: "لا يمكن حذف مسار مرتبط بحافلات", en: "Cannot delete route assigned to buses" },
+
+   // Buses
+   "Bus added successfully": { ar: "تمت إضافة الحافلة بنجاح", en: "Bus added successfully" },
+   "Bus archived successfully": { ar: "تم أرشفة الحافلة بنجاح", en: "Bus archived successfully" },
+   "Document deleted": { ar: "تم حذف المستند", en: "Document deleted" },
+   "تم تحديث بيانات الحافلة بنجاح": { ar: "تم تحديث بيانات الحافلة بنجاح", en: "Bus info updated successfully" },
+   "تم حذف الحافلة بنجاح": { ar: "تم حذف الحافلة بنجاح", en: "Bus deleted successfully" },
+   "تم استعادة الحافلة بنجاح": { ar: "تم استعادة الحافلة بنجاح", en: "Bus restored successfully" },
+
+   // Staff (Drivers)
+   "Driver registered successfully": { ar: "تم تسجيل السائق بنجاح", en: "Driver registered successfully" },
+   "Driver information updated successfully": { ar: "تم تحديث بيانات السائق بنجاح", en: "Driver information updated successfully" },
+   "Driver deleted successfully": { ar: "تم حذف السائق بنجاح", en: "Driver deleted successfully" },
+
+   // Location Requests
+   "تمت الموافقة على الطلب وتحديث بيانات الطالب بنجاح.": { ar: "تمت الموافقة على الطلب وتحديث بيانات الطالب بنجاح", en: "Request approved and student data updated successfully" },
+   "تم رفض الطلب بنجاح.": { ar: "تم رفض الطلب بنجاح", en: "Request rejected successfully" },
+
+   // School Dashboard - Teachers
+   "Teacher created successfully.": { ar: "تم إضافة المعلم بنجاح", en: "Teacher created successfully." },
+   "Teacher updated successfully.": { ar: "تم تحديث بيانات المعلم بنجاح", en: "Teacher updated successfully." },
+   "Teacher deleted successfully.": { ar: "تم حذف المعلم بنجاح", en: "Teacher deleted successfully." },
+
+   // School Dashboard - Supervisors
+   "Supervisor created successfully.": { ar: "تم إضافة المشرف بنجاح", en: "Supervisor created successfully." },
+   "Supervisor updated successfully.": { ar: "تم تحديث بيانات المشرف بنجاح", en: "Supervisor updated successfully." },
+   "Supervisor deleted successfully.": { ar: "تم حذف المشرف بنجاح", en: "Supervisor deleted successfully." },
+
+   // School Dashboard - Students
+   "Student created successfully.": { ar: "تم تسجيل الطالب بنجاح", en: "Student created successfully." },
+   "Student updated successfully.": { ar: "تم تحديث بيانات الطالب بنجاح", en: "Student updated successfully." },
+   "Student deleted successfully.": { ar: "تم حذف الطالب بنجاح", en: "Student deleted successfully." },
+
+   // School Dashboard - Guardians (Parents)
+   "Parent added successfully.": { ar: "تم إضافة ولي الأمر بنجاح", en: "Parent added successfully." },
+   "Parent updated successfully.": { ar: "تم تحديث بيانات ولي الأمر بنجاح", en: "Parent updated successfully." },
+   "Parent detached from school students successfully.": { ar: "تم فصل ولي الأمر من طلاب المدرسة بنجاح", en: "Parent detached from school students successfully." },
+   "Student detached successfully.": { ar: "تم فصل الطالب بنجاح", en: "Student detached successfully." },
+
+   // School Dashboard - Classrooms
+   "Class created successfully": { ar: "تم إنشاء الفصل بنجاح", en: "Class created successfully" },
+   "Class updated successfully": { ar: "تم تحديث الفصل بنجاح", en: "Class updated successfully" },
+   "تم حذف الفصل بنجاح": { ar: "تم حذف الفصل بنجاح", en: "Class deleted successfully" },
+   "Grade created successfully": { ar: "تم إنشاء المرحلة بنجاح", en: "Grade created successfully" },
+   "Grade updated successfully": { ar: "تم تحديث المرحلة بنجاح", en: "Grade updated successfully" },
+   "Grade deleted successfully": { ar: "تم حذف المرحلة بنجاح", en: "Grade deleted successfully" },
+
+   // School Dashboard - Bus Groups
+   "Bus group created successfully.": { ar: "تم إنشاء مجموعة الحافلة بنجاح", en: "Bus group created successfully." },
+   "Bus group updated successfully.": { ar: "تم تحديث مجموعة الحافلة بنجاح", en: "Bus group updated successfully." },
+   "Bus group deleted successfully.": { ar: "تم حذف مجموعة الحافلة بنجاح", en: "Bus group deleted successfully." },
+
+   // School Dashboard - Assistants
+   "Assistant updated successfully": { ar: "تم تحديث بيانات المشرفة بنجاح", en: "Assistant updated successfully" },
 
 } as Record<string, { ar: string; en: string }>;
 

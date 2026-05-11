@@ -9,9 +9,12 @@ import {
     DS_inputCls, 
     DS_labelCls, 
     DS_submitBtn, 
-    DS_cancelBtn 
+    DS_cancelBtn,
+    DS_selectCls
 } from "@/lib/DS";
 import { Zap, Calendar, Bus as BusIcon, MapPin, ArrowLeft } from 'lucide-react';
+import SearchableSelect from '@/Components/SearchableSelect';
+import { useMemo } from 'react';
 
 interface Bus {
     id: number;
@@ -49,6 +52,22 @@ export default function Create({ auth, buses, routes }: Props) {
         type: 'forth',
         date: getLocalDate(),
     });
+
+    const busOptions = useMemo(() => buses.map(bus => ({
+        id: bus.id,
+        label: `${bus.bus_number} (${bus.plate_number})`,
+        subLabel: (!bus.driver_id || !bus.supervisor_id) ? (isRTL ? 'تفاصيل ناقصة' : 'Missing Info') : undefined
+    })), [buses, isRTL]);
+
+    const routeOptions = useMemo(() => routes.map(route => {
+        const selectedBus = buses.find(b => b.id === parseInt(data.bus_id));
+        const isDefault = selectedBus?.route_id === route.id;
+        return {
+            id: route.id,
+            label: route.name,
+            subLabel: isDefault ? (isRTL ? 'المسار الافتراضي' : 'Bus Default') : undefined
+        };
+    }), [routes, data.bus_id, buses, isRTL]);
 
     useEffect(() => {
         if (flash?.error) {
@@ -103,53 +122,25 @@ export default function Create({ auth, buses, routes }: Props) {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Bus Selection */}
                                     <div>
-                                        <label className={DS_labelCls}>
-                                            <BusIcon className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
-                                            {isRTL ? 'الحافلة' : 'Bus'}
-                                        </label>
-                                        <select
+                                        <SearchableSelect
+                                            label={isRTL ? 'الحافلة' : 'Bus'}
+                                            options={busOptions}
                                             value={data.bus_id}
-                                            onChange={e => setData('bus_id', e.target.value)}
-                                            className={DS_inputCls}
-                                            required
-                                        >
-                                            <option value="">{isRTL ? 'اختر الحافلة' : 'Select Bus'}</option>
-                                            {buses.map(bus => {
-                                                const isMissingInfo = !bus.driver_id || !bus.supervisor_id;
-                                                return (
-                                                    <option key={bus.id} value={bus.id}>
-                                                        {bus.bus_number} ({bus.plate_number})
-                                                        {isMissingInfo ? (isRTL ? ' - تفاصيل ناقصة' : ' - Missing Info') : ''}
-                                                    </option>
-                                                );
-                                            })}
-                                        </select>
+                                            onChange={val => setData('bus_id', val.toString())}
+                                            placeholder={isRTL ? 'اختر الحافلة' : 'Select Bus'}
+                                        />
                                         {errors.bus_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.bus_id}</p>}
                                     </div>
 
                                     {/* Route Selection */}
                                     <div>
-                                        <label className={DS_labelCls}>
-                                            <MapPin className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
-                                            {isRTL ? 'المسار' : 'Route'}
-                                        </label>
-                                        <select
+                                        <SearchableSelect
+                                            label={isRTL ? 'المسار' : 'Route'}
+                                            options={routeOptions}
                                             value={data.route_id}
-                                            onChange={e => setData('route_id', e.target.value)}
-                                            className={DS_inputCls}
-                                            required
-                                        >
-                                            <option value="">{isRTL ? 'اختر المسار' : 'Select Route'}</option>
-                                            {routes.map(route => {
-                                                const selectedBus = buses.find(b => b.id === parseInt(data.bus_id));
-                                                const isDefault = selectedBus?.route_id === route.id;
-                                                return (
-                                                    <option key={route.id} value={route.id}>
-                                                        {route.name} {isDefault ? (isRTL ? '(المسار الافتراضي)' : '(Bus Default)') : ''}
-                                                    </option>
-                                                );
-                                            })}
-                                        </select>
+                                            onChange={val => setData('route_id', val.toString())}
+                                            placeholder={isRTL ? 'اختر المسار' : 'Select Route'}
+                                        />
                                         {errors.route_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.route_id}</p>}
                                     </div>
 
@@ -169,17 +160,16 @@ export default function Create({ auth, buses, routes }: Props) {
                                         {errors.date && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.date}</p>}
                                     </div>
 
-                                    {/* Trip Type */}
                                     <div>
                                         <label className={DS_labelCls}>
                                             <Zap className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
                                             {isRTL ? 'نوع الرحلة' : 'Trip Type'}
                                         </label>
-                                        <div className="grid grid-cols-2 gap-3 mt-1">
+                                        <div className="grid grid-cols-3 gap-2 mt-1">
                                             <button
                                                 type="button"
                                                 onClick={() => setData('type', 'forth')}
-                                                className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all border-2 ${data.type === 'forth'
+                                                className={`px-3 py-2.5 rounded-xl text-[10px] font-black transition-all border-2 ${data.type === 'forth'
                                                     ? 'bg-[#0f2044] border-[#0f2044] text-white shadow-lg'
                                                     : 'bg-gray-50 dark:bg-[#243460] border-transparent text-gray-500 dark:text-[#7ba7e8]/60 hover:bg-gray-100'
                                                     }`}
@@ -189,12 +179,22 @@ export default function Create({ auth, buses, routes }: Props) {
                                             <button
                                                 type="button"
                                                 onClick={() => setData('type', 'back')}
-                                                className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all border-2 ${data.type === 'back'
+                                                className={`px-3 py-2.5 rounded-xl text-[10px] font-black transition-all border-2 ${data.type === 'back'
                                                     ? 'bg-[#f5b800] border-[#f5b800] text-[#0f2044] shadow-lg'
                                                     : 'bg-gray-50 dark:bg-[#243460] border-transparent text-gray-500 dark:text-[#7ba7e8]/60 hover:bg-gray-100'
                                                     }`}
                                             >
                                                 ↙ {isRTL ? 'إياب' : 'Back'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setData('type', 'both')}
+                                                className={`px-3 py-2.5 rounded-xl text-[10px] font-black transition-all border-2 ${data.type === 'both'
+                                                    ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg'
+                                                    : 'bg-gray-50 dark:bg-[#243460] border-transparent text-gray-500 dark:text-[#7ba7e8]/60 hover:bg-gray-100'
+                                                    }`}
+                                            >
+                                                🔁 {isRTL ? 'ذهاب وإياب' : 'Both'}
                                             </button>
                                         </div>
                                         {errors.type && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.type}</p>}

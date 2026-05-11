@@ -63,7 +63,7 @@ class BusController extends Controller
                 'المدرسة' => $bus->school ? $bus->school->name : 'غير محدد',
                 'المسار' => $bus->route ? $bus->route->name : 'غير محدد',
                 'السائق' => $bus->driver?->user?->name ?? 'متاح',
-                'المشرفة (مرافق)' => $bus->assistant ? $bus->assistant->name : 'متاح',
+                'مشرفة الحافلة' => $bus->assistant ? $bus->assistant->name : 'متاح',
                 'الحالة' => match($bus->status) {
                     'active' => 'نشط',
                     'maintenance' => 'صيانة',

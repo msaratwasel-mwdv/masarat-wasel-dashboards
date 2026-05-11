@@ -39,11 +39,23 @@ trait DataTableTrait
                 foreach ($searchColumns as $i => $column) {
                     $method = $i === 0 ? 'where' : 'orWhere';
 
-                    // Support relation columns: 'school.name' → whereHas('school', ...)
+                    // Support relation columns: 'school.name' or 'schoolAdmin.school.name'
                     if (str_contains($column, '.')) {
-                        [$relation, $field] = explode('.', $column, 2);
-                        $q->{$i === 0 ? 'whereHas' : 'orWhereHas'}($relation, function ($rq) use ($field, $search) {
-                            $rq->where($field, 'like', "%{$search}%");
+                        $parts = explode('.', $column);
+                        $field = array_pop($parts);
+                        $relationPath = implode('.', $parts);
+                        
+                        $q->{$i === 0 ? 'whereHas' : 'orWhereHas'}($relationPath, function ($rq) use ($field, $search) {
+                            if ($field === 'name') {
+                                $rq->where(function($sq) use ($search) {
+                                    $sq->where('first_name_ar', 'like', "%{$search}%")
+                                       ->orWhere('last_name_ar', 'like', "%{$search}%")
+                                       ->orWhere('first_name_en', 'like', "%{$search}%")
+                                       ->orWhere('last_name_en', 'like', "%{$search}%");
+                                });
+                            } else {
+                                $rq->where($field, 'like', "%{$search}%");
+                            }
                         });
                     } elseif ($column === 'name') {
                         // Special case for 'name' which is often a virtual field or split in DB
@@ -51,6 +63,12 @@ trait DataTableTrait
                             $sq->where('first_name_ar', 'like', "%{$search}%")
                                ->orWhere('last_name_ar', 'like', "%{$search}%")
                                ->orWhere('first_name_en', 'like', "%{$search}%")
+                               ->orWhere('last_name_en', 'like', "%{$search}%");
+                        });
+                    } elseif ($column === 'name_en') {
+                        // Special case for 'name_en' virtual attribute
+                        $q->{$method}(function($sq) use ($search) {
+                            $sq->where('first_name_en', 'like', "%{$search}%")
                                ->orWhere('last_name_en', 'like', "%{$search}%");
                         });
                     } else {

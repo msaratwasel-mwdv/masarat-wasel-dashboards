@@ -555,7 +555,7 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
                                         <span className="font-mono text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">{req.bus.plate_number}</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-3">
-                                        <Users className="w-4 h-4" /> العتبة السعوية: {req.bus.capacity} مقعد
+                                        <Users className="w-4 h-4" /> {isRTL ? "السعة:" : "Capacity:"} {req.bus.capacity} {isRTL ? "مقعد" : "Seats"}
                                     </div>
                                     <div className="space-y-1 mt-2 border-t pt-2 dark:border-gray-700">
                                         <div className="flex items-center gap-2 text-xs">

@@ -465,9 +465,18 @@ class StudentController extends Controller
                 // Also update the guardian's user record
                 $guardianUser = \App\Models\User::find($g['guardian_id']);
                 if ($guardianUser) {
+                    $arParts = \App\Models\User::parseFullName($g['name'] ?? '');
+                    $enParts = \App\Models\User::parseFullName($g['name_en'] ?? '');
+
                     $guardianUser->update([
-                        'first_name_ar' => $g['name'],
-                        'first_name_en' => $g['name_en'],
+                        'first_name_ar'  => $arParts[0],
+                        'second_name_ar' => $arParts[1],
+                        'third_name_ar'  => $arParts[2],
+                        'last_name_ar'   => $arParts[3],
+                        'first_name_en'  => $enParts[0],
+                        'second_name_en' => $enParts[1],
+                        'third_name_en'  => $enParts[2],
+                        'last_name_en'   => $enParts[3],
                         'phone' => $g['phone'],
                         'address' => $g['address'],
                         'home_number' => $g['home_number'],

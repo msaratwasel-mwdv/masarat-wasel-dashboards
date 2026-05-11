@@ -295,41 +295,56 @@ export default function ShowSchool({
       {/* --- MODALS --- */}
       <Modal show={managerModal.show} onClose={() => setManagerModal({ ...managerModal, show: false })} maxWidth="2xl">
           <div className={`p-8 ${isDark ? "bg-gray-900" : "bg-white"} rounded-[2.5rem]`}>
-              <h2 className={`text-2xl font-black mb-8 ${isDark ? "text-white" : "text-brand-navy"}`}>{managerModal.type === 'add' ? (isRTL ? "إضافة مدير جديد" : "New Administrator") : (isRTL ? "تعديل المدير" : "Edit Administrator")}</h2>
-              <form onSubmit={handleManagerSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <h2 className={`text-2xl font-black mb-8 ${isDark ? "text-white" : "text-brand-navy"}`}>
+                {managerModal.type === 'add' ? (isRTL ? "إضافة مدير جديد" : "New Administrator") : (isRTL ? "تعديل المدير" : "Edit Administrator")}
+              </h2>
+              <form onSubmit={handleManagerSubmit} className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
-                          <InputLabel value={isRTL ? "الاسم" : "Name"} />
-                          <TextInput value={data.name} onChange={e => setData('name', e.target.value)} className="w-full mt-2" required />
+                          <InputLabel value={isRTL ? "الاسم الكامل" : "Full Name"} />
+                          <TextInput value={data.name} onChange={e => setData('name', e.target.value)} className="w-full mt-1" required />
+                          <InputError message={errors.name} className="mt-1" />
                       </div>
                       <div>
-                          <InputLabel value={isRTL ? "رقم الهوية" : "National ID"} />
-                          <TextInput value={data.national_id} onChange={e => setData('national_id', e.target.value)} className="w-full mt-2" required />
+                          <InputLabel value={isRTL ? "الرقم المدني" : "Civil ID"} />
+                          <TextInput value={data.national_id} onChange={e => setData('national_id', e.target.value)} className="w-full mt-1" required />
+                          <InputError message={errors.national_id} className="mt-1" />
                       </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
                           <InputLabel value={isRTL ? "البريد الإلكتروني" : "Email"} />
-                          <TextInput type="email" value={data.email} onChange={e => setData('email', e.target.value)} className="w-full mt-2" required />
+                          <TextInput type="email" value={data.email} onChange={e => setData('email', e.target.value)} className="w-full mt-1" required />
+                          <InputError message={errors.email} className="mt-1" />
                       </div>
                       <div>
                           <InputLabel value={isRTL ? "رقم الهاتف" : "Phone"} />
-                          <TextInput value={data.phone} onChange={e => setData('phone', e.target.value)} className="w-full mt-2" required />
+                          <TextInput value={data.phone} onChange={e => setData('phone', e.target.value)} className="w-full mt-1" required />
+                          <InputError message={errors.phone} className="mt-1" />
                       </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                      <InputLabel value={isRTL ? "العنوان" : "Address"} />
+                      <TextInput value={data.address} onChange={e => setData('address', e.target.value)} className="w-full mt-1" />
+                      <InputError message={errors.address} className="mt-1" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
-                          <InputLabel value={isRTL ? "كلمة المرور" : "Password"} />
-                          <TextInput type="password" value={data.password} onChange={e => setData('password', e.target.value)} className="w-full mt-2" />
+                          <InputLabel value={managerModal.type === 'edit' ? (isRTL ? "كلمة المرور (اتركها فارغة للإبقاء عليها)" : "Password (leave blank to keep)") : (isRTL ? "كلمة المرور" : "Password")} />
+                          <TextInput type="password" value={data.password} onChange={e => setData('password', e.target.value)} className="w-full mt-1" />
+                          <InputError message={errors.password} className="mt-1" />
                       </div>
                       <div>
-                          <InputLabel value={isRTL ? "تأكيد كلمة المرور" : "Confirm"} />
-                          <TextInput type="password" value={data.password_confirmation} onChange={e => setData('password_confirmation', e.target.value)} className="w-full mt-2" />
+                          <InputLabel value={isRTL ? "تأكيد كلمة المرور" : "Confirm Password"} />
+                          <TextInput type="password" value={data.password_confirmation} onChange={e => setData('password_confirmation', e.target.value)} className="w-full mt-1" />
+                          <InputError message={errors.password_confirmation} className="mt-1" />
                       </div>
                   </div>
-                  <div className="flex justify-end gap-3 mt-8">
+                  <div className="flex justify-end gap-3 mt-6">
                       <SecondaryButton onClick={() => setManagerModal({ ...managerModal, show: false })}>{isRTL ? "إلغاء" : "Cancel"}</SecondaryButton>
-                      <PrimaryButton className="bg-brand-navy" disabled={processing}>{isRTL ? "حفظ" : "Save"}</PrimaryButton>
+                      <PrimaryButton className="bg-brand-navy" disabled={processing}>
+                        {processing ? (isRTL ? "جاري الحفظ..." : "Saving...") : (isRTL ? "حفظ" : "Save")}
+                      </PrimaryButton>
                   </div>
               </form>
           </div>

@@ -21,7 +21,7 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
-        // تسجيل الدخول حصرياً عبر "رقم الهوية" و "كلمة السر"
+        // تسجيل الدخول حصرياً عبر "الرقم المدني" و "كلمة السر"
         $request->validate([
             'national_id' => 'required|string',
             'password'    => 'required|string',
@@ -41,7 +41,7 @@ class AuthController extends Controller
             ]);
 
             throw ValidationException::withMessages([
-                'national_id' => ['رقم الهوية أو كلمة السر غير صحيحة.'],
+                'national_id' => ['الرقم المدني أو كلمة السر غير صحيحة.'],
             ]);
         }
 

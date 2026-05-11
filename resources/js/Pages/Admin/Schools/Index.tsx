@@ -43,6 +43,14 @@ import PlanSelectorGrid from "@/Components/PlanSelectorGrid";
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import {
+  DS_pageTitle,
+  DS_gridCols,
+  DS_tableWrapper,
+  DS_card,
+  DS_tableBase,
+  DS_tableHead
+} from "@/lib/DS";
 
 // 1. Data Shape
 interface School {
@@ -219,15 +227,16 @@ export default function SchoolsIndex({ schools, plans }: Props) {
   return (
     <AuthenticatedLayout
       header={
-        <div className={`flex justify-between items-center w-full ${isRTL ? "flex-row" : "flex-row"}`}>
-          <h2 className={`font-bold text-xl ${isDark ? "text-gray-200" : "text-gray-800"}`}>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full gap-4">
+          <h2 className={DS_pageTitle}>
             {isRTL ? "إدارة المدارس" : "Schools Management"}
           </h2>
 
           <PrimaryButton
             onClick={openAddModal}
-            className="bg-brand-yellow text-brand-dark hover:bg-yellow-500 shadow-lg px-6 py-2 rounded-xl font-bold border-none"
+            className="w-full md:w-auto bg-[#f5b800] text-[#0f2044] hover:bg-yellow-500 shadow-lg px-6 py-2.5 rounded-xl font-black border-none"
           >
+            <Plus className={`w-4 h-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
             {isRTL ? "إضافة مدرسة" : "Add School"}
           </PrimaryButton>
         </div>
@@ -238,7 +247,7 @@ export default function SchoolsIndex({ schools, plans }: Props) {
       <div className={`space-y-6 dir-${isRTL ? "rtl" : "ltr"}`}>
 
         {/* Stats Header */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className={DS_gridCols}>
           {[
             { label: isRTL ? "إجمالي المدارس" : "Total Schools", value: counts.all, icon: <SchoolIcon className="w-5 h-5" />, color: "blue" as const },
             { label: isRTL ? "مدارس نشطة" : "Active Schools", value: counts.active, icon: <CheckCircle2 className="w-5 h-5" />, color: "green" as const },
@@ -308,7 +317,7 @@ export default function SchoolsIndex({ schools, plans }: Props) {
 
         {/* Existing Grid or Empty State */}
         {filteredSchools.length === 0 ? (
-            <div className={`p-12 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center ${isDark ? "bg-gray-800/50 border-gray-700" : "bg-white border-gray-100"}`}>
+            <div className={`p-12 rounded-[28px] border-2 border-dashed flex flex-col items-center justify-center ${isDark ? "bg-gray-800/50 border-gray-700" : "bg-white border-gray-100"}`}>
                 <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 ${isDark ? "bg-gray-700" : "bg-gray-50"}`}>
                     <SchoolIcon className={`w-10 h-10 ${isDark ? "text-gray-500" : "text-gray-300"}`} />
                 </div>
@@ -323,13 +332,13 @@ export default function SchoolsIndex({ schools, plans }: Props) {
                 </PrimaryButton>
             </div>
         ) : viewMode === "map" ? (
-            <div className="h-[600px] rounded-[35px] overflow-hidden border-2 border-white dark:border-gray-800 shadow-2xl relative">
+            <div className="h-[600px] rounded-[32px] overflow-hidden border-2 border-white dark:border-gray-800 shadow-2xl relative">
                 <SchoolsDistributionMap schools={filteredSchools} isDark={isDark} isRTL={isRTL} />
             </div>
         ) : viewMode === "list" ? (
-            <div className="overflow-x-auto rounded-3xl border shadow-sm dark:border-gray-700 dark:bg-gray-800 bg-white">
-                <table className={`w-full text-sm ${isRTL ? "text-right" : "text-left"}`}>
-                    <thead className={`text-xs font-bold uppercase ${isDark ? "bg-gray-900/50 text-gray-400 border-b border-gray-700" : "bg-gray-50/50 text-gray-500 border-b border-gray-100"}`}>
+            <div className={DS_tableWrapper + " " + DS_card}>
+                <table className={DS_tableBase}>
+                    <thead className={DS_tableHead}>
                         <tr>
                             <th className="px-6 py-4">{isRTL ? "المدرسة" : "School"}</th>
                             <th className="px-6 py-4">{isRTL ? "الموقع" : "Location"}</th>
@@ -352,7 +361,7 @@ export default function SchoolsIndex({ schools, plans }: Props) {
                 </table>
             </div>
         ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className={DS_gridCols}>
                 {filteredSchools.map((school) => (
                     <SchoolCard
                         key={school.id}
@@ -597,7 +606,7 @@ export default function SchoolsIndex({ schools, plans }: Props) {
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <div className={isRTL ? "text-right" : ""}>
-                                                <InputLabel value={isRTL ? "رقم الهوية" : "National ID"} />
+                                                <InputLabel value={isRTL ? "الرقم المدني" : "Civil ID"} />
                                                 <div className="relative">
                                                     <Fingerprint className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} w-4 h-4 text-gray-400`} />
                                                     <TextInput

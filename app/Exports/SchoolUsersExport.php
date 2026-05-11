@@ -42,7 +42,7 @@ class SchoolUsersExport implements FromCollection, WithHeadings, WithMapping, Sh
                 'اسم الأب (انجليزي)',
                 'اسم الجد (انجليزي)',
                 'الاسم الأخير (انجليزي)',
-                'رقم الهوية',
+                'الرقم المدني',
                 'رقم الجوال',
                 'البريد الإلكتروني',
                 'العنوان',

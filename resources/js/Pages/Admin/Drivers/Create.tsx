@@ -72,9 +72,9 @@ export default function CreateDriver() {
                                             <InputError message={errors.name} className="mt-2" />
                                         </div>
 
-                                        {/* National ID */}
+                                        {/* Civil ID */}
                                         <div>
-                                            <InputLabel htmlFor="national_id" value="National ID / Iqama" />
+                                            <InputLabel htmlFor="national_id" value="Civil ID / Iqama" />
                                             <TextInput
                                                 id="national_id"
                                                 type="text"

@@ -9,14 +9,21 @@ use Inertia\Inertia;
 
 class TransactionController extends Controller
 {
-    public function index()
+    use \App\Traits\DataTableTrait;
+
+    public function index(Request $request)
     {
-        $transactions = PaymentTransaction::with(['school', 'installmentPayments.installment'])
-            ->latest()
-            ->paginate(15);
+        $query = PaymentTransaction::with(['school', 'installmentPayments.installment']);
+
+        $paginated = $this->applyDataTable($query, $request, [
+            'reference_number',
+            'payment_method',
+            'school.name'
+        ], 15);
 
         return Inertia::render('Admin/Transactions/Index', [
-            'transactions' => $transactions
+            'transactions' => $paginated,
+            'filters' => $request->only(['search'])
         ]);
     }
 }

@@ -74,59 +74,50 @@ class SchoolController extends Controller
             }
 
             return redirect()->route('admin.schools.index')
-                ->with('message', 'School created successfully' . ($request->create_admin ? ' with admin' : ''));
+                ->with('success', 'School created successfully' . ($request->create_admin ? ' with admin' : ''));
         });
     }
     public function show(School $school)
     {
-        // Admins are linked via the school_admins extension table, not users.school_id
+        // ⚡ Eager load admins + their users in 2 queries instead of N+1
         $school->load('schoolAdmins.user');
 
-        // Map school admins to a simple users array for the frontend
         $school->users = $school->schoolAdmins->map(function($sa) {
             return [
-                'id' => $sa->user->id,
-                'name' => $sa->user->name,
-                'email' => $sa->user->email,
-                'phone' => $sa->user->phone,
-                'national_id' => $sa->user->national_id,
-                'address' => $sa->user->address,
-                'image' => $sa->user->image,
-                'role' => $sa->user->role,
+                'id'         => $sa->user->id,
+                'name'       => $sa->user->name,
+                'email'      => $sa->user->email,
+                'phone'      => $sa->user->phone,
+                'national_id'=> $sa->user->national_id,
+                'address'    => $sa->user->address,
+                'image'      => $sa->user->image,
+                'role'       => $sa->user->role,
             ];
         });
 
+        // ⚡ Single aggregated query instead of 6 separate COUNTs
+        $busStats = \App\Models\Bus::where('school_id', $school->id)
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_count,
+                SUM(CASE WHEN status = 'maintenance' THEN 1 ELSE 0 END) as maintenance_count,
+                COUNT(DISTINCT assistant_id) FILTER (WHERE assistant_id IS NOT NULL) as assistants_count
+            ")
+            ->first();
+
         $stats = [
-            // عدد الطلاب التابعين للمدرسة (باستخدام السكوب الصحيح)
-            'students_count' => \App\Models\Student::inSchool($school->id)->count(),
-
-            // عدد الباصات المخصصة للمدرسة
-            'buses_count' => \App\Models\Bus::where('school_id', $school->id)->count(),
-            'active_buses' => \App\Models\Bus::where('school_id', $school->id)
-                ->where('status', 'active')
-                ->count(),
-            'maintenance_buses' => \App\Models\Bus::where('school_id', $school->id)
-                ->where('status', 'maintenance')
-                ->count(),
-
-            // عدد السائقين المخصصين لهذه المدرسة (المعينين على باصات تابعة للمدرسة)
-            'drivers_count' => \App\Models\Driver::whereHas('bus', function($q) use ($school) {
-                $q->where('school_id', $school->id);
-            })->count(),
-
-            // عدد المساعدين المخصصين لباصات هذه المدرسة
-            'assistants_count' => \App\Models\Bus::where('school_id', $school->id)
-                ->whereNotNull('assistant_id')
-                ->distinct('assistant_id')
-                ->count(),
-
-            // عدد مدراء المدرسة — via school_admins extension table
-            'admins_count' => $school->schoolAdmins->count(),
+            'students_count'    => \App\Models\Student::inSchool($school->id)->count(),
+            'buses_count'       => (int) ($busStats->total ?? 0),
+            'active_buses'      => (int) ($busStats->active_count ?? 0),
+            'maintenance_buses' => (int) ($busStats->maintenance_count ?? 0),
+            'drivers_count'     => \App\Models\Driver::whereHas('bus', fn($q) => $q->where('school_id', $school->id))->count(),
+            'assistants_count'  => (int) ($busStats->assistants_count ?? 0),
+            'admins_count'      => $school->schoolAdmins->count(),
         ];
 
         return Inertia::render('Admin/Schools/Show', [
             'school' => $school,
-            'stats' => $stats
+            'stats'  => $stats
         ]);
     }
 
@@ -147,7 +138,7 @@ class SchoolController extends Controller
         $school->update($data);
 
         return redirect()->route('admin.schools.index')
-            ->with('message', 'School updated successfully');
+            ->with('success', 'School updated successfully');
     }
 
     public function destroy(School $school)
@@ -155,7 +146,7 @@ class SchoolController extends Controller
         $school->delete();
 
         return redirect()->route('admin.schools.index')
-            ->with('message', 'School deleted successfully');
+            ->with('success', 'School deleted successfully');
     }
 
     public function toggleStatus(School $school)
@@ -163,7 +154,7 @@ class SchoolController extends Controller
         $school->status = $school->status === 'Active' ? 'Inactive' : 'Active';
         $school->save();
 
-        return back()->with('message', 'تم تحديث حالة المدرسة بنجاح');
+        return back()->with('success', 'تم تحديث حالة المدرسة بنجاح');
     }
 }
 

@@ -17,16 +17,44 @@ class SubscriptionController extends Controller
         $this->subscriptionService = $subscriptionService;
     }
 
-    public function index()
+    use \App\Traits\DataTableTrait;
+
+    public function index(Request $request)
     {
-        $subscriptions = Subscription::with(['school.users', 'plan'])
-            ->latest()
-            ->get();
+        $query = Subscription::with(['school', 'plan']);
+
+        $paginated = $this->applyDataTable($query, $request, [
+            'status',
+            'school.name',
+            'plan.name'
+        ], 15);
 
         return Inertia::render('Admin/Subscriptions/Index', [
-            'subscriptions' => $subscriptions,
+            'subscriptions' => $paginated,
+            'filters' => $request->only(['search']),
             'all_plans' => \App\Models\Plan::where('is_active', true)->get()
         ]);
+    }
+
+    public function update(Request $request, Subscription $subscription)
+    {
+        $validated = $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+            'status' => 'required|in:pending_approval,active,cancelled,expired',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+        ]);
+
+        $subscription->update($validated);
+
+        return redirect()->back()->with('success', 'تم تحديث بيانات الاشتراك بنجاح');
+    }
+
+    public function destroy(Subscription $subscription)
+    {
+        // We might want to check if it has installments before deleting, or use soft deletes
+        $subscription->delete();
+        return redirect()->back()->with('success', 'تم حذف الاشتراك بنجاح');
     }
 
     public function installmentsList(Request $request)
