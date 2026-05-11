@@ -20,8 +20,13 @@ class PlanController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string',
+            'name_ar' => 'nullable|string',
+            'name_en' => 'nullable|string',
             'description' => 'required|string',
+            'description_ar' => 'nullable|string',
+            'description_en' => 'nullable|string',
             'price_per_student' => 'required|numeric|min:0',
+            'price_per_student_yearly' => 'required|numeric|min:0',
             'max_buses' => 'nullable|integer|min:1',
             'has_driver_app' => 'boolean',
             'has_parent_app' => 'boolean',
@@ -31,6 +36,8 @@ class PlanController extends Controller
             'has_api_access' => 'boolean',
             'has_dedicated_support' => 'boolean',
             'badge' => 'nullable|string',
+            'badge_ar' => 'nullable|string',
+            'badge_en' => 'nullable|string',
             'is_active' => 'boolean'
         ]);
 
@@ -42,8 +49,13 @@ class PlanController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string',
+            'name_ar' => 'nullable|string',
+            'name_en' => 'nullable|string',
             'description' => 'required|string',
+            'description_ar' => 'nullable|string',
+            'description_en' => 'nullable|string',
             'price_per_student' => 'required|numeric|min:0',
+            'price_per_student_yearly' => 'required|numeric|min:0',
             'max_buses' => 'nullable|integer|min:1',
             'has_driver_app' => 'boolean',
             'has_parent_app' => 'boolean',
@@ -53,6 +65,8 @@ class PlanController extends Controller
             'has_api_access' => 'boolean',
             'has_dedicated_support' => 'boolean',
             'badge' => 'nullable|string',
+            'badge_ar' => 'nullable|string',
+            'badge_en' => 'nullable|string',
             'is_active' => 'boolean'
         ]);
 

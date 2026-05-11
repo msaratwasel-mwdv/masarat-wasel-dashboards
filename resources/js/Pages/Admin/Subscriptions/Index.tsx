@@ -3,6 +3,7 @@ import { Head, router, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { CheckCircle2, XCircle, Clock, Eye, AlertTriangle, FileText, Mail, MapPin, Wallet } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import OmaniRial from '@/Components/OmaniRial';
 
 export default function SubscriptionsIndex({ subscriptions }: any) {
     const { isRTL } = useTheme();
@@ -148,7 +149,7 @@ export default function SubscriptionsIndex({ subscriptions }: any) {
                                                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase">
                                                     <AlertTriangle size={12} /> {isRTL ? 'رقم الجوال' : 'Phone'}
                                                 </div>
-                                                <span className="font-black text-slate-700 text-sm" dir="ltr">
+                                                <span className={`font-black text-slate-700 text-sm ${isRTL ? 'text-right' : 'text-left'}`} dir="ltr">
                                                     {selectedSubscription?.school?.users?.[0]?.phone || '-'}
                                                 </span>
                                             </div>
@@ -165,7 +166,7 @@ export default function SubscriptionsIndex({ subscriptions }: any) {
                                         <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 border-b pb-2">{isRTL ? 'تفاصيل خطة الاشتراك' : 'Subscription Plan Details'}</h4>
                                         <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
                                             <div className="text-xl font-black text-brand-navy mb-1">{selectedSubscription?.plan?.name}</div>
-                                            <div className="text-[#f5b800] font-black text-2xl mb-4" dir="ltr">${selectedSubscription?.plan?.price_per_student} <span className="text-[10px] text-slate-400">{isRTL ? '/ طالب' : '/ Student'}</span></div>
+                                            <div className="text-[#f5b800] font-black text-2xl mb-4 flex items-center gap-1" dir="ltr"><OmaniRial className="w-5 h-5" />{selectedSubscription?.plan?.price_per_student} <span className="text-[10px] text-slate-400">{isRTL ? '/ طالب' : '/ Student'}</span></div>
                                             
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between text-xs">
@@ -212,11 +213,11 @@ export default function SubscriptionsIndex({ subscriptions }: any) {
                                 <div className="bg-brand-navy/5 p-6 rounded-2xl border border-brand-navy/10 mb-8 space-y-4">
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs font-bold text-slate-500 uppercase">{isRTL ? 'سعر الطالب:' : 'Student Price:'}</span>
-                                        <span className="font-black text-brand-navy">${selectedSubscription?.plan?.price_per_student}</span>
+                                        <span className="font-black text-brand-navy flex items-center gap-1"><OmaniRial className="w-3.5 h-3.5 text-brand-navy" />{selectedSubscription?.plan?.price_per_student}</span>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs font-bold text-slate-500 uppercase">{isRTL ? 'إجمالي التقدير السنوي:' : 'Total Annual Estimate:'}</span>
-                                        <span className="font-black text-emerald-500 text-lg">${(selectedSubscription?.plan?.max_buses || 1) * 20 * (selectedSubscription?.plan?.price_per_student || 0)}</span>
+                                        <span className="font-black text-emerald-500 text-lg flex items-center gap-1"><OmaniRial className="w-4 h-4 text-emerald-500" />{(selectedSubscription?.plan?.max_buses || 1) * 20 * (selectedSubscription?.plan?.price_per_student || 0)}</span>
                                     </div>
                                 </div>
 
@@ -237,8 +238,8 @@ export default function SubscriptionsIndex({ subscriptions }: any) {
                                                 <option value={12}>{isRTL ? '12 دفعة (شهري)' : '12 installments (Monthly)'}</option>
                                             </select>
                                         </div>
-                                        <p className={`text-xs text-slate-400 leading-relaxed italic ${isRTL ? 'text-right' : 'text-left'}`}>
-                                            {isRTL ? 'سيتم تقسيم مبلغ' : 'The amount of'} <span className="font-black">${(selectedSubscription?.plan?.max_buses || 1) * 20 * (selectedSubscription?.plan?.price_per_student || 0)}</span> {isRTL ? 'على' : 'will be split into'} <span className="font-black">{installmentsCount}</span> {isRTL ? 'أقساط متساوية.' : 'equal installments.'}
+                                        <p className={`text-xs text-slate-400 leading-relaxed italic flex items-center gap-1 flex-wrap ${isRTL ? 'text-right' : 'text-left'}`}>
+                                            {isRTL ? 'سيتم تقسيم مبلغ' : 'The amount of'} <span className="font-black flex items-center gap-0.5"><OmaniRial className="w-3 h-3" />{(selectedSubscription?.plan?.max_buses || 1) * 20 * (selectedSubscription?.plan?.price_per_student || 0)}</span> {isRTL ? 'على' : 'will be split into'} <span className="font-black">{installmentsCount}</span> {isRTL ? 'أقساط متساوية.' : 'equal installments.'}
                                         </p>
                                     </div>
                                 </div>

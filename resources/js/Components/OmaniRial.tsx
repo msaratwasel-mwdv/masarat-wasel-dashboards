@@ -16,8 +16,7 @@ const OmaniRial: React.FC<OmaniRialProps> = ({
     <svg
       id="OmaniRial_Symbol"
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 2736.46 843.47"
-      width="auto"
+      viewBox="1760 0 976 843"
       height={size}
       className={className}
       style={{

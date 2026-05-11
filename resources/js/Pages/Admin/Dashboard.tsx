@@ -18,6 +18,7 @@ import {
   Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from "recharts";
+import OmaniRial from "@/Components/OmaniRial";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
@@ -280,7 +281,7 @@ export default function Dashboard({
                               <MapIcon size={10} />
                               <span className="truncate">{sub.school.address}</span>
                            </div>
-                           <p className="text-xs text-[#f5b800] font-black mt-2">{sub.plan.name} - ${sub.plan.price}</p>
+                           <p className="text-xs text-[#f5b800] font-black mt-2 flex items-center gap-1">{sub.plan.name} - <OmaniRial className="w-3 h-3" />{sub.plan.price}</p>
                         </div>
                         <div className="p-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                            <Clock className="w-4 h-4 text-amber-500" />
@@ -671,15 +672,15 @@ export default function Dashboard({
                 </div>
                 <div className="text-lg font-black">{selectedSub?.plan?.name}</div>
                 <div className="flex items-baseline gap-2 mt-1">
-                   <div className="text-2xl font-black text-[#f5b800]">
-                      ${(selectedSub?.plan?.max_buses || 1) * 20 * (selectedSub?.plan?.price || 0)}
+                   <div className="text-2xl font-black text-[#f5b800] flex items-center gap-1">
+                      <OmaniRial className="w-5 h-5" />{(selectedSub?.plan?.max_buses || 1) * 20 * (selectedSub?.plan?.price || 0)}
                    </div>
                    <div className="text-[10px] font-bold opacity-50">
                       (إجمالي التقدير السنوي)
                    </div>
                 </div>
-                <div className={`text-[10px] mt-2 font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                   {isRTL ? "سعر الطالب:" : "Price per student:"} ${selectedSub?.plan?.price} | 
+                <div className={`text-[10px] mt-2 font-bold flex items-center gap-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                   {isRTL ? "سعر الطالب:" : "Price per student:"} <OmaniRial className="w-2.5 h-2.5" />{selectedSub?.plan?.price} | 
                    {isRTL ? " الحافلات:" : " Buses:"} {selectedSub?.plan?.max_buses || 1} | 
                    {isRTL ? " السعة:" : " Capacity:"} {(selectedSub?.plan?.max_buses || 1) * 20}
                 </div>
@@ -704,10 +705,10 @@ export default function Dashboard({
                       <Clock size={20} />
                    </div>
                 </div>
-                <p className="text-[10px] text-slate-500 leading-relaxed px-1">
+                <p className="text-[10px] text-slate-500 leading-relaxed px-1 flex flex-wrap items-center gap-1">
                    {isRTL 
-                     ? `سيتم تقسيم مبلغ $${(selectedSub?.plan?.max_buses || 1) * 20 * (selectedSub?.plan?.price || 0)} تلقائياً على ${installmentsCount} مواعيد استحقاق منفصلة لهذا العام.`
-                     : `The amount of $${(selectedSub?.plan?.max_buses || 1) * 20 * (selectedSub?.plan?.price || 0)} will be automatically split into ${installmentsCount} separate due dates.`
+                     ? <>سيتم تقسيم مبلغ <OmaniRial className="w-2.5 h-2.5" />{(selectedSub?.plan?.max_buses || 1) * 20 * (selectedSub?.plan?.price || 0)} تلقائياً على {installmentsCount} مواعيد استحقاق منفصلة لهذا العام.</>
+                     : <>The amount of <OmaniRial className="w-2.5 h-2.5" />{(selectedSub?.plan?.max_buses || 1) * 20 * (selectedSub?.plan?.price || 0)} will be automatically split into {installmentsCount} separate due dates.</>
                    }
                 </p>
             </div>
