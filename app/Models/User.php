@@ -41,6 +41,7 @@ class User extends Authenticatable
         'address',
         'latitude',
         'longitude',
+        'whatsapp_consent',
     ];
 
     /**
@@ -480,5 +481,10 @@ class User extends Authenticatable
               ->orWhereHas('assignedBusAsFieldSupervisor', fn($sq) => $sq->where('school_id', $schoolId))
               ->orWhereHas('students.enrollments.classroom', fn($sq) => $sq->atSchool($schoolId));
         });
+    }
+
+    public function whatsappMessages(): HasMany
+    {
+        return $this->hasMany(WhatsAppMessage::class, 'recipient_user_id');
     }
 }

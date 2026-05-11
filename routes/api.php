@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DailyTripApiController;
 use App\Http\Controllers\Api\BusLocationController;
 use App\Http\Controllers\Api\GuardianNotificationController;
+use App\Http\Controllers\WhatsApp\WebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -166,4 +167,12 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/invoices/my', [\App\Http\Controllers\Api\InvoiceController::class, 'myInvoices']);
     Route::get('/invoices/all', [\App\Http\Controllers\Api\InvoiceController::class, 'allInvoices']);
     Route::post('/invoices/{invoice}/payment', [\App\Http\Controllers\Api\InvoiceController::class, 'logPayment']);
+});
+
+// ═══════════════════════════════════════════════════════════
+// WhatsApp Webhook Routes (No Auth Middleware - Meta calls these directly)
+// ═══════════════════════════════════════════════════════════
+Route::prefix('whatsapp/webhook')->group(function () {
+    Route::get('/', [WebhookController::class, 'verify']);
+    Route::post('/', [WebhookController::class, 'handle']);
 });

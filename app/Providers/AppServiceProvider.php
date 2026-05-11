@@ -9,6 +9,7 @@ use App\Policies\StudentPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -59,6 +60,9 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\BusExpense::observe($analyticsObserver);
         \App\Models\Violation::observe($analyticsObserver);
         \App\Models\Delay::observe($analyticsObserver);
+
+        // Register WhatsApp Event Subscriber
+        Event::subscribe(\App\Listeners\WhatsAppEventSubscriber::class);
     }
 }
 
