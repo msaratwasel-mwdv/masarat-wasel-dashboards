@@ -43,7 +43,7 @@ export default function PlanSelectorGrid({ plans, selectedId, onSelect, billingC
                 const isAvailable = Number(rawPrice) > 0;
                 
                 const displayPrice = billingCycle === 'yearly' 
-                    ? (plan.price_per_student_yearly ? (plan.price_per_student_yearly / 12).toFixed(1) : 0)
+                    ? (plan.price_per_student_yearly || 0)
                     : plan.price_per_student;
 
                 return (
