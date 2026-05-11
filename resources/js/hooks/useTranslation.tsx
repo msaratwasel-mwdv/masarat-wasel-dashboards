@@ -1,4 +1,5 @@
 import { useTheme } from "@/Contexts/ThemeContext";
+import { useCallback } from "react";
 
 type Lang = "ar" | "en";
 
@@ -1872,13 +1873,13 @@ const dictionary = {
 export default function useTranslation() {
   const { language, isRTL } = useTheme();
 
-  const t = (key: string) => {
+  const t = useCallback((key: string) => {
     if (!dictionary[key]) {
       console.warn(`Missing translation for key: "${key}"`);
       return key;
     }
     return dictionary[key][language];
-  };
+  }, [language]);
 
   return { t, lang: language, isRtl: isRTL };
 }

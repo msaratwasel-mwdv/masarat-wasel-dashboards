@@ -301,9 +301,10 @@ export default function Authenticated({
 
   const { t } = useTranslation();
   const { flash } = usePage<any>().props;
+  const lastShownToastRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (flash?.success) {
+    if (flash?.success && flash.success !== lastShownToastRef.current) {
       toast.success(t(flash.success), {
         position: "top-center",
         autoClose: 3000,
@@ -313,8 +314,10 @@ export default function Authenticated({
         progress: undefined,
         theme: theme === 'dark' ? 'dark' : 'light',
       });
+      lastShownToastRef.current = flash.success;
     }
-    if (flash?.error) {
+    
+    if (flash?.error && flash.error !== lastShownToastRef.current) {
       toast.error(t(flash.error), {
         position: "top-center",
         autoClose: 4000,
@@ -324,6 +327,12 @@ export default function Authenticated({
         progress: undefined,
         theme: theme === 'dark' ? 'dark' : 'light',
       });
+      lastShownToastRef.current = flash.error;
+    }
+
+    // Reset ref when flash is empty to allow showing the same message again if it comes back
+    if (!flash?.success && !flash?.error) {
+        lastShownToastRef.current = null;
     }
   }, [flash, theme, t]);
 
