@@ -5,8 +5,11 @@ use App\Http\Controllers\Admin\BusController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SchoolController;
 use App\Http\Controllers\Admin\SchoolUserController;
+use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Admin\AssistantController;
+use App\Http\Controllers\Admin\SubscriptionController;
+use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\School\Attendance\AttendanceController;
 use App\Http\Controllers\School\ClassroomController;
@@ -70,19 +73,24 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('schools/{school}/toggle', [SchoolController::class, 'toggleStatus'])->name('schools.toggle');
         
         // Plans & Financials
-        Route::resource('plans', \App\Http\Controllers\Admin\PlanController::class);
-        Route::post('plans/{plan}/toggle', [\App\Http\Controllers\Admin\PlanController::class, 'toggle'])->name('plans.toggle');
+        Route::resource('plans', PlanController::class);
+        Route::post('plans/{plan}/toggle', [PlanController::class, 'toggle'])->name('plans.toggle');
         
-        Route::get('subscriptions', [\App\Http\Controllers\Admin\SubscriptionController::class, 'index'])->name('subscriptions.index');
-        Route::post('subscriptions/{subscription}/approve', [\App\Http\Controllers\Admin\SubscriptionController::class, 'approve'])->name('subscriptions.approve');
-        Route::post('subscriptions/{subscription}/reject', [\App\Http\Controllers\Admin\SubscriptionController::class, 'reject'])->name('subscriptions.reject');
-        Route::get('installments', [\App\Http\Controllers\Admin\SubscriptionController::class, 'installmentsList'])->name('installments.index');
-        Route::post('installments/{installment}/pay', [\App\Http\Controllers\Admin\SubscriptionController::class, 'payInstallment'])->name('subscriptions.installments.pay');
-        Route::get('transactions', [\App\Http\Controllers\Admin\TransactionController::class, 'index'])->name('transactions.index');
+        Route::get('subscriptions', [SubscriptionController::class, 'index'])->name('subscriptions.index');
+        Route::put('subscriptions/{subscription}', [SubscriptionController::class, 'update'])->name('subscriptions.update');
+        Route::delete('subscriptions/{subscription}', [SubscriptionController::class, 'destroy'])->name('subscriptions.destroy');
+        Route::post('subscriptions/{subscription}/approve', [SubscriptionController::class, 'approve'])->name('subscriptions.approve');
+        Route::post('subscriptions/{subscription}/reject', [SubscriptionController::class, 'reject'])->name('subscriptions.reject');
+        Route::get('installments', [SubscriptionController::class, 'installmentsList'])->name('installments.index');
+        Route::post('installments/{installment}/pay', [SubscriptionController::class, 'payInstallment'])->name('subscriptions.installments.pay');
+        Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
 
 
         // مديرو المدارس - قائمة شاملة
         Route::get('school-admins', [SchoolUserController::class, 'index'])->name('school-admins.index');
+        Route::post('school-admins', [SchoolUserController::class, 'store'])->name('school-admins.store');
+        Route::put('school-admins/{user}', [SchoolUserController::class, 'update'])->name('school-admins.update');
+        Route::delete('school-admins/{user}', [SchoolUserController::class, 'destroy'])->name('school-admins.destroy');
         Route::get('school-admins/export', [SchoolUserController::class, 'export'])->name('school-admins.export');
         Route::get('school-admins/template', [SchoolUserController::class, 'downloadTemplate'])->name('school-admins.template');
         Route::post('school-admins/import', [SchoolUserController::class, 'import'])->name('school-admins.import');
@@ -136,11 +144,15 @@ Route::middleware(['auth', 'verified', 'role:admin'])
 
         Route::get('assignmentHistory', [ReportController::class, 'assignmentHistory'])->name('assignmentHistory');
         Route::get('field-reports', [\App\Http\Controllers\Admin\FieldReportController::class, 'index'])->name('field-reports.index');
+        Route::delete('field-reports/{violation}', [\App\Http\Controllers\Admin\FieldReportController::class, 'destroy'])->name('field-reports.destroy');
         Route::resource('inspection-items', \App\Http\Controllers\Admin\InspectionItemController::class)->except(['create', 'show', 'edit']);
         Route::get('emergencies', [\App\Http\Controllers\Admin\EmergencyController::class, 'index'])->name('emergencies.index');
         Route::put('emergencies/{incident}/status', [\App\Http\Controllers\Admin\EmergencyController::class, 'updateStatus'])->name('emergencies.update-status');
+        Route::delete('emergencies/{incident}', [\App\Http\Controllers\Admin\EmergencyController::class, 'destroy'])->name('emergencies.destroy');
         Route::get('inspection-logs', [\App\Http\Controllers\Admin\InspectionLogController::class, 'index'])->name('inspection-logs.index');
+        Route::delete('inspection-logs/{inspection}', [\App\Http\Controllers\Admin\InspectionLogController::class, 'destroy'])->name('inspection-logs.destroy');
         Route::get('delay-logs', [\App\Http\Controllers\Admin\DelayLogController::class, 'index'])->name('delay-logs.index');
+        Route::delete('delay-logs/{delay}', [\App\Http\Controllers\Admin\DelayLogController::class, 'destroy'])->name('delay-logs.destroy');
 
         // مراقبة المحادثات
         Route::get('chat', [\App\Http\Controllers\Admin\ChatMonitorController::class, 'index'])->name('chat.index');

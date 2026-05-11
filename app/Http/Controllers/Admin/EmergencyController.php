@@ -52,4 +52,13 @@ class EmergencyController extends Controller
 
         return redirect()->back()->with('success', 'تم تحديث حالة البلاغ بنجاح');
     }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Incident $incident)
+    {
+        $incident->delete();
+        return redirect()->back()->with('success', 'تم حذف البلاغ بنجاح');
+    }
 }

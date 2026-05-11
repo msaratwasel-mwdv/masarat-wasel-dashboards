@@ -128,6 +128,16 @@ class DashboardController extends Controller
             ];
         }
 
+        // 7. Upcoming Holidays
+        $upcomingHolidays = \App\Models\Holiday::where(function($q) use ($schoolId) {
+                $q->whereNull('school_id')
+                  ->orWhere('school_id', $schoolId);
+            })
+            ->where('end_date', '>=', $today)
+            ->orderBy('start_date', 'asc')
+            ->take(5)
+            ->get();
+
         return Inertia::render('School/Dashboard', [
             'stats' => [
                 'students' => $studentsCount,
@@ -145,6 +155,7 @@ class DashboardController extends Controller
             'classDistribution' => $classDistribution,
             'recent_students' => $recentStudents,
             'recentActivities' => $recentActivities,
+            'upcomingHolidays' => $upcomingHolidays,
             'system_status' => 'operational',
         ]);
     }

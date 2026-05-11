@@ -16,7 +16,9 @@ import {
     User,
     ShieldCheck,
     Zap,
-    Navigation
+    Navigation,
+    ChevronRight,
+    ChevronLeft
 } from "lucide-react";
 import { 
     DS_pageWrapper, 
@@ -24,6 +26,7 @@ import {
     DS_statIcon, 
     DS_statLabel, 
     DS_statValue, 
+    DS_statValue2,
     DS_btnSecondary,
     DS_select,
     DS_input
@@ -210,9 +213,9 @@ export default function Index({ auth, conversations, schools, filters }: Props) 
   ], [isRTL, t, isDark]);
 
   const statsGrid = [
-    { label: isRTL ? 'إجمالي القنوات' : 'Total Channels', val: conversations.total, icon: <MessageSquare size={24} />, color: 'blue' },
-    { label: isRTL ? 'المحادثات النشطة' : 'Active Traffic', val: conversations.data.filter((c) => c.last_message).length, icon: <Zap size={24} />, color: 'gold' },
-    { label: isRTL ? 'الوحدات التعليمية' : 'Educational Units', val: schools.length, icon: <SchoolIcon size={24} />, color: 'navy' },
+    { label: isRTL ? 'إجمالي القنوات' : 'Total Channels', val: conversations.total, icon: <MessageSquare size={24} />, accent: 'navy' as const },
+    { label: isRTL ? 'المحادثات النشطة' : 'Active Traffic', val: conversations.data.filter((c) => c.last_message).length, icon: <Zap size={24} />, accent: 'gold' as const },
+    { label: isRTL ? 'الوحدات التعليمية' : 'Educational Units', val: schools.length, icon: <SchoolIcon size={24} />, accent: 'navy' as const },
   ];
 
   return (
@@ -222,20 +225,24 @@ export default function Index({ auth, conversations, schools, filters }: Props) 
       <div className={`${DS_pageWrapper} space-y-8 px-4 sm:px-6 lg:px-8 pt-8 pb-12`} dir={isRTL ? 'rtl' : 'ltr'}>
         
         {/* Premium Command Header */}
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2 border-b border-gray-100 dark:border-[#243460]">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6 border-b border-gray-100 dark:border-white/5">
             <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-[#0f2044] rounded-[1.25rem] flex items-center justify-center text-white shadow-2xl shadow-[#0f2044]/30 relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <MessageCircle size={28} fill="#f5b800" className="text-[#f5b800] relative z-10" />
+                <div className="w-16 h-16 bg-[#0f2044] rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-[#0f2044]/30 relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-brand-gold/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <MessageCircle size={32} fill="#f5b800" className="text-[#f5b800] relative z-10" />
                 </div>
                 <div className="flex flex-col">
                     <h1 className="text-3xl font-black text-[#0f2044] dark:text-white tracking-tight">
-                        {isRTL ? 'مراقب المحادثات' : 'Communication Relay'}
+                        {isRTL ? 'مركز مراقبة المحادثات' : 'Communication Command Center'}
                     </h1>
                     <div className="flex items-center gap-2 mt-1">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                        <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">
-                            {isRTL ? 'رصد وتحليل تدفق البيانات الحي' : 'Live Intercept & Network Oversight'}
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{isRTL ? 'نظام الرصد مفعل' : 'Monitoring Active'}</span>
+                        </div>
+                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                        <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.1em]">
+                            {isRTL ? 'تحليل تدفق البيانات والرسائل الفورية' : 'Live Intercept & Network Data Analysis'}
                         </span>
                     </div>
                 </div>
@@ -245,12 +252,12 @@ export default function Index({ auth, conversations, schools, filters }: Props) 
         {/* Intelligence Statistics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {statsGrid.map((s, i) => (
-                <div key={i} className={`${DS_statCard(s.color as any)} group/card hover:shadow-2xl transition-all duration-500 relative overflow-hidden border-b-4 border-[#0f2044]/20`}>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50/50 dark:bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover/card:scale-150 transition-transform duration-700" />
-                    <div className={`${DS_statIcon(s.color as any)} group-hover/card:rotate-12 transition-transform`}>{s.icon}</div>
+                <div key={i} className={`${DS_statCard(s.accent)} group/card hover:shadow-2xl transition-all duration-500 relative overflow-hidden`}>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover/card:scale-150 transition-transform duration-700" />
+                    <div className={`${DS_statIcon(s.accent)} group-hover/card:rotate-12 transition-transform`}>{s.icon}</div>
                     <div className="relative z-10">
                         <p className={DS_statLabel}>{s.label}</p>
-                        <p className={DS_statValue}>{s.val}</p>
+                        <p className={DS_statValue2(s.accent)}>{s.val}</p>
                     </div>
                 </div>
             ))}
@@ -265,20 +272,20 @@ export default function Index({ auth, conversations, schools, filters }: Props) 
                     data={conversations.data}
                     exportEnabled={true}
                     headerAction={
-                        <div className="flex flex-col md:flex-row items-center gap-3">
+                        <div className={`flex flex-col md:flex-row items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                             <div className="relative">
-                                <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                <Search size={14} className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none`} />
                                 <input
                                     type="text"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     onKeyDown={(e) => e.key === "Enter" && applyFilters()}
-                                    className={`${DS_input} pl-10 min-w-[240px] h-10`}
+                                    className={`${DS_input} ${isRTL ? 'pr-10' : 'pl-10'} min-w-[240px] h-11 bg-white dark:bg-[#1a2845] border-gray-100 dark:border-white/5 rounded-xl text-sm font-bold shadow-sm focus:ring-brand-gold/20 focus:border-brand-gold transition-all`}
                                     placeholder={isRTL ? "البحث عن مشارك..." : "Search operative..."}
                                 />
                             </div>
                             <div className="relative">
-                                <Navigation size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                <Navigation size={14} className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none`} />
                                 <select
                                     value={schoolFilter}
                                     onChange={(e) => {
@@ -292,7 +299,7 @@ export default function Index({ auth, conversations, schools, filters }: Props) 
                                             { preserveState: true, replace: true }
                                         );
                                     }}
-                                    className={`${DS_select} pl-10 h-10`}
+                                    className={`${DS_select} ${isRTL ? 'pr-10' : 'pl-10'} h-11 bg-white dark:bg-[#1a2845] border-gray-100 dark:border-white/5 rounded-xl text-sm font-bold shadow-sm focus:ring-brand-gold/20 focus:border-brand-gold transition-all`}
                                 >
                                     <option value="">{isRTL ? "جميع الوحدات التعليمية" : "All Operational Units"}</option>
                                     {schools.map((s) => (
@@ -308,34 +315,29 @@ export default function Index({ auth, conversations, schools, filters }: Props) 
         </div>
 
         {/* Global Network Footer */}
-        <div className="flex flex-col md:flex-row items-center justify-between p-8 bg-[#0f2044] rounded-[2rem] shadow-2xl relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-[#f5b800]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="flex flex-col md:flex-row items-center justify-between p-8 bg-gradient-to-br from-[#0f2044] to-[#1e293b] rounded-[2.5rem] shadow-2xl relative overflow-hidden group border border-white/5">
+            <div className="absolute inset-0 bg-gradient-to-r from-brand-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative z-10 space-y-2">
-                <h4 className="text-xl font-black text-white">{isRTL ? 'الشبكة التشغيلية الموحدة' : 'Unified Operational Network'}</h4>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">{isRTL ? 'إدارة قنوات الاتصال بين المدارس، السائقين، وأولياء الأمور' : 'Overseeing channels between Schools, Logistics, & Guardians'}</p>
+                <div className="flex items-center gap-3">
+                    <Zap size={20} className="text-brand-gold animate-pulse" />
+                    <h4 className="text-xl font-black text-white">{isRTL ? 'منصة الربط التشغيلي' : 'Unified Relay Protocol'}</h4>
+                </div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">{isRTL ? 'تأمين قنوات الاتصال بين المدارس، السائقين، وأولياء الأمور' : 'Securing communication nodes between Schools, Drivers, & Guardians'}</p>
             </div>
-            <div className="relative z-10 mt-6 md:mt-0 flex gap-10">
-                <div className="text-center">
-                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{isRTL ? 'أولياء الأمور' : 'Parent Node'}</p>
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                        <span className="text-xs font-black text-white">{isRTL ? 'نشط' : 'Active'}</span>
+            <div className="relative z-10 mt-8 md:mt-0 flex gap-12">
+                {[
+                    { label: isRTL ? 'أولياء الأمور' : 'Guardians', color: 'bg-blue-500' },
+                    { label: isRTL ? 'السائقون' : 'Drivers', color: 'bg-emerald-500' },
+                    { label: isRTL ? 'المشرفات' : 'Control', color: 'bg-purple-500' },
+                ].map((node, idx) => (
+                    <div key={idx} className="text-center group/node">
+                        <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.15em] mb-2 group-hover/node:text-white/60 transition-colors">{node.label}</p>
+                        <div className="flex items-center gap-2 justify-center">
+                            <div className={`w-2 h-2 ${node.color} rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]`} />
+                            <span className="text-[11px] font-black text-white">{isRTL ? 'نشط' : 'ONLINE'}</span>
+                        </div>
                     </div>
-                </div>
-                <div className="text-center">
-                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{isRTL ? 'السائقون' : 'Logistics Node'}</p>
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                        <span className="text-xs font-black text-white">{isRTL ? 'نشط' : 'Active'}</span>
-                    </div>
-                </div>
-                <div className="text-center">
-                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{isRTL ? 'المشرفات' : 'Control Node'}</p>
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                        <span className="text-xs font-black text-white">{isRTL ? 'نشط' : 'Active'}</span>
-                    </div>
-                </div>
+                ))}
             </div>
         </div>
 

@@ -18,7 +18,7 @@ class RouteController extends Controller
             ->latest()
             ->get();
 
-        $schools = School::where('status', 'active')->select('id', 'name')->get();
+        $schools = School::where('status', 'Active')->select('id', 'name')->get();
 
         return Inertia::render('Admin/Routes/Index', [
             'routes' => $routes,

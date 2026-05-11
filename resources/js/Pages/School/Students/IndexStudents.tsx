@@ -31,7 +31,7 @@ import {
   DS_statCard, DS_statIcon, DS_badge, DS_filterBtn, DS_tableTh,
   DS_modalHeader, DS_sectionHeader, DS_submitBtn,
   DS_modalContainer, DS_modalHeaderTitle, DS_modalHeaderAccent, DS_modalClose, DS_modalBody,
-  DS_statValue2,
+  DS_statValue2, DS_gridCols,
 } from "@/lib/DS";
 
 interface Guardian {
@@ -757,7 +757,7 @@ export default function IndexStudents({
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className={DS_gridCols + " mb-8"}>
           <div className={DS_statCard('blue')}>
             <div className={DS_statIcon('blue')}><Users size={20} /></div>
             <div>
@@ -782,8 +782,8 @@ export default function IndexStudents({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center justify-end gap-3 mb-4">
-          <button onClick={openAdd} className={DS_btnGold}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 mb-6">
+          <button onClick={openAdd} className={DS_btnGold + " justify-center"}>
             <UserPlus className="w-4 h-4" />
             <span>{t("Enroll New Student")}</span>
           </button>

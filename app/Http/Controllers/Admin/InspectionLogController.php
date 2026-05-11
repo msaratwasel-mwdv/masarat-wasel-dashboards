@@ -9,6 +9,8 @@ use Inertia\Inertia;
 
 class InspectionLogController extends Controller
 {
+    use \App\Traits\DataTableTrait;
+
     /**
      * Display a listing of inspection logs.
      */
@@ -20,38 +22,25 @@ class InspectionLogController extends Controller
             'results.item:id,name'
         ]);
 
-        // Filter by overall status
-        if ($request->filled('status')) {
-            $query->where('overall_status', $request->status);
-        }
-
-        // Search by bus code or number
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->whereHas('bus', function ($bq) use ($search) {
-                    $bq->where('bus_number', 'like', "%{$search}%")
-                       ->orWhere('bus_number', 'like', "%{$search}%");
-                })->orWhereHas('fieldSupervisor', function ($sq) use ($search) {
-                    $sq->where('first_name_ar', 'like', "%{$search}%")
-                       ->orWhere('last_name_ar', 'like', "%{$search}%")
-                       ->orWhere('first_name_en', 'like', "%{$search}%")
-                       ->orWhere('last_name_en', 'like', "%{$search}%");
-                });
-            });
-        }
-        
-        // Filter by date
-        if ($request->filled('date')) {
-            $query->whereDate('created_at', $request->date);
-        }
-
-        $inspections = $query->latest()->paginate(20)->withQueryString();
+        $paginated = $this->applyDataTable($query, $request, [
+            'overall_status',
+            'bus.bus_number',
+            'fieldSupervisor.name'
+        ], 15);
 
         return Inertia::render('Admin/Reports/InspectionLogs', [
-            'inspections' => $inspections,
+            'inspections' => $paginated,
             'filters' => $request->only(['search', 'status', 'date']),
         ]);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Inspection $inspection)
+    {
+        $inspection->delete();
+        return redirect()->back()->with('success', 'تم حذف سجل الفحص بنجاح');
     }
 }
 

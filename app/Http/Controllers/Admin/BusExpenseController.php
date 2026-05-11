@@ -43,4 +43,63 @@ class BusExpenseController extends Controller
             'stats' => $stats,
         ]);
     }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'bus_id'        => 'required|exists:buses,id',
+            'type'          => 'required|in:fuel,maintenance',
+            'amount'        => 'required|numeric|min:0',
+            'date'          => 'required|date',
+            'extra_info'    => 'nullable|string|max:500',
+            'receipt_photo' => 'nullable|image|max:5120',
+        ]);
+
+        if ($request->hasFile('receipt_photo')) {
+            $validated['receipt_photo'] = $request->file('receipt_photo')->store('expenses', 'public');
+        }
+
+        BusExpense::create($validated);
+
+        return redirect()->route('admin.bus-expenses.index')
+            ->with('success', 'تم إضافة السجل بنجاح');
+    }
+
+    public function update(Request $request, BusExpense $bus_expense)
+    {
+        $validated = $request->validate([
+            'bus_id'        => 'required|exists:buses,id',
+            'type'          => 'required|in:fuel,maintenance',
+            'amount'        => 'required|numeric|min:0',
+            'date'          => 'required|date',
+            'extra_info'    => 'nullable|string|max:500',
+            'receipt_photo' => 'nullable|image|max:5120',
+        ]);
+
+        if ($request->hasFile('receipt_photo')) {
+            // Delete old photo if exists
+            if ($bus_expense->receipt_photo && \Storage::disk('public')->exists($bus_expense->receipt_photo)) {
+                \Storage::disk('public')->delete($bus_expense->receipt_photo);
+            }
+            $validated['receipt_photo'] = $request->file('receipt_photo')->store('expenses', 'public');
+        }
+
+        $bus_expense->update($validated);
+
+        return redirect()->route('admin.bus-expenses.index')
+            ->with('success', 'تم تعديل السجل بنجاح');
+    }
+
+    public function destroy(BusExpense $bus_expense)
+    {
+        // Delete receipt photo if exists
+        if ($bus_expense->receipt_photo && \Storage::disk('public')->exists($bus_expense->receipt_photo)) {
+            \Storage::disk('public')->delete($bus_expense->receipt_photo);
+        }
+
+        $bus_expense->delete();
+
+        return redirect()->route('admin.bus-expenses.index')
+            ->with('success', 'تم حذف السجل بنجاح');
+    }
 }

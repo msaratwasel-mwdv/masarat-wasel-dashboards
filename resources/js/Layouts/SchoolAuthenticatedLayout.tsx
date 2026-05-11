@@ -200,6 +200,7 @@ export default function SchoolAuthenticatedLayout({
   useEffect(() => {
     if (flash?.success) {
       toast.success(t(flash.success), {
+        toastId: `success-${flash.success}`,
         position: "top-center",
         autoClose: 3000,
         transition: Bounce,
@@ -211,6 +212,7 @@ export default function SchoolAuthenticatedLayout({
     }
     if (flash?.error) {
       toast.error(t(flash.error), {
+        toastId: `error-${flash.error}`,
         position: "top-center",
         autoClose: 4000,
         transition: Bounce,
@@ -220,7 +222,7 @@ export default function SchoolAuthenticatedLayout({
         theme: theme === 'dark' ? 'dark' : 'light',
       });
     }
-  }, [flash, theme]);
+  }, [flash]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
@@ -527,11 +529,13 @@ export default function SchoolAuthenticatedLayout({
 
       {/* --- MAIN CONTENT --- */}
       <main
-        style={{
-          [isRTL ? 'marginRight' : 'marginLeft']: typeof window !== "undefined" && window.innerWidth >= 768 ? (isCollapsed ? "80px" : "260px") : "0px",
-          transition: "margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-        }}
-        className="flex-1 min-h-screen flex flex-col relative"
+        className={`
+          flex-1 min-h-screen flex flex-col relative transition-all duration-300
+          ${isRTL 
+            ? (isCollapsed ? "md:mr-20" : "md:mr-20 lg:mr-[260px]") 
+            : (isCollapsed ? "md:ml-20" : "md:ml-20 lg:ml-[260px]")
+          }
+        `}
       >
         {/* Top Header */}
         <header className="force-print-hide print:hidden h-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md flex items-center justify-between px-4 md:px-8 sticky top-0 z-40 border-b border-gray-100 dark:border-gray-700 shadow-sm">

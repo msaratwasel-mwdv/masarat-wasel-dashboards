@@ -27,6 +27,7 @@ import {
     DS_modalClose,
     DS_badge,
     DS_labelCls,
+    DS_gridCols,
 } from '@/lib/DS';
 
 interface Bus {
@@ -95,7 +96,7 @@ export default function Index({ auth, buses }: BusesProps) {
 
             <div className={DS_pageWrapper}>
                 {/* Stats Cards */}
-                <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className={DS_gridCols}>
                     {[
                         { label: t('Total Buses'), val: totalBuses, icon: <BusIcon className="w-5 h-5" />, accent: 'navy' as const },
                         { label: t('Available Buses'), val: activeBuses, icon: <CheckCircle2 className="w-5 h-5" />, accent: 'gold' as const },
@@ -146,25 +147,27 @@ export default function Index({ auth, buses }: BusesProps) {
                         </div>
 
                         {/* View Toggles & Actions */}
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                             <div className="flex bg-[#0f2044]/5 dark:bg-[#0f2044]/30 p-1 rounded-[14px]">
                                 <button
                                     onClick={() => setViewMode('cards')}
-                                    className={`p-2 rounded-[10px] transition-all ${viewMode === 'cards' ? 'bg-white dark:bg-[#243460] shadow text-[#0f2044] dark:text-white' : 'text-gray-500 hover:text-[#0f2044] dark:hover:text-white'}`}
+                                    type="button"
+                                    className={`flex-1 sm:flex-none p-2 rounded-[10px] transition-all flex items-center justify-center ${viewMode === 'cards' ? 'bg-white dark:bg-[#243460] shadow text-[#0f2044] dark:text-white' : 'text-gray-500 hover:text-[#0f2044] dark:hover:text-white'}`}
                                     title={t('Card View')}
                                 >
                                     <LayoutGrid className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={() => setViewMode('table')}
-                                    className={`p-2 rounded-[10px] transition-all ${viewMode === 'table' ? 'bg-white dark:bg-[#243460] shadow text-[#0f2044] dark:text-white' : 'text-gray-500 hover:text-[#0f2044] dark:hover:text-white'}`}
+                                    type="button"
+                                    className={`flex-1 sm:flex-none p-2 rounded-[10px] transition-all flex items-center justify-center ${viewMode === 'table' ? 'bg-white dark:bg-[#243460] shadow text-[#0f2044] dark:text-white' : 'text-gray-500 hover:text-[#0f2044] dark:hover:text-white'}`}
                                     title={t('Table View')}
                                 >
                                     <List className="w-4 h-4" />
                                 </button>
                             </div>
                             
-                            <Link href={route('school.bus-requests.index')} className={DS_btnGold}>
+                            <Link href={route('school.bus-requests.index')} className={DS_btnGold + " justify-center"}>
                                 <Plus className="w-4 h-4" />
                                 {t('Request Additional Bus')}
                             </Link>
@@ -172,9 +175,9 @@ export default function Index({ auth, buses }: BusesProps) {
                     </div>
 
                     {/* View Area */}
-                    <div className="p-6">
+                    <div className="p-4 md:p-6">
                         {viewMode === 'cards' ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className={DS_gridCols}>
                                 {filteredBuses.length > 0 ? (
                                     filteredBuses.map((bus) => (
                                         <div key={bus.id} className="relative overflow-hidden bg-white dark:bg-[#1a2845] rounded-[20px] border border-gray-100 dark:border-[#243460] shadow-sm hover:shadow-xl transition-all duration-300">

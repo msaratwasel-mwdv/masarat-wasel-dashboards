@@ -72,21 +72,40 @@ class DailyTripController extends Controller
         $request->validate([
             'bus_id'   => 'required|exists:buses,id',
             'route_id' => 'required|exists:routes,id',
-            'type'     => 'required|in:forth,back',
+            'type'     => 'required|in:forth,back,both',
             'date'     => 'required|date_format:Y-m-d',
         ]);
 
         $bus = Bus::findOrFail($request->bus_id);
         $date = Carbon::createFromFormat('Y-m-d', $request->date)->startOfDay();
 
-        [$trip, $reason] = $this->tripService->createDailyTrip($bus, $request->type, $date);
+        $types = $request->type === 'both' ? ['forth', 'back'] : [$request->type];
+        $createdCount = 0;
+        $errors = [];
 
-        if (!$trip) {
-            Log::warning('[DailyTrips] Manual creation failed', ['reason' => $reason, 'bus' => $bus->id]);
-            return back()->with('error', "Could not create trip: " . str_replace('_', ' ', $reason));
+        foreach ($types as $type) {
+            [$trip, $reason] = $this->tripService->createDailyTrip($bus, $type, $date);
+            if ($trip) {
+                $createdCount++;
+            } else {
+                $errors[] = ($type === 'forth' ? 'ذهاب: ' : 'إياب: ') . str_replace('_', ' ', $reason);
+            }
         }
 
-        return redirect()->route('admin.daily-trips.index')->with('success', 'Daily trip created successfully.');
+        if ($createdCount === 0) {
+            Log::warning('[DailyTrips] Manual creation failed', ['reasons' => $errors, 'bus' => $bus->id]);
+            return back()->with('error', "Could not create trip: " . implode(', ', $errors));
+        }
+
+        $message = $createdCount === 2 
+            ? 'تم إنشاء رحلتي الذهاب والإياب بنجاح.' 
+            : 'تم إنشاء الرحلة بنجاح.';
+        
+        if (count($errors) > 0) {
+            $message .= " (ملاحظة: " . implode(', ', $errors) . ")";
+        }
+
+        return redirect()->route('admin.daily-trips.index')->with('success', $message);
     }
 
     /**

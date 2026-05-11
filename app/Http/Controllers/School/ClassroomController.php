@@ -275,7 +275,7 @@ class ClassroomController extends Controller
 
         $classroom->delete();
 
-        return redirect()->back()->with('message', 'تم حذف الفصل بنجاح');
+        return redirect()->back()->with('success', 'تم حذف الفصل بنجاح');
     }
 }
 

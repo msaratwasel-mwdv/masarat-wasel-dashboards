@@ -6,38 +6,7 @@ import {
   ComboboxOption,
   ComboboxOptions,
 } from "@headlessui/react";
-
-const CheckIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M5 13l4 4L19 7"
-    />
-  </svg>
-);
-
-const ChevronUpDownIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M8 9l4-4 4 4m0 6l-4 4-4-4"
-    />
-  </svg>
-);
+import { Search, ChevronDown, Check } from "lucide-react";
 
 interface Option {
   id: string | number;
@@ -51,6 +20,7 @@ interface SearchableSelectProps {
   onChange: (value: string | number) => void;
   placeholder?: string;
   label?: string;
+  className?: string;
 }
 
 export default function SearchableSelect({
@@ -59,6 +29,7 @@ export default function SearchableSelect({
   onChange,
   placeholder = "Select...",
   label,
+  className = "",
 }: SearchableSelectProps) {
   const [query, setQuery] = useState("");
 
@@ -78,9 +49,9 @@ export default function SearchableSelect({
         );
 
   return (
-    <div className="w-full">
+    <div className={`w-full ${className}`}>
       {label && (
-        <label className="block text-xs font-bold text-gray-500 mb-1">
+        <label className="block text-[10px] font-bold uppercase tracking-wider mb-1.5 text-[#0f2044]/60 dark:text-[#7ba7e8]/70">
           {label}
         </label>
       )}
@@ -94,16 +65,16 @@ export default function SearchableSelect({
         nullable
       >
         <div className="relative">
-          <div className="relative w-full cursor-default overflow-hidden rounded-lg bg-white text-left border border-gray-300 focus-within:ring-2 focus-within:ring-brand-yellow transition sm:text-sm">
+          <div className="relative w-full cursor-default overflow-hidden rounded-[18px] bg-[#0f2044]/[0.05] dark:bg-[#0f2044]/30 border border-[#0f2044]/[0.10] dark:border-[#243460] text-gray-800 dark:text-white focus-within:ring-2 focus-within:ring-[#f5b800] transition-all">
             <ComboboxInput
-              className="w-full border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 focus:ring-0"
+              className="w-full border-none py-2.5 pl-4 pr-10 text-sm bg-transparent focus:ring-0 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
               displayValue={(opt: any) => opt?.label || ""}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={placeholder}
             />
-            <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
-              <ChevronUpDownIcon
-                className="h-5 w-5 text-gray-400"
+            <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-3">
+              <ChevronDown
+                className="h-4 w-4 text-gray-400 group-hover:text-[#f5b800] transition-colors"
                 aria-hidden="true"
               />
             </ComboboxButton>
@@ -111,75 +82,49 @@ export default function SearchableSelect({
 
           <ComboboxOptions
             anchor="bottom start"
-            className="z-[99] mt-1 max-h-60 w-[var(--input-width)] overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm empty:invisible transition duration-100 ease-in data-[leave]:opacity-0"
+            className="z-[99] mt-2 max-h-60 w-[var(--input-width)] overflow-auto rounded-2xl bg-white dark:bg-[#1a2845] py-2 text-base shadow-2xl border border-gray-100 dark:border-[#243460] focus:outline-none sm:text-sm empty:invisible transition duration-100 ease-in data-[leave]:opacity-0"
           >
-            {query.length > 0 && (
-              <ComboboxOption
-                value={{ id: "", label: query }}
-                className="relative cursor-default select-none py-2 pl-10 pr-4 text-gray-900"
-              >
-                Search for "{query}"...
-              </ComboboxOption>
+            {query.length > 0 && filteredOptions.length === 0 && (
+              <div className="relative cursor-default select-none py-3 px-4 text-gray-500 dark:text-gray-400 text-xs italic">
+                {query.length > 0 ? `No results for "${query}"` : "No results found"}
+              </div>
             )}
 
-            <ComboboxOption
-              value={null}
-              className={({ focus }) =>
-                `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                  focus ? "bg-brand-navy text-white" : "text-gray-900"
-                }`
-              }
-            >
-              All Fleet
-            </ComboboxOption>
-
-            {filteredOptions.length === 0 && query !== "" ? (
-              <div className="relative cursor-default select-none py-2 px-4 text-gray-700 italic">
-                No matching results.
-              </div>
-            ) : (
-              filteredOptions.map((opt) => (
-                <ComboboxOption
-                  key={opt.id}
-                  value={opt}
-                  className={({ focus }) =>
-                    `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                      focus ? "bg-brand-navy text-white" : "text-gray-900"
-                    }`
-                  }
-                >
-                  {({ selected, focus }) => (
-                    <>
-                      <span
-                        className={`block truncate ${
-                          selected ? "font-bold" : "font-normal"
-                        }`}
-                      >
+            {filteredOptions.map((opt) => (
+              <ComboboxOption
+                key={opt.id}
+                value={opt}
+                className={({ focus, selected }) =>
+                  `relative cursor-default select-none py-2.5 pl-10 pr-4 transition-colors ${
+                    focus 
+                      ? "bg-[#0f2044] text-white" 
+                      : selected 
+                        ? "bg-[#0f2044]/5 dark:bg-[#0f2044]/40 text-[#0f2044] dark:text-[#f5b800]" 
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#0f2044]/20"
+                  }`
+                }
+              >
+                {({ selected, focus }) => (
+                  <>
+                    <div className="flex flex-col">
+                      <span className={`block truncate ${selected ? "font-bold" : "font-medium"}`}>
                         {opt.label}
-                        {opt.subLabel && (
-                          <span
-                            className={`text-xs ml-2 ${
-                              focus ? "text-gray-100" : "text-gray-400"
-                            }`}
-                          >
-                            ({opt.subLabel})
-                          </span>
-                        )}
                       </span>
-                      {selected && (
-                        <span
-                          className={`absolute inset-y-0 left-0 flex items-center pl-3 ${
-                            focus ? "text-white" : "text-brand-navy"
-                          }`}
-                        >
-                          <CheckIcon className="h-4 w-4" />
+                      {opt.subLabel && (
+                        <span className={`text-[10px] truncate ${focus ? "text-white/70" : "text-gray-400 dark:text-gray-500"}`}>
+                          {opt.subLabel}
                         </span>
                       )}
-                    </>
-                  )}
-                </ComboboxOption>
-              ))
-            )}
+                    </div>
+                    {selected && (
+                      <span className={`absolute inset-y-0 left-0 flex items-center pl-3 ${focus ? "text-white" : "text-[#f5b800]"}`}>
+                        <Check className="h-4 w-4" strokeWidth={3} />
+                      </span>
+                    )}
+                  </>
+                )}
+              </ComboboxOption>
+            ))}
           </ComboboxOptions>
         </div>
       </Combobox>

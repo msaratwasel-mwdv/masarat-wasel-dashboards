@@ -238,14 +238,14 @@ export default function BaseDataTable<T extends { id?: number | string }>({
       {(title || headerAction || exportEnabled || filterTabs || onSearchChange) && (
         <div className={DS_sectionHeader(isRTL)}>
           
-          {/* Title block (optional, left/right depending on RTL) */}
+          {/* Title block */}
           {title && (
-            <div className={isRTL ? "text-right ml-4" : "mr-4"}>
-              <h1 className={`text-xl font-bold tracking-tight ${isDark ? "text-white" : "text-brand-dark"}`}>
+            <div className={`${isRTL ? "text-right" : "text-left"} mb-2 md:mb-0`}>
+              <h1 className={`text-lg md:text-xl font-black tracking-tight ${isDark ? "text-white" : "text-[#0f2044]"}`}>
                 {title}
               </h1>
               {subtitle && (
-                <p className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                <p className={`text-[10px] md:text-xs mt-0.5 ${isDark ? "text-gray-500" : "text-gray-400"}`}>
                   {subtitle}
                 </p>
               )}
@@ -254,13 +254,16 @@ export default function BaseDataTable<T extends { id?: number | string }>({
 
           {/* Search Input */}
           {onSearchChange && (
-            <div className="flex-1 min-w-[200px]">
+            <div className="relative w-full md:max-w-xs group">
+              <span className={`absolute ${isRTL ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#f5b800] transition-colors`}>
+                <Search className="w-4 h-4" />
+              </span>
               <input
                 type="text"
                 value={searchValue || ""}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={searchPlaceholder || (isRTL ? "بحث..." : "Search...")}
-                className={DS_searchInput}
+                placeholder={searchPlaceholder || (isRTL ? "بحث سريع..." : "Quick Search...")}
+                className={`${DS_searchInput} ${isRTL ? "pr-11" : "pl-11"}`}
                 dir={isRTL ? "rtl" : "ltr"}
               />
             </div>
@@ -268,12 +271,12 @@ export default function BaseDataTable<T extends { id?: number | string }>({
 
           {/* Filter Pills */}
           {filterTabs && onFilterChange && (
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 md:py-0">
               {filterTabs.map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => onFilterChange(tab.key)}
-                  className={DS_filterBtn(activeFilter === tab.key)}
+                  className={`${DS_filterBtn(activeFilter === tab.key)} whitespace-nowrap`}
                 >
                   {tab.label}
                 </button>
@@ -282,11 +285,11 @@ export default function BaseDataTable<T extends { id?: number | string }>({
           )}
 
           {/* Actions: export + primary CTA */}
-          <div className={`flex flex-wrap gap-2 items-center ${isRTL ? "flex-row-reverse" : ""}`}>
+          <div className={`flex flex-col sm:flex-row items-stretch md:items-center gap-2 ${isRTL ? "sm:flex-row-reverse" : ""}`}>
             {exportEnabled && (
-              <a href={getExportUrl("csv")} className={DS_btnSecondary}>
+              <a href={getExportUrl("csv")} className={`${DS_btnSecondary} justify-center`}>
                 <FileDown className="w-4 h-4" />
-                {isRTL ? "إكسيل" : "Excel"}
+                {isRTL ? "تصدير" : "Export"}
               </a>
             )}
             {headerAction}

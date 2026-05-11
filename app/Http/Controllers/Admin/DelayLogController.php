@@ -9,6 +9,8 @@ use Inertia\Inertia;
 
 class DelayLogController extends Controller
 {
+    use \App\Traits\DataTableTrait;
+
     /**
      * Display a listing of delay records.
      */
@@ -16,37 +18,26 @@ class DelayLogController extends Controller
     {
         $query = Delay::with(['student:id,full_name,national_id', 'bus:id,bus_code,bus_number', 'reporter']);
 
-        // Search by bus code, student name, or national ID
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('bus', function ($bq) use ($search) {
-                    $bq->where('bus_code', 'like', "%{$search}%")
-                       ->orWhere('bus_number', 'like', "%{$search}%");
-                })->orWhereHas('student', function ($sq) use ($search) {
-                    $sq->where('full_name', 'like', "%{$search}%")
-                       ->orWhere('national_id', 'like', "%{$search}%");
-                })->orWhereHas('reporter', function ($rq) use ($search) {
-                    $rq->where('name', 'like', "%{$search}%");
-                });
-            });
-        }
-
-        // Filter by type (student/bus)
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
-        // Filter by date
-        if ($request->filled('date')) {
-            $query->whereDate('created_at', $request->date);
-        }
-
-        $delays = $query->latest()->paginate(15)->withQueryString();
+        $paginated = $this->applyDataTable($query, $request, [
+            'type',
+            'reason',
+            'bus.bus_number',
+            'student.full_name',
+            'reporter.name'
+        ], 15);
 
         return Inertia::render('Admin/Reports/DelayLogs', [
-            'delays' => $delays,
+            'delays' => $paginated,
             'filters' => $request->only(['search', 'type', 'date']),
         ]);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Delay $delay)
+    {
+        $delay->delete();
+        return redirect()->back()->with('success', 'تم حذف سجل التأخير بنجاح');
     }
 }
