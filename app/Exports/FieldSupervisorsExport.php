@@ -42,7 +42,7 @@ class FieldSupervisorsExport implements FromCollection, WithHeadings, WithMappin
                 'اسم الأب (انجليزي)',
                 'اسم الجد (انجليزي)',
                 'الاسم الأخير (انجليزي)',
-                'رقم الهوية',
+                'الرقم المدني',
                 'رقم الجوال',
                 'البريد الإلكتروني',
                 'العنوان'

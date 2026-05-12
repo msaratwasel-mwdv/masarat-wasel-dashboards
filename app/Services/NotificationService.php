@@ -53,7 +53,6 @@ class NotificationService
             'message_en'       => $messageEn,
             'data'             => $data,
             'from_user_name'   => $fromUserName,
-            'from_user_name_en'=> $fromUserNameEn,
             'status'           => 'unread',
             'recipient_type'   => 'individual',
             'total_recipients' => 1,
@@ -187,7 +186,6 @@ class NotificationService
             'message_en'       => $messageEn,
             'data'             => $data ? json_encode($data) : null,
             'from_user_name'   => $fromUserName,
-            'from_user_name_en'=> $fromUserNameEn,
             'status'           => 'unread',
             'recipient_type'   => 'individual',
             'total_recipients' => 1,
@@ -515,7 +513,7 @@ class NotificationService
         ?string $messageEn = null,
         ?string $fromUserNameEn = null
     ): Collection {
-        $adminIds = User::where('school_id', $schoolId)
+        $adminIds = User::atSchool($schoolId)
             ->whereHas('roles', fn($q) => $q->where('name', 'school_admin'))
             ->pluck('id')
             ->toArray();

@@ -123,7 +123,7 @@ class LocationRequestController extends Controller
             Log::error("❌ Failed to notify guardian about location rejection: " . $e->getMessage());
         }
 
-        return back()->with('error', 'تم رفض الطلب بنجاح.');
+        return back()->with('success', 'تم رفض الطلب بنجاح.');
     }
 
     /**

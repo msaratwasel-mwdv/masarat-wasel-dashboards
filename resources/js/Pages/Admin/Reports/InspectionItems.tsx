@@ -1,9 +1,41 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, router, useForm } from "@inertiajs/react";
+import { Head, router, useForm, Link } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
-import PrimaryButton from "@/Components/PrimaryButton";
-import SecondaryButton from "@/Components/SecondaryButton";
+import { 
+    ClipboardCheck, 
+    Plus, 
+    Trash2, 
+    Edit3, 
+    Power, 
+    ChevronRight,
+    Search,
+    Filter,
+    ListOrdered,
+    LayoutGrid,
+    CheckCircle2,
+    XCircle,
+    MoreHorizontal
+} from "lucide-react";
+import { 
+    DS_pageWrapper, 
+    DS_card, 
+    DS_pageTitle, 
+    DS_statCard, 
+    DS_statIcon, 
+    DS_statLabel, 
+    DS_statValue2, 
+    DS_badge,
+    DS_btnPrimary,
+    DS_modalContainer,
+    DS_modalTitle,
+    DS_btnGold,
+    DS_btnSecondary
+} from "@/lib/DS";
+import BaseDataTable, { type PaginationMeta } from "@/Components/BaseDataTable";
+import { createColumnHelper } from "@tanstack/react-table";
+import ConfirmationModal from "@/Components/ConfirmationModal";
+import Modal from "@/Components/Modal";
 import InputLabel from "@/Components/InputLabel";
 import TextInput from "@/Components/TextInput";
 import InputError from "@/Components/InputError";
@@ -15,12 +47,20 @@ interface InspectionItem {
   order_index: number;
 }
 
-export default function InspectionItems({ items }: { items: InspectionItem[] }) {
+interface Props {
+    items: InspectionItem[];
+    auth?: any;
+}
+
+export default function InspectionItems({ items, auth }: Props) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InspectionItem | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
 
   const { data, setData, post, put, delete: destroy, reset, errors, processing } = useForm({
     name: "",
@@ -61,9 +101,11 @@ export default function InspectionItems({ items }: { items: InspectionItem[] }) 
     }
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm(isRTL ? "هل أنت متأكد من الحذف؟" : "Are you sure?")) {
-      destroy(route("admin.inspection-items.destroy", id));
+  const handleDelete = () => {
+    if (itemToDelete) {
+      destroy(route("admin.inspection-items.destroy", itemToDelete), {
+        onSuccess: () => setIsDeleteModalOpen(false),
+      });
     }
   };
 
@@ -75,166 +117,273 @@ export default function InspectionItems({ items }: { items: InspectionItem[] }) 
     }, { preserveScroll: true });
   };
 
+  const columnHelper = createColumnHelper<InspectionItem>();
+
+  const columns = useMemo(() => [
+    columnHelper.accessor("order_index", {
+        header: "#",
+        cell: (info) => <span className="font-black text-slate-400">#{info.getValue()}</span>,
+    }),
+    columnHelper.accessor("name", {
+      header: isRTL ? "اسم البند" : "Item Name",
+      cell: (info) => (
+        <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-brand-navy/5 flex items-center justify-center text-brand-navy border border-brand-navy/10">
+                <ListOrdered size={16} />
+            </div>
+            <span className="font-black text-slate-800 dark:text-white leading-tight">{info.getValue()}</span>
+        </div>
+      )
+    }),
+    columnHelper.accessor("is_active", {
+      header: isRTL ? "الحالة" : "Status",
+      cell: (info) => (
+        <button
+          onClick={() => toggleActive(info.row.original)}
+          className={DS_badge(info.getValue() ? "green" : "red")}
+        >
+          {info.getValue() ? (isRTL ? "نشط" : "Active") : (isRTL ? "معطل" : "Inactive")}
+        </button>
+      )
+    }),
+    columnHelper.display({
+      id: "actions",
+      header: "",
+      cell: (info) => (
+        <div className="flex justify-end gap-2">
+            <button
+                onClick={() => openModal(info.row.original)}
+                className="p-2 text-brand-navy hover:bg-brand-navy/5 rounded-lg transition-colors"
+            >
+                <Edit3 size={18} />
+            </button>
+            <button
+                onClick={() => {
+                    setItemToDelete(info.row.original.id);
+                    setIsDeleteModalOpen(true);
+                }}
+                className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+            >
+                <Trash2 size={18} />
+            </button>
+        </div>
+      )
+    })
+  ], [isRTL]);
+
+  const filteredItems = useMemo(() => {
+    if (!search) return items;
+    return items.filter(item => 
+        item.name.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [items, search]);
+
   return (
-    <AuthenticatedLayout
-      header={<h2 className={`font-bold text-xl ${isDark ? "text-gray-200" : "text-gray-800"}`}>{isRTL ? "إدارة بنود الفحص" : "Checklist Manager"}</h2>}
-    >
+    <AuthenticatedLayout user={auth?.user}>
       <Head title={isRTL ? "إدارة بنود الفحص" : "Checklist Manager"} />
 
-      <div className={`py-6 dir-${isRTL ? "rtl" : "ltr"}`}>
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-          <div className="flex justify-between items-center text-right">
-            <div>
-              <h1 className={`text-2xl font-bold ${isDark ? "text-white" : "text-brand-dark"}`}>
-                {isRTL ? "بنود الفحص الميداني" : "Field Inspection Items"}
-              </h1>
-              <p className={`mt-1 text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                {isRTL ? "إدارة الأسئلة والبنود التي تظهر في تطبيق المشرف الميداني" : "Manage checklist items shown in the Field Supervisor app"}
-              </p>
-            </div>
-            <PrimaryButton
-              onClick={() => openModal()}
-              className="bg-brand-yellow text-brand-dark hover:bg-yellow-500 font-bold"
-            >
-              {isRTL ? "+ إضافة بند جديد" : "+ Add New Item"}
-            </PrimaryButton>
-          </div>
-
-          <div className={`${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"} overflow-hidden shadow-sm sm:rounded-2xl border p-4`}>
-            <div className="overflow-x-auto">
-              <table className={`min-w-full divide-y ${isDark ? "divide-gray-700" : "divide-gray-200"}`}>
-                <thead className={isDark ? "bg-gray-900/50" : "bg-gray-50"}>
-                  <tr>
-                    <th className={`px-4 py-3 text-xs font-bold ${isDark ? "text-gray-400" : "text-gray-500"} uppercase ${isRTL ? "text-right" : "text-left"}`}>#</th>
-                    <th className={`px-4 py-3 text-xs font-bold ${isDark ? "text-gray-400" : "text-gray-500"} uppercase ${isRTL ? "text-right" : "text-left"}`}>{isRTL ? "اسم البند" : "Item Name"}</th>
-                    <th className={`px-4 py-3 text-xs font-bold ${isDark ? "text-gray-400" : "text-gray-500"} uppercase text-center`}>{isRTL ? "الحالة" : "Status"}</th>
-                    <th className={`px-4 py-3 text-xs font-bold ${isDark ? "text-gray-400" : "text-gray-500"} uppercase text-center`}>{isRTL ? "إجراءات" : "Actions"}</th>
-                  </tr>
-                </thead>
-                <tbody className={`${isDark ? "bg-gray-800 divide-gray-700" : "bg-white divide-gray-200"} divide-y`}>
-                  {items.map((item, index) => (
-                    <tr key={item.id} className={isDark ? "hover:bg-gray-700/50" : "hover:bg-gray-50"}>
-                      <td className="px-4 py-3 text-sm font-medium">{item.order_index}</td>
-                      <td className="px-4 py-3 text-sm font-bold">{item.name}</td>
-                      <td className="px-4 py-3 text-sm text-center">
-                        <button
-                          onClick={() => toggleActive(item)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold ${
-                            item.is_active
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                              : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                          }`}
-                        >
-                          {item.is_active ? (isRTL ? "نشط" : "Active") : (isRTL ? "معطل" : "Inactive")}
-                        </button>
-                      </td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${isRTL ? "text-left" : "text-right"}`}>
-                        <div className={`flex gap-2 ${isRTL ? "justify-start" : "justify-end"}`}>
-                            <button
-                              onClick={() => openModal(item)}
-                              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
-                                isDark
-                                  ? "bg-indigo-900/30 text-indigo-400 hover:bg-indigo-900/60"
-                                  : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                              }`}
-                            >
-                              {isRTL ? "تعديل" : "Edit"}
-                            </button>
-                            <button
-                              onClick={() => handleDelete(item.id)}
-                              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
-                                isDark
-                                  ? "bg-red-900/30 text-red-400 hover:bg-red-900/60"
-                                  : "bg-red-50 text-red-700 hover:bg-red-100"
-                              }`}
-                            >
-                              {isRTL ? "حذف" : "Delete"}
-                            </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {items.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="text-center py-6 text-gray-500">
-                        {isRTL ? "لا توجد بنود حالياً" : "No items found"}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className={`${isDark ? "bg-gray-800" : "bg-white"} rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all`}>
-            <div className={`px-6 py-4 border-b ${isDark ? "border-gray-700" : "border-gray-100"} flex justify-between items-center`}>
-              <h3 className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
-                {editingItem ? (isRTL ? "تعديل البند" : "Edit Item") : (isRTL ? "إضافة بند جديد" : "Add New Item")}
-              </h3>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-500">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className={`p-6 dir-${isRTL ? "rtl" : "ltr"}`}>
-              <div className="space-y-4">
-                <div className={isRTL ? "text-right" : ""}>
-                  <InputLabel value={isRTL ? "اسم البند (مثال: أحزمة الأمان)" : "Item Name"} />
-                  <TextInput
-                    type="text"
-                    value={data.name}
-                    onChange={(e) => setData("name", e.target.value)}
-                    className="mt-1 block w-full"
-                    required
-                  />
-                  <InputError message={errors.name} className="mt-2" />
+      <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-8`} dir={isRTL ? 'rtl' : 'ltr'}>
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <div className="flex flex-col">
+                <h1 className={DS_pageTitle}>
+                    {isRTL ? "بنود الفحص الميداني" : "Field Inspection Items"}
+                </h1>
+                <div className="flex items-center gap-2 mt-1">
+                    <div className="w-1.5 h-1.5 bg-[#f5b800] rounded-full" />
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        {items.length} {isRTL ? "بند مسجل" : "Total Items Registered"}
+                    </span>
                 </div>
-
-                <div className={isRTL ? "text-right" : ""}>
-                  <InputLabel value={isRTL ? "الترتيب (للعرض)" : "Order Index"} />
-                  <TextInput
-                    type="number"
-                    value={data.order_index}
-                    onChange={(e) => setData("order_index", parseInt(e.target.value))}
-                    className="mt-1 block w-full"
-                  />
-                </div>
-
-                <div className={`flex items-center ${isRTL ? "text-right" : ""}`}>
-                  <input
-                    type="checkbox"
-                    checked={data.is_active}
-                    onChange={(e) => setData("is_active", e.target.checked)}
-                    className="h-4 w-4 text-brand-dark focus:ring-brand-dark border-gray-300 rounded shadow-sm"
-                  />
-                  <span className={`ml-2 text-sm font-medium ${isDark ? "text-gray-300" : "text-gray-700"} ${isRTL ? "mr-2 ml-0" : ""}`}>
-                    {isRTL ? "تفعيل البند" : "Active"}
-                  </span>
-                </div>
-              </div>
-
-              <div className={`mt-6 flex gap-3 ${isRTL ? "flex-row-reverse" : "justify-end"}`}>
-                <SecondaryButton onClick={closeModal}>
-                  {isRTL ? "إلغاء" : "Cancel"}
-                </SecondaryButton>
-                <PrimaryButton
-                  disabled={processing}
-                  className="bg-brand-dark hover:bg-brand text-white"
+            </div>
+            
+            <div className="flex items-center gap-3">
+                <Link
+                    href={route('admin.inspection-logs.index')}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all shadow-sm"
                 >
-                  {isRTL ? "حفظ" : "Save"}
-                </PrimaryButton>
-              </div>
-            </form>
-          </div>
+                    <ChevronRight size={16} className={isRTL ? "rotate-0" : "rotate-180"} />
+                    {isRTL ? "العودة للسجلات" : "Back to Logs"}
+                </Link>
+                <button
+                    onClick={() => openModal()}
+                    className={DS_btnGold}
+                >
+                    <Plus size={16} />
+                    {isRTL ? "إضافة بند جديد" : "Add New Item"}
+                </button>
+            </div>
         </div>
-      )}
 
+        {/* Info Card */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+             <div className={DS_statCard('navy')}>
+                <div className={DS_statIcon('navy')}><LayoutGrid size={20} /></div>
+                <div>
+                    <p className={DS_statLabel}>{isRTL ? "إجمالي البنود" : "Total Items"}</p>
+                    <p className={DS_statValue2('navy')}>{items.length}</p>
+                </div>
+            </div>
+            <div className={DS_statCard('green')}>
+                <div className={DS_statIcon('green')}><Power size={20} /></div>
+                <div>
+                    <p className={DS_statLabel}>{isRTL ? "البنود النشطة" : "Active Items"}</p>
+                    <p className={DS_statValue2('green')}>{items.filter(i => i.is_active).length}</p>
+                </div>
+            </div>
+            <div className={DS_statCard('gold')}>
+                <div className={DS_statIcon('gold')}><ListOrdered size={20} /></div>
+                <div>
+                    <p className={DS_statLabel}>{isRTL ? "آخر ترتيب" : "Max Order"}</p>
+                    <p className={DS_statValue2('gold')}>{Math.max(0, ...items.map(i => i.order_index))}</p>
+                </div>
+            </div>
+        </div>
+
+        {/* Main Table */}
+        <div className={DS_card}>
+            <BaseDataTable<InspectionItem>
+                columns={columns}
+                data={filteredItems}
+                searchValue={search}
+                onSearchChange={setSearch}
+                searchPlaceholder={isRTL ? "ابحث عن اسم البند..." : "Search item name..."}
+                title={isRTL ? "قائمة بنود الفحص" : "Inspection Items List"}
+                subtitle={isRTL ? "إدارة وتعديل الأسئلة التي تظهر للمشرفين في التطبيق" : "Manage and edit checklist questions shown to supervisors"}
+            />
+        </div>
+
+        {/* Create/Edit Modal */}
+        <Modal show={isModalOpen} onClose={closeModal} maxWidth="md">
+            <div className="flex flex-col overflow-hidden shadow-2xl rounded-2xl">
+                
+                {/* Modal Header - Standard Corporate Style */}
+                <div className={`px-8 py-6 bg-[#0f2044] flex items-center justify-between flex-shrink-0 text-white ${isRTL ? "flex-row-reverse" : ""}`}>
+                    <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/10 text-brand-yellow">
+                            <ListOrdered className="w-6 h-6" />
+                        </div>
+                        <div className={isRTL ? "text-right" : ""}>
+                            <h2 className="text-xl font-bold text-white">
+                                {editingItem ? (isRTL ? "تعديل بند الفحص" : "Edit Inspection Item") : (isRTL ? "إضافة بند فحص جديد" : "Add New Item")}
+                            </h2>
+                            <p className="mt-1 text-xs text-blue-100 font-bold opacity-80">
+                                {isRTL ? "تحديث بيانات الشيك لست للمشرفين" : "Update checklist data for supervisors"}
+                            </p>
+                        </div>
+                    </div>
+                    <button 
+                        type="button" 
+                        onClick={closeModal} 
+                        className="p-2 transition-colors rounded-lg text-white/80 hover:text-white hover:bg-white/10"
+                    >
+                        <XCircle className="w-6 h-6" />
+                    </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className={`p-8 bg-white dark:bg-[#111827] space-y-6 ${isRTL ? "text-right" : ""}`}>
+                    <form id="inspection-item-form" onSubmit={handleSubmit} className="space-y-6">
+                        <div>
+                            <InputLabel 
+                                htmlFor="name" 
+                                value={isRTL ? "اسم البند" : "Item Name"} 
+                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2" 
+                            />
+                            <TextInput
+                                id="name"
+                                type="text"
+                                value={data.name}
+                                onChange={(e) => setData("name", e.target.value)}
+                                className="w-full bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-700 rounded-xl font-bold focus:ring-brand-gold/20 focus:border-brand-gold transition-all"
+                                placeholder={isRTL ? "مثال: سلامة أحزمة الأمان" : "e.g. Seatbelt Safety"}
+                                required
+                            />
+                            <InputError message={errors.name} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <InputLabel 
+                                htmlFor="order_index" 
+                                value={isRTL ? "الترتيب (للعرض)" : "Display Order"} 
+                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2" 
+                            />
+                            <TextInput
+                                id="order_index"
+                                type="number"
+                                value={data.order_index}
+                                onChange={(e) => setData("order_index", parseInt(e.target.value))}
+                                className="w-full bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-700 rounded-xl font-bold focus:ring-brand-gold/20 focus:border-brand-gold transition-all"
+                                required
+                            />
+                            <InputError message={errors.order_index} className="mt-1" />
+                        </div>
+
+                        <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                             <div className="relative inline-flex items-center cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    className="sr-only peer"
+                                    checked={data.is_active}
+                                    onChange={(e) => setData("is_active", e.target.checked)}
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                             </div>
+                             <div className="flex flex-col">
+                                <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                                    {isRTL ? "تفعيل البند" : "Active Item"}
+                                </span>
+                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                                    {isRTL ? "سيظهر هذا البند في تطبيق المشرف" : "This item will appear in supervisor app"}
+                                </span>
+                             </div>
+                        </div>
+                    </form>
+                </div>
+
+                {/* Modal Footer */}
+                <div className={`px-8 py-6 border-t flex items-center justify-between flex-shrink-0 ${isDark ? "border-gray-800 bg-[#0f172a]" : "border-gray-100 bg-gray-50"} ${isRTL ? "flex-row-reverse" : ""}`}>
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${processing ? "bg-brand-gold animate-pulse" : "bg-emerald-500"}`}></div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {processing ? (isRTL ? "جارِ الحفظ..." : "Processing...") : (isRTL ? "جاهز للحفظ" : "Ready to save")}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={closeModal}
+                            className={DS_btnSecondary}
+                        >
+                            {isRTL ? "إلغاء" : "Cancel"}
+                        </button>
+                        <button
+                            type="submit"
+                            form="inspection-item-form"
+                            disabled={processing}
+                            className={DS_btnGold + " px-8"}
+                        >
+                            {editingItem ? (isRTL ? "تحديث" : "Update") : (isRTL ? "إضافة" : "Create")}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Modal>
+
+        {/* Delete Confirmation */}
+        <ConfirmationModal
+            isOpen={isDeleteModalOpen}
+            onClose={() => setIsDeleteModalOpen(false)}
+            onConfirm={handleDelete}
+            title={isRTL ? "حذف بند الفحص" : "Delete Item"}
+            message={isRTL ? "هل أنت متأكد من رغبتك في حذف هذا البند؟ قد يؤثر ذلك على السجلات القديمة." : "Are you sure you want to delete this item? This may affect historical logs."}
+            confirmText={isRTL ? "حذف" : "Delete"}
+            cancelText={isRTL ? "إلغاء" : "Cancel"}
+            type="danger"
+        />
+
+      </div>
     </AuthenticatedLayout>
   );
 }

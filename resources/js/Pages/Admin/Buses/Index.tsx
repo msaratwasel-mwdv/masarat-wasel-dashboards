@@ -408,7 +408,7 @@ export default function Index({
                 </span>
               </div>
               <div className={`text-xs ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                <span className={`font-bold ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "مساعدة:" : "A:"} </span>
+                <span className={`font-bold ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "مشرفة:" : "S:"} </span>
                 <span className={!bus.assistant ? "text-red-400 italic" : ""}>
                   {bus.assistant?.name || (isRTL ? "غير مسند" : "—")}
                 </span>
@@ -734,7 +734,7 @@ export default function Index({
                         <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-4 gap-4">
                            {[
                              { title: isRTL ? "الطيار (السائق)" : "PILOT", name: modalState.bus.driver?.name, icon: "👨‍✈️", color: "amber", sub: isRTL ? "المشغل الرئيسي" : "Main Operator" },
-                             { title: isRTL ? "المساعدة" : "ASSISTANT", name: modalState.bus.assistant?.name, icon: "👩‍🏫", color: "rose", sub: isRTL ? "سلامة الركاب" : "Passenger Safety" },
+                             { title: isRTL ? "مشرفة الحافلة" : "BUS SUPERVISOR", name: modalState.bus.assistant?.name, icon: "👩‍🏫", color: "rose", sub: isRTL ? "سلامة الركاب" : "Passenger Safety" },
                              { title: isRTL ? "الموقع (المدرسة)" : "LOCATION", name: modalState.bus.school?.name, icon: "🏫", color: "emerald", sub: modalState.bus.route?.name || (isRTL ? "في وضع الانتظار" : "Standby Route") },
                              { title: isRTL ? "لون الحافلة" : "VEHICLE COLOR", name: modalState.bus.color, icon: "🎨", color: "blue", sub: isRTL ? "المظهر الخارجي" : "Exterior Appearance" }
                            ].map(card => (
@@ -954,9 +954,9 @@ export default function Index({
                           </select>
                         </div>
                         <div className={isRTL ? "text-right" : ""}>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المساعدة" : "Assistant"}</label>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "مشرفة الحافلة" : "Bus Supervisor"}</label>
                            <select value={busForm.data.assistant_id || ""} onChange={(e) => busForm.setData("assistant_id", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
-                            <option value="">{isRTL ? "— بدون مساعدة —" : "— No Assistant —"}</option>
+                            <option value="">{isRTL ? "— بدون مشرفة —" : "— No Supervisor —"}</option>
                             {(modalState.type === "edit" ? editAssistantOptions : availableAssistants).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
                         </div>

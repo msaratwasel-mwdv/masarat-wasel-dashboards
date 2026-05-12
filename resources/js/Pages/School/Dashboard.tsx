@@ -26,7 +26,10 @@ import {
   DS_statLabel,
   DS_statValue2,
   DS_statIcon,
-  DS_statCard
+  DS_statCard,
+  DS_pageWrapper,
+  DS_gridCols,
+  DS_grid12,
 } from "@/lib/DS";
 
 interface DashboardProps {
@@ -65,6 +68,14 @@ interface DashboardProps {
     time: string;
     status: string;
   }>;
+  upcomingHolidays: Array<{
+    id: number;
+    name: string;
+    start_date: string;
+    end_date: string;
+    type: string;
+    notes?: string;
+  }>;
   system_status: string;
 }
 
@@ -75,6 +86,7 @@ export default function SchoolDashboard({
   classDistribution = [],
   recent_students = [],
   recentActivities = [],
+  upcomingHolidays = [],
   system_status,
 }: DashboardProps) {
   const { isRTL: isRtl } = useTheme();
@@ -160,7 +172,7 @@ export default function SchoolDashboard({
         initial="hidden"
         animate="visible"
         variants={containerVariants}
-        className="space-y-8"
+        className={DS_pageWrapper}
       >
         {/* Welcome Hero Section */}
         <div className="relative p-4 md:p-5 rounded-[32px] bg-gradient-to-br from-[#0f2044] via-[#162d60] to-[#0f2044] overflow-hidden shadow-2xl">
@@ -197,15 +209,15 @@ export default function SchoolDashboard({
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+        <div className={DS_gridCols}>
           {statCards.map((card, idx) => (
             <StatCard key={idx} {...card} isRtl={isRtl} />
           ))}
         </div>
 
         {/* Highlights & Attendance Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-            <div className="lg:col-span-8 group relative overflow-hidden p-8 rounded-[28px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm hover:shadow-xl transition-all duration-500">
+        <div className={DS_grid12 + " items-stretch"}>
+            <div className="lg:col-span-8 group relative overflow-hidden p-6 md:p-8 rounded-[28px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm hover:shadow-xl transition-all duration-500">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[80px] -mr-32 -mt-32 transition-all group-hover:scale-150" />
                 
                 <div className={`relative z-10 flex flex-col md:flex-row items-center gap-8 ${isRtl ? "flex-row-reverse" : ""}`}>
@@ -310,9 +322,9 @@ export default function SchoolDashboard({
             </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8 space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className={DS_grid12}>
+          <div className="lg:col-span-8 space-y-6 md:space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 <div className={DS_card}>
                     <div className="p-6 border-b border-gray-50 dark:border-[#243460] flex items-center justify-between">
                         <h3 className={`text-sm font-black flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""} text-[#0f2044] dark:text-white`}>
@@ -437,6 +449,50 @@ export default function SchoolDashboard({
                     <QuickAction icon={ClipboardList} label={isRtl ? "رصد حضور" : "Record Attendance"} link={route("school.attendance.index")} accent="gold" />
                     <QuickAction icon={Bus} label={isRtl ? "إدارة باصات" : "Fleet Control"} link={route("school.buses.index")} accent="navy" />
                     <QuickAction icon={Bell} label={isRtl ? "الإشعارات" : "Notifications"} link={route("school.notifications.sent")} accent="gold" />
+                </div>
+            </div>
+
+            {/* Upcoming Holidays Section */}
+            <div className={DS_card}>
+                <div className="p-6 border-b border-gray-50 dark:border-[#243460] flex items-center justify-between">
+                    <h3 className="font-black text-sm text-[#0f2044] dark:text-white flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-[#f5b800]" />
+                        {isRtl ? "العطل والإجازات القادمة" : "Upcoming Holidays"}
+                    </h3>
+                </div>
+                <div className="p-6">
+                    {upcomingHolidays.length > 0 ? (
+                        <div className="space-y-4">
+                            {upcomingHolidays.map((holiday) => (
+                                <div key={holiday.id} className="p-4 rounded-2xl bg-gray-50 dark:bg-[#243460]/30 border border-transparent hover:border-[#f5b800]/30 transition-all">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h4 className="text-xs font-black text-[#0f2044] dark:text-white">{holiday.name}</h4>
+                                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest ${
+                                            holiday.type === 'official' ? 'bg-emerald-500/10 text-emerald-500' : 
+                                            holiday.type === 'emergency' ? 'bg-rose-500/10 text-rose-500' : 
+                                            'bg-blue-500/10 text-blue-500'
+                                        }`}>
+                                            {isRtl ? 
+                                                (holiday.type === 'official' ? 'رسمية' : holiday.type === 'emergency' ? 'طارئة' : 'مدرسية') : 
+                                                holiday.type
+                                            }
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                                        <Clock className="w-3 h-3" />
+                                        <span>{holiday.start_date}</span>
+                                        <span>←</span>
+                                        <span>{holiday.end_date}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-6 opacity-40">
+                            <Calendar className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                            <p className="text-xs font-bold text-gray-400">{isRtl ? "لا توجد عطل قادمة" : "No upcoming holidays"}</p>
+                        </div>
+                    )}
                 </div>
             </div>
 

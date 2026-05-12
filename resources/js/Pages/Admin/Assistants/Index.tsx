@@ -486,7 +486,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
               <tr className="bg-gray-100">
                 <th className="border border-gray-300 p-1.5 text-right font-bold w-8 text-black">#</th>
                 <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "المشرفة" : "Supervisor"}</th>
-                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "رقم الهوية" : "ID"}</th>
+                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الرقم المدني" : "ID"}</th>
                 <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الجوال" : "Phone"}</th>
                 <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "البريد الإلكتروني" : "Email"}</th>
                 <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الوحدة" : "Unit"}</th>
@@ -668,7 +668,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
                                         <Users size={16} className="text-[#f5b800]" /> {isRTL ? "الهوية الشخصية" : "Personal Identity"}
                                     </h3>
                                     <div className="space-y-4">
-                                        <InfoRow icon={<CreditCard size={14} />} label={isRTL ? "رقم الهوية" : "National ID"} value={selectedAssistant.national_id} isDark={isDark} />
+                                        <InfoRow icon={<CreditCard size={14} />} label={isRTL ? "الرقم المدني" : "Civil ID"} value={selectedAssistant.national_id} isDark={isDark} />
                                         <InfoRow icon={<Phone size={14} />} label={isRTL ? "رقم الجوال" : "Primary Phone"} value={selectedAssistant.phone} isDark={isDark} />
                                         <InfoRow icon={<Mail size={14} />} label={isRTL ? "البريد الإلكتروني" : "Email Address"} value={selectedAssistant.email} isDark={isDark} />
                                         <InfoRow icon={<MapPin size={14} />} label={isRTL ? "العنوان" : "Registered Address"} value={selectedAssistant.address || "—"} isDark={isDark} />
@@ -825,7 +825,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
                             <motion.div initial={{ opacity: 0, x: isRTL ? -20 : 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
-                                        <label className={DS_label}>{isRTL ? "رقم الهوية / الإقامة" : "National Serial ID"}</label>
+                                        <label className={DS_label}>{isRTL ? "الرقم المدني / الإقامة" : "Civil ID / Iqama"}</label>
                                         <input type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
                                         <InputError message={errors.national_id} />
                                     </div>

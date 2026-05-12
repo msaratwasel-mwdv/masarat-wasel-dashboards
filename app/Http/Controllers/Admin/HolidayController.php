@@ -5,12 +5,21 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Holiday;
 use App\Models\School;
+use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class HolidayController extends Controller
 {
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     public function index()
     {
         $holidays = Holiday::with(['school', 'creator'])->latest()->get();
@@ -34,8 +43,52 @@ class HolidayController extends Controller
 
         $validated['created_by'] = auth()->id();
         
-        Holiday::create($validated);
-        return redirect()->back()->with('success', 'تم تسجيل العطلة بنجاح');
+        $holiday = Holiday::create($validated);
+
+        // إرسال الإشعارات
+        $this->sendHolidayNotifications($holiday);
+
+        return redirect()->back()->with('success', 'تم تسجيل العطلة بنجاح وإرسال الإشعارات لمديري المدارس');
+    }
+
+    protected function sendHolidayNotifications(Holiday $holiday)
+    {
+        $title = "إجازة رسمية جديدة: " . $holiday->name;
+        $titleEn = "New Holiday: " . $holiday->name;
+        $message = "تم تسجيل إجازة من " . $holiday->start_date->format('Y-m-d') . " إلى " . $holiday->end_date->format('Y-m-d');
+        $messageEn = "A new holiday has been recorded from " . $holiday->start_date->format('Y-m-d') . " to " . $holiday->end_date->format('Y-m-d');
+        
+        if ($holiday->school_id) {
+            // تنبيه مدرسة محددة
+            $this->notificationService->notifySchoolAdmins(
+                $holiday->school_id,
+                'holiday_announcement',
+                $title,
+                $message,
+                ['holiday_id' => $holiday->id],
+                'نظام الإدارة',
+                $titleEn,
+                $messageEn
+            );
+        } else {
+            // تنبيه جميع مديري المدارس
+            $adminIds = User::whereHas('roles', fn($q) => $q->where('name', 'school_admin'))
+                ->pluck('id')
+                ->toArray();
+
+            if (!empty($adminIds)) {
+                $this->notificationService->sendToUsers(
+                    $adminIds,
+                    'holiday_announcement',
+                    $title,
+                    $message,
+                    ['holiday_id' => $holiday->id],
+                    'نظام الإدارة',
+                    $titleEn,
+                    $messageEn
+                );
+            }
+        }
     }
 
     public function update(Request $request, Holiday $holiday)
@@ -50,7 +103,8 @@ class HolidayController extends Controller
         ]);
 
         $holiday->update($validated);
-        return redirect()->back()->with('success', 'تم تحديث العطلة بنجاح');
+        $this->sendHolidayNotifications($holiday);
+        return redirect()->back()->with('success', 'تم تحديث العطلة بنجاح وإرسال الإشعارات');
     }
 
     public function destroy(Holiday $holiday)

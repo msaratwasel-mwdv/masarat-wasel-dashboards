@@ -31,7 +31,6 @@ class StaffController extends Controller
 
         $paginated = $this->applyDataTable($query, $request, [
             'name',
-            'name_en',
             'national_id',
             'phone',
             'email',

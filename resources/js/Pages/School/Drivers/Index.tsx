@@ -402,7 +402,7 @@ export default function DriversIndex({ auth, drivers, filters }: any) {
                             <div className="border-t border-gray-100 dark:border-[#243460] pt-6 space-y-6">
                                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{isRTL ? "البيانات الإضافية والمستندات" : "Additional Info & Documents"}</h4>
                                 <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "رقم الهوية / الإقامة" : "National Serial ID"}</label><input type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required /><InputError message={errors.national_id} /></div>
+                                    <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "الرقم المدني / الإقامة" : "Civil ID / Iqama"}</label><input type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required /><InputError message={errors.national_id} /></div>
                                     <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "رقم الجوال" : "Phone"}</label><input type="text" value={data.phone} onChange={(e) => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required /><InputError message={errors.phone} /></div>
                                     <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "رقم الرخصة" : "License Serial"}</label><input type="text" value={data.license_number} onChange={(e) => setData("license_number", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required /><InputError message={errors.license_number} /></div>
                                     <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "انتهاء الرخصة" : "License Expiry"}</label><input type="date" value={data.license_expiry_date} onChange={(e) => setData("license_expiry_date", e.target.value)} className={DS_input} dir="ltr" required /><InputError message={errors.license_expiry_date} /></div>
@@ -475,7 +475,7 @@ export default function DriversIndex({ auth, drivers, filters }: any) {
           <thead>
             <tr className="bg-gray-100">
               <th className="border p-1.5 text-right font-bold text-black">{isRTL ? "السائق" : "Driver"}</th>
-              <th className="border p-1.5 text-right font-bold text-black">{isRTL ? "رقم الهوية" : "ID"}</th>
+              <th className="border p-1.5 text-right font-bold text-black">{isRTL ? "الرقم المدني" : "Civil ID"}</th>
               <th className="border p-1.5 text-right font-bold text-black">{isRTL ? "رقم الجوال" : "Phone"}</th>
               <th className="border p-1.5 text-right font-bold text-black">{isRTL ? "رقم الرخصة" : "License No."}</th>
               <th className="border p-1.5 text-right font-bold text-black">{isRTL ? "تاريخ الانتهاء" : "Expiry"}</th>

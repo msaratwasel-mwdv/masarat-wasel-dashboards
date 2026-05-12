@@ -42,7 +42,7 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
                 'اسم الأب (انجليزي)',
                 'اسم الجد (انجليزي)',
                 'الاسم الأخير (انجليزي)',
-                'رقم الهوية',
+                'الرقم المدني',
                 'رقم الجوال',
                 'البريد الإلكتروني',
                 'العنوان',
