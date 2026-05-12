@@ -204,13 +204,13 @@ class ParentController extends Controller
                         'id'    => $activeBus->driver->user->id,
                         'name'  => $activeBus->driver->user->name,
                         'phone' => $activeBus->driver->user->phone,
-                        'image_url' => $activeBus->driver->user->image ? (str_starts_with($activeBus->driver->user->image, 'http') ? $activeBus->driver->user->image : url(Storage::url($activeBus->driver->user->image))) : null,
+                        'image_url' => $activeBus->driver->user->avatar_url,
                     ] : null,
                     'supervisor' => $activeBus->assistant ? [
                         'id'    => $activeBus->assistant->id,
                         'name'  => $activeBus->assistant->name,
                         'phone' => $activeBus->assistant->phone,
-                        'image_url' => $activeBus->assistant->image ? (str_starts_with($activeBus->assistant->image, 'http') ? $activeBus->assistant->image : url(Storage::url($activeBus->assistant->image))) : null,
+                        'image_url' => $activeBus->assistant->avatar_url,
                     ] : null,
                 ] : null,
             ];

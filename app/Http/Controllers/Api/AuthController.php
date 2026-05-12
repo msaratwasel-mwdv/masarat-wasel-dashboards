@@ -99,14 +99,6 @@ class AuthController extends Controller
         // إنشاء Token جديد
         $token = $user->createToken($request->device_name)->plainTextToken;
 
-        // بناء رابط الصورة
-        $imageUrl = null;
-        if ($user->image) {
-            $imageUrl = str_starts_with($user->image, 'http')
-                ? $user->image
-                : url(Storage::url($user->image));
-        }
-
         $userData = [
             'id'          => $user->id,
             'name'        => $user->name,
@@ -115,7 +107,7 @@ class AuthController extends Controller
             'email'       => $user->email,
             'phone'       => $user->phone,
             'role'        => $user->role,
-            'image_url'   => $imageUrl,
+            'image_url'   => $user->avatar_url,
             'school_id'   => $user->school_id,
             'school_name' => $user->school ? $user->school->name : null,
             'bus_id'      => $this->getBusId($user),
@@ -166,14 +158,6 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        // بناء رابط الصورة
-        $imageUrl = null;
-        if ($user->image) {
-            $imageUrl = str_starts_with($user->image, 'http')
-                ? $user->image
-                : url(Storage::url($user->image));
-        }
-
         $userData = [
             'id'          => $user->id,
             'name'        => $user->name,
@@ -182,7 +166,7 @@ class AuthController extends Controller
             'email'       => $user->email,
             'phone'       => $user->phone,
             'role'        => $user->role,
-            'image_url'   => $imageUrl,
+            'image_url'   => $user->avatar_url,
             'school_id'   => $user->school_id,
             'school_name' => $user->school ? $user->school->name : null,
             'bus_id'      => $this->getBusId($user),

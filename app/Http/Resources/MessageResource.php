@@ -21,11 +21,12 @@ class MessageResource extends JsonResource
                 'id'   => $this->sender->id,
                 'name' => $this->sender->name,
                 'role' => $this->sender->role,
+                'avatar_url' => $this->sender->avatar_url,
             ],
             'body'            => $this->body,
             'type'            => $this->type,
             'attachment_url'  => $this->attachment_url,
-            'is_mine'         => $this->sender_id === $request->user()?->id,
+            'is_mine'         => (int)$this->sender_id === (int)$request->user()?->id,
             'created_at'      => $this->created_at->toISOString(),
         ];
     }
