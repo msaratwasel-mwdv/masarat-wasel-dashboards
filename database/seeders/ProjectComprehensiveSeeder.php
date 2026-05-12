@@ -51,8 +51,6 @@ class ProjectComprehensiveSeeder extends Seeder
                 [
                     'address' => 'الرياض، المملكة العربية السعودية',
                     'status' => 'Active',
-                    'has_transport' => true,
-                    'has_attendance' => true,
                 ]
             );
         }
@@ -335,7 +333,7 @@ class ProjectComprehensiveSeeder extends Seeder
                             'driver_id' => $forthBus->driver->user_id ?? $drivers[0]->user_id,
                             'school_id' => $forthBus->school_id,
                             'route_id' => $forthBus->route_id,
-                            'status' => 'completed',
+                            'status' => 'finished',
                             'departure_time' => $attendanceDate->copy()->setTime(6, 30),
                             'arrival_time' => $attendanceDate->copy()->setTime(7, 30),
                         ]
@@ -380,37 +378,81 @@ class ProjectComprehensiveSeeder extends Seeder
             );
         }
 
-        // 13. Inspections and Violations for the SINGLE Field Supervisor
+        // 13. Comprehensive Historical Data Generation (Last 30 Days)
+        // This ensures the Reports Hub is fully populated with realistic trends
+        $allStudents = Student::all();
+        
         foreach ($buses as $bus) {
-            // Create an Inspection
-            $inspection = \App\Models\Inspection::create([
-                'field_supervisor_id' => $supervisorUser->id,
-                'bus_id' => $bus->id,
-                'overall_status' => (rand(0, 10) > 8) ? 'fail' : 'pass',
-                'notes' => 'فحص دوري روتيني للسلامة والتأكد من التجهيزات.',
-            ]);
+            for ($d = 0; $d < 30; $d++) {
+                $date = now()->subDays($d);
+                if ($date->isWeekend()) continue; // Skip weekends
 
-            // Create a Violation for some buses
-            if (rand(0, 10) > 7) {
-                \App\Models\Violation::create([
-                    'field_supervisor_id' => $supervisorUser->id,
-                    'bus_id' => $bus->id,
-                    'type' => 'تجاوز السرعة',
-                    'description' => 'تم رصد تجاوز للسرعة المحددة بالقرب من منطقة المدرسة.',
-                    'status' => 'pending',
-                ]);
-            }
+                // 13a. Inspections (1 per week per bus roughly)
+                if (rand(1, 100) <= 15) {
+                    $inspection = \App\Models\Inspection::create([
+                        'field_supervisor_id' => $supervisorUser->id,
+                        'bus_id' => $bus->id,
+                        'overall_status' => (rand(1, 100) > 90) ? 'fail' : ((rand(1, 100) > 80) ? 'warning' : 'pass'),
+                        'notes' => 'فحص دوري لسلامة الحافلة.',
+                        'created_at' => $date->copy()->setTime(rand(8, 14), rand(0, 59)),
+                    ]);
+                    
+                    // Add some inspection items
+                    $items = \App\Models\InspectionItem::all();
+                    if($items->count() > 0) {
+                        foreach($items->random(min(5, $items->count())) as $item) {
+                            \App\Models\InspectionResult::create([
+                                'inspection_id' => $inspection->id,
+                                'inspection_item_id' => $item->id,
+                                'is_passed' => (rand(1, 100) > 10), // 90% pass rate per item
+                                'notes' => (rand(1, 100) > 90) ? 'يحتاج صيانة خفيفة' : null
+                            ]);
+                        }
+                    }
+                }
 
-            // Create an Incident reported by supervisor
-            if (rand(0, 10) > 8) {
-                \App\Models\Incident::create([
-                    'reporter_id' => $supervisorUser->id,
-                    'bus_id' => $bus->id,
-                    'type' => 'عطل ميكانيكي',
-                    'severity' => 'medium',
-                    'description' => 'تعطل مفاجئ في المحرك أثناء العودة.',
-                    'status' => 'pending',
-                ]);
+                // 13b. Violations (Speeding, Traffic - for Speed & Discipline Report)
+                if (rand(1, 100) <= 20) { // 20% chance of a violation on any given day for a bus
+                    \App\Models\Violation::create([
+                        'field_supervisor_id' => $supervisorUser->id,
+                        'bus_id' => $bus->id,
+                        'type' => (rand(1, 100) > 40) ? 'تجاوز السرعة' : 'وقوف خاطئ',
+                        'description' => 'تم رصد مخالفة عبر النظام الآلي أو المشرف الميداني.',
+                        'status' => $fakerAr->randomElement(['pending', 'resolved', 'confirmed']),
+                        'created_at' => $date->copy()->setTime(rand(6, 16), rand(0, 59)),
+                    ]);
+                }
+
+                // 13c. Incidents (Safety Report)
+                if (rand(1, 100) <= 10) { // 10% chance
+                    $severity = (rand(1, 100) > 85) ? 'high' : ((rand(1, 100) > 50) ? 'medium' : 'low');
+                    \App\Models\Incident::create([
+                        'reporter_id' => $supervisorUser->id,
+                        'bus_id' => $bus->id,
+                        'type' => $fakerAr->randomElement(['عطل ميكانيكي', 'تأخير غير مبرر', 'مشكلة سلوكية']),
+                        'severity' => $severity,
+                        'description' => 'تقرير عن حادثة أو مشكلة واجهت الحافلة أثناء المسار.',
+                        'status' => $fakerAr->randomElement(['pending', 'resolved', 'investigating']),
+                        'created_at' => $date->copy()->setTime(rand(6, 16), rand(0, 59)),
+                    ]);
+                }
+
+                // 13d. Delays (Delay & Punctuality Report)
+                if (rand(1, 100) <= 25) { // 25% chance of SOME delay
+                    $delayType = (rand(1, 100) > 40) ? 'bus' : 'student';
+                    $duration = rand(5, 45); // 5 to 45 mins
+                    
+                    \App\Models\Delay::create([
+                        'type' => $delayType,
+                        'bus_id' => $bus->id,
+                        'student_id' => ($delayType === 'student') ? $allStudents->random()->id : null,
+                        'duration_minutes' => $duration,
+                        'reason' => ($delayType === 'bus') ? $fakerAr->randomElement(['ازدحام مروري', 'عطل بسيط', 'ظروف جوية']) : $fakerAr->randomElement(['تأخر في النزول', 'نسيان أدوات', 'مرض مفاجئ']),
+                        'notes' => 'تم توثيق التأخير لإدراجه في التقارير.',
+                        'reporter_id' => $supervisorUser->id,
+                        'created_at' => $date->copy()->setTime(rand(6, 16), rand(0, 59)),
+                    ]);
+                }
             }
         }
 
