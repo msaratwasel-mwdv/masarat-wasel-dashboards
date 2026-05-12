@@ -197,6 +197,26 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's normalized avatar URL.
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (empty($this->image)) {
+            return null;
+        }
+
+        if (str_starts_with($this->image, 'http')) {
+            return $this->image;
+        }
+
+        try {
+            return url(\Illuminate\Support\Facades\Storage::url($this->image));
+        } catch (\Exception $e) {
+            return asset('storage/' . ltrim($this->image, '/'));
+        }
+    }
+
+    /**
      * Check if the user has a given role by name.
      */
     public function hasRole(string $role): bool

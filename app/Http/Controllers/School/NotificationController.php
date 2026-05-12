@@ -409,10 +409,12 @@ class NotificationController extends Controller
 
                     $basePayload = [
                         'notification_id' => (string) $notification->id,
-                        'type' => $validated['type'],
+                        'type' => 'admin_announcement',
+                        'original_type' => $validated['type'],
                         'title_en' => $finalTitleEn,
                         'message_en' => $finalMessageEn,
                         'correlation_id' => $correlationId,
+                        'deep_link' => '/notifications/' . $notification->id,
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
                     ];
 
@@ -422,7 +424,7 @@ class NotificationController extends Controller
                             $tokensAr,
                             $finalTitle,
                             $finalMessage,
-                            $basePayload
+                            array_merge($basePayload, ['language' => 'ar'])
                         );
                     }
 
@@ -432,7 +434,7 @@ class NotificationController extends Controller
                             $tokensEn,
                             $finalTitleEn,
                             $finalMessageEn,
-                            $basePayload
+                            array_merge($basePayload, ['language' => 'en'])
                         );
                     } elseif (!empty($tokensEn)) {
                         // Fallback: لا يوجد محتوى إنجليزي، أرسل العربي
@@ -440,7 +442,7 @@ class NotificationController extends Controller
                             $tokensEn,
                             $finalTitle,
                             $finalMessage,
-                            $basePayload
+                            array_merge($basePayload, ['language' => 'ar']) // Original is Arabic
                         );
                     }
                     
@@ -461,7 +463,7 @@ class NotificationController extends Controller
             }
 
             return redirect()->route('school.notifications.index')
-                ->with('success', 'تم حفظ الإشعار بنجاح لـ ' . count($fcmTokens) . ' مستخدم');
+                ->with('success', 'تم حفظ الإشعار بنجاح لـ ' . $allTokenCount . ' مستخدم');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'حدث خطأ أثناء إنشاء الإشعار: ' . $e->getMessage()]);

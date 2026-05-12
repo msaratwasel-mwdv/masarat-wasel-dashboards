@@ -20,11 +20,7 @@ class ContactResource extends JsonResource
             'role'  => $this->role,
             'phone' => $this->phone,
             'chat_description' => $this->chat_description ?? null,
-            'avatar' => $this->image
-                ? (str_starts_with($this->image, 'http')
-                    ? $this->image
-                    : asset('storage/' . ltrim($this->image, '/')))
-                : null,
+            'avatar_url' => $this->avatar_url,
         ];
     }
 }

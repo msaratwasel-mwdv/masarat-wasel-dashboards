@@ -341,9 +341,11 @@ class ChatController extends Controller
 
             if ($otherParticipant) {
                 $senderNameEn = $user->name_en ?: $user->name;
+                $senderAvatarUrl = $user->avatar_url ?: url('/images/default_avatar.png');
+                
                 $this->notificationService->sendToUser(
                     userId: $otherParticipant->id,
-                    type: 'new_message',
+                    type: 'chat_message',
                     title: 'رسالة جديدة من ' . $user->name,
                     message: $message->body ?: 'أرسل لك مرفقاً',
                     data: [
@@ -351,6 +353,9 @@ class ChatController extends Controller
                         'sender_id'       => (string) $user->id,
                         'sender_name'     => $user->name,
                         'sender_name_en'  => $senderNameEn,
+                        'sender_avatar'   => $senderAvatarUrl,
+                        'message_id'      => (string) $message->id,
+                        'click_action'    => 'FLUTTER_NOTIFICATION_CLICK',
                     ],
                     fromUserName: $user->name,
                     titleEn: 'New message from ' . $senderNameEn,

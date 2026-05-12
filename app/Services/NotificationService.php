@@ -94,6 +94,7 @@ class NotificationService
                                 'notification_id' => (string) $notification->id,
                                 'type'            => $type,
                                 'correlation_id'  => $correlationId,
+                                'language'        => 'ar',
                                 'sender_name'     => $fromUserName,
                                 'sender_name_en'  => $fromUserNameEn ?: $fromUserName,
                                 'title_en'        => $titleEn ?: $title,
@@ -113,6 +114,7 @@ class NotificationService
                                 'notification_id' => (string) $notification->id,
                                 'type'            => $type,
                                 'correlation_id'  => $correlationId,
+                                'language'        => 'en',
                                 'sender_name'     => $fromUserNameEn ?: $fromUserName,
                                 'sender_name_en'  => $fromUserNameEn ?: $fromUserName,
                                 'title_en'        => $titleEn ?: $title,
@@ -244,6 +246,7 @@ class NotificationService
                 $payload = array_merge($data ?? [], [
                     'type' => $type,
                     'correlation_id' => $correlationId,
+                    'language' => $lang,
                     'sender_name' => ($lang === 'en' && $fromUserNameEn) ? $fromUserNameEn : $fromUserName,
                     'sender_name_en' => $fromUserNameEn ?: $fromUserName,
                     'title_en' => $titleEn ?: $title,
@@ -314,7 +317,7 @@ class NotificationService
             'data_message_en' => $data['message_en'] ?? 'N/A',
         ]);
 
-        // 3. Chat-specific Android optimizations
+        // 3. Android optimizations
         $androidNotificationConfig = [
             'sound' => 'default',
             'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
@@ -323,9 +326,29 @@ class NotificationService
             'visibility' => 'PUBLIC',
         ];
 
-        // If it's a chat message, add a tag based on conversation_id to keep them separate
-        if ($type === 'new_message' && isset($data['conversation_id'])) {
-            $androidNotificationConfig['tag'] = 'chat_' . $data['conversation_id'];
+        // Custom channel and tags based on notification type
+        if ($type === 'chat_message' && isset($data['conversation_id'])) {
+            $androidNotificationConfig['channel_id'] = 'chat_messages';
+            $androidNotificationConfig['tag'] = 'conversation_' . $data['conversation_id'];
+        } elseif ($type === 'admin_announcement') {
+            $androidNotificationConfig['channel_id'] = 'school_announcements';
+            $androidNotificationConfig['default_vibrate_timings'] = true;
+        }
+
+        $apnsPayloadAps = [
+            'alert' => [
+                'title' => $title,
+                'body' => $message,
+            ],
+            'sound' => 'default',
+            'badge' => 1,
+            'content-available' => 1,
+            'mutable-content' => 1,
+            'interruption-level' => 'time-sensitive',
+        ];
+
+        if ($type === 'chat_message' && isset($data['conversation_id'])) {
+            $apnsPayloadAps['thread-id'] = 'conversation_' . $data['conversation_id'];
         }
 
         $fcmMessage = CloudMessage::new()
@@ -345,17 +368,7 @@ class NotificationService
                     'apns-collapse-id' => $collapseKey,
                 ],
                 'payload' => [
-                    'aps' => [
-                        'alert' => [
-                            'title' => $title,
-                            'body' => $message,
-                        ],
-                        'sound' => 'default',
-                        'badge' => 1,
-                        'content-available' => 1,
-                        'mutable-content' => 1,
-                        'interruption-level' => 'time-sensitive',
-                    ],
+                    'aps' => $apnsPayloadAps,
                 ],
             ]);
 

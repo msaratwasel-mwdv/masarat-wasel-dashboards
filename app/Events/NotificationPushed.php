@@ -54,6 +54,9 @@ class NotificationPushed implements ShouldBroadcast
                 ->count();
         }
 
+        $user = \App\Models\User::find($this->targetUserId);
+        $lang = $user ? ($user->preferred_language ?? 'ar') : 'ar';
+
         return [
             'id' => $this->notification->id,
             'type' => $this->notification->type,
@@ -61,7 +64,7 @@ class NotificationPushed implements ShouldBroadcast
             'title_en' => $this->notification->title_en,
             'message' => $this->notification->message,
             'message_en' => $this->notification->message_en,
-            'data' => $this->notification->data,
+            'data' => array_merge($this->notification->data ?? [], ['language' => $lang]),
             'icon' => $this->notification->icon,
             'color' => $this->notification->color,
             'from_user_name' => $this->notification->from_user_name,

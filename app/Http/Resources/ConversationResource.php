@@ -39,11 +39,7 @@ class ConversationResource extends JsonResource
                 'id'     => $p->id,
                 'name'   => $p->name,
                 'role'   => $p->role,
-                'avatar' => $p->image
-                    ? (str_starts_with($p->image, 'http')
-                        ? $p->image
-                        : asset('storage/' . ltrim($p->image, '/')))
-                    : null,
+                'avatar_url' => $p->avatar_url,
             ])->values(),
             'last_message' => $this->whenLoaded('lastMessage', function () {
                 return [
