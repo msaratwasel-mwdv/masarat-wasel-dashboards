@@ -6,7 +6,7 @@ export default function ApplicationLogo(
   return (
     <img
       {...props}
-      src="/images/logo-white.png" // تأكد أنك وضعت الصورة هنا
+      src="/images/logo2.png"
       alt="Wasel Logo"
       className={`object-contain ${props.className}`}
     />

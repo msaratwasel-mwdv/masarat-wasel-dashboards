@@ -303,6 +303,15 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
             Route::middleware(['plan.feature:has_reports'])->group(function() {
                 Route::get('trip-reports', [\App\Http\Controllers\School\TripReportController::class, 'index'])->name('trip-reports.index');
                 Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');
+
+                // School Reports Hub
+                Route::get('reports', [\App\Http\Controllers\School\ReportController::class, 'index'])->name('reports.index');
+                Route::get('reports/student-attendance', [\App\Http\Controllers\School\ReportController::class, 'studentAttendance'])->name('reports.student-attendance');
+                Route::get('reports/trip-operations', [\App\Http\Controllers\School\ReportController::class, 'tripOperations'])->name('reports.trip-operations');
+                Route::get('reports/safety-compliance', [\App\Http\Controllers\School\ReportController::class, 'safetyCompliance'])->name('reports.safety-compliance');
+                Route::get('reports/driver-performance', [\App\Http\Controllers\School\ReportController::class, 'driverPerformance'])->name('reports.driver-performance');
+                Route::get('reports/delay-punctuality', [\App\Http\Controllers\School\ReportController::class, 'delayPunctuality'])->name('reports.delay-punctuality');
+                Route::get('reports/speed-discipline', [\App\Http\Controllers\School\ReportController::class, 'speedDiscipline'])->name('reports.speed-discipline');
             });
         });
 

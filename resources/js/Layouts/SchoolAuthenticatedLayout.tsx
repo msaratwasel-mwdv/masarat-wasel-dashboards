@@ -35,6 +35,7 @@ import {
   Navigation,
   FileText,
   Baby,
+  BarChart3,
 } from "lucide-react";
 
 // تعريف عناصر القائمة لإدارة المدرسة
@@ -152,6 +153,40 @@ const getMenuItems = (isRTL: boolean) => [
     label: isRTL ? "طلبات تغيير الموقع" : "Location Requests",
     route: "school.location-requests.index",
     icon: "navigation",
+  },
+  {
+    label: isRTL ? "التقارير والتحليلات" : "Reports & Analytics",
+    icon: "chart",
+    subItems: [
+      {
+        label: isRTL ? "مركز التقارير" : "Reports Hub",
+        route: "school.reports.index",
+      },
+      {
+        label: isRTL ? "تقرير حضور الطلاب" : "Student Attendance",
+        route: "school.reports.student-attendance",
+      },
+      {
+        label: isRTL ? "تقرير الرحلات" : "Trip Operations",
+        route: "school.reports.trip-operations",
+      },
+      {
+        label: isRTL ? "تقرير السلامة" : "Safety & Compliance",
+        route: "school.reports.safety-compliance",
+      },
+      {
+        label: isRTL ? "أداء السائقين" : "Driver Performance",
+        route: "school.reports.driver-performance",
+      },
+      {
+        label: isRTL ? "تقرير التأخيرات" : "Delays & Punctuality",
+        route: "school.reports.delay-punctuality",
+      },
+      {
+        label: isRTL ? "السرعة والانضباط" : "Speed & Discipline",
+        route: "school.reports.speed-discipline",
+      },
+    ],
   },
   {
     label: isRTL ? "الإعدادات" : "Settings",
@@ -303,6 +338,7 @@ export default function SchoolAuthenticatedLayout({
       case "rocket": return <Rocket className={baseClass} />;
       case "users": return <Users className={baseClass} />;
       case "report": return <FileText className={baseClass} />;
+      case "chart": return <BarChart3 className={baseClass} />;
       case "calendar": return <Calendar className={baseClass} />;
       case "cog": return <Settings className={baseClass} />;
       default: return null;
@@ -347,7 +383,7 @@ export default function SchoolAuthenticatedLayout({
             href="/"
             className={`flex items-center gap-3 group ${flexDirection}`}
           >
-            <div className={`rounded-xl flex items-center justify-center bg-white shadow-lg group-hover:scale-105 transition-transform ${isCollapsed ? "w-11 h-11" : "w-14 h-14"} p-1.5`}>
+            <div className={`rounded-xl flex items-center justify-center bg-white shadow-lg group-hover:scale-105 transition-transform ${isCollapsed ? "w-11 h-11" : "w-16 h-16"} p-1`}>
               <ApplicationLogo className="w-full h-full" />
             </div>
 

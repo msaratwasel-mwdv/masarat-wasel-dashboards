@@ -82,7 +82,7 @@ export default function Welcome({
                 <link
                     rel="icon"
                     type="image/png"
-                    href="/assets/images/masarat-wasel-logo.jpg"
+                    href="/images/logo2.png"
                 />
             </Head>
 
@@ -105,12 +105,12 @@ export default function Welcome({
                         href="/"
                         className="flex items-center gap-3 group relative"
                     >
-                        <div className="relative w-11 h-11 transition-transform group-hover:scale-110 duration-500">
+                        <div className="relative w-20 h-20 transition-transform group-hover:scale-110 duration-500">
                             <div className="absolute inset-0 bg-brand-yellow/20 rounded-xl blur-lg group-hover:bg-brand-yellow/40 transition-colors" />
                             <img
-                                src="/assets/images/masarat-wasel-logo.jpg"
+                                src="/images/logo2.png"
                                 alt="Logo"
-                                className="relative h-full w-full object-contain rounded-xl shadow-sm border border-white"
+                                className="relative h-full w-full object-contain rounded-xl shadow-sm border border-white p-1.5 bg-white"
                             />
                         </div>
                         <span className={`text-xl font-black bg-clip-text text-transparent tracking-tight ${theme === "dark" ? "bg-gradient-to-l from-brand-yellow to-white" : "bg-gradient-to-l from-brand-navy to-slate-600"}`}>

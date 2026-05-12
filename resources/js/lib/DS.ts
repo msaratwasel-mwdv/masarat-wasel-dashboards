@@ -7,7 +7,7 @@
  */
 
 // ── Static Tokens & Responsive Utilities ──────────────────────────
-export const DS_pageWrapper = "px-4 md:px-0 pb-12 space-y-5 md:space-y-8 print:hidden";
+export const DS_pageWrapper = "px-4 md:px-0 pb-12 space-y-5 md:space-y-8";
 export const DS_card = "bg-white dark:bg-[#1a2845] rounded-[18px] md:rounded-[28px] shadow-sm border border-gray-100 dark:border-[#243460] overflow-hidden transition-all duration-300";
 export const DS_pageTitle = "font-black text-lg md:text-2xl text-[#0f2044] dark:text-white tracking-tight";
 export const DS_statLabel = "text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500";

@@ -420,7 +420,7 @@ export default function Authenticated({
             href="/"
             className={`flex items-center gap-3 group ${flexDirection}`}
           >
-            <div className={`rounded-xl flex items-center justify-center bg-white shadow-lg group-hover:scale-105 transition-transform ${isCollapsed ? "w-11 h-11" : "w-14 h-14"} p-1.5`}>
+            <div className={`rounded-xl flex items-center justify-center bg-white shadow-lg group-hover:scale-105 transition-transform ${isCollapsed ? "w-11 h-11" : "w-16 h-16"} p-1`}>
               <ApplicationLogo className="w-full h-full" />
             </div>
 
@@ -431,7 +431,7 @@ export default function Authenticated({
                 className={`flex flex-col ${isRTL ? "text-right" : "text-left"}`}
               >
                 <span className="text-lg font-bold tracking-wider text-white whitespace-nowrap">
-                  {isRTL ? "مسارات واصل" : "EduTrack"}
+                  {isRTL ? "مسارات واصل" : "Masarat Wasel"}
                 </span>
                 <span className="text-[9px] text-gray-400 uppercase tracking-widest font-medium whitespace-nowrap">
                   {isRTL ? "لوحة الإدارة" : "Admin Panel"}
