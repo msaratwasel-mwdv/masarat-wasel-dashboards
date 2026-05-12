@@ -355,11 +355,15 @@ class ChatController extends Controller
                         'sender_name_en'  => $senderNameEn,
                         'sender_avatar'   => $senderAvatarUrl,
                         'message_id'      => (string) $message->id,
+                        'notification_id' => (string) $message->id, // For Flutter deduplication
+                        'message'         => $message->body ?: 'أرسل لك مرفقاً',
+                        'message_en'      => $message->body ?: 'Sent you an attachment',
                         'click_action'    => 'FLUTTER_NOTIFICATION_CLICK',
                     ],
                     fromUserName: $user->name,
+                    immediate: true,
                     titleEn: 'New message from ' . $senderNameEn,
-                    messageEn: $message->body ?: 'Sent an attachment',
+                    messageEn: $message->body ?: 'Sent you an attachment',
                     fromUserNameEn: $senderNameEn
                 );
             }

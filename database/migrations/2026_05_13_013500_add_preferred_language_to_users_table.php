@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('preferred_language', 5)->default('ar')->after('role');
+            if (!Schema::hasColumn('users', 'preferred_language')) {
+                $table->string('preferred_language')->after('email')->nullable()->default('ar');
+            }
         });
     }
 
@@ -22,7 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('preferred_language');
+            if (Schema::hasColumn('users', 'preferred_language')) {
+                $table->dropColumn('preferred_language');
+            }
         });
     }
 };

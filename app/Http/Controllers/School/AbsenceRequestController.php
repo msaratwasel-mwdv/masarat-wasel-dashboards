@@ -20,7 +20,7 @@ class AbsenceRequestController extends Controller
         $requests = AbsenceRequest::whereHas('student', function($query) use ($schoolId) {
             $query->inSchool($schoolId);
         })
-        ->with(['student:id,first_name_ar,last_name_ar', 'guardian:id,first_name_ar,last_name_ar'])
+        ->with(['student', 'guardian'])
         ->latest()
         ->paginate(15);
 
@@ -56,22 +56,33 @@ class AbsenceRequestController extends Controller
         // إرسال إشعار لولي الأمر
         $service = app(\App\Services\NotificationService::class);
         $statusAr = $validated['status'] === 'approved' ? 'مقبول' : 'مرفوض';
-        $title = "تحديث طلب غياب: {$statusAr}";
-        $message = "تم {$statusAr} طلب غياب الطالب {$absenceRequest->student->first_name_ar}";
+        $titleAr = "تحديث طلب غياب: {$statusAr}";
+        $messageAr = "تم {$statusAr} طلب غياب الطالب {$absenceRequest->student->first_name_ar}";
         if ($validated['status'] === 'rejected' && $validated['rejection_reason']) {
-            $message .= ". السبب: " . $validated['rejection_reason'];
+            $messageAr .= ". السبب: " . $validated['rejection_reason'];
+        }
+
+        $statusEn = $validated['status'] === 'approved' ? 'Approved' : 'Rejected';
+        $titleEn = "Absence Request Update: {$statusEn}";
+        $messageEn = "Absence request for student {$absenceRequest->student->full_name_en} has been {$statusEn}";
+        if ($validated['status'] === 'rejected' && $validated['rejection_reason']) {
+            $messageEn .= ". Reason: " . $validated['rejection_reason'];
         }
 
         $service->sendToUser(
             $absenceRequest->guardian_id,
             'absence_request_processed',
-            $title,
-            $message,
+            $titleAr,
+            $messageAr,
             [
                 'request_id' => $absenceRequest->id,
                 'status' => $validated['status'],
                 'student_id' => $absenceRequest->student_id,
-            ]
+            ],
+            null,
+            false,
+            $titleEn,
+            $messageEn
         );
 
         return redirect()->back()->with('success', 'تم تحديث حالة الطلب بنجاح.');

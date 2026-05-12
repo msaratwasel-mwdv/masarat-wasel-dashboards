@@ -18,6 +18,7 @@ class StudentStatusUpdated implements ShouldBroadcastNow
 
     public int $studentId;
     public string $studentName;
+    public ?string $studentNameEn;
     public array $guardianIds = [];
     public string $busNumber;
 
@@ -29,11 +30,13 @@ class StudentStatusUpdated implements ShouldBroadcastNow
         // Optional raw overrides
         $studentId = null,
         $studentName = null,
+        $studentNameEn = null,
         $guardianIds = null,
         $busNumber = null
     ) {
         $this->studentId = $studentId ?? ($student instanceof \App\Models\Student ? $student->id : (is_numeric($student) ? (int)$student : 0));
         $this->studentName = $studentName ?? ($student instanceof \App\Models\Student ? $student->full_name : 'جميع الطلاب');
+        $this->studentNameEn = $studentNameEn ?? ($student instanceof \App\Models\Student ? $student->full_name_en : null);
         
         if ($guardianIds) {
             $this->guardianIds = is_array($guardianIds) ? $guardianIds : [$guardianIds];
@@ -70,6 +73,7 @@ class StudentStatusUpdated implements ShouldBroadcastNow
         return [
             'student_id'   => $this->studentId,
             'student_name' => $this->studentName,
+            'student_name_en' => $this->studentNameEn,
             'new_status'   => $this->newStatus,
             'direction'    => $this->direction,
             'bus_number'   => $this->busNumber,

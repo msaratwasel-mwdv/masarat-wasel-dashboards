@@ -79,6 +79,7 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
     _method: "post" as "post" | "put",
     name: "", name_en: "", national_id: "", phone: "", email: "", address: "",
     status: "active" as "active" | "inactive",
+    preferred_language: "ar",
   });
 
   const handleSearch = (v: string) => {
@@ -124,7 +125,8 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
       phone: g.phone, 
       email: g.email || "", 
       address: g.address || "", 
-      status: g.status 
+      status: g.status,
+      preferred_language: g.preferred_language || "ar",
     });
     clearErrors(); 
     setIsModalOpen(true);
@@ -472,6 +474,17 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
                 <div>
                   <label className={DS_labelCls}>{t("Address / House #")}</label>
                   <input type="text" value={data.address} onChange={e => setData("address", e.target.value)} className={DS_searchInput} />
+                </div>
+                <div>
+                  <label className={DS_labelCls}>{t("Preferred Language")}</label>
+                  <select 
+                    value={data.preferred_language} 
+                    onChange={e => setData("preferred_language", e.target.value)} 
+                    className={DS_searchInput}
+                  >
+                    <option value="ar">{t("Arabic")}</option>
+                    <option value="en">{t("English")}</option>
+                  </select>
                 </div>
                 <div className="md:col-span-2">
                   <Toggle
