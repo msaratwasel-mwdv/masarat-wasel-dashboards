@@ -51,13 +51,14 @@ class GuardianController extends Controller
                 return [
                     'id'           => $user->id,
                     'name'         => $user->name,
-                    'name_en'      => $user->name_en,
-                    'national_id'  => $user->national_id,
-                    'phone'        => $user->phone,
-                    'email'        => $user->email,
-                    'address'      => $user->address,
-                    'image'        => $user->image,
-                    'status'       => $user->guardian?->status ?? 'active',
+                    'name_en'            => $user->name_en,
+                    'national_id'        => $user->national_id,
+                    'phone'              => $user->phone,
+                    'email'              => $user->email,
+                    'address'            => $user->address,
+                    'image'              => $user->image,
+                    'preferred_language' => $user->preferred_language,
+                    'status'             => $user->guardian?->status ?? 'active',
                     'students'     => $user->students->map(fn($s) => [
                         'id'         => $s->id,
                         'name'       => $s->name ?? trim("{$s->first_name_ar} {$s->last_name_ar}"),
@@ -81,13 +82,14 @@ class GuardianController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'       => 'required|string|max:255',
-            'name_en'    => 'nullable|string|max:255',
-            'national_id'=> 'required|string|max:50|unique:users,national_id',
-            'phone'      => 'required|string|max:50|unique:users,phone',
-            'email'      => 'nullable|email|max:255|unique:users,email',
-            'address'    => 'nullable|string|max:500',
-            'status'     => 'nullable|in:active,inactive',
+            'name'               => 'required|string|max:255',
+            'name_en'            => 'nullable|string|max:255',
+            'national_id'        => 'required|string|max:50|unique:users,national_id',
+            'phone'              => 'required|string|max:50|unique:users,phone',
+            'email'              => 'nullable|email|max:255|unique:users,email',
+            'address'            => 'nullable|string|max:500',
+            'status'             => 'nullable|in:active,inactive',
+            'preferred_language' => 'nullable|in:ar,en',
         ]);
 
         DB::transaction(function () use ($validated) {
@@ -95,19 +97,20 @@ class GuardianController extends Controller
             $enNameParts = User::parseFullName($validated['name_en'] ?? $validated['name']);
 
             $user = User::create([
-                'first_name_ar'  => $nameParts[0],
-                'second_name_ar' => $nameParts[1],
-                'third_name_ar'  => $nameParts[2],
-                'last_name_ar'   => $nameParts[3],
-                'first_name_en'  => $enNameParts[0],
-                'second_name_en' => $enNameParts[1],
-                'third_name_en'  => $enNameParts[2],
-                'last_name_en'   => $enNameParts[3],
-                'national_id'    => $validated['national_id'],
-                'phone'          => preg_replace('/\s+/', '', $validated['phone']),
-                'email'          => $validated['email'] ?? null,
-                'address'        => $validated['address'] ?? null,
-                'password'       => Hash::make($validated['phone']),
+                'first_name_ar'      => $nameParts[0],
+                'second_name_ar'     => $nameParts[1],
+                'third_name_ar'      => $nameParts[2],
+                'last_name_ar'       => $nameParts[3],
+                'first_name_en'      => $enNameParts[0],
+                'second_name_en'     => $enNameParts[1],
+                'third_name_en'      => $enNameParts[2],
+                'last_name_en'       => $enNameParts[3],
+                'national_id'        => $validated['national_id'],
+                'phone'              => preg_replace('/\s+/', '', $validated['phone']),
+                'email'              => $validated['email'] ?? null,
+                'address'            => $validated['address'] ?? null,
+                'password'           => Hash::make($validated['phone']),
+                'preferred_language' => $validated['preferred_language'] ?? 'ar',
             ]);
 
             $role = Role::firstOrCreate(['name' => 'parent']);
@@ -128,13 +131,14 @@ class GuardianController extends Controller
     public function update(Request $request, User $parent)
     {
         $validated = $request->validate([
-            'name'       => 'required|string|max:255',
-            'name_en'    => 'nullable|string|max:255',
-            'national_id'=> ['required', 'string', 'max:50', Rule::unique('users', 'national_id')->ignore($parent->id)],
-            'phone'      => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($parent->id)],
-            'email'      => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($parent->id)],
-            'address'    => 'nullable|string|max:500',
-            'status'     => 'nullable|in:active,inactive',
+            'name'               => 'required|string|max:255',
+            'name_en'            => 'nullable|string|max:255',
+            'national_id'        => ['required', 'string', 'max:50', Rule::unique('users', 'national_id')->ignore($parent->id)],
+            'phone'              => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($parent->id)],
+            'email'              => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($parent->id)],
+            'address'            => 'nullable|string|max:500',
+            'status'             => 'nullable|in:active,inactive',
+            'preferred_language' => 'nullable|in:ar,en',
         ]);
 
         DB::transaction(function () use ($validated, $parent) {
@@ -142,18 +146,19 @@ class GuardianController extends Controller
             $enNameParts = User::parseFullName($validated['name_en'] ?? $validated['name']);
 
             $parent->update([
-                'first_name_ar'  => $nameParts[0],
-                'second_name_ar' => $nameParts[1],
-                'third_name_ar'  => $nameParts[2],
-                'last_name_ar'   => $nameParts[3],
-                'first_name_en'  => $enNameParts[0],
-                'second_name_en' => $enNameParts[1],
-                'third_name_en'  => $enNameParts[2],
-                'last_name_en'   => $enNameParts[3],
-                'national_id'    => $validated['national_id'],
-                'phone'          => preg_replace('/\s+/', '', $validated['phone']),
-                'email'          => $validated['email'] ?? null,
-                'address'        => $validated['address'] ?? null,
+                'first_name_ar'      => $nameParts[0],
+                'second_name_ar'     => $nameParts[1],
+                'third_name_ar'      => $nameParts[2],
+                'last_name_ar'       => $nameParts[3],
+                'first_name_en'      => $enNameParts[0],
+                'second_name_en'     => $enNameParts[1],
+                'third_name_en'      => $enNameParts[2],
+                'last_name_en'       => $enNameParts[3],
+                'national_id'        => $validated['national_id'],
+                'phone'              => preg_replace('/\s+/', '', $validated['phone']),
+                'email'              => $validated['email'] ?? null,
+                'address'            => $validated['address'] ?? null,
+                'preferred_language' => $validated['preferred_language'] ?? 'ar',
             ]);
 
             if ($parent->guardian) {

@@ -115,8 +115,9 @@ class TeacherController extends Controller
             ]
         );
 
-        if ($student->guardian_id) {
-            \Log::info("Broadcasting attendance update for Student: {$student->id}, Guardian: {$student->guardian_id}");
+        $student->load('guardians');
+        if ($student->guardians->isNotEmpty()) {
+            \Log::info("Broadcasting attendance update for Student: {$student->id}, Guardians: " . $student->guardians->pluck('id')->implode(', '));
             event(new \App\Events\TeacherAttendanceMarked($student, $request->status, today()->toDateString()));
 
             // ── إرسال إشعار FCM Push + حفظ في قاعدة البيانات ──
@@ -146,6 +147,7 @@ class TeacherController extends Controller
                 data: [
                     'student_id'   => (string) $student->id,
                     'student_name' => $student->full_name,
+                    'student_name_en' => $student->full_name_en,
                     'status'       => $request->status,
                     'date'         => today()->toDateString(),
                 ]

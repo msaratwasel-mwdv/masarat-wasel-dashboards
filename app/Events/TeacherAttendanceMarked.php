@@ -17,17 +17,13 @@ class TeacherAttendanceMarked implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $studentId;
-    public $studentName;
-    public $guardianId;
+    public $student;
     public $status;
     public $date;
 
     public function __construct(Student $student, string $status, string $date)
     {
-        $this->studentId = $student->id;
-        $this->studentName = $student->full_name;
-        $this->guardianId = $student->guardian_id;
+        $this->student = $student;
         $this->status = $status;
         $this->date = $date;
     }
@@ -37,9 +33,18 @@ class TeacherAttendanceMarked implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
-        return [
-            new PrivateChannel('guardian.' . $this->guardianId),
-        ];
+        $channels = [];
+        
+        // Load guardians if not loaded
+        if (!$this->student->relationLoaded('guardians')) {
+            $this->student->load('guardians');
+        }
+
+        foreach ($this->student->guardians as $guardian) {
+            $channels[] = new PrivateChannel('guardian.' . $guardian->id);
+        }
+
+        return $channels;
     }
 
     /**
@@ -56,11 +61,12 @@ class TeacherAttendanceMarked implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'student_id'   => $this->studentId,
-            'student_name' => $this->studentName,
-            'status'       => $this->status, // 'present' or 'absent'
-            'date'         => $this->date,
-            'timestamp'    => now()->toIso8601String(),
+            'student_id'      => $this->student->id,
+            'student_name'    => $this->student->full_name,
+            'student_name_en' => $this->student->full_name_en,
+            'status'          => $this->status, // 'present' or 'absent'
+            'date'            => $this->date,
+            'timestamp'       => now()->toIso8601String(),
         ];
     }
 }

@@ -141,11 +141,12 @@ class DailyTripApiController extends Controller
                     'bus_number'        => $bus->bus_number,
                     'student_id'        => $student->id,
                     'student_name'      => $student->full_name,
+                    'student_name_en'   => $student->full_name_en,
                     'direction'         => 'to_school',
                     'boarded_at'        => $boardedAt->toIso8601String(),
                 ],
-                titleEn: "Your student {$student->full_name} boarded the bus",
-                messageEn: "Student {$student->full_name} has boarded the bus and is heading to school safely."
+                titleEn: "Your student {$student->full_name_en} boarded the bus",
+                messageEn: "Student {$student->full_name_en} has boarded the bus and is heading to school safely."
             );
         } else {
             $this->notificationService->notifyStudentGuardian(
@@ -160,11 +161,12 @@ class DailyTripApiController extends Controller
                     'bus_number'        => $bus->bus_number,
                     'student_id'        => $student->id,
                     'student_name'      => $student->full_name,
+                    'student_name_en'   => $student->full_name_en,
                     'direction'         => 'to_home',
                     'boarded_at'        => $boardedAt->toIso8601String(),
                 ],
-                titleEn: "Your student {$student->full_name} boarded the return bus",
-                messageEn: "Student {$student->full_name} has boarded the bus heading back home."
+                titleEn: "Your student {$student->full_name_en} boarded the return bus",
+                messageEn: "Student {$student->full_name_en} has boarded the bus heading back home."
             );
         }
 
@@ -228,29 +230,27 @@ class DailyTripApiController extends Controller
                  $this->notificationService->notifyStudentGuardian(
                     studentId: $studentId,
                     type: 'bus_boarding_afternoon',
-                    title: "طالبك ركب باص العودة",
-                    message: "لقد ركب الطالب الحافلة الآن للعودة إلى المنزل.",
+                    titleEn: "Your student boarded the return bus",
+                    messageEn: "Student " . (Student::find($studentId)->full_name_en ?? '') . " has boarded the bus heading back home.",
                     data: [
                         'type' => 'bus_boarding_afternoon',
                         'student_id' => $studentId,
+                        'student_name_en' => Student::find($studentId)->full_name_en,
                         'bus_id' => $bus->id
                     ],
-                    titleEn: "Your student boarded the return bus",
-                    messageEn: "The student has boarded the bus heading back home."
                 );
             } else {
                 $this->notificationService->notifyStudentGuardian(
                     studentId: $studentId,
                     type: 'bus_boarding_morning',
-                    title: "طالبك ركب باص الذهاب",
-                    message: "لقد ركب الطالب الحافلة الآن متوجهاً إلى المدرسة بسلام.",
+                    titleEn: "Your student boarded the bus",
+                    messageEn: "Student " . (Student::find($studentId)->full_name_en ?? '') . " has boarded the bus and is heading to school safely.",
                     data: [
                         'type' => 'bus_boarding_morning',
                         'student_id' => $studentId,
+                        'student_name_en' => Student::find($studentId)->full_name_en,
                         'bus_id' => $bus->id
                     ],
-                    titleEn: "Your student boarded the bus",
-                    messageEn: "The student has boarded the bus and is heading to school safely."
                 );
             }
 
@@ -367,10 +367,11 @@ class DailyTripApiController extends Controller
                 data: [
                     'attendance_id' => $attendance->id, 'bus_id' => $bus->id,
                     'student_id' => $student->id, 'type' => 'student_alighted',
+                    'student_name_en' => $student->full_name_en,
                     'direction' => 'to_home',
                 ],
-                titleEn: "Your student {$student->full_name} arrived home",
-                messageEn: "Student {$student->full_name} has alighted from the bus at home safely."
+                titleEn: "Your student {$student->full_name_en} arrived home",
+                messageEn: "Student {$student->full_name_en} has alighted from the bus at home safely."
             );
         } else {
             $this->notificationService->notifyStudentGuardian(
@@ -381,10 +382,11 @@ class DailyTripApiController extends Controller
                 data: [
                     'attendance_id' => $attendance->id, 'bus_id' => $bus->id,
                     'student_id' => $student->id, 'type' => 'student_alighted',
+                    'student_name_en' => $student->full_name_en,
                     'direction' => 'to_school',
                 ],
-                titleEn: "Your student {$student->full_name} arrived at school",
-                messageEn: "Student {$student->full_name} has arrived at school safely."
+                titleEn: "Your student {$student->full_name_en} arrived at school",
+                messageEn: "Student {$student->full_name_en} has arrived at school safely."
             );
         }
 
@@ -440,30 +442,30 @@ class DailyTripApiController extends Controller
             if ($direction === 'to_home') {
                 $this->notificationService->notifyStudentGuardian(
                     studentId: $studentId,
-                    type: 'student_alighted',
-                    title: "وصل طلابك للمنزل",
-                    message: "لقد نزل الطالب من الحافلة الآن عند المنزل بسلام.",
+                    title: "وصل طالبك للمنزل",
+                    message: "لقد وصل الطالب للمنزل الآن بسلام.",
+                    titleEn: "Your student arrived home",
+                    messageEn: "Student " . (Student::find($studentId)->full_name_en ?? '') . " has alighted from the bus at home safely.",
                     data: [
                         'type' => 'student_alighted', 
                         'direction' => 'to_home',
-                        'student_id' => $studentId
+                        'student_id' => $studentId,
+                        'student_name_en' => Student::find($studentId)->full_name_en,
                     ],
-                    titleEn: "Your students arrived home",
-                    messageEn: "The student has alighted from the bus at home safely."
                 );
             } else {
                 $this->notificationService->notifyStudentGuardian(
                     studentId: $studentId,
-                    type: 'student_alighted',
-                    title: "وصل طلابك للمدرسة",
-                    message: "لقد وصل الطلاب إلى المدرسة الآن بسلام.",
+                    title: "وصل طالبك للمدرسة",
+                    message: "لقد وصل الطالب إلى المدرسة الآن بسلام.",
+                    titleEn: "Your student arrived at school",
+                    messageEn: "Student " . (Student::find($studentId)->full_name_en ?? '') . " has arrived at school safely.",
                     data: [
                         'type' => 'student_alighted',
                         'direction' => 'to_school',
-                        'student_id' => $studentId
+                        'student_id' => $studentId,
+                        'student_name_en' => Student::find($studentId)->full_name_en,
                     ],
-                    titleEn: "Your students arrived at school",
-                    messageEn: "The students have arrived at school safely."
                 );
             }
 
@@ -1031,7 +1033,7 @@ class DailyTripApiController extends Controller
                 'student_name'      => $student->full_name,
             ],
             titleEn: "Bus is approaching",
-            messageEn: "The bus is approaching the house of {$student->full_name}. Please be ready."
+            messageEn: "The bus is approaching the house of {$student->full_name_en}. Please be ready."
         );
 
         // 3. بث التحديث الفوري (WebSocket) - لإشعار تطبيق المشرفة إذا كان يستمع

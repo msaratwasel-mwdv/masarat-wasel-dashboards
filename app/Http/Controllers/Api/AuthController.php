@@ -109,9 +109,10 @@ class AuthController extends Controller
             'role'        => $user->role,
             'image_url'   => $user->avatar_url,
             'school_id'   => $user->school_id,
-            'school_name' => $user->school ? $user->school->name : null,
-            'bus_id'      => $this->getBusId($user),
-            'bus'         => $this->getBusDetails($user),
+            'school_name'        => $user->school ? $user->school->name : null,
+            'preferred_language' => $user->preferred_language ?? 'ar',
+            'bus_id'             => $this->getBusId($user),
+            'bus'                => $this->getBusDetails($user),
         ];
 
         return response()->json([
@@ -168,9 +169,10 @@ class AuthController extends Controller
             'role'        => $user->role,
             'image_url'   => $user->avatar_url,
             'school_id'   => $user->school_id,
-            'school_name' => $user->school ? $user->school->name : null,
-            'bus_id'      => $this->getBusId($user),
-            'bus'         => $this->getBusDetails($user),
+            'school_name'        => $user->school ? $user->school->name : null,
+            'preferred_language' => $user->preferred_language ?? 'ar',
+            'bus_id'             => $this->getBusId($user),
+            'bus'                => $this->getBusDetails($user),
         ];
 
         return response()->json([

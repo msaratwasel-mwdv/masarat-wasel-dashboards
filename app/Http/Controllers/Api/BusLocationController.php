@@ -279,12 +279,12 @@ class BusLocationController extends Controller
                 // SCRUM-85 & SCRUM-88: التنبيه عند اقتراب الحافلة (مسافة 2 كم + زمن تقديري دقيقتين)
                 if ($direction === 'to_school') {
                     $title = "الحافلة تقترب لاستلام {$student->full_name}";
-                    $titleEn = "Bus is approaching to pick up {$student->full_name}";
+                    $titleEn = "Bus is approaching to pick up {$student->full_name_en}";
                     $message = "الحافلة على بعد {$distanceText} من منزلك، ستصل خلال دقيقتين تقريباً. يرجى تجهيز الطالب للركوب.";
                     $messageEn = "The bus is {$distanceText} from your house and will arrive in approximately 2 minutes. Please prepare the student.";
                 } else {
                     $title = "طالبك {$student->full_name} سيصل خلال دقيقتين";
-                    $titleEn = "Your student {$student->full_name} will arrive in 2 minutes";
+                    $titleEn = "Your student {$student->full_name_en} will arrive in 2 minutes";
                     $message = "الحافلة على بعد {$distanceText} من منزلك، ستصل خلال دقيقتين تقريباً. يرجى الاستعداد لاستلام الطالب.";
                     $messageEn = "The bus is {$distanceText} from your house and will arrive in approximately 2 minutes. Please be ready to receive the student.";
                 }
