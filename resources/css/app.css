@@ -265,3 +265,17 @@ html[dir="rtl"] {
     cursor: default !important;
 }
 
+/* Fix Tailwind Forms select arrow overlap */
+[dir="rtl"] select,
+[dir="rtl"] .form-select {
+    background-position: left 1rem center !important;
+    padding-left: 2.5rem !important;
+    padding-right: 1.25rem !important;
+}
+
+[dir="ltr"] select,
+[dir="ltr"] .form-select {
+    background-position: right 1rem center !important;
+    padding-right: 2.5rem !important;
+    padding-left: 1.25rem !important;
+}

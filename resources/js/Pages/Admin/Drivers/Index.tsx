@@ -62,7 +62,8 @@ import {
     DS_label,
     DS_btnPrimary,
     DS_btnDanger,
-    DS_btnEdit
+    DS_btnEdit,
+    DS_select
 } from "@/lib/DS";
 import PrintReportHeader from "@/Components/PrintReportHeader";
 
@@ -117,6 +118,7 @@ interface Driver {
   id_card_front_image?: string | null;
   id_card_back_image?: string | null;
   assigned_bus: AssignedBus | null;
+  preferred_language?: string;
 }
 
 interface Props {
@@ -184,6 +186,7 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
       license_number: "",
       license_expiry_date: "",
       address: "",
+      preferred_language: "ar",
       image: null as File | null,
       license_front_image: null as File | null,
       license_back_image: null as File | null,
@@ -259,6 +262,7 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
       license_number: driver.driver?.license_number || "",
       license_expiry_date: driver.driver?.license_expiry_date || "",
       address: driver.address || "",
+      preferred_language: driver.preferred_language || "ar",
       image: null,
       license_front_image: null,
       license_back_image: null,
@@ -417,6 +421,17 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                 {driver.driver?.license_expiry_date || "—"}
               </span>
             </div>
+          );
+        },
+      }),
+      columnHelper.accessor("preferred_language", {
+        header: isRTL ? "اللغة المفضلة" : "Language",
+        cell: (info) => {
+          const lang = info.row.original.preferred_language || "ar";
+          return (
+            <span className="px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-200 dark:border-gray-700">
+              {lang === "en" ? (isRTL ? "الإنجليزية" : "English") : (isRTL ? "العربية" : "Arabic")}
+            </span>
           );
         },
       }),
@@ -601,25 +616,6 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
             </div>
         )}
 
-        {/* Action Button Section */}
-        <div className="flex flex-wrap items-center justify-end gap-3 mb-4">
-            <button onClick={() => setIsImportModalOpen(true)} className={DS_btnSecondary}>
-                <Upload size={18} />
-                <span>{isRTL ? "استيراد" : "Import"}</span>
-            </button>
-            <a href={route("admin.drivers.export")} className={DS_btnSecondary}>
-                <Download size={18} />
-                <span>{isRTL ? "تصدير" : "Export"}</span>
-            </a>
-            <button 
-                onClick={openAddModal}
-                className={DS_btnGold}
-            >
-                <Plus size={18} />
-                <span>{isRTL ? "إضافة سائق جديد" : "Enroll New Driver"}</span>
-            </button>
-        </div>
-
         {/* Main Operational Table */}
         <div className={DS_card}>
             <BaseDataTable<Driver>
@@ -632,12 +628,26 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                 filterTabs={filterTabs}
                 activeFilter={filters.status}
                 onFilterChange={handleFilterChange}
-                exportEnabled={true}
+                exportEnabled={false}
                 headerAction={
-                    <button onClick={handlePrint} className={DS_btnSecondary}>
-                        <Printer size={16} />
-                        <span>{isRTL ? "طباعة التقارير" : "Print Dossiers"}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={openAddModal} className={DS_btnGold}>
+                            <Plus size={16} />
+                            <span className="hidden sm:inline">{isRTL ? "سائق جديد" : "New Driver"}</span>
+                        </button>
+                        <button onClick={() => setIsImportModalOpen(true)} className={DS_btnSecondary}>
+                            <Upload size={16} />
+                            <span className="hidden sm:inline">{isRTL ? "استيراد" : "Import"}</span>
+                        </button>
+                        <a href={route("admin.drivers.export")} className={DS_btnSecondary}>
+                            <Download size={16} />
+                            <span className="hidden sm:inline">{isRTL ? "تصدير" : "Export"}</span>
+                        </a>
+                        <button onClick={handlePrint} className={DS_btnSecondary}>
+                            <Printer size={16} />
+                            <span className="hidden sm:inline">{isRTL ? "طباعة" : "Print"}</span>
+                        </button>
+                    </div>
                 }
             />
         </div>
@@ -852,6 +862,38 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                                         <div className="space-y-1.5">
                                             <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label>
                                             <input type="text" value={data.last_name_en} onChange={(e) => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Contact & Preferences */}
+                                <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
+                                        {isRTL ? "معلومات التواصل واللغة" : "Contact & Preferences"}
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "البريد الإلكتروني" : "Email Address"}</label>
+                                            <input type="email" value={data.email} onChange={(e) => setData("email", e.target.value)} className={DS_input} dir="ltr" />
+                                            <InputError message={errors.email} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "العنوان" : "Address"}</label>
+                                            <input type="text" value={data.address} onChange={(e) => setData("address", e.target.value)} className={DS_input} dir={isRTL ? "rtl" : "ltr"} />
+                                            <InputError message={errors.address} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "اللغة المفضلة" : "Preferred Language"}</label>
+                                            <select 
+                                                value={data.preferred_language} 
+                                                onChange={(e) => setData("preferred_language", e.target.value)} 
+                                                className={DS_select} 
+                                                dir={isRTL ? "rtl" : "ltr"}
+                                            >
+                                                <option value="ar">{isRTL ? "العربية" : "Arabic"}</option>
+                                                <option value="en">{isRTL ? "الإنجليزية" : "English"}</option>
+                                            </select>
+                                            <InputError message={errors.preferred_language} />
                                         </div>
                                     </div>
                                 </div>

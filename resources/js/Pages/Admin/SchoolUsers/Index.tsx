@@ -54,7 +54,8 @@ import {
     DS_label,
     DS_btnPrimary,
     DS_btnDanger,
-    DS_btnEdit
+    DS_btnEdit,
+    DS_select
 } from "@/lib/DS";
 import PrintReportHeader from "@/Components/PrintReportHeader";
 import { AnimatePresence } from "framer-motion";
@@ -85,6 +86,7 @@ interface User {
       name: string;
     };
   };
+  preferred_language?: string;
 }
 
 interface School {
@@ -133,6 +135,7 @@ export default function SchoolUsersIndex({ users, filters, schools, auth }: Prop
         school_id: '' as string | number,
         password: '',
         password_confirmation: '',
+        preferred_language: 'ar',
         image: null as File | null,
     });
 
@@ -175,6 +178,7 @@ export default function SchoolUsersIndex({ users, filters, schools, auth }: Prop
                 school_id: user.school_admin?.school.id || '',
                 password: '',
                 password_confirmation: '',
+                preferred_language: user.preferred_language || 'ar',
                 image: null,
             });
         } else {
@@ -250,6 +254,17 @@ export default function SchoolUsersIndex({ users, filters, schools, auth }: Prop
       }),
       columnHelper.accessor("phone", {
         header: isRTL ? "الجوال" : "Phone",
+      }),
+      columnHelper.accessor("preferred_language", {
+        header: isRTL ? "اللغة المفضلة" : "Language",
+        cell: (info) => {
+          const lang = info.row.original.preferred_language || "ar";
+          return (
+            <span className="px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-200 dark:border-gray-700">
+              {lang === "en" ? (isRTL ? "الإنجليزية" : "English") : (isRTL ? "العربية" : "Arabic")}
+            </span>
+          );
+        },
       }),
       columnHelper.accessor("school_admin.school.name", {
         header: isRTL ? "المؤسسة التعليمية" : "Educational Institution",
@@ -404,26 +419,6 @@ export default function SchoolUsersIndex({ users, filters, schools, auth }: Prop
             </div>
         )}
 
-        {/* Action Button Section */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3">
-                <button onClick={() => openFormModal()} className={DS_btnGold}>
-                    <Plus size={18} />
-                    <span>{isRTL ? "إضافة مدير جديد" : "Add New Manager"}</span>
-                </button>
-            </div>
-            <div className="flex items-center gap-3">
-                <button onClick={() => setIsImportModalOpen(true)} className={DS_btnSecondary}>
-                    <Upload size={18} />
-                    <span>{isRTL ? "استيراد" : "Import"}</span>
-                </button>
-                <a href={route("admin.school-admins.export")} className={DS_btnSecondary}>
-                    <Download size={18} />
-                    <span>{isRTL ? "تصدير" : "Export"}</span>
-                </a>
-            </div>
-        </div>
-
         {/* Main Operational Table */}
         <div className={DS_card}>
             <BaseDataTable<User>
@@ -433,12 +428,26 @@ export default function SchoolUsersIndex({ users, filters, schools, auth }: Prop
                 searchValue={search}
                 onSearchChange={handleSearch}
                 searchPlaceholder={isRTL ? "البحث في سجلات المدراء..." : "Search manager records..."}
-                exportEnabled={true}
+                exportEnabled={false}
                 headerAction={
-                    <button onClick={handlePrint} className={DS_btnSecondary}>
-                        <Printer size={16} />
-                        <span>{isRTL ? "طباعة التقارير" : "Print Reports"}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => openFormModal()} className={DS_btnGold}>
+                            <Plus size={16} />
+                            <span className="hidden sm:inline">{isRTL ? "إضافة مدير جديد" : "New Manager"}</span>
+                        </button>
+                        <button onClick={() => setIsImportModalOpen(true)} className={DS_btnSecondary}>
+                            <Upload size={16} />
+                            <span className="hidden sm:inline">{isRTL ? "استيراد" : "Import"}</span>
+                        </button>
+                        <a href={route("admin.school-admins.export")} className={DS_btnSecondary}>
+                            <Download size={16} />
+                            <span className="hidden sm:inline">{isRTL ? "تصدير" : "Export"}</span>
+                        </a>
+                        <button onClick={handlePrint} className={DS_btnSecondary}>
+                            <Printer size={16} />
+                            <span className="hidden sm:inline">{isRTL ? "طباعة" : "Print"}</span>
+                        </button>
+                    </div>
                 }
             />
         </div>
@@ -583,6 +592,14 @@ export default function SchoolUsersIndex({ users, filters, schools, auth }: Prop
                                         required
                                     />
                                     <InputError message={errors.phone} />
+                                </div>
+                                <div>
+                                    <label className={DS_label}>{isRTL ? "اللغة المفضلة" : "Preferred Language"}</label>
+                                    <select value={data.preferred_language} onChange={(e) => setData("preferred_language", e.target.value)} className={DS_select} dir={isRTL ? "rtl" : "ltr"}>
+                                        <option value="ar">{isRTL ? "العربية" : "Arabic"}</option>
+                                        <option value="en">{isRTL ? "الإنجليزية" : "English"}</option>
+                                    </select>
+                                    <InputError message={errors.preferred_language} />
                                 </div>
                             </div>
 
