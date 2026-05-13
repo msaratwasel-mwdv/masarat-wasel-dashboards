@@ -53,7 +53,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Notification::observe(\App\Observers\NotificationObserver::class);
         \App\Models\NotificationRecipient::observe(\App\Observers\NotificationRecipientObserver::class);
         \App\Models\Incident::observe(\App\Observers\IncidentObserver::class);
-        
+
         // Analytics models cache invalidation
         $analyticsObserver = \App\Observers\AnalyticsCacheObserver::class;
         \App\Models\Incident::observe($analyticsObserver);
@@ -65,6 +65,9 @@ class AppServiceProvider extends ServiceProvider
 
         \Log::debug("AppServiceProvider: Booting... Registering Broadcast routes with Sanctum.");
         \Illuminate\Support\Facades\Broadcast::routes(['middleware' => ['api', 'auth:sanctum']]);
+
+        // Register WhatsApp Event Subscriber
+        Event::subscribe(\App\Listeners\WhatsAppEventSubscriber::class);
     }
 }
 

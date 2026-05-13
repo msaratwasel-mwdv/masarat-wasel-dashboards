@@ -24,6 +24,6 @@ class WhatsAppEventBinding extends Model
 
     public function template()
     {
-        return $this->belongsTo(WhatsAppTemplate::class);
+        return $this->belongsTo(WhatsAppTemplate::class, 'whatsapp_template_id');
     }
 }

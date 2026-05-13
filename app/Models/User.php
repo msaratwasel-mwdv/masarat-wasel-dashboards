@@ -45,6 +45,7 @@ class User extends Authenticatable
         'preferred_language',
         'role',
         'is_active',
+        'whatsapp_consent',
     ];
 
     /**

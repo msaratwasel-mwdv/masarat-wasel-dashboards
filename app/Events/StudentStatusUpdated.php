@@ -23,8 +23,8 @@ class StudentStatusUpdated implements ShouldBroadcastNow
     public string $busNumber;
 
     public function __construct(
-        $student = null,
-        $bus = null,
+        public ?\App\Models\Student $student = null,
+        public ?\App\Models\Bus $bus = null,
         public string $newStatus = 'unknown',
         public string $direction = 'none',
         // Optional raw overrides

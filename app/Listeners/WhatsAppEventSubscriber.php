@@ -44,22 +44,40 @@ class WhatsAppEventSubscriber
             $recipients = $this->resolveRecipients($binding->recipient_resolver, $event);
 
             foreach ($recipients as $recipient) {
+                $user = $recipient['user'] ?? null;
+                
                 // Check consent
-                if (isset($recipient['user']) && !$recipient['user']->whatsapp_consent) {
+                if ($user && !$user->whatsapp_consent) {
                     continue;
                 }
 
+                // Resolve template by language
+                $language = $user->preferred_language ?? 'ar';
+                $template = $binding->template;
+
+                // If user language is different from bound template language, try to find a match
+                if ($template->language !== $language) {
+                    $matchingTemplate = \App\Models\WhatsAppTemplate::where('name', $template->name)
+                        ->where('language', $language)
+                        ->where('status', 'APPROVED')
+                        ->first();
+                    
+                    if ($matchingTemplate) {
+                        $template = $matchingTemplate;
+                    }
+                }
+
                 $variables = $this->mapper->resolve(
-                    $binding->template->variables->toArray(),
+                    $template->variables->toArray(),
                     $context
                 );
 
                 SendWhatsAppMessage::dispatch(
                     $account,
                     $recipient['phone'],
-                    $binding->template,
+                    $template,
                     $variables,
-                    $recipient['user']->id ?? null
+                    $user->id ?? null
                 )->onQueue('whatsapp');
             }
         }
@@ -153,6 +171,7 @@ class WhatsAppEventSubscriber
             }
         } catch (\Exception $e) {
             // Table might not exist yet during migration
+            Log::error('[WhatsApp] Subscription error: ' . $e->getMessage());
         }
     }
 }

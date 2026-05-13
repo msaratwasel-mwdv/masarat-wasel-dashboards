@@ -30,7 +30,7 @@ class WhatsAppTemplate extends Model
 
     public function variables()
     {
-        return $this->hasMany(WhatsAppTemplateVariable::class);
+        return $this->hasMany(WhatsAppTemplateVariable::class, 'whatsapp_template_id');
     }
 
     public function eventBindings()
