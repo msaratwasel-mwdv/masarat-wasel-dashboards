@@ -62,39 +62,6 @@ const getMenuItems = (isRTL: boolean) => [
     ],
   },
   {
-    label: isRTL ? "المسارات" : "Routes",
-    route: "admin.routes.index",
-    icon: "route",
-  },
-  {
-    label: isRTL ? "الحافلات" : "Buses",
-    icon: "bus",
-    subItems: [
-      {
-        label: isRTL ? "قائمة الحافلات" : "Buses List",
-        route: "admin.buses.index",
-      },
-      {
-        label: isRTL ? "مصاريف الحافلات" : "Bus Expenses",
-        route: "admin.bus-expenses.index",
-      },
-      {
-        label: isRTL ? "طلبات الحافلات" : "Bus Requests",
-        route: "admin.bus-requests.index",
-      },
-    ],
-  },
-  {
-    label: isRTL ? "الرحلات اليومية" : "Daily Trips",
-    route: "admin.daily-trips.index",
-    icon: "grid",
-  },
-  {
-    label: isRTL ? "الرحلات الميدانية" : "Field Trips",
-    route: "admin.field-trips.index",
-    icon: "map",
-  },
-  {
     label: isRTL ? "المستخدمين" : "Users",
     icon: "user",
     subItems: [
@@ -117,60 +84,24 @@ const getMenuItems = (isRTL: boolean) => [
     ],
   },
   {
-    label: isRTL ? "التقارير التحليلية" : "Analytics Hub",
-    icon: "clipboard",
+    label: isRTL ? "الحافلات" : "Buses",
+    icon: "bus",
     subItems: [
       {
-        label: isRTL ? "لوحة التقارير" : "Reports Dashboard",
-        route: "admin.analytics.index",
+        label: isRTL ? "قائمة الحافلات" : "Buses List",
+        route: "admin.buses.index",
       },
       {
-        label: isRTL ? "الأداء التشغيلي" : "Operational Reports",
-        route: "admin.analytics.operational",
+        label: isRTL ? "مصاريف الحافلات" : "Bus Expenses",
+        route: "admin.bus-expenses.index",
       },
       {
-        label: isRTL ? "تحليلات السائقين" : "Driver Analytics",
-        route: "admin.analytics.drivers",
+        label: isRTL ? "طلبات الحافلات" : "Bus Requests",
+        route: "admin.bus-requests.index",
       },
       {
-        label: isRTL ? "التقارير المالية" : "Financial Reports",
-        route: "admin.analytics.financial",
-      },
-      {
-        label: isRTL ? "تحليلات الطلاب" : "Student Insights",
-        route: "admin.analytics.students",
-      },
-    ],
-  },
-  {
-    label: isRTL ? "إدارة المحتوى" : "Content Management",
-    icon: "clipboard",
-    subItems: [
-      {
-        label: isRTL ? "الفعاليات والأخبار" : "News & Events",
-        route: "admin.events.index",
-      },
-    ],
-  },
-  {
-    label: isRTL ? "الاشتراكات والمالية" : "Plans & Billing",
-    icon: "clipboard",
-    subItems: [
-      {
-        label: isRTL ? "إدارة الباقات" : "Plans Management",
-        route: "admin.plans.index",
-      },
-      {
-        label: isRTL ? "الاشتراكات" : "Subscriptions",
-        route: "admin.subscriptions.index",
-      },
-      {
-        label: isRTL ? "الأقساط والدفعات" : "Installments",
-        route: "admin.installments.index",
-      },
-      {
-        label: isRTL ? "سجل المعاملات" : "Transactions History",
-        route: "admin.transactions.index",
+        label: isRTL ? "المسارات" : "Routes",
+        route: "admin.routes.index",
       },
     ],
   },
@@ -205,9 +136,77 @@ const getMenuItems = (isRTL: boolean) => [
     ],
   },
   {
+    label: isRTL ? "الاشتراكات والمالية" : "Plans & Billing",
+    icon: "clipboard",
+    subItems: [
+      {
+        label: isRTL ? "إدارة الباقات" : "Plans Management",
+        route: "admin.plans.index",
+      },
+      {
+        label: isRTL ? "الاشتراكات" : "Subscriptions",
+        route: "admin.subscriptions.index",
+      },
+      {
+        label: isRTL ? "الأقساط والدفعات" : "Installments",
+        route: "admin.installments.index",
+      },
+      {
+        label: isRTL ? "سجل المعاملات" : "Transactions History",
+        route: "admin.transactions.index",
+      },
+    ],
+  },
+  {
+    label: isRTL ? "التقارير التحليلية" : "Analytics Hub",
+    icon: "clipboard",
+    subItems: [
+      {
+        label: isRTL ? "لوحة التقارير" : "Reports Dashboard",
+        route: "admin.analytics.index",
+      },
+      {
+        label: isRTL ? "الأداء التشغيلي" : "Operational Reports",
+        route: "admin.analytics.operational",
+      },
+      {
+        label: isRTL ? "تحليلات السائقين" : "Driver Analytics",
+        route: "admin.analytics.drivers",
+      },
+      {
+        label: isRTL ? "التقارير المالية" : "Financial Reports",
+        route: "admin.analytics.financial",
+      },
+      {
+        label: isRTL ? "تحليلات الطلاب" : "Student Insights",
+        route: "admin.analytics.students",
+      },
+    ],
+  },
+  {
     label: isRTL ? "المحادثات" : "Conversations",
     route: "admin.chat.index",
     icon: "chat",
+  },
+  {
+    label: isRTL ? "إدارة المحتوى" : "Content Management",
+    icon: "clipboard",
+    subItems: [
+      {
+        label: isRTL ? "الفعاليات والأخبار" : "News & Events",
+        route: "admin.events.index",
+      },
+    ],
+  },
+  {
+    label: isRTL ? "الرحلات الميدانية" : "Field Trips",
+    route: "admin.field-trips.index",
+    icon: "map",
+  },
+  {
+    label: isRTL ? "الرحلات اليومية" : "Daily Trips",
+    route: "admin.daily-trips.index",
+    icon: "grid",
   },
   {
     label: isRTL ? "الإعدادات" : "Settings",

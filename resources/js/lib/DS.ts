@@ -39,7 +39,7 @@ export const DS_btnSecondary = "flex items-center gap-2 px-4 py-2 rounded-[14px]
 export const DS_btnEdit = "px-3 py-1.5 rounded-[10px] bg-[#0f2044]/[0.06] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8] text-xs font-bold hover:bg-[#0f2044]/[0.12] dark:hover:bg-[#0f2044]/50 transition-all";
 export const DS_btnDanger = "px-3 py-1.5 rounded-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-all";
 
-export const DS_modalContainer = "w-full sm:max-w-lg rounded-t-[24px] sm:rounded-[28px] shadow-2xl overflow-hidden self-end sm:self-center";
+export const DS_modalContainer = "w-full overflow-hidden";
 export const DS_modalHeaderTitle = "text-lg font-bold text-white";
 export const DS_modalTitle = "text-xl font-black text-slate-800 dark:text-white";
 export const DS_modalHeaderAccent = "w-2 h-6 bg-[#f5b800] rounded-full flex-shrink-0";

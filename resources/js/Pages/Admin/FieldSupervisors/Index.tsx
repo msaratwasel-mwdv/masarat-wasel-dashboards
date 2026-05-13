@@ -55,7 +55,8 @@ import {
     DS_label,
     DS_btnPrimary,
     DS_btnDanger,
-    DS_btnEdit
+    DS_btnEdit,
+    DS_select
 } from "@/lib/DS";
 import PrintReportHeader from "@/Components/PrintReportHeader";
 
@@ -87,6 +88,7 @@ interface FieldSupervisor {
   second_name_en?: string;
   third_name_en?: string;
   last_name_en?: string;
+  preferred_language?: string;
 }
 
 type FilterType = "all" | "active" | "inactive";
@@ -131,6 +133,7 @@ export default function FieldSupervisorsIndex({
       status: "Active",
       is_active: true,
       address: "",
+      preferred_language: "ar",
       image: null as File | null,
     });
 
@@ -169,6 +172,7 @@ export default function FieldSupervisorsIndex({
       status: sup.is_active ? "Active" : "Inactive",
       is_active: sup.is_active,
       address: sup.address || "",
+      preferred_language: sup.preferred_language || "ar",
       image: null,
     });
     clearErrors();
@@ -491,25 +495,6 @@ export default function FieldSupervisorsIndex({
             </div>
         )}
 
-        {/* Action Button Section */}
-        <div className="flex flex-wrap justify-end gap-3 mb-4">
-            <button onClick={() => setIsImportModalOpen(true)} className={DS_btnSecondary}>
-                <Upload size={18} />
-                <span>{isRTL ? "استيراد" : "Import"}</span>
-            </button>
-            <a href={route("admin.field-supervisors.export")} className={DS_btnSecondary}>
-                <Download size={18} />
-                <span>{isRTL ? "تصدير" : "Export"}</span>
-            </a>
-            <button 
-                onClick={openAddModal}
-                className={DS_btnGold}
-            >
-                <Plus size={18} />
-                <span>{isRTL ? "إضافة مشرف ميداني" : "Enroll New Supervisor"}</span>
-            </button>
-        </div>
-
         {/* Main Operational Table */}
         <div className={DS_card}>
             <BaseDataTable<FieldSupervisor>
@@ -522,12 +507,26 @@ export default function FieldSupervisorsIndex({
                 filterTabs={filterTabs}
                 activeFilter={filter}
                 onFilterChange={(key) => setFilter(key as FilterType)}
-                exportEnabled={true}
+                exportEnabled={false}
                 headerAction={
-                    <button onClick={handlePrint} className={DS_btnSecondary}>
-                        <Printer size={16} />
-                        <span>{isRTL ? "طباعة التقارير" : "Print Dossiers"}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={openAddModal} className={DS_btnGold}>
+                            <Plus size={16} />
+                            <span className="hidden sm:inline">{isRTL ? "إضافة مشرف ميداني" : "New Field Supervisor"}</span>
+                        </button>
+                        <button onClick={() => setIsImportModalOpen(true)} className={DS_btnSecondary}>
+                            <Upload size={16} />
+                            <span className="hidden sm:inline">{isRTL ? "استيراد" : "Import"}</span>
+                        </button>
+                        <a href={route("admin.field-supervisors.export")} className={DS_btnSecondary}>
+                            <Download size={16} />
+                            <span className="hidden sm:inline">{isRTL ? "تصدير" : "Export"}</span>
+                        </a>
+                        <button onClick={handlePrint} className={DS_btnSecondary}>
+                            <Printer size={16} />
+                            <span className="hidden sm:inline">{isRTL ? "طباعة" : "Print"}</span>
+                        </button>
+                    </div>
                 }
             />
         </div>
@@ -729,34 +728,56 @@ export default function FieldSupervisorsIndex({
 
                         {currentStep === 2 && (
                             <motion.div initial={{ opacity: 0, x: isRTL ? -20 : 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-1.5">
-                                        <label className={DS_label}>{isRTL ? "الرقم المدني / الإقامة" : "Civil ID / Iqama"}</label>
-                                        <input type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
-                                        <InputError message={errors.national_id} />
+                                {/* Contact & Preferences */}
+                                <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
+                                        {isRTL ? "معلومات التواصل واللغة" : "Contact & Preferences"}
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "رقم الجوال" : "Primary Phone"}</label>
+                                            <input type="text" value={data.phone} onChange={(e) => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" placeholder="5X XXX XXXX" required />
+                                            <InputError message={errors.phone} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "البريد الإلكتروني" : "Email Address"}</label>
+                                            <input type="email" value={data.email} onChange={(e) => setData("email", e.target.value)} className={DS_input} dir="ltr" required />
+                                            <InputError message={errors.email} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "اللغة المفضلة" : "Preferred Language"}</label>
+                                            <select value={data.preferred_language} onChange={(e) => setData("preferred_language", e.target.value)} className={DS_select} dir={isRTL ? "rtl" : "ltr"}>
+                                                <option value="ar">{isRTL ? "العربية" : "Arabic"}</option>
+                                                <option value="en">{isRTL ? "الإنجليزية" : "English"}</option>
+                                            </select>
+                                            <InputError message={errors.preferred_language} />
+                                        </div>
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <label className={DS_label}>{isRTL ? "رقم الجوال" : "Primary Phone"}</label>
-                                        <input type="text" value={data.phone} onChange={(e) => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" placeholder="5X XXX XXXX" required />
-                                        <InputError message={errors.phone} />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className={DS_label}>{isRTL ? "البريد الإلكتروني" : "Primary Email"}</label>
-                                        <input type="email" value={data.email} onChange={(e) => setData("email", e.target.value)} className={DS_input} dir="ltr" required />
-                                        <InputError message={errors.email} />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className={DS_label}>{isRTL ? "الحالة" : "Operational Status"}</label>
-                                        <select value={data.status} onChange={(e) => setData("status", e.target.value)} className={DS_input} required>
-                                            <option value="Active">{isRTL ? "نشط" : "Active"}</option>
-                                            <option value="Inactive">{isRTL ? "غير نشط" : "Inactive"}</option>
-                                        </select>
+                                    <div className="space-y-1.5 mt-4">
+                                        <label className={DS_label}>{isRTL ? "العنوان" : "Registered Address"}</label>
+                                        <input type="text" value={data.address} onChange={(e) => setData("address", e.target.value)} className={DS_input} dir={isRTL ? "rtl" : "ltr"} />
                                     </div>
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <label className={DS_label}>{isRTL ? "العنوان" : "Registered Address"}</label>
-                                    <input type="text" value={data.address} onChange={(e) => setData("address", e.target.value)} className={DS_input} />
+                                {/* Operational Data */}
+                                <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
+                                        {isRTL ? "البيانات الوظيفية" : "Operational Data"}
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "الرقم المدني / الإقامة" : "Civil ID / Iqama"}</label>
+                                            <input type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
+                                            <InputError message={errors.national_id} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className={DS_label}>{isRTL ? "الحالة" : "Operational Status"}</label>
+                                            <select value={data.status} onChange={(e) => setData("status", e.target.value)} className={DS_select} required>
+                                                <option value="Active">{isRTL ? "نشط" : "Active"}</option>
+                                                <option value="Inactive">{isRTL ? "غير نشط" : "Inactive"}</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             </motion.div>
                         )}
