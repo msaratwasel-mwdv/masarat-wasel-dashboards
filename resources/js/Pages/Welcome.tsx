@@ -105,7 +105,7 @@ export default function Welcome({
                         href="/"
                         className="flex items-center gap-3 group relative"
                     >
-                        <div className="relative w-20 h-20 transition-transform group-hover:scale-110 duration-500">
+                        <div className="relative w-14 h-14 transition-transform group-hover:scale-110 duration-500">
                             <div className="absolute inset-0 bg-brand-yellow/20 rounded-xl blur-lg group-hover:bg-brand-yellow/40 transition-colors" />
                             <img
                                 src="/images/logo2.png"
@@ -653,7 +653,7 @@ export default function Welcome({
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-20">
                         <div>
                             <Link href="/" className="flex items-center gap-3 mb-8">
-                                <img src="/assets/images/masarat-wasel-logo.jpg" alt="Logo" className="h-10 w-10 object-contain rounded-xl" />
+                                <img src="/images/logo2.png" alt="Logo" className="h-10 w-10 object-contain rounded-xl" />
                                 <span className={`text-xl font-black ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>
                                     {isAr ? "مسارات واصل" : "Masarat Wasel"}
                                 </span>

@@ -2,6 +2,7 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, useForm } from "@inertiajs/react";
 import { FormEventHandler } from "react";
 import { useTheme } from "@/Contexts/ThemeContext";
+import { Loader2 } from "lucide-react";
 
 // تعريف نوع المدرسة لاستقبالها
 interface School {
@@ -48,12 +49,12 @@ export default function CreateSchoolAdmin({ school }: { school: School }) {
       />
 
       <div
-        className={`max-w-2xl mx-auto mt-10 ${
+        className={`max-w-7xl mx-auto mt-4 ${
           isRTL ? "text-right" : "text-left"
         }`}
       >
         <div
-          className={`p-8 rounded-2xl shadow-sm border ${
+          className={`p-6 rounded-2xl shadow-sm border ${
             isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"
           }`}
         >
@@ -222,8 +223,9 @@ export default function CreateSchoolAdmin({ school }: { school: School }) {
               <button
                 type="submit"
                 disabled={processing}
-                className="px-6 py-2 bg-brand-primary text-white rounded-lg hover:bg-opacity-90"
+                className="px-6 py-2 bg-brand-primary text-white rounded-lg hover:bg-opacity-90 flex items-center gap-2"
               >
+                {processing && <Loader2 size={16} className="animate-spin" />}
                 {isRTL ? "إنشاء الحساب" : "Create Account"}
               </button>
             </div>

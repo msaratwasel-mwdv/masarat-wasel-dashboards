@@ -31,8 +31,10 @@ import {
     Printer,
     Briefcase,
     ShieldCheck,
+    ShieldCheck,
     Upload,
-    Download
+    Download,
+    Loader2
 } from "lucide-react";
 import { 
     DS_pageWrapper, 
@@ -536,8 +538,9 @@ export default function FieldSupervisorsIndex({
             {showDetailsModal && selectedSupervisor && (
                 <Modal show={showDetailsModal} onClose={() => setShowDetailsModal(false)} maxWidth="3xl">
                     <div className={DS_modalContainer}>
-                        {/* Dossier Header */}
-                        <div className="relative h-48 bg-[#0f2044] overflow-hidden">
+                        <div className="flex-1 overflow-y-auto min-h-0">
+                            {/* Dossier Header */}
+                            <div className="relative h-48 shrink-0 bg-[#0f2044] overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-transparent z-10" />
                             <div className="absolute top-6 inset-x-6 flex justify-between items-center z-20">
                                 <span className="px-3 py-1 bg-[#f5b800] text-[#0f2044] rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl">
@@ -613,6 +616,7 @@ export default function FieldSupervisorsIndex({
                                     </div>
                                 </div>
                             </div>
+                            </div>
                         </div>
                     </div>
                 </Modal>
@@ -620,7 +624,7 @@ export default function FieldSupervisorsIndex({
         </AnimatePresence>
 
         {/* --- Enrollment / Edit Modal --- */}
-        <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
+        <Modal show={isModalOpen} onClose={closeModal} maxWidth="5xl">
             <div className={DS_modalContainer}>
                 <div className={DS_modalHeader(isRTL)}>
                     <div className="flex items-center gap-3">
@@ -635,7 +639,7 @@ export default function FieldSupervisorsIndex({
                 </div>
 
                 {/* Tactical Stepper */}
-                <div className="bg-[#0f2044]/5 dark:bg-[#0f2044]/30 px-10 py-6 border-b border-gray-100 dark:border-[#243460]">
+                <div className="bg-[#0f2044]/5 dark:bg-[#0f2044]/30 px-10 py-3 border-b border-gray-100 dark:border-[#243460]">
                     <div className="relative flex items-center justify-between">
                         <div className="absolute inset-x-10 top-1/2 -translate-y-1/2 h-0.5 bg-gray-200 dark:bg-[#243460]" />
                         <div className={`absolute left-10 top-1/2 -translate-y-1/2 h-0.5 bg-[#f5b800] transition-all duration-500`} style={{ width: currentStep === 1 ? '0%' : '100%' }} />
@@ -643,19 +647,19 @@ export default function FieldSupervisorsIndex({
                         <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg transition-all ${currentStep >= 1 ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] text-gray-400'}`}>1</div>
                         <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg transition-all ${currentStep >= 2 ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] text-gray-400'}`}>2</div>
                     </div>
-                    <div className="flex justify-between mt-3 px-4">
+                    <div className="flex justify-between mt-1 px-4">
                         <span className="text-[9px] font-black uppercase tracking-widest text-[#0f2044] dark:text-[#f5b800]">{isRTL ? "الهوية الشخصية" : "Personal Identity"}</span>
                         <span className={`text-[9px] font-black uppercase tracking-widest ${currentStep === 2 ? 'text-[#0f2044] dark:text-[#f5b800]' : 'text-gray-400'}`}>{isRTL ? "بيانات الاتصال" : "Contact Details"}</span>
                     </div>
                 </div>
 
-                <form onSubmit={submit}>
+                <form onSubmit={submit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
                     <div className={DS_modalBody}>
                         {currentStep === 1 && (
-                            <motion.div initial={{ opacity: 0, x: isRTL ? 20 : -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                            <motion.div initial={{ opacity: 0, x: isRTL ? 20 : -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                                 {/* Photo Upload */}
-                                <div className="flex items-center gap-6">
-                                    <div className="w-24 h-24 rounded-3xl bg-gray-100 dark:bg-[#0f2044]/40 border-2 border-dashed border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-[#0f2044]/40 border-2 border-dashed border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden">
                                         {data.image ? (
                                             <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
                                         ) : previewImage ? (
@@ -799,6 +803,7 @@ export default function FieldSupervisorsIndex({
                                 </button>
                             ) : (
                                 <button type="submit" disabled={processing} className={DS_btnGold}>
+                                    {processing && <Loader2 size={16} className="animate-spin" />}
                                     {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل المشرف" : "Enroll Supervisor")}
                                 </button>
                             )}

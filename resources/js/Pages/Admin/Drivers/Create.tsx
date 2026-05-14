@@ -28,11 +28,11 @@ export default function CreateDriver() {
         >
             <Head title="Add Driver" />
 
-            <div className="py-6">
-                <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
+            <div className="py-2">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
                     {/* --- Header Section --- */}
-                    <div className="mb-6 flex items-center justify-between">
+                    <div className="mb-4 flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl font-bold text-brand-dark">New Driver Registration</h1>
                             <p className="text-sm text-gray-500 mt-1">Add a new driver to the company fleet pool.</p>
@@ -47,11 +47,11 @@ export default function CreateDriver() {
 
                     {/* --- Form Card --- */}
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100">
-                        <div className="p-8">
+                        <div className="p-6">
                             <form onSubmit={submit}>
 
                                 {/* Section 1: Personal Information */}
-                                <div className="mb-8">
+                                <div className="mb-4">
                                     <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
                                         <svg className="w-5 h-5 text-brand-yellow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                         Personal Information
@@ -89,7 +89,7 @@ export default function CreateDriver() {
                                 </div>
 
                                 {/* Section 2: Contact Details */}
-                                <div className="mb-8">
+                                <div className="mb-4">
                                     <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
                                         <svg className="w-5 h-5 text-brand-yellow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
                                         Contact Details
@@ -127,7 +127,7 @@ export default function CreateDriver() {
                                 </div>
 
                                 {/* Section 3: Professional Details */}
-                                <div className="mb-8">
+                                <div className="mb-4">
                                     <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
                                         <svg className="w-5 h-5 text-brand-yellow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0c0 .883-.393 1.627-1.008 2.138a3.001 3.001 0 01-1.464 2.868A3.001 3.001 0 0113.5 12a2.48 2.48 0 01-1.04-.226l-1.636 2.046a.75.75 0 01-1.166 0l-1.636-2.046A2.48 2.48 0 017 12a3.001 3.001 0 012-5.862z" /></svg>
                                         License Information

@@ -17,8 +17,27 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): Response
+    public function create(): Response|RedirectResponse
     {
+        // إذا كان المستخدم مسجل الدخول بالفعل، وجّهه مباشرة إلى لوحة التحكم الخاصة به
+        // هذا يحل مشكلة: العميل يسجل الدخول ويرجع خطوة ثم يسجل مرة أخرى
+        if (Auth::check()) {
+            $user = Auth::user();
+
+            if ($user->role === 'admin') {
+                return redirect()->route('admin.dashboard');
+            }
+
+            if ($user->role === 'school_admin') {
+                return redirect()->route('school.dashboard');
+            }
+
+            // أي دور آخر (مثل parent) لا يسمح له بالدخول للوحة التحكم
+            Auth::guard('web')->logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+        }
+
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),

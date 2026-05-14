@@ -42,9 +42,11 @@ export default function Modal({
       <Dialog
         as="div"
         style={{ zIndex }}
-        className="fixed inset-0 flex transform items-center overflow-y-auto px-4 py-6 transition-all sm:px-0"
+        className="fixed inset-0 z-10 overflow-y-auto"
         onClose={close}
       >
+        <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-6 lg:p-8">
+
         <TransitionChild
           enter="ease-out duration-300"
           enterFrom="opacity-0"
@@ -70,6 +72,7 @@ export default function Modal({
             {children}
           </DialogPanel>
         </TransitionChild>
+        </div>
       </Dialog>
     </Transition>
   );

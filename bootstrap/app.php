@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Sentry\Laravel\Integration;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -25,5 +26,27 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        Integration::handles($exceptions);
+
+        $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response, \Throwable $exception, \Illuminate\Http\Request $request) {
+            $status = $response->getStatusCode();
+            
+            // عرض صفحة الخطأ المخصصة دائماً لأخطاء 404 و 403 و 419
+            // بينما الأخطاء البرمجية (500) نظهرها كصفحة مخصصة فقط إذا كان APP_DEBUG = false
+            $showCustomError = false;
+            
+            if (in_array($status, [404, 403, 419])) {
+                $showCustomError = true;
+            } elseif (in_array($status, [500, 503]) && env('APP_DEBUG') == false) {
+                $showCustomError = true;
+            }
+
+            if ($showCustomError) {
+                return \Inertia\Inertia::render('Error', ['status' => $status])
+                    ->toResponse($request)
+                    ->setStatusCode($status);
+            }
+
+            return $response;
+        });
     })->create();

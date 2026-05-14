@@ -371,7 +371,7 @@ export default function SchoolAuthenticatedLayout({
         className={`
           force-print-hide print:hidden
           bg-gradient-to-b from-brand-dark to-brand-navy dark:from-gray-900 dark:to-gray-800
-          text-white flex flex-col fixed h-full z-50 shadow-sidebar overflow-hidden
+          text-white flex flex-col fixed inset-y-0 h-full z-50 shadow-sidebar overflow-hidden
           ${sidebarPosition}
           ${isMobileMenuOpen ? "translate-x-0" : isRTL ? "translate-x-full md:translate-x-0" : "-translate-x-full md:translate-x-0"}
           transition-transform duration-300 md:transition-none

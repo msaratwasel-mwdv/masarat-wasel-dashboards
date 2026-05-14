@@ -1,7 +1,7 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
 import InputError from '@/Components/InputError';
-import { Mail, Lock, ArrowRight, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function Login({
     status,
@@ -16,6 +16,32 @@ export default function Login({
 
     const [showPassword, setShowPassword] = useState(false);
 
+    const isAr = true; // Default Arabic
+
+    // Map common Laravel auth error messages to bilingual messages
+    const getLocalizedError = (error: string | undefined): string | undefined => {
+        if (!error) return undefined;
+
+        const errorMap: Record<string, { ar: string; en: string }> = {
+            'These credentials do not match our records.': {
+                ar: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+                en: 'The email or password is incorrect.',
+            },
+            'auth.failed': {
+                ar: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+                en: 'The email or password is incorrect.',
+            },
+        };
+
+        for (const [key, val] of Object.entries(errorMap)) {
+            if (error.includes(key) || error === key) {
+                return isAr ? val.ar : val.en;
+            }
+        }
+
+        return error;
+    };
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
@@ -29,7 +55,7 @@ export default function Login({
             <Head>
                 <title>تسجيل الدخول - مسارات واصل</title>
                 <meta name="description" content="تسجيل الدخول إلى منصة وصل للنقل المدرسي" />
-                <link rel="icon" type="image/png" href="/assets/images/masarat-wasel-logo.jpg" />
+                <link rel="icon" type="image/png" href="/images/logo2.png" />
             </Head>
 
             {/* Decorative Background Elements */}
@@ -38,8 +64,8 @@ export default function Login({
             <div className="absolute -bottom-32 left-1/2 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-4000"></div>
 
             {/* Back to Home */}
-            <Link 
-                href="/" 
+            <Link
+                href="/"
                 className="absolute top-6 right-6 lg:top-10 lg:right-10 flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors font-medium z-10 bg-white/50 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm hover:shadow-md border border-slate-100"
             >
                 <ArrowRight size={18} />
@@ -47,31 +73,31 @@ export default function Login({
             </Link>
 
             <div className="w-full max-w-md px-6 relative z-10">
-                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100 p-8 sm:p-10 transition-transform hover:-translate-y-1 duration-500">
-                    
+                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100 p-6 sm:p-8 transition-transform hover:-translate-y-1 duration-500">
+
                     {/* Header */}
-                    <div className="text-center mb-10">
+                    <div className="text-center mb-6">
                         <Link href="/" className="inline-block group">
-                            <div className="mx-auto mb-4">
-                                <img src="/assets/images/masarat-wasel-logo.jpg" alt="Masarat Wasel" className="h-14 object-contain rounded-xl mx-auto" />
+                            <div className="mx-auto mb-2">
+                                <img src="/images/logo2.png" alt="Masarat Wasel" className="h-20 object-contain rounded-xl mx-auto" />
                             </div>
-                            <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 tracking-tight">مسارات واصل</h1>
+                            <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 tracking-tight">مسارات واصل</h1>
                         </Link>
-                        <p className="text-slate-500 mt-3 font-medium text-sm">منصة النقل المدرسي الذكية</p>
+                        <p className="text-slate-500 mt-1 font-medium text-xs">منصة النقل المدرسي الذكية</p>
                     </div>
 
                     {status && (
-                        <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-medium text-emerald-700 text-center flex items-center justify-center gap-2">
+                        <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-medium text-emerald-700 text-center flex items-center justify-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                             {status}
                         </div>
                     )}
 
                     {/* Login Form */}
-                    <form onSubmit={submit} className="space-y-6">
-                        <div className="text-center mb-6">
-                            <h2 className="text-xl font-bold text-slate-800">تسجيل الدخول</h2>
-                            <p className="text-slate-500 text-sm mt-1">أدخل بيانات الاعتماد للمتابعة للوحة التحكم</p>
+                    <form onSubmit={submit} className="space-y-4">
+                        <div className="text-center mb-4">
+                            <h2 className="text-lg font-bold text-slate-800">تسجيل الدخول</h2>
+                            <p className="text-slate-500 text-xs mt-0.5">أدخل بيانات الاعتماد للمتابعة للوحة التحكم</p>
                         </div>
 
                         {/* Email Field */}
@@ -95,7 +121,7 @@ export default function Login({
                                     autoFocus
                                 />
                             </div>
-                            <InputError message={errors.email} className="mt-1 text-red-500 text-xs" />
+                            <InputError message={getLocalizedError(errors.email)} className="mt-1 text-red-500 text-xs" />
                         </div>
 
                         {/* Password Field */}
@@ -125,7 +151,7 @@ export default function Login({
                                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
                             </div>
-                            <InputError message={errors.password} className="mt-1 text-red-500 text-xs" />
+                            <InputError message={getLocalizedError(errors.password)} className="mt-1 text-red-500 text-xs" />
                         </div>
 
                         {/* Options */}
@@ -146,15 +172,15 @@ export default function Login({
                                 </div>
                                 <span className="text-sm font-medium text-slate-600 group-hover:text-slate-800 transition-colors">تذكرني</span>
                             </label>
-                            
+
                             <Link href={route('password.request')} className="text-sm font-semibold text-blue-600 hover:text-blue-500 transition-colors">
                                 نسيت كلمة المرور؟
                             </Link>
                         </div>
 
                         {/* Submit Button */}
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={processing}
                             className="w-full relative group overflow-hidden rounded-xl bg-slate-900 px-8 py-3.5 text-sm font-bold text-white shadow-lg transition-all duration-300 hover:bg-slate-800 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
                         >
@@ -175,7 +201,7 @@ export default function Login({
                         </button>
 
                         {/* Divider */}
-                        <div className="relative py-4">
+                        <div className="relative py-2">
                             <div className="absolute inset-0 flex items-center" aria-hidden="true">
                                 <div className="w-full border-t border-slate-200"></div>
                             </div>
@@ -188,8 +214,8 @@ export default function Login({
                         <div className="text-center pb-2">
                             <p className="text-slate-500 text-sm">
                                 ليس لديك حساب؟{' '}
-                                <Link 
-                                    href={route('subscription')} 
+                                <Link
+                                    href={route('subscription')}
                                     className="font-bold text-blue-600 hover:text-blue-500 transition-colors inline-block"
                                 >
                                     إنشاء حساب مجاني
@@ -198,18 +224,18 @@ export default function Login({
                         </div>
                     </form>
                 </div>
-                
+
                 {/* Minimal Footer */}
-                <div className="mt-8 text-center px-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 font-medium">
+                <div className="mt-6 text-center px-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 font-medium">
                     <p>© {new Date().getFullYear()} مسارات واصل. جميع الحقوق محفوظة.</p>
-                    <ul className="flex items-center gap-4 mt-4 sm:mt-0">
+                    <ul className="flex items-center gap-4 mt-2 sm:mt-0">
                         <li><a href="#" className="hover:text-slate-800 transition-colors">سياسة الخصوصية</a></li>
                         <li><a href="#" className="hover:text-slate-800 transition-colors">شروط الاستخدام</a></li>
                         <li><a href="#" className="hover:text-slate-800 transition-colors">المساعدة</a></li>
                     </ul>
                 </div>
             </div>
-            
+
         </div>
     );
 }

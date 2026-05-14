@@ -2,6 +2,7 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, useForm } from "@inertiajs/react";
 import { FormEventHandler } from "react";
 import { useTheme } from "@/Contexts/ThemeContext";
+import { Loader2 } from "lucide-react";
 
 // تعريف نوع المدرسة والمستخدم
 interface School {
@@ -54,12 +55,12 @@ export default function EditSchoolAdmin({
       <Head title={isRTL ? `تعديل ${user.name}` : `Edit ${user.name}`} />
 
       <div
-        className={`max-w-2xl mx-auto mt-10 ${
+        className={`max-w-7xl mx-auto mt-4 ${
           isRTL ? "text-right" : "text-left"
         }`}
       >
         <div
-          className={`p-8 rounded-2xl shadow-sm border ${
+          className={`p-6 rounded-2xl shadow-sm border ${
             isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"
           }`}
         >
@@ -244,8 +245,9 @@ export default function EditSchoolAdmin({
               <button
                 type="submit"
                 disabled={processing}
-                className="px-6 py-2 bg-brand-navy text-white rounded-lg hover:bg-opacity-90"
+                className="px-6 py-2 bg-brand-navy text-white rounded-lg hover:bg-opacity-90 flex items-center gap-2"
               >
+                {processing && <Loader2 size={16} className="animate-spin" />}
                 {isRTL ? "حفظ التعديلات" : "Save Changes"}
               </button>
             </div>

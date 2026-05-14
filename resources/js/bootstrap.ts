@@ -3,6 +3,25 @@ window.axios = axios;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
+import * as Sentry from '@sentry/react';
+
+window.axios.interceptors.response.use(
+    response => response,
+    error => {
+        if (error.response && error.response.status !== 422) {
+            Sentry.captureException(new Error(`API Error: ${error.config?.url}`), {
+                extra: {
+                    status: error.response?.status,
+                    data: error.response?.data,
+                    method: error.config?.method,
+                    url: error.config?.url
+                }
+            });
+        }
+        return Promise.reject(error);
+    }
+);
+
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
@@ -17,3 +36,14 @@ window.Echo = new Echo({
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
 });
+
+import * as Sentry from '@sentry/react';
+
+// استماع لأخطاء الاتصال بالـ WebSocket (Reverb) وإرسالها لـ Sentry
+if (window.Echo.connector && window.Echo.connector.pusher) {
+    window.Echo.connector.pusher.connection.bind('error', (err: any) => {
+        Sentry.captureException(new Error('WebSocket Connection Error'), {
+            extra: { details: err }
+        });
+    });
+}
