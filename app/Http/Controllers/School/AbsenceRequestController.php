@@ -55,34 +55,34 @@ class AbsenceRequestController extends Controller
 
         // إرسال إشعار لولي الأمر
         $service = app(\App\Services\NotificationService::class);
-        $statusAr = $validated['status'] === 'approved' ? 'مقبول' : 'مرفوض';
-        $titleAr = "تحديث طلب غياب: {$statusAr}";
-        $messageAr = "تم {$statusAr} طلب غياب الطالب {$absenceRequest->student->first_name_ar}";
+        $studentNameAr = $absenceRequest->student->first_name_ar ?? $absenceRequest->student->full_name;
+        $studentNameEn = $absenceRequest->student->full_name_en ?? $absenceRequest->student->full_name;
+        
+        $titleKey = $validated['status'] === 'approved' ? 'notifications.absence_approved_title' : 'notifications.absence_rejected_title';
+        $messageKey = $validated['status'] === 'approved' ? 'notifications.absence_approved_message' : 'notifications.absence_rejected_message';
+        
+        $translationParams = ['student' => $studentNameAr];
+        $translationParamsEn = ['student' => $studentNameEn];
+        
         if ($validated['status'] === 'rejected' && $validated['rejection_reason']) {
-            $messageAr .= ". السبب: " . $validated['rejection_reason'];
+            $translationParams['reason'] = $validated['rejection_reason'];
+            $translationParamsEn['reason'] = $validated['rejection_reason']; // Could be English translated reason if available, but fallback to same
         }
 
-        $statusEn = $validated['status'] === 'approved' ? 'Approved' : 'Rejected';
-        $titleEn = "Absence Request Update: {$statusEn}";
-        $messageEn = "Absence request for student {$absenceRequest->student->full_name_en} has been {$statusEn}";
-        if ($validated['status'] === 'rejected' && $validated['rejection_reason']) {
-            $messageEn .= ". Reason: " . $validated['rejection_reason'];
-        }
-
-        $service->sendToUser(
-            $absenceRequest->guardian_id,
-            'absence_request_processed',
-            $titleAr,
-            $messageAr,
-            [
+        $service->sendTranslatedToUser(
+            userId: $absenceRequest->guardian_id,
+            type: 'absence_request_processed',
+            titleKey: $titleKey,
+            messageKey: $messageKey,
+            translationParams: $translationParams,
+            data: [
                 'request_id' => $absenceRequest->id,
                 'status' => $validated['status'],
                 'student_id' => $absenceRequest->student_id,
+                'category' => 'absences',
+                'target_screen' => 'absence_history',
             ],
-            null,
-            false,
-            $titleEn,
-            $messageEn
+            translationParamsEn: $translationParamsEn
         );
 
         return redirect()->back()->with('success', 'تم تحديث حالة الطلب بنجاح.');

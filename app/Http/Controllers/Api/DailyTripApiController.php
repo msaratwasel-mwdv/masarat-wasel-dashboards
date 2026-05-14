@@ -128,45 +128,33 @@ class DailyTripApiController extends Controller
         // ═══════════════════════════════════════════════════
         // 📱 إشعار Push لولي الأمر
         // ═══════════════════════════════════════════════════
-        if ($direction === 'to_school') {
-            $this->notificationService->notifyStudentGuardian(
-                studentId: $student->id,
-                type: 'bus_boarding_morning',
-                title: "طالبك {$student->full_name} ركب باص الذهاب",
-                message: "لقد ركب الطالب {$student->full_name} الحافلة الآن متوجهاً إلى المدرسة بسلام.",
+        $student->loadMissing('guardians');
+        $notificationType = $direction === 'to_school' ? 'bus_boarding_morning' : 'bus_boarding_afternoon';
+        
+        foreach ($student->guardians as $guardian) {
+            $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+
+            $this->notificationService->sendTranslatedToUser(
+                userId: $guardian->id,
+                type: $notificationType,
+                titleKey: 'notifications.student_status_title',
+                messageKey: 'notifications.student_picked_up',
+                translationParams: ['student' => $student->full_name],
                 data: [
-                    'notification_type' => 'bus_boarding_morning',
+                    'notification_type' => $notificationType,
                     'attendance_id'     => $attendance->id,
                     'bus_id'            => $bus->id,
                     'bus_number'        => $bus->bus_number,
                     'student_id'        => $student->id,
                     'student_name'      => $student->full_name,
                     'student_name_en'   => $student->full_name_en,
-                    'direction'         => 'to_school',
+                    'direction'         => $direction,
                     'boarded_at'        => $boardedAt->toIso8601String(),
+                    'category' => 'bus_tracking',
+                    'target_screen'     => 'children_status',
                 ],
-                titleEn: "Your student {$student->full_name_en} boarded the bus",
-                messageEn: "Student {$student->full_name_en} has boarded the bus and is heading to school safely."
-            );
-        } else {
-            $this->notificationService->notifyStudentGuardian(
-                studentId: $student->id,
-                type: 'bus_boarding_afternoon',
-                title: "طالبك {$student->full_name} ركب باص العودة",
-                message: "لقد ركب الطالب {$student->full_name} الحافلة للعودة إلى المنزل.",
-                data: [
-                    'notification_type' => 'bus_boarding_afternoon',
-                    'attendance_id'     => $attendance->id,
-                    'bus_id'            => $bus->id,
-                    'bus_number'        => $bus->bus_number,
-                    'student_id'        => $student->id,
-                    'student_name'      => $student->full_name,
-                    'student_name_en'   => $student->full_name_en,
-                    'direction'         => 'to_home',
-                    'boarded_at'        => $boardedAt->toIso8601String(),
-                ],
-                titleEn: "Your student {$student->full_name_en} boarded the return bus",
-                messageEn: "Student {$student->full_name_en} has boarded the bus heading back home."
+                fromUserName: 'نظام النقل',
+                translationParamsEn: ['student' => $studentNameEn]
             );
         }
 
@@ -226,31 +214,30 @@ class DailyTripApiController extends Controller
 
         // Notifications & broadcasts outside transaction
         foreach ($validStudentIds as $studentId) {
-            if ($direction === 'to_home') {
-                 $this->notificationService->notifyStudentGuardian(
-                    studentId: $studentId,
-                    type: 'bus_boarding_afternoon',
-                    titleEn: "Your student boarded the return bus",
-                    messageEn: "Student " . (Student::find($studentId)->full_name_en ?? '') . " has boarded the bus heading back home.",
+            $student = Student::find($studentId);
+            if (!$student) continue;
+
+            $notificationType = $direction === 'to_home' ? 'bus_boarding_afternoon' : 'bus_boarding_morning';
+            $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+
+            foreach ($student->guardians as $guardian) {
+                $this->notificationService->sendTranslatedToUser(
+                    userId: $guardian->id,
+                    type: $notificationType,
+                    titleKey: 'notifications.student_status_title',
+                    messageKey: 'notifications.student_picked_up',
+                    translationParams: ['student' => $student->full_name],
                     data: [
-                        'type' => 'bus_boarding_afternoon',
+                        'type' => $notificationType,
                         'student_id' => $studentId,
-                        'student_name_en' => Student::find($studentId)->full_name_en,
-                        'bus_id' => $bus->id
+                        'student_name_en' => $studentNameEn,
+                        'bus_id' => $bus->id,
+                        'direction' => $direction,
+                        'category' => 'bus_tracking',
+                        'target_screen' => 'children_status',
                     ],
-                );
-            } else {
-                $this->notificationService->notifyStudentGuardian(
-                    studentId: $studentId,
-                    type: 'bus_boarding_morning',
-                    titleEn: "Your student boarded the bus",
-                    messageEn: "Student " . (Student::find($studentId)->full_name_en ?? '') . " has boarded the bus and is heading to school safely.",
-                    data: [
-                        'type' => 'bus_boarding_morning',
-                        'student_id' => $studentId,
-                        'student_name_en' => Student::find($studentId)->full_name_en,
-                        'bus_id' => $bus->id
-                    ],
+                    fromUserName: 'نظام النقل',
+                    translationParamsEn: ['student' => $studentNameEn]
                 );
             }
 
@@ -358,35 +345,28 @@ class DailyTripApiController extends Controller
         }
 
         // 📱 إشعار Push
-        if ($direction === 'to_home') {
-            $this->notificationService->notifyStudentGuardian(
-                studentId: $student->id,
+        $student->loadMissing('guardians');
+        foreach ($student->guardians as $guardian) {
+            $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+
+            $this->notificationService->sendTranslatedToUser(
+                userId: $guardian->id,
                 type: 'student_alighted',
-                title: "وصل طالبك {$student->full_name} للمنزل",
-                message: "لقد نزل الطالب {$student->full_name} من الحافلة الآن أمام المنزل بسلام.",
+                titleKey: 'notifications.student_status_title',
+                messageKey: 'notifications.student_dropped_off',
+                translationParams: ['student' => $student->full_name],
                 data: [
-                    'attendance_id' => $attendance->id, 'bus_id' => $bus->id,
-                    'student_id' => $student->id, 'type' => 'student_alighted',
-                    'student_name_en' => $student->full_name_en,
-                    'direction' => 'to_home',
+                    'attendance_id'   => $attendance->id,
+                    'bus_id'          => $bus->id,
+                    'student_id'      => $student->id,
+                    'student_name_en' => $studentNameEn,
+                    'direction'       => $direction,
+                    'type'            => 'student_alighted',
+                    'category' => 'student_tracking',
+                    'target_screen'   => 'children_status',
                 ],
-                titleEn: "Your student {$student->full_name_en} arrived home",
-                messageEn: "Student {$student->full_name_en} has alighted from the bus at home safely."
-            );
-        } else {
-            $this->notificationService->notifyStudentGuardian(
-                studentId: $student->id,
-                type: 'student_alighted',
-                title: "وصل طالبك {$student->full_name} للمدرسة",
-                message: "لقد وصل الطالب {$student->full_name} إلى المدرسة الآن بسلام.",
-                data: [
-                    'attendance_id' => $attendance->id, 'bus_id' => $bus->id,
-                    'student_id' => $student->id, 'type' => 'student_alighted',
-                    'student_name_en' => $student->full_name_en,
-                    'direction' => 'to_school',
-                ],
-                titleEn: "Your student {$student->full_name_en} arrived at school",
-                messageEn: "Student {$student->full_name_en} has arrived at school safely."
+                fromUserName: 'نظام النقل',
+                translationParamsEn: ['student' => $studentNameEn]
             );
         }
 
@@ -439,33 +419,27 @@ class DailyTripApiController extends Controller
 
         // Notifications & broadcasts outside transaction
         foreach ($request->student_ids as $studentId) {
-            if ($direction === 'to_home') {
-                $this->notificationService->notifyStudentGuardian(
-                    studentId: $studentId,
-                    title: "وصل طالبك للمنزل",
-                    message: "لقد وصل الطالب للمنزل الآن بسلام.",
-                    titleEn: "Your student arrived home",
-                    messageEn: "Student " . (Student::find($studentId)->full_name_en ?? '') . " has alighted from the bus at home safely.",
-                    data: [
-                        'type' => 'student_alighted', 
-                        'direction' => 'to_home',
-                        'student_id' => $studentId,
-                        'student_name_en' => Student::find($studentId)->full_name_en,
-                    ],
-                );
-            } else {
-                $this->notificationService->notifyStudentGuardian(
-                    studentId: $studentId,
-                    title: "وصل طالبك للمدرسة",
-                    message: "لقد وصل الطالب إلى المدرسة الآن بسلام.",
-                    titleEn: "Your student arrived at school",
-                    messageEn: "Student " . (Student::find($studentId)->full_name_en ?? '') . " has arrived at school safely.",
+            $student = Student::find($studentId);
+            if (!$student) continue;
+
+            $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+
+            foreach ($student->guardians as $guardian) {
+                $this->notificationService->sendTranslatedToUser(
+                    userId: $guardian->id,
+                    type: 'student_alighted',
+                    titleKey: 'notifications.student_status_title',
+                    messageKey: 'notifications.student_dropped_off',
+                    translationParams: ['student' => $student->full_name],
                     data: [
                         'type' => 'student_alighted',
-                        'direction' => 'to_school',
-                        'student_id' => $studentId,
-                        'student_name_en' => Student::find($studentId)->full_name_en,
+                        'direction' => $direction,
+                        'student_id' => (string) $studentId,
+                        'category' => 'student_tracking',
+                        'target_screen' => 'children_status',
                     ],
+                    fromUserName: 'نظام النقل',
+                    translationParamsEn: ['student' => $studentNameEn]
                 );
             }
 
@@ -532,19 +506,31 @@ class DailyTripApiController extends Controller
 
         // الإشعارات والبث خارج الـ Transaction (لا يجب أن تمنع الحفظ)
         foreach ($attendances as $attendance) {
-            $this->notificationService->notifyStudentGuardian(
-                studentId: $attendance->student_id,
-                type: 'student_alighted',
-                title: $direction === 'to_school' ? "وصل طالبك للمدرسة" : "وصل طالبك للمنزل",
-                message: $direction === 'to_school' ? "لقد وصل الطالب إلى المدرسة الآن بسلام." : "لقد نزل الطالب من الحافلة الآن عند المنزل بسلام.",
-                data: [
-                    'type' => 'student_alighted',
-                    'direction' => $direction,
-                    'student_id' => $attendance->student_id
-                ],
-                titleEn: $direction === 'to_school' ? "Your student arrived at school" : "Your student arrived home",
-                messageEn: $direction === 'to_school' ? "The student has arrived at school safely." : "The student has alighted from the bus at home safely."
-            );
+            $student = $attendance->student; // The relation should be loaded or accessible, let me check if student relation is used here. Wait! $attendance->student is not loaded explicitly in this view.
+            if (!$student) continue;
+
+            $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+
+            $titleKey = $direction === 'to_school' ? 'notifications.student_alighted_school_title' : 'notifications.student_alighted_home_title';
+            $messageKey = $direction === 'to_school' ? 'notifications.student_alighted_school_message' : 'notifications.student_alighted_home_message';
+
+            foreach ($student->guardians as $guardian) {
+                $this->notificationService->sendTranslatedToUser(
+                    userId: $guardian->id,
+                    type: 'student_alighted',
+                    titleKey: $titleKey,
+                    messageKey: $messageKey,
+                    translationParams: ['student' => $student->full_name],
+                    data: [
+                        'type' => 'student_alighted',
+                        'direction' => $direction,
+                        'student_id' => $attendance->student_id,
+                        'category' => 'bus_tracking',
+                        'target_screen' => 'children_status',
+                    ],
+                    translationParamsEn: ['student' => $studentNameEn]
+                );
+            }
 
             // ✅ T-12: بث حدث الوصول لكل طالب
             try {
@@ -940,15 +926,23 @@ class DailyTripApiController extends Controller
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
-        $request->validate([
-            'trip_id' => 'required|exists:trips,id',
-        ]);
+        // Find the trip: either by ID or first awaiting confirmation
+        $tripId = $request->trip_id;
+        if ($tripId) {
+            $trip = Trip::where('id', $tripId)
+                ->where('bus_id', $bus->id)
+                ->firstOrFail();
+        } else {
+            $trip = Trip::where('bus_id', $bus->id)
+                ->where('status', 'awaiting_confirmation')
+                ->first();
+            
+            if (!$trip) {
+                return response()->json(['message' => 'لا توجد رحلة بانتظار التأكيد.'], 404);
+            }
+        }
 
-        $trip = Trip::where('id', $request->trip_id)
-            ->where('bus_id', $bus->id)
-            ->firstOrFail();
-
-        if ($trip->status !== 'awaiting_confirmation') {
+        if ($trip->status !== 'awaiting_confirmation' && $trip->status !== 'pending') {
             return response()->json(['message' => 'هذه الرحلة لا تنتظر التأكيد.'], 422);
         }
 
@@ -967,18 +961,74 @@ class DailyTripApiController extends Controller
             Log::error("Broadcast error (confirm trip status): " . $e->getMessage());
         }
 
+        $this->notifyGuardiansTripStarted($bus, $trip);
+
+        Log::info('confirmTrip: Trip confirmed by assistant', ['bus_id' => $bus->id, 'trip_id' => $trip->id, 'confirmed_by' => $user->id]);
+
+        return response()->json([
+            'message' => 'تم تأكيد بدء الرحلة.',
+            'trip_id' => $trip->id,
+            'status' => 'in_progress',
+            'departure_time' => $trip->departure_time,
+        ]);
+    }
+
+    /**
+     * إرسال إشعارات لجميع أولياء الأمور عند بدء الرحلة
+     */
+    protected function notifyGuardiansTripStarted(Bus $bus, Trip $trip)
+    {
         // ✅ T-07: إشعار جميع أولياء أمور طلاب الحافلة ببدء الرحلة
+        $students = Student::with('guardians')
+            ->where('is_active', true)
+            ->where(function($q) use ($bus, $trip) {
+                if ($trip->type === 'forth') {
+                    $q->where('forth_bus_id', $bus->id);
+                } else {
+                    $q->where('back_bus_id', $bus->id);
+                }
+            })
+            ->get();
+
+        Log::info("🚌 Trip Started: Bus ID {$bus->id}, Type {$trip->type}. Found " . $students->count() . " active students assigned to this bus.");
+
+        // Group by guardian to send one notification per parent
+        $guardianData = [];
+        foreach ($students as $student) {
+            foreach ($student->guardians as $guardian) {
+                $guardianData[$guardian->id]['user'] = $guardian;
+                $guardianData[$guardian->id]['students'][] = $student;
+            }
+        }
+
+        $messageKey = $trip->type === 'forth' ? 'notifications.trip_started_forth' : 'notifications.trip_started_back';
         $direction = $trip->type === 'forth' ? 'to_school' : 'to_home';
-        $tripLabel = $trip->type === 'forth' ? 'الذهاب للمدرسة' : 'العودة للمنزل';
-        $this->notificationService->notifyBusStudentsGuardians(
-            $bus->id,
-            'trip_started',
-            'انطلقت الحافلة',
-            "انطلقت الحافلة الآن في رحلة {$tripLabel}. يرجى تجهيز الطالب.",
-            ['trip_id' => $trip->id, 'type' => 'trip_started', 'direction' => $direction],
-            titleEn: 'Bus started',
-            messageEn: "The bus has started the " . ($trip->type === 'forth' ? 'morning' : 'afternoon') . " trip. Please prepare the student."
-        );
+
+        foreach ($guardianData as $guardianId => $data) {
+            $guardian = $data['user'];
+            $guardianStudents = collect($data['students']);
+
+            // تحديد أسماء الطلاب باللغتين
+            $studentNamesAr = $guardianStudents->map(fn($s) => $s->full_name)->implode('، ');
+            $studentNamesEn = $guardianStudents->map(fn($s) => $s->full_name_en)->implode(', ');
+
+            $this->notificationService->sendTranslatedToUser(
+                userId: $guardianId,
+                type: 'trip_started',
+                titleKey: 'notifications.trip_started_title',
+                messageKey: $messageKey,
+                translationParams: ['students' => $studentNamesAr],
+                data: [
+                    'trip_id' => (string) $trip->id,
+                    'type' => 'trip_started',
+                    'direction' => $direction,
+                    'category' => 'bus_tracking',
+                    'target_screen' => 'map_page',
+                ],
+                fromUserName: 'نظام النقل',
+                translationParamsEn: ['students' => $studentNamesEn]
+            );
+        }
 
         Log::info('confirmTrip: Trip confirmed by assistant', ['bus_id' => $bus->id, 'trip_id' => $trip->id, 'confirmed_by' => $user->id]);
 
@@ -1019,22 +1069,30 @@ class DailyTripApiController extends Controller
             });
         }
 
+        $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+
         // 2. إرسال الإشعار لولي الأمر (Push Notification)
-        $this->notificationService->notifyStudentGuardian(
-            studentId: $student->id,
-            type: 'bus_approaching',
-            title: "الحافلة تقترب",
-            message: "الحافلة تقترب الآن من منزل الطالب {$student->full_name}. يرجى التجهيز.",
-            data: [
-                'notification_type' => 'bus_approaching',
-                'bus_id'            => $bus->id,
-                'bus_number'        => $bus->bus_number,
-                'student_id'        => $student->id,
-                'student_name'      => $student->full_name,
-            ],
-            titleEn: "Bus is approaching",
-            messageEn: "The bus is approaching the house of {$student->full_name_en}. Please be ready."
-        );
+        foreach ($student->guardians as $guardian) {
+            $this->notificationService->sendTranslatedToUser(
+                userId: $guardian->id,
+                type: 'bus_approaching',
+                titleKey: 'notifications.bus_approaching_title',
+                messageKey: 'notifications.bus_approaching_message',
+                translationParams: ['student' => $student->full_name],
+                data: [
+                    'type'              => 'bus_approaching',
+                    'notification_type' => 'bus_approaching',
+                    'bus_id'            => $bus->id,
+                    'bus_number'        => $bus->bus_number,
+                    'student_id'        => $student->id,
+                    'student_name_en'   => $studentNameEn,
+                    'category' => 'bus_tracking',
+                    'target_screen'     => 'map_page',
+                ],
+                fromUserName: 'نظام النقل',
+                translationParamsEn: ['student' => $studentNameEn]
+            );
+        }
 
         // 3. بث التحديث الفوري (WebSocket) - لإشعار تطبيق المشرفة إذا كان يستمع
         try {
@@ -1084,19 +1142,26 @@ class DailyTripApiController extends Controller
 
         $student = Student::find($request->student_id);
         
+        $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+
         // Notify parent
-        $this->notificationService->notifyStudentGuardian(
-            studentId: $student->id,
-            type: 'student_absent',
-            title: "غياب الطالب {$student->full_name}",
-            message: "تم تسجيل الطالب {$student->full_name} كغائب عن رحلة الحافلة الآن.",
-            data: [
-                'type' => 'student_absent',
-                'student_id' => $student->id,
-            ],
-            titleEn: "Student {$student->full_name} is absent",
-            messageEn: "Student {$student->full_name} has been marked as absent from the bus trip now."
-        );
+        foreach ($student->guardians as $guardian) {
+            $this->notificationService->sendTranslatedToUser(
+                userId: $guardian->id,
+                type: 'student_absent',
+                titleKey: 'notifications.student_absent_title',
+                messageKey: 'notifications.student_absent_message',
+                translationParams: ['student' => $student->full_name],
+                data: [
+                    'type'          => 'student_absent',
+                    'student_id'    => $student->id,
+                    'category' => 'bus_tracking',
+                    'target_screen' => 'map_page',
+                ],
+                fromUserName: 'نظام النقل',
+                translationParamsEn: ['student' => $studentNameEn]
+            );
+        }
 
         try {
             broadcast(new StudentStatusUpdated($student, $bus, 'absent', $trip->type === 'forth' ? 'to_school' : 'to_home'));
@@ -1257,20 +1322,22 @@ class DailyTripApiController extends Controller
                 }
 
                 // Notify assistant to trigger app refresh/close trip view
-                $this->notificationService->notifyBusAssistants(
-                    [$bus->id],
-                    'trip_finished',
-                    'انتهت الرحلة',
-                    'قام السائق بإنهاء الرحلة بنجاح وتوثيق خلو الحافلة.',
-                    [
-                        'trip_id' => (string)$trip->id,
-                        'bus_id' => (string)$bus->id,
-                        'status' => 'finished',
-                        'type' => 'trip_finished'
-                    ],
-                    titleEn: 'Trip finished',
-                    messageEn: 'The driver has successfully finished the trip and documented that the bus is empty.'
-                );
+                if ($bus->assistant_id) {
+                    $this->notificationService->sendTranslatedToUser(
+                        userId: $bus->assistant_id,
+                        type: 'trip_finished',
+                        titleKey: 'notifications.trip_finished_title',
+                        messageKey: 'notifications.trip_finished_message',
+                        data: [
+                            'trip_id' => (string)$trip->id,
+                            'bus_id' => (string)$bus->id,
+                            'status' => 'finished',
+                            'type' => 'trip_finished',
+                            'category' => 'bus_tracking',
+                            'target_screen' => 'map_page',
+                        ]
+                    );
+                }
             });
         }
 

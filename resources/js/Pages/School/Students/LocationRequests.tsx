@@ -260,11 +260,18 @@ export default function LocationRequests({ auth, locationRequests, buses = [], s
                                             </td>
                                             <td className={DS_tableTd}>
                                                 <div className="flex flex-col gap-1">
-                                                    {request.old_latitude && request.old_longitude ? (
+                                                    {(request.old_latitude && request.old_longitude) || (request.student?.latitude && request.student?.longitude) ? (
                                                         <>
-                                                            <MiniMap lat={request.old_latitude} lng={request.old_longitude} width={100} height={60} zoom={14} />
+                                                            <MiniMap 
+                                                                lat={Number(request.old_latitude || request.student?.latitude)} 
+                                                                lng={Number(request.old_longitude || request.student?.longitude)} 
+                                                                width={100} 
+                                                                height={60} 
+                                                                zoom={14} 
+                                                            />
                                                             <span className="text-[10px] text-gray-400 font-mono">
-                                                                {request.old_latitude.toFixed(4)}, {request.old_longitude.toFixed(4)}
+                                                                {Number(request.old_latitude || request.student?.latitude).toFixed(4)}, {Number(request.old_longitude || request.student?.longitude).toFixed(4)}
+                                                                {!request.old_latitude && <span className="text-[8px] ml-1 text-blue-500 font-bold opacity-60">{(isRtl ? '(محدث)' : '(LIVE)')}</span>}
                                                             </span>
                                                         </>
                                                     ) : (
@@ -535,37 +542,24 @@ export default function LocationRequests({ auth, locationRequests, buses = [], s
                                             </h4>
                                             <div className="flex items-center gap-4">
                                                 <div className="flex items-center gap-1.5">
-                                                    <div className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-                                                    <span className="text-[10px] font-bold text-gray-500">{isRtl ? 'الموقع السابق' : 'Former'}</span>
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm" />
+                                                    <span className="text-[10px] font-black text-red-500 uppercase">{isRtl ? 'الموقع السابق' : 'Former'}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
-                                                    <div className="w-2.5 h-2.5 rounded-full bg-[#f5b800]" />
-                                                    <span className="text-[10px] font-bold text-[#f5b800]">{isRtl ? 'الموقع الجديد' : 'New'}</span>
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm animate-pulse" />
+                                                    <span className="text-[10px] font-black text-emerald-500 uppercase">{isRtl ? 'الموقع الجديد' : 'New'}</span>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-white dark:bg-[#0f172a] rounded-[32px] overflow-hidden border-4 border-white dark:border-[#243460] shadow-2xl relative hide-google-branding">
-                                                <div className="absolute top-4 left-4 z-10 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-4 py-2 rounded-xl border border-gray-100 dark:border-white/10 shadow-lg">
-                                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{isRtl ? 'الموقع الحالي' : 'Current Location'}</span>
-                                                </div>
-                                                <LocationComparisonMap 
-                                                    newLat={processingRequest.old_latitude}
-                                                    newLng={processingRequest.old_longitude}
-                                                    height="700px"
-                                                />
-                                            </div>
-                                            <div className="bg-white dark:bg-[#0f172a] rounded-[32px] overflow-hidden border-4 border-white dark:border-[#243460] shadow-2xl relative hide-google-branding">
-                                                <div className="absolute top-4 left-4 z-10 bg-white/90 dark:bg-amber-800/90 backdrop-blur-md px-4 py-2 rounded-xl border border-amber-100 dark:border-white/10 shadow-lg">
-                                                    <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">{isRtl ? 'الموقع الجديد' : 'New Location'}</span>
-                                                </div>
-                                                <LocationComparisonMap 
-                                                    newLat={processingRequest.new_latitude}
-                                                    newLng={processingRequest.new_longitude}
-                                                    height="700px"
-                                                />
-                                            </div>
+                                        <div className="bg-white dark:bg-[#0f172a] rounded-[32px] overflow-hidden border-4 border-white dark:border-[#243460] shadow-2xl relative hide-google-branding">
+                                            <LocationComparisonMap 
+                                                oldLat={processingRequest.old_latitude || processingRequest.student?.latitude}
+                                                oldLng={processingRequest.old_longitude || processingRequest.student?.longitude}
+                                                newLat={processingRequest.new_latitude}
+                                                newLng={processingRequest.new_longitude}
+                                                height="450px"
+                                            />
                                         </div>
 
                                         {/* Coordinate Breakdown */}

@@ -31,6 +31,11 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         $unreadCount = 0;
+        $pendingLocationRequests = 0;
+        $pendingAbsenceRequests = 0;
+        $receivedIncidentsCount = 0;
+        $pendingBusRequests = 0;
+        $activeEmergenciesCount = 0;
 
         if ($user) {
             // Cache the unread count for 2 minutes to avoid hitting DB on every single request
@@ -68,6 +73,52 @@ class HandleInertiaRequests extends Middleware
             } elseif ($role === 'field_supervisor' && !$user->relationLoaded('assignedBusAsFieldSupervisor')) {
                 $user->load('assignedBusAsFieldSupervisor');
             }
+
+            // Count pending items
+            if ($user->school_id) {
+                // School-specific counts
+                $pendingLocationRequests = \Illuminate\Support\Facades\Cache::remember("school_{$user->school_id}_pending_locations_count", 10, function() use ($user) {
+                    return \App\Models\StudentLocationRequest::where('school_id', $user->school_id)
+                        ->where('status', 'pending')
+                        ->count();
+                });
+
+                $pendingAbsenceRequests = \Illuminate\Support\Facades\Cache::remember("school_{$user->school_id}_pending_absence_count", 10, function() use ($user) {
+                    return \App\Models\AbsenceRequest::whereHas('student', function($q) use ($user) {
+                        $q->inSchool($user->school_id);
+                    })->where('status', 'pending')->count();
+                });
+
+                // Received incidents (notifications specifically categorized as incidents or reports)
+                $receivedIncidentsCount = \Illuminate\Support\Facades\Cache::remember("school_{$user->school_id}_received_incidents_count", 10, function() use ($user) {
+                    return \App\Models\NotificationRecipient::where('user_id', $user->id)
+                        ->where('status', 'sent')
+                        ->count();
+                });
+            } elseif ($user->role === 'admin') {
+                // System-wide counts for Super Admins
+                $pendingLocationRequests = \Illuminate\Support\Facades\Cache::remember("global_pending_locations_count", 60, function() {
+                    return \App\Models\StudentLocationRequest::where('status', 'pending')->count();
+                });
+
+                $pendingAbsenceRequests = \Illuminate\Support\Facades\Cache::remember("global_pending_absence_count", 60, function() {
+                    return \App\Models\AbsenceRequest::where('status', 'pending')->count();
+                });
+
+                $receivedIncidentsCount = \Illuminate\Support\Facades\Cache::remember("admin_{$user->id}_received_incidents_count", 60, function() use ($user) {
+                    return \App\Models\NotificationRecipient::where('user_id', $user->id)
+                        ->where('status', 'sent')
+                        ->count();
+                });
+
+                $pendingBusRequests = \Illuminate\Support\Facades\Cache::remember("global_pending_bus_requests_count", 60, function() {
+                    return \App\Models\BusRequest::where('status', 'pending')->count();
+                });
+
+                $activeEmergenciesCount = \Illuminate\Support\Facades\Cache::remember("global_active_emergencies_count", 60, function() {
+                    return \App\Models\Emergency::whereIn('status', ['reported', 'active'])->count();
+                });
+            }
         }
 
         return [
@@ -76,6 +127,11 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user ? $user->append('school') : null,
             ],
             'notifications_count' => $unreadCount,
+            'pending_location_requests_count' => $pendingLocationRequests,
+            'pending_absence_requests_count' => $pendingAbsenceRequests,
+            'received_incidents_count' => $receivedIncidentsCount,
+            'pending_bus_requests_count' => $pendingBusRequests,
+            'active_emergencies_count' => $activeEmergenciesCount,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

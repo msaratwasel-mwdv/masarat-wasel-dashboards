@@ -137,21 +137,31 @@ class TeacherController extends Controller
                 default   => $request->status,
             };
 
-            $this->notificationService->notifyStudentGuardian(
-                studentId: $student->id,
-                type: 'school_attendance',
-                title: 'تحديث سجل الحضور المدرسي',
-                message: "تم تسجيل {$student->full_name} {$statusAr} اليوم.",
-                titleEn: 'School Attendance Update',
-                messageEn: "{$student->full_name_en} has been marked as {$statusEn} today.",
-                data: [
-                    'student_id'   => (string) $student->id,
-                    'student_name' => $student->full_name,
-                    'student_name_en' => $student->full_name_en,
-                    'status'       => $request->status,
-                    'date'         => today()->toDateString(),
-                ]
-            );
+            foreach ($student->guardians as $guardian) {
+                $this->notificationService->sendTranslatedToUser(
+                    userId: $guardian->id,
+                    type: 'school_attendance',
+                    titleKey: 'notifications.school_attendance_title',
+                    messageKey: 'notifications.school_attendance_message',
+                    translationParams: [
+                        'student' => $student->full_name,
+                        'status' => $statusAr,
+                    ],
+                    data: [
+                        'student_id'   => (string) $student->id,
+                        'student_name' => $student->full_name,
+                        'student_name_en' => $student->full_name_en,
+                        'status'       => $request->status,
+                        'date'         => today()->toDateString(),
+                        'category'     => 'attendance',
+                        'target_screen' => 'attendance_details',
+                    ],
+                    translationParamsEn: [
+                        'student' => $student->full_name_en ?: $student->full_name,
+                        'status' => $statusEn,
+                    ]
+                );
+            }
         } else {
             \Log::warning("No guardian assigned for student: {$student->id}, skipping broadcast.");
         }

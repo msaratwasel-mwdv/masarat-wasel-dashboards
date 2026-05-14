@@ -140,6 +140,90 @@ class NotificationService
     }
 
     /**
+     * إرسال إشعار لمستخدم واحد مع دعم الترجمة التلقائية بناءً على لغته المفضلة.
+     */
+    public function sendTranslatedToUser(
+        int $userId,
+        string $type,
+        string $titleKey, // مفتاح الترجمة أو النص
+        string $messageKey,
+        array $translationParams = [], // متغيرات الترجمة العربية أو الافتراضية
+        ?array $data = null,
+        ?string $fromUserName = null,
+        array $translationParamsEn = [] // متغيرات الترجمة الإنجليزية
+    ): Notification {
+        $user = User::find($userId);
+        $lang = $user ? ($user->preferred_language ?? 'ar') : 'ar';
+
+        // استخدام translationParamsEn إذا تم توفيرها، وإلا نستخدم الافتراضية
+        $paramsEn = empty($translationParamsEn) ? $translationParams : $translationParamsEn;
+
+        // 1. الترجمة التلقائية باللغتين لحفظها في قاعدة البيانات
+        $titleAr = __($titleKey, $translationParams, 'ar');
+        $messageAr = __($messageKey, $translationParams, 'ar');
+        
+        $titleEn = __($titleKey, $paramsEn, 'en');
+        $messageEn = __($messageKey, $paramsEn, 'en');
+
+        // بالنسبة للإشعار اللحظي، نختار بناءً على لغة المستخدم الحالية
+        $pushTitle = $lang === 'en' ? $titleEn : $titleAr;
+        $pushMessage = $lang === 'en' ? $messageEn : $messageAr;
+
+        // 2. حفظ الإشعار في قاعدة البيانات مع دعم اللغتين
+        $notification = Notification::create([
+            'user_id'          => $userId,
+            'type'             => $type,
+            'title'            => $titleAr,
+            'title_en'         => $titleEn,
+            'message'          => $messageAr,
+            'message_en'       => $messageEn,
+            'data'             => $data,
+            'from_user_name'   => $fromUserName,
+            'status'           => 'unread',
+            'recipient_type'   => 'individual',
+            'total_recipients' => 1,
+        ]);
+
+        $correlationId = (string) \Illuminate\Support\Str::uuid();
+
+        // 3. تجهيز وإرسال Firebase Push Notification
+        if ($user) {
+            $tokenRecords = $user->getFcmTokensWithBundleIds();
+            if ($tokenRecords->isNotEmpty()) {
+                $groups = $tokenRecords->groupBy('app_bundle_id');
+                
+                foreach ($groups as $bundleId => $records) {
+                    $tokens = $records->pluck('token')->toArray();
+
+                    $payload = array_merge($data ?? [], [
+                        'notification_id' => (string) $notification->id,
+                        'type'            => $type,
+                        'category'        => $type,
+                        'language'        => $lang,
+                        'correlation_id'  => $correlationId,
+                        'sender_name'     => $fromUserName,
+                        // Include both languages in data payload for client-side local logic
+                        'title'           => $titleAr,
+                        'title_en'        => $titleEn,
+                        'message'         => $messageAr,
+                        'message_en'      => $messageEn,
+                    ]);
+
+                    $collapseKey = in_array($type, ['trip_started', 'bus_nearby', 'boarding_confirmed']) ? $type : null;
+
+                    SendFcmNotification::dispatch($tokens, $pushTitle, $pushMessage, $payload, $bundleId, $collapseKey);
+                }
+            }
+        }
+        
+        // 4. البث الفوري عبر WebSockets
+        event(new \App\Events\NotificationPushed($notification, $userId, $correlationId));
+
+        return $notification;
+    }
+
+
+    /**
      * إرسال Push Notification عبر Firebase Cloud Messaging (Admin SDK).
      *
      * @param  string  $fcmToken  رمز جهاز المستخدم في Firebase
@@ -302,7 +386,12 @@ class NotificationService
         }
 
         // 2. Prepare consistent string data
-        $stringData = [];
+        $stringData = [
+            'title' => (string) $title,
+            'body' => (string) $message,
+            'message' => (string) $message,
+        ];
+        
         foreach ($data as $key => $value) {
             $stringData[(string)$key] = (string)$value;
         }
@@ -318,7 +407,6 @@ class NotificationService
         // 3. Android optimizations
         $androidNotificationConfig = [
             'sound' => 'default',
-            'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
             'channel_id' => 'msarat_wasel_high_importance_v3',
             'notification_priority' => 'PRIORITY_MAX',
             'visibility' => 'PUBLIC',
