@@ -11,14 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('drivers', function (Blueprint $table) {
-            $table->string('id_card_front_image')->nullable()->after('license_back_image');
-            $table->string('id_card_back_image')->nullable()->after('id_card_front_image');
-        });
-
         Schema::table('assistants', function (Blueprint $table) {
-            $table->string('id_card_front_image')->nullable()->after('emergency_contact_phone');
-            $table->string('id_card_back_image')->nullable()->after('id_card_front_image');
+
+            if (!Schema::hasColumn('assistants', 'id_card_front_image')) {
+                $table->string('id_card_front_image')->nullable()->after('emergency_contact_phone');
+            }
+
+            if (!Schema::hasColumn('assistants', 'id_card_back_image')) {
+                $table->string('id_card_back_image')->nullable()->after('id_card_front_image');
+            }
         });
     }
 
@@ -27,8 +28,15 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('drivers_and_assistants', function (Blueprint $table) {
-            //
+        Schema::table('assistants', function (Blueprint $table) {
+
+            if (Schema::hasColumn('assistants', 'id_card_front_image')) {
+                $table->dropColumn('id_card_front_image');
+            }
+
+            if (Schema::hasColumn('assistants', 'id_card_back_image')) {
+                $table->dropColumn('id_card_back_image');
+            }
         });
     }
 };
