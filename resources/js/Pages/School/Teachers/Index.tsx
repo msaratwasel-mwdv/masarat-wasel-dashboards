@@ -48,6 +48,7 @@ interface Teacher {
 interface Grade {
   id: number;
   name: string;
+  teacher_name?: string | null;
 }
 
 interface Props {
@@ -97,6 +98,7 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
     password: "",
     is_active: true,
     image: null as File | null,
+    remove_image: false,
     grade_id: "" as string | number,
   });
 
@@ -151,11 +153,29 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
       password: "",
       is_active: !!teacher.is_active,
       image: null,
+      remove_image: false,
       grade_id: teacher.grade_id || "",
     });
     setPreviewImage(teacher.image ? `/storage/${teacher.image}` : null);
     clearErrors();
     setIsModalOpen(true);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setData(data => ({ ...data, image: file, remove_image: false }));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setData(data => ({ ...data, image: null, remove_image: true }));
+    setPreviewImage(null);
   };
 
   const closeModal = () => {
@@ -460,13 +480,48 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
           ) : (
             /* Edit / Create Mode Body */
             <form onSubmit={submit} className="space-y-6">
+              {/* Profile Image Upload */}
+              <div className="flex flex-col items-center justify-center mb-4">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/5 border-2 border-dashed border-gray-300 dark:border-white/10 flex items-center justify-center transition-all group-hover:border-gold-500">
+                    {previewImage ? (
+                      <img src={previewImage} className="w-full h-full object-cover" alt="Preview" />
+                    ) : (
+                      <div className="text-center">
+                        <Users className="w-8 h-8 text-gray-400 mx-auto mb-1" />
+                        <span className="text-[9px] font-black text-gray-500 uppercase">{t("Photo")}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {previewImage && (
+                    <button 
+                      type="button" 
+                      onClick={removeImage}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors z-10"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  <label className="absolute inset-0 cursor-pointer flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                    <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
+                    <span className="text-white text-[10px] font-black uppercase tracking-widest">{t("Change")}</span>
+                  </label>
+                </div>
+                <InputError message={errors.image} className="mt-2" />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Arabic Name Parts */}
                 <div className="md:col-span-2 space-y-3">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t("Name (Arabic)")} *</label>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     {["first", "second", "third", "last"].map(p => (
-                      <input key={p} type="text" value={(data as any)[`${p}_name_ar`]} onChange={e => setData(`${p}_name_ar` as any, e.target.value)} className={DS_inputCls} placeholder={t(`${p} Name`)} dir="rtl" required />
+                      <div key={p}>
+                        <input type="text" value={(data as any)[`${p}_name_ar`]} onChange={e => setData(`${p}_name_ar` as any, e.target.value)} className={DS_inputCls} placeholder={t(`${p} Name`)} dir="rtl" required />
+                        <InputError message={(errors as any)[`${p}_name_ar`]} className="mt-1" />
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -475,22 +530,49 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t("Name (English)")}</label>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     {["first", "second", "third", "last"].map(p => (
-                      <input key={p} type="text" value={(data as any)[`${p}_name_en`]} onChange={e => setData(`${p}_name_en` as any, e.target.value)} className={DS_inputCls} placeholder={t(`${p} Name`)} dir="ltr" />
+                      <div key={p}>
+                        <input type="text" value={(data as any)[`${p}_name_en`]} onChange={e => setData(`${p}_name_en` as any, e.target.value)} className={DS_inputCls} placeholder={t(`${p} Name`)} dir="ltr" />
+                        <InputError message={(errors as any)[`${p}_name_en`]} className="mt-1" />
+                      </div>
                     ))}
                   </div>
                 </div>
 
-                <div><label className={DS_labelCls}>{t("Civil ID")} *</label><input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} className={DS_inputCls} required /></div>
-                <div><label className={DS_labelCls}>{t("Phone")} *</label><input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} className={DS_inputCls} required /></div>
-                <div><label className={DS_labelCls}>{t("Email")}</label><input type="email" value={data.email} onChange={e => setData("email", e.target.value)} className={DS_inputCls} /></div>
                 <div>
-                  <label className={DS_labelCls}>{t("Grade")} *</label>
-                  <select value={data.grade_id} onChange={e => setData("grade_id", e.target.value)} className={DS_selectCls} required>
-                    <option value="">{t("Select Grade")}</option>
-                    {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                  </select>
+                  <label className={DS_labelCls}>{t("Civil ID")} *</label>
+                  <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} className={DS_inputCls} required />
+                  <InputError message={errors.national_id} className="mt-1" />
                 </div>
-                <div><label className={DS_labelCls}>{t("Password")} {modalMode === "edit" ? `(${t("Leave blank to keep current")})` : "*"}</label><input type="password" value={data.password} onChange={e => setData("password", e.target.value)} className={DS_inputCls} required={modalMode === "create"} /></div>
+                <div>
+                  <label className={DS_labelCls}>{t("Phone")} *</label>
+                  <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} className={DS_inputCls} required />
+                  <InputError message={errors.phone} className="mt-1" />
+                </div>
+                <div>
+                  <label className={DS_labelCls}>{t("Email")}</label>
+                  <input type="email" value={data.email} onChange={e => setData("email", e.target.value)} className={DS_inputCls} />
+                  <InputError message={errors.email} className="mt-1" />
+                </div>
+                <div>
+                  <label className={DS_labelCls}>{t("Grade")}</label>
+                  <select value={data.grade_id} onChange={e => setData("grade_id", e.target.value)} className={DS_selectCls}>
+                    <option value="">{t("Select Grade")}</option>
+                    {grades.map(g => {
+                      const isTaken = g.teacher_name && g.id !== currentTeacher?.grade_id;
+                      return (
+                        <option key={g.id} value={g.id} disabled={isTaken}>
+                          {g.name} {g.teacher_name ? `(${t("Taken by")}: ${g.teacher_name})` : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <InputError message={errors.grade_id} className="mt-1" />
+                </div>
+                <div>
+                  <label className={DS_labelCls}>{t("Password")} {modalMode === "edit" ? `(${t("Leave blank to keep current")})` : "*"}</label>
+                  <input type="password" value={data.password} onChange={e => setData("password", e.target.value)} className={DS_inputCls} required={modalMode === "create"} />
+                  <InputError message={errors.password} className="mt-1" />
+                </div>
                 
                 <div className="md:col-span-2">
                   <Toggle 

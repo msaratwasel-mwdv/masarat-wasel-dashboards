@@ -29,8 +29,8 @@ class Classroom extends Model
         return $this->hasOneThrough(
             School::class,
             Grade::class,
-            'id', // Foreign key on grades table
-            'id', // Foreign key on schools table
+            'id',       // Foreign key on grades table
+            'id',       // Foreign key on schools table
             'grade_id', // Local key on classrooms table
             'school_id' // Local key on grades table
         );

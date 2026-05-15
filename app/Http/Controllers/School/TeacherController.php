@@ -53,7 +53,15 @@ class TeacherController extends Controller
             'teachers' => $teachers,
             'counts' => $counts,
             'filters' => $request->only(['search']),
-            'grades' => \App\Models\Grade::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
+            'grades' => \App\Models\Grade::where('school_id', $schoolId)
+                ->with('teacher.user')
+                ->orderBy('name')
+                ->get()
+                ->map(fn($g) => [
+                    'id' => $g->id,
+                    'name' => $g->name,
+                    'teacher_name' => $g->teacher?->user?->name
+                ]),
         ]);
     }
 
@@ -93,7 +101,9 @@ class TeacherController extends Controller
             $imagePath = $request->file('image')->store('teachers', 'public');
         }
 
-        \DB::transaction(function() use ($validated, $user, $imagePath) {
+        $schoolId = $user->getSchoolId();
+
+        \DB::transaction(function() use ($validated, $user, $imagePath, $schoolId) {
             $teacherUser = User::create([
                 'first_name_ar' => $validated['first_name_ar'],
                 'second_name_ar' => $validated['second_name_ar'] ?? '',
@@ -109,7 +119,6 @@ class TeacherController extends Controller
                 'password' => Hash::make(
                     $validated['password'] ?? $validated['phone']
                 ),
-                'is_active' => $validated['is_active'],
                 'image' => $imagePath,
             ]);
 
@@ -122,7 +131,7 @@ class TeacherController extends Controller
                 'user_id' => $teacherUser->id,
                 'school_id' => $schoolId,
                 'grade_id' => $validated['grade_id'] ?? null,
-                'status' => 'active',
+                'status' => $validated['is_active'] ? 'active' : 'inactive',
             ]);
         });
 
@@ -176,6 +185,7 @@ class TeacherController extends Controller
                 'exists:grades,id',
                 Rule::unique('teachers', 'grade_id')->ignore($teacher->id, 'user_id'),
             ],
+            'remove_image' => 'nullable|boolean',
         ]);
 
         $updateData = [
@@ -190,7 +200,6 @@ class TeacherController extends Controller
             'national_id'    => $validated['national_id'],
             'email'          => $validated['email'] ?? null,
             'phone'          => $validated['phone'],
-            'is_active'      => $validated['is_active'],
         ];
 
         // معالجة رفع الصورة
@@ -199,6 +208,11 @@ class TeacherController extends Controller
                 Storage::disk('public')->delete($teacher->image);
             }
             $updateData['image'] = $request->file('image')->store('teachers', 'public');
+        } elseif ($request->boolean('remove_image')) {
+            if ($teacher->image) {
+                Storage::disk('public')->delete($teacher->image);
+            }
+            $updateData['image'] = null;
         }
 
         $teacher->update($updateData);
@@ -212,6 +226,7 @@ class TeacherController extends Controller
         if ($teacher->teacher) {
             $teacher->teacher->update([
                 'grade_id' => $validated['grade_id'] ?? null,
+                'status' => $validated['is_active'] ? 'active' : 'inactive',
             ]);
         }
 

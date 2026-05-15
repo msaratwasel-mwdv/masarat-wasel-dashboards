@@ -183,7 +183,6 @@ class ClassroomController extends Controller
 
         /** @var \App\Models\User $user */
         $user = Auth::user();
-
         Classroom::create([
             'name' => $validated['name'],
             'grade_id' => $validated['grade_id'],
