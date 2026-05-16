@@ -21,6 +21,8 @@ class Driver extends Model
         'id_card_back_image',
         'status',
     ];
+    
+    protected $appends = ['name', 'name_en'];
 
     // NOTE: 'name' removed from $appends to prevent N+1 reverse-lookup.
     // The name is available on the parent User model when loaded via User::with('driver').
@@ -30,6 +32,11 @@ class Driver extends Model
     {
         // Only query if user is already loaded to prevent N+1
         return $this->relationLoaded('user') ? $this->user?->name : null;
+    }
+
+    public function getNameEnAttribute(): ?string
+    {
+        return $this->relationLoaded('user') ? $this->user?->name_en : null;
     }
 
     public function user(): BelongsTo

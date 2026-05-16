@@ -56,9 +56,9 @@ interface Bus {
   model?: string;
   year?: number;
   color?: string;
-  driver?: { id: number; name: string };
-  assistant?: { id: number; name: string };
-  field_supervisor?: { id: number; name: string };
+  driver?: { id: number; name: string; name_en?: string };
+  assistant?: { id: number; name: string; name_en?: string };
+  field_supervisor?: { id: number; name: string; name_en?: string };
   students_count?: number;
   latitude?: number;
   longitude?: number;
@@ -343,7 +343,9 @@ export default function BusesManagement({
                                   : "text-gray-400 italic font-semibold"
                               }
                             >
-                              {bus.driver?.name || t("No Driver")}
+                              {!isRtl && bus.driver?.name_en
+                                ? bus.driver.name_en
+                                : bus.driver?.name || t("No Driver")}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 text-xs">
@@ -355,7 +357,9 @@ export default function BusesManagement({
                                   : "text-gray-400 italic font-semibold"
                               }
                             >
-                              {bus.assistant?.name || t("No Assistant")}
+                              {!isRtl && bus.assistant?.name_en
+                                ? bus.assistant.name_en
+                                : bus.assistant?.name || t("No Assistant")}
                             </span>
                           </div>
                         </div>

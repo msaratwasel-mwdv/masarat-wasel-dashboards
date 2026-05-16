@@ -9,6 +9,7 @@ import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
 import { motion } from "framer-motion";
+import useTranslation from "@/hooks/useTranslation";
 import {
   UserCog,
   ShieldCheck,
@@ -70,6 +71,7 @@ export default function ShowSchool({
   stats: Stats;
 }) {
   const { isRTL, theme } = useTheme();
+  const { t } = useTranslation();
   const isDark = theme === "dark";
 
   const [managerModal, setManagerModal] = useState<{
@@ -330,7 +332,7 @@ export default function ShowSchool({
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
-                          <InputLabel value={managerModal.type === 'edit' ? (isRTL ? "كلمة المرور (اتركها فارغة للإبقاء عليها)" : "Password (leave blank to keep)") : (isRTL ? "كلمة المرور" : "Password")} />
+                          <InputLabel value={managerModal.type === 'edit' ? `${t("Password")} (${t("Leave blank to keep current")})` : t("Password")} />
                           <TextInput type="password" value={data.password} onChange={e => setData('password', e.target.value)} className="w-full mt-1" />
                           <InputError message={errors.password} className="mt-1" />
                       </div>

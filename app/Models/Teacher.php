@@ -14,7 +14,9 @@ class Teacher extends Model
 
     protected $fillable = [
         'user_id',
+        'school_id',
         'grade_id',
+        'status',
         'fcm_token',
     ];
 
@@ -23,6 +25,11 @@ class Teacher extends Model
     public function getNameAttribute()
     {
         return $this->user ? $this->user->name : '';
+    }
+
+    public function getNameEnAttribute()
+    {
+        return $this->user ? $this->user->name_en : '';
     }
 
     public function user(): BelongsTo

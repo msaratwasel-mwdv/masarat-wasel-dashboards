@@ -34,6 +34,7 @@ export const DS_tripTabGroup = "flex rounded-[14px] bg-[#0f2044]/[0.07] dark:bg-
 export const DS_searchInput = "w-full rounded-[14px] px-4 py-2 text-sm bg-[#0f2044]/5 dark:bg-[#0f2044]/30 border border-[#0f2044]/10 dark:border-[#243460] text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#f5b800] transition-all";
 
 export const DS_btnGold = "flex items-center gap-2 px-5 py-2 rounded-[14px] bg-[#f5b800] hover:bg-[#e0a900] text-[#0f2044] text-sm font-bold shadow transition-all";
+export const DS_btnSuccess = "flex items-center gap-2 px-5 py-2 rounded-[14px] bg-[#f5b800] hover:bg-[#e0a900] text-[#0f2044] text-sm font-bold shadow transition-all";
 export const DS_btnPrimary = "flex items-center gap-2 px-5 py-2 rounded-[14px] bg-[#0f2044] hover:bg-[#162d60] text-white text-sm font-bold shadow transition-all";
 export const DS_btnSecondary = "flex items-center gap-2 px-4 py-2 rounded-[14px] bg-[#0f2044]/[0.08] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-gray-300 text-sm font-bold hover:bg-[#0f2044]/[0.15] dark:hover:bg-[#0f2044]/50 transition-all border border-[#0f2044]/10 dark:border-[#243460]";
 export const DS_btnEdit = "px-3 py-1.5 rounded-[10px] bg-[#0f2044]/[0.06] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8] text-xs font-bold hover:bg-[#0f2044]/[0.12] dark:hover:bg-[#0f2044]/50 transition-all";

@@ -18,7 +18,7 @@ import {
   DS_modalContainer, DS_modalHeaderTitle, DS_modalHeaderAccent, DS_modalClose, DS_modalBody,
   DS_inputCls, DS_labelCls, DS_cancelBtn, DS_childAvatar, DS_confirmModal,
   DS_statCard, DS_statIcon, DS_badge, DS_filterBtn, DS_tableTh,
-  DS_modalHeader, DS_sectionHeader, DS_childItem, DS_submitBtn,
+  DS_modalHeader, DS_sectionHeader, DS_childItem, DS_submitBtn, DS_btnSuccess,
 } from "@/lib/DS";
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -250,18 +250,6 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
       {/* ── Main UI ─────────────────────────────────────────────────── */}
       <div className={DS_pageWrapper}>
 
-        {/* Stat Cards */}
-        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-1 gap-4 max-w-xs">
-          {stats.map(s => (
-            <div key={s.label} className={`${DS_statCard(s.accent)} ${isRtl ? "flex-row-reverse" : ""}`}>
-              <div className={DS_statIcon(s.accent)}>{s.icon}</div>
-              <div className={isRtl ? "text-right" : "text-left"}>
-                <p className={DS_statLabel}>{s.label}</p>
-                <p className={DS_statValue}>{s.val}</p>
-              </div>
-            </div>
-          ))}
-        </motion.div>
 
         {/* Table Card */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className={DS_card}>
@@ -274,12 +262,19 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
             <div className="flex gap-2 flex-wrap">
               {/* Filter buttons removed */}
             </div>
-            <button onClick={() => window.print()} className={DS_btnSecondary}>
-              <Printer className="w-4 h-4" />{t("Print")}
-            </button>
-            <button onClick={openAdd} className={DS_btnGold}>
-              <UserPlus className="w-4 h-4" />{t("+ Add Parent")}
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => window.print()} 
+                className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-[#0f2044] dark:hover:text-white transition-all shadow-sm"
+                title={t("Print")}
+              >
+                <Printer className="w-4 h-4" />
+              </button>
+              <button onClick={openAdd} className={DS_btnSuccess}>
+                <UserPlus className="w-4 h-4" />
+                <span>{t("+ Add Parent")}</span>
+              </button>
+            </div>
           </div>
 
           {/* Table */}

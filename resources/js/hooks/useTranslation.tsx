@@ -21,6 +21,7 @@ const dictionary = {
   Save: { ar: "حفظ", en: "Save" },
   Cancel: { ar: "إلغاء", en: "Cancel" },
   Add: { ar: "إضافة", en: "Add" },
+  "School settings updated successfully.": { ar: "تم تحديث إعدادات المدرسة بنجاح.", en: "School settings updated successfully." },
   Actions: { ar: "الإجراءات", en: "Actions" },
   Status: { ar: "الحالة", en: "Status" },
   View: { ar: "عرض", en: "View" },
@@ -167,6 +168,9 @@ const dictionary = {
   "ID / Code": { ar: "الرقم / الرمز", en: "ID / Code" },
   "Grade Responsible For": { ar: "المرحلة المسؤول عنها", en: "Grade Responsible For" },
   "+ Add New Teacher": { ar: "+ إضافة معلم جديد", en: "+ Add New Teacher" },
+  "Add New Teacher": { ar: "إضافة معلم جديد", en: "Add New Teacher" },
+  "Active Teacher Account": { ar: "حساب معلم نشط", en: "Active Teacher Account" },
+  "Deactivated Teacher Account": { ar: "حساب معلم معطل", en: "Deactivated Teacher Account" },
   "Teachers Management": { ar: "إدارة المعلمين", en: "Teachers Management" },
   Teachers: { ar: "المعلمين", en: "Teachers" },
   "Total Teachers": { ar: "إجمالي المعلمين", en: "Total Teachers" },
@@ -175,7 +179,10 @@ const dictionary = {
   Teacher: { ar: "المعلم", en: "Teacher" },
   "Register New Teacher": { ar: "تسجيل معلم جديد", en: "Register New Teacher" },
   "Edit Teacher Details": { ar: "تعديل بيانات المعلم", en: "Edit Teacher Details" },
+  "Edit Teacher": { ar: "تعديل بيانات المعلم", en: "Edit Teacher" },
+
   "No Grade Assigned": { ar: "لم يتم تعيين مرحلة", en: "No Grade Assigned" },
+  "Taken by": { ar: "محجوز من قبل", en: "Taken by" },
   "Personal Details": { ar: "البيانات الشخصية", en: "Personal Details" },
   "Contact & Preferences": { ar: "التواصل والتفضيلات", en: "Contact & Preferences" },
   "Profile Picture": { ar: "صورة الملف الشخصي", en: "Profile Picture" },
@@ -448,6 +455,10 @@ const dictionary = {
   "Add Class": { ar: "إضافة فصل", en: "Add Class" },
   "This Class": { ar: "هذا الفصل", en: "This Class" },
   Optional: { ar: "اختياري", en: "Optional" },
+  "Leave blank to keep current": { ar: "اتركه فارغاً للإبقاء على الحالي", en: "Leave blank to keep current" },
+  "Password": { ar: "كلمة المرور", en: "Password" },
+
+
 
   // Supervisors Management
   "Supervisors Management": {

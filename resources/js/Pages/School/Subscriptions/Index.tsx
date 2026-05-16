@@ -91,7 +91,7 @@ export default function SubscriptionsIndex({ plans, billingData }: any) {
 
                 {/* Plans Selection */}
                 <div className="space-y-6">
-                    <div className="text-center md:text-right">
+                    <div className={`text-center ${isRTL ? "md:text-right" : "md:text-left"}`}>
                         <h3 className="text-xl font-black text-slate-800">
                             {isRTL ? 'الباقات المتاحة' : 'Available Subscription Plans'}
                         </h3>

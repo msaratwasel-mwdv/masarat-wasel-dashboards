@@ -36,6 +36,7 @@ export interface Grade {
   name: string;
   teacher_id?: number;
   teacher_name?: string;
+  teacher_name_en?: string;
   classrooms_count?: number;
   students_count?: number;
 }
@@ -43,6 +44,7 @@ export interface Grade {
 interface Teacher {
   id: number;
   name: string;
+  name_en?: string;
 }
 
 interface Props {
@@ -144,7 +146,8 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
 
   const getTeacherName = (id: string) => {
     const tObj = teachers.find((t) => t.id.toString() === id);
-    return tObj ? tObj.name : t("Select Teacher");
+    if (!tObj) return t("Select Teacher");
+    return isRtl ? tObj.name : (tObj.name_en || tObj.name);
   };
 
   const getGradeName = (id: string) => {
@@ -284,7 +287,9 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                       </td>
                       <td className={DS_tableTd}>
                         {g.teacher_name ? (
-                          <span className="font-semibold text-gray-700 dark:text-gray-300">{g.teacher_name}</span>
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">
+                            {isRtl ? g.teacher_name : (g.teacher_name_en || g.teacher_name)}
+                          </span>
                         ) : (
                           <span className="text-gray-400 italic text-xs">{t("No Teacher Assigned")}</span>
                         )}
@@ -395,7 +400,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                         <ListboxOption value="" className="py-2.5 px-4 text-sm font-semibold text-gray-400 italic cursor-pointer hover:bg-gray-50 dark:hover:bg-[#243460]">{t("None")}</ListboxOption>
                         {teachers.map((tItem) => (
                           <ListboxOption key={tItem.id} value={tItem.id.toString()} className={({ active }) => `cursor-pointer py-2.5 px-4 text-sm font-semibold transition-colors ${active ? "bg-[#0f2044]/5 dark:bg-[#243460] text-[#0f2044] dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
-                            {tItem.name}
+                            {isRtl ? tItem.name : (tItem.name_en || tItem.name)}
                           </ListboxOption>
                         ))}
                       </ListboxOptions>
@@ -487,7 +492,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                         <ListboxOption value="" className="py-2.5 px-4 text-sm font-semibold text-gray-400 italic cursor-pointer hover:bg-gray-50 dark:hover:bg-[#243460]">{t("None")}</ListboxOption>
                         {teachers.map((tItem) => (
                           <ListboxOption key={tItem.id} value={tItem.id.toString()} className={({ active }) => `cursor-pointer py-2.5 px-4 text-sm font-semibold transition-colors ${active ? "bg-[#0f2044]/5 dark:bg-[#243460] text-[#0f2044] dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
-                            {tItem.name}
+                            {isRtl ? tItem.name : (tItem.name_en || tItem.name)}
                           </ListboxOption>
                         ))}
                       </ListboxOptions>

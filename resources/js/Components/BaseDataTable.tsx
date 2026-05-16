@@ -276,9 +276,18 @@ export default function BaseDataTable<T extends { id?: number | string }>({
                 <button
                   key={tab.key}
                   onClick={() => onFilterChange(tab.key)}
-                  className={`${DS_filterBtn(activeFilter === tab.key)} whitespace-nowrap`}
+                  className={`${DS_filterBtn(activeFilter === tab.key)} whitespace-nowrap flex items-center gap-2`}
                 >
-                  {tab.label}
+                  <span>{tab.label}</span>
+                  {tab.count !== undefined && (
+                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
+                      activeFilter === tab.key 
+                        ? "bg-white/20 text-white" 
+                        : "bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400"
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

@@ -26,7 +26,7 @@ import {
 import {
   DS_card, DS_pageWrapper, DS_pageTitle, DS_statLabel, DS_statValue,
   DS_avatar, DS_tableWrapper, DS_tableBase, DS_tableHead, DS_tableRow, DS_tableTd,
-  DS_searchInput, DS_btnGold, DS_btnSecondary, DS_btnEdit, DS_btnDanger,
+  DS_searchInput, DS_btnGold, DS_btnSuccess, DS_btnSecondary, DS_btnEdit, DS_btnDanger,
   DS_inputCls, DS_selectCls, DS_labelCls, DS_cancelBtn, DS_confirmModal,
   DS_statCard, DS_statIcon, DS_badge, DS_filterBtn, DS_tableTh,
   DS_modalHeader, DS_sectionHeader, DS_submitBtn,
@@ -578,9 +578,9 @@ export default function IndexStudents({
       cell: (info) => {
         const val = info.getValue();
         return val === "male" ? (
-          <span className="font-bold text-[#0f2044] dark:text-[#7ba7e8] text-xs">♂ {t("Male")}</span>
+          <span className="text-blue-500 text-lg" title={t("Male")}>♂</span>
         ) : val === "female" ? (
-          <span className="font-bold text-[#f5b800]/80 dark:text-[#f5b800] text-xs">♀ {t("Female")}</span>
+          <span className="text-pink-500 text-lg" title={t("Female")}>♀</span>
         ) : "—";
       },
     }),
@@ -719,7 +719,11 @@ export default function IndexStudents({
                   <td className="border border-gray-300 p-1.5 text-center text-gray-700 font-semibold">{i + 1}</td>
                   <td className="border border-gray-300 p-1.5 font-bold text-gray-900">{s.full_name}</td>
                   <td className="border border-gray-300 p-1.5 font-mono text-gray-700">{s.national_id || "-"}</td>
-                  <td className="border border-gray-300 p-1.5 text-gray-700">{s.gender === "male" ? t("Male") : s.gender === "female" ? t("Female") : "-"}</td>
+                  <td className="border border-gray-300 p-1.5 text-center">
+                    <span className={`text-sm font-bold ${s.gender === "male" ? "text-blue-600" : "text-pink-600"}`}>
+                      {s.gender === "male" ? "♂" : s.gender === "female" ? "♀" : "-"}
+                    </span>
+                  </td>
                   <td className="border border-gray-300 p-1.5 font-mono text-gray-700">{s.current_enrollment?.classroom?.name || "-"}</td>
                   <td className="border border-gray-300 p-1.5 font-mono text-gray-700">{(s.guardians && s.guardians.length > 0) ? s.guardians[0].name : "-"}</td>
                   <td className="border border-gray-300 p-1.5 font-mono text-gray-700" dir="ltr">{(s.guardians && s.guardians.length > 0) ? s.guardians[0].phone : "-"}</td>
@@ -741,53 +745,8 @@ export default function IndexStudents({
 
       <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-8`} dir={isRtl ? 'rtl' : 'ltr'}>
 
-        {/* Modern Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-          <div className="flex flex-col">
-            <h1 className={DS_pageTitle}>
-              {t("Students Management")}
-            </h1>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="w-1.5 h-1.5 bg-[#f5b800] rounded-full" />
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                {students.total} {t("Total Students")}
-              </span>
-            </div>
-          </div>
-        </div>
 
-        {/* Stats */}
-        <div className={DS_gridCols + " mb-8"}>
-          <div className={DS_statCard('blue')}>
-            <div className={DS_statIcon('blue')}><Users size={20} /></div>
-            <div>
-              <p className={DS_statLabel}>{t("Total Students")}</p>
-              <p className={DS_statValue2('blue')}>{counts.all}</p>
-            </div>
-          </div>
-          <div className={DS_statCard('green')}>
-            <div className={DS_statIcon('green')}><CheckCircle2 size={20} /></div>
-            <div>
-              <p className={DS_statLabel}>{t("Active")}</p>
-              <p className={DS_statValue2('green')}>{counts.active}</p>
-            </div>
-          </div>
-          <div className={DS_statCard('red')}>
-            <div className={DS_statIcon('red')}><UserX size={20} /></div>
-            <div>
-              <p className={DS_statLabel}>{t("Inactive")}</p>
-              <p className={DS_statValue2('red')}>{counts.inactive}</p>
-            </div>
-          </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 mb-6">
-          <button onClick={openAdd} className={DS_btnGold + " justify-center"}>
-            <UserPlus className="w-4 h-4" />
-            <span>{t("Enroll New Student")}</span>
-          </button>
-        </div>
 
         {/* Main DataTable */}
         <div className={DS_card}>
@@ -802,10 +761,19 @@ export default function IndexStudents({
             activeFilter={filters.status}
             onFilterChange={handleFilterChange}
             headerAction={
-              <button onClick={handlePrint} className={DS_btnSecondary}>
-                <Printer size={16} />
-                <span>{t("Print")}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handlePrint} 
+                  className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-[#0f2044] dark:hover:text-white transition-all shadow-sm"
+                  title={t("Print")}
+                >
+                  <Printer size={16} />
+                </button>
+                <button onClick={openAdd} className={DS_btnSuccess}>
+                  <UserPlus className="w-4 h-4" />
+                  <span>{t("Enroll New Student")}</span>
+                </button>
+              </div>
             }
           />
         </div>
@@ -880,7 +848,9 @@ export default function IndexStudents({
                   </h4>
                   <div className="flex items-center gap-3">
                     <span className={DS_badge(currentStudent?.is_active || false)}>{currentStudent?.is_active ? t("Active") : t("Inactive")}</span>
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{currentStudent?.gender === 'male' ? t("Male") : t("Female")}</span>
+                    <span className={`text-lg font-bold ${currentStudent?.gender === 'male' ? 'text-blue-500' : 'text-pink-500'}`} title={currentStudent?.gender === 'male' ? t("Male") : t("Female")}>
+                      {currentStudent?.gender === 'male' ? "♂" : "♀"}
+                    </span>
                   </div>
                 </div>
               </div>

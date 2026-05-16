@@ -61,6 +61,7 @@ import PrintReportHeader from "@/Components/PrintReportHeader";
 import { AnimatePresence } from "framer-motion";
 import Modal from "@/Components/Modal";
 import InputError from "@/Components/InputError";
+import useTranslation from "@/hooks/useTranslation";
 
 // ─── Print CSS ──────────────────────────────────────────────────
 const PRINT_STYLES = `
@@ -114,6 +115,7 @@ interface Props {
 
 export default function SchoolUsersIndex({ users, filters, schools, auth }: Props) {
   const { isRTL, theme } = useTheme();
+  const { t } = useTranslation();
   const isDark = theme === "dark";
   const [search, setSearch] = useState(filters.search);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -664,7 +666,7 @@ export default function SchoolUsersIndex({ users, filters, schools, auth }: Prop
                                             onChange={e => setData('password', e.target.value)}
                                             className={DS_input}
                                             required={!isEditing}
-                                            placeholder={isEditing ? (isRTL ? "اتركه فارغاً للحفاظ على القديمة" : "Leave blank to keep current") : ""}
+                                            placeholder={isEditing ? t("Leave blank to keep current") : ""}
                                         />
                                         <InputError message={errors.password} />
                                     </div>

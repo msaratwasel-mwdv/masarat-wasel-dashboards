@@ -21,6 +21,10 @@ export default function UpdateProfileInformationForm({
         second_name_ar: user.second_name_ar || "",
         third_name_ar: user.third_name_ar || "",
         last_name_ar: user.last_name_ar || "",
+        first_name_en: user.first_name_en || "",
+        second_name_en: user.second_name_en || "",
+        third_name_en: user.third_name_en || "",
+        last_name_en: user.last_name_en || "",
         email: user.email,
         phone: user.phone || "",
     });
@@ -55,58 +59,61 @@ export default function UpdateProfileInformationForm({
                         </h3>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div className="group">
-                            <label className={DS_labelCls} htmlFor="first_name_ar">
-                                <User className="w-3 h-3 inline-block mb-1 mx-1 group-focus-within:text-[#f5b800] transition-colors" />
-                                {isRtl ? "الاسم الأول" : "First Name"}
-                            </label>
-                            <input
-                                id="first_name_ar"
-                                className={DS_inputCls}
-                                value={data.first_name_ar}
-                                onChange={(e) => setData("first_name_ar", e.target.value)}
-                                required
-                            />
-                            <InputError className="mt-2" message={errors.first_name_ar} />
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-bold text-[#0f2044]/40 dark:text-white/40 uppercase tracking-[0.2em] px-1">
+                            {isRtl ? "الاسم بالعربية" : "Name in Arabic"}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="group">
+                                <label className={DS_labelCls} htmlFor="first_name_ar">
+                                    {isRtl ? "الاسم الأول" : "First Name"}
+                                </label>
+                                <input id="first_name_ar" className={DS_inputCls} value={data.first_name_ar} onChange={(e) => setData("first_name_ar", e.target.value)} required dir="rtl" />
+                                <InputError className="mt-2" message={errors.first_name_ar} />
+                            </div>
+                            <div className="group">
+                                <label className={DS_labelCls} htmlFor="second_name_ar">{isRtl ? "اسم الأب" : "Father's Name"}</label>
+                                <input id="second_name_ar" className={DS_inputCls} value={data.second_name_ar} onChange={(e) => setData("second_name_ar", e.target.value)} dir="rtl" />
+                                <InputError className="mt-2" message={errors.second_name_ar} />
+                            </div>
+                            <div className="group">
+                                <label className={DS_labelCls} htmlFor="third_name_ar">{isRtl ? "اسم الجد" : "Grandfather's Name"}</label>
+                                <input id="third_name_ar" className={DS_inputCls} value={data.third_name_ar} onChange={(e) => setData("third_name_ar", e.target.value)} dir="rtl" />
+                                <InputError className="mt-2" message={errors.third_name_ar} />
+                            </div>
+                            <div className="group">
+                                <label className={DS_labelCls} htmlFor="last_name_ar">{isRtl ? "اللقب/العائلة" : "Family Name"}</label>
+                                <input id="last_name_ar" className={DS_inputCls} value={data.last_name_ar} onChange={(e) => setData("last_name_ar", e.target.value)} required dir="rtl" />
+                                <InputError className="mt-2" message={errors.last_name_ar} />
+                            </div>
                         </div>
-                        <div className="group">
-                            <label className={DS_labelCls} htmlFor="second_name_ar">
-                                {isRtl ? "اسم الأب" : "Father's Name"}
-                            </label>
-                            <input
-                                id="second_name_ar"
-                                className={DS_inputCls}
-                                value={data.second_name_ar}
-                                onChange={(e) => setData("second_name_ar", e.target.value)}
-                            />
-                            <InputError className="mt-2" message={errors.second_name_ar} />
-                        </div>
-                        <div className="group">
-                            <label className={DS_labelCls} htmlFor="third_name_ar">
-                                {isRtl ? "اسم الجد" : "Grandfather's Name"}
-                            </label>
-                            <input
-                                id="third_name_ar"
-                                className={DS_inputCls}
-                                value={data.third_name_ar}
-                                onChange={(e) => setData("third_name_ar", e.target.value)}
-                            />
-                            <InputError className="mt-2" message={errors.third_name_ar} />
-                        </div>
-                        <div className="group">
-                            <label className={DS_labelCls} htmlFor="last_name_ar">
-                                <Fingerprint className="w-3 h-3 inline-block mb-1 mx-1 group-focus-within:text-[#f5b800] transition-colors" />
-                                {isRtl ? "اللقب/العائلة" : "Family Name"}
-                            </label>
-                            <input
-                                id="last_name_ar"
-                                className={DS_inputCls}
-                                value={data.last_name_ar}
-                                onChange={(e) => setData("last_name_ar", e.target.value)}
-                                required
-                            />
-                            <InputError className="mt-2" message={errors.last_name_ar} />
+                    </div>
+
+                    <div className="pt-6 border-t border-[#0f2044]/5 dark:border-[#243460] space-y-4">
+                        <h4 className="text-[10px] font-bold text-[#0f2044]/40 dark:text-white/40 uppercase tracking-[0.2em] px-1">
+                            {isRtl ? "الاسم بالإنجليزية" : "Name in English"}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="group">
+                                <label className={DS_labelCls} htmlFor="first_name_en">First Name</label>
+                                <input id="first_name_en" className={DS_inputCls} value={data.first_name_en} onChange={(e) => setData("first_name_en", e.target.value)} dir="ltr" />
+                                <InputError className="mt-2" message={errors.first_name_en} />
+                            </div>
+                            <div className="group">
+                                <label className={DS_labelCls} htmlFor="second_name_en">Father's Name</label>
+                                <input id="second_name_en" className={DS_inputCls} value={data.second_name_en} onChange={(e) => setData("second_name_en", e.target.value)} dir="ltr" />
+                                <InputError className="mt-2" message={errors.second_name_en} />
+                            </div>
+                            <div className="group">
+                                <label className={DS_labelCls} htmlFor="third_name_en">Grandfather's Name</label>
+                                <input id="third_name_en" className={DS_inputCls} value={data.third_name_en} onChange={(e) => setData("third_name_en", e.target.value)} dir="ltr" />
+                                <InputError className="mt-2" message={errors.third_name_en} />
+                            </div>
+                            <div className="group">
+                                <label className={DS_labelCls} htmlFor="last_name_en">Family Name</label>
+                                <input id="last_name_en" className={DS_inputCls} value={data.last_name_en} onChange={(e) => setData("last_name_en", e.target.value)} dir="ltr" />
+                                <InputError className="mt-2" message={errors.last_name_en} />
+                            </div>
                         </div>
                     </div>
                 </div>
