@@ -462,7 +462,7 @@ class NotificationService
         // 3. Android optimizations
         $androidNotificationConfig = [
             'sound' => 'default',
-            'channel_id' => 'msarat_wasel_high_importance_v3',
+            'channel_id' => 'msarat_wasel_high_importance_v4',
             'notification_priority' => 'PRIORITY_MAX',
             'visibility' => 'PUBLIC',
         ];

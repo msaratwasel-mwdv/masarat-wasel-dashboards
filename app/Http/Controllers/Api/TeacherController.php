@@ -94,7 +94,11 @@ class TeacherController extends Controller
 
         // Find student by ID, code, or national ID to support various QR/card formats
         $student = Student::with('enrollments')
-            ->where('id', $studentId)
+            ->where(function($query) use ($studentId) {
+                if (is_numeric($studentId)) {
+                    $query->where('id', $studentId);
+                }
+            })
             ->orWhere('student_code', $studentId)
             ->orWhere('national_id', $studentId)
             ->firstOrFail();
