@@ -4,10 +4,11 @@ import { Head, useForm, router } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
 import InputError from "@/Components/InputError";
 import PrintReportHeader from "@/Components/PrintReportHeader";
+import GuardianAnalyticsOverview from "@/Components/GuardianAnalyticsOverview";
 import useTranslation from "@/hooks/useTranslation";
 import { motion } from "framer-motion";
 import {
-  Users, CheckCircle2, UserX, UserPlus, Baby, Printer, X, Edit2, Trash2, Eye, MoreVertical, Mail, Phone, MapPin, Fingerprint
+  Users, CheckCircle2, UserX, UserPlus, Baby, Printer, X, Edit2, Trash2, Eye, MoreVertical, Mail, Phone, MapPin, Fingerprint, Camera, Loader2
 } from "lucide-react";
 import Dropdown from "@/Components/Dropdown";
 import Toggle from "@/Components/Toggle";
@@ -47,6 +48,16 @@ interface Guardian {
 interface Props {
   auth: any;
   guardians: Guardian[];
+  stats: {
+    total: number;
+    active: number;
+    inactive: number;
+    with_students: number;
+    no_students: number;
+    multi_students: number;
+    ar_lang: number;
+    en_lang: number;
+  };
   filters: { search?: string };
 }
 
@@ -61,26 +72,49 @@ const PRINT_STYLES = `
 `;
 
 // ─── Main Component ──────────────────────────────────────────────
-export default function ParentsIndex({ auth, guardians, filters }: Props) {
+export default function ParentsIndex({ auth, guardians, stats, filters }: Props) {
   const { t, isRtl } = useTranslation();
 
   const [search, setSearch] = useState(filters.search || "");
   const [activeFilter, setActiveFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"view" | "edit" | "create">("view");
+  const [modalMode, setModalMode] = useState<"view" | "edit" | "create" | "view_students">("view");
   const [currentGuardian, setCurrentGuardian] = useState<Guardian | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmType, setConfirmType] = useState<"parent" | "student" | "deactivate">("parent");
   const [deleteTargetParent, setDeleteTargetParent] = useState<Guardian | null>(null);
   const [deleteTargetStudent, setDeleteTargetStudent] = useState<Student | null>(null);
-  const [childrenModal, setChildrenModal] = useState<Guardian | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // دالة ذكية لعرض الصور مع fallback
+  const getImageUrl = (path: string | null | undefined): string => {
+    if (!path) return "/defaults/avatar.png";
+    if (path.startsWith("http") || path.startsWith("data:")) return path;
+    return `/storage/${path}`;
+  };
+
+  const handleImageError = (e: any) => {
+    e.target.src = "/defaults/avatar.png";
+  };
 
   const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
     _method: "post" as "post" | "put",
     name: "", name_en: "", national_id: "", phone: "", email: "", address: "",
     status: "active" as "active" | "inactive",
     preferred_language: "ar",
+    image: null as File | null,
   });
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setData("image", file);
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSearch = (v: string) => {
     setSearch(v);
@@ -93,11 +127,7 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
     return guardians;
   }, [guardians, activeFilter]);
 
-  const counts = {
-    all: guardians.length,
-    active: guardians.filter(g => g.status === "active").length,
-    inactive: guardians.filter(g => g.status === "inactive").length,
-  };
+
 
   const openAdd = () => { 
     setModalMode("create");
@@ -105,6 +135,7 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
     reset(); 
     setData("_method", "post"); 
     clearErrors(); 
+    setImagePreview(null);
     setIsModalOpen(true); 
   };
 
@@ -127,7 +158,9 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
       address: g.address || "", 
       status: g.status,
       preferred_language: g.preferred_language || "ar",
+      image: null,
     });
+    setImagePreview(g.image ? getImageUrl(g.image) : null);
     clearErrors(); 
     setIsModalOpen(true);
   };
@@ -135,6 +168,7 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
   const closeModal = () => { 
     setIsModalOpen(false); 
     reset(); 
+    setImagePreview(null);
   };
 
   const submit = (e: React.FormEvent) => {
@@ -143,7 +177,7 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
     if (isEdit && currentGuardian) {
       post(route("school.parents.update", currentGuardian.id), { forceFormData: true, onSuccess: () => closeModal() });
     } else {
-      post(route("school.parents.store"), { onSuccess: () => closeModal() });
+      post(route("school.parents.store"), { forceFormData: true, onSuccess: () => closeModal() });
     }
   };
   const confirmDelete = (g: Guardian) => { 
@@ -159,9 +193,13 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
   };
 
   const handleConfirmDelete = () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+
     if (confirmType === "parent" && deleteTargetParent) {
       router.delete(route("school.parents.destroy", deleteTargetParent.id), {
-        onSuccess: () => { setShowConfirmModal(false); setDeleteTargetParent(null); setIsModalOpen(false); }
+        onSuccess: () => { setShowConfirmModal(false); setDeleteTargetParent(null); setIsModalOpen(false); },
+        onFinish: () => setIsDeleting(false),
       });
     } else if (confirmType === "student" && deleteTargetStudent && currentGuardian) {
       router.delete(route("school.parents.students.detach", { parent: currentGuardian.id, student: deleteTargetStudent.id }), {
@@ -173,11 +211,13 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
              const updatedStudents = currentGuardian.students.filter(st => st.id !== deleteTargetStudent.id);
              setCurrentGuardian({...currentGuardian, students: updatedStudents});
           }
-        }
+        },
+        onFinish: () => setIsDeleting(false),
       });
     } else if (confirmType === "deactivate") {
       setData("status", "inactive");
       setShowConfirmModal(false);
+      setIsDeleting(false);
     }
   };
 
@@ -193,14 +233,12 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
     }
   };
 
-  const stats = [
-    { label: t("Total Parents"), val: counts.all,    icon: <Users className="w-5 h-5" />,        accent: "navy"  as const },
-  ];
 
-  const filterBtns: any[] = [];
+
+
 
   const tableHeaders = [
-    t("Parent"), t("Civil ID"), t("Phone Number"), t("Email"), t("Children"), t("Actions"),
+    t("Parent"), t("Civil ID"), t("Phone Number"), t("Email"), t("Preferred Language"), t("Children"), t("Actions"),
   ];
 
   return (
@@ -248,31 +286,30 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
       </div>
 
       {/* ── Main UI ─────────────────────────────────────────────────── */}
-      <div className={DS_pageWrapper}>
+      <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-8`}>
 
+        {/* Analytics Section */}
+        <GuardianAnalyticsOverview stats={stats} />
 
         {/* Table Card */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className={DS_card}>
 
           {/* Toolbar */}
           <div className={DS_sectionHeader(isRtl)}>
-            <div className="flex-1 min-w-[200px]">
+            <div className="flex-1 min-w-0">
               <input type="text" value={search} onChange={e => handleSearch(e.target.value)} placeholder={t("Search by name, ID, phone...")} className={DS_searchInput} dir={isRtl ? "rtl" : "ltr"} />
             </div>
-            <div className="flex gap-2 flex-wrap">
-              {/* Filter buttons removed */}
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => window.print()} 
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => window.print()}
                 className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-[#0f2044] dark:hover:text-white transition-all shadow-sm"
                 title={t("Print")}
               >
                 <Printer className="w-4 h-4" />
               </button>
               <button onClick={openAdd} className={DS_btnSuccess}>
-                <UserPlus className="w-4 h-4" />
-                <span>{t("+ Add Parent")}</span>
+                <UserPlus className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline whitespace-nowrap">{t("+ Add Parent")}</span>
               </button>
             </div>
           </div>
@@ -297,7 +334,7 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
                     <td className={DS_tableTd}>
                       <div className="flex items-center gap-3">
                         <div className={DS_avatar}>
-                          {g.image ? <img src={`/storage/${g.image}`} alt={g.name} className="w-full h-full object-cover" /> : g.name.charAt(0)}
+                          {g.image ? <img src={getImageUrl(g.image)} alt={g.name} className="w-full h-full object-cover" onError={handleImageError} /> : g.name.charAt(0)}
                         </div>
                         <div className={isRtl ? "text-right" : "text-left"}>
                           <p className="font-semibold text-[#0f2044] dark:text-white">{!isRtl && g.name_en ? g.name_en : g.name}</p>
@@ -309,7 +346,12 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
                     <td className={`${DS_tableTd} font-mono text-gray-700 dark:text-gray-300`}>{g.phone}</td>
                     <td className={`${DS_tableTd} text-gray-500 dark:text-gray-400 text-xs`}>{g.email || "—"}</td>
                     <td className={DS_tableTd}>
-                      <button onClick={() => setChildrenModal(g)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-[#f5b800]/10 text-[#7a5c00] dark:text-[#f5b800] text-xs font-bold hover:bg-[#f5b800]/20 transition-all">
+                      <span className="px-2 py-1 rounded-lg bg-gray-100 dark:bg-white/5 text-[10px] font-bold uppercase text-gray-500">
+                        {g.preferred_language === 'ar' ? t("Arabic") : t("English")}
+                      </span>
+                    </td>
+                    <td className={DS_tableTd}>
+                      <button onClick={() => { setCurrentGuardian(g); setModalMode("view_students"); setIsModalOpen(true); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-[#f5b800]/10 text-[#7a5c00] dark:text-[#f5b800] text-xs font-bold hover:bg-[#f5b800]/20 transition-all">
                         <Baby className="w-3.5 h-3.5" /><span>{g.students.length}</span>
                       </button>
                     </td>
@@ -317,6 +359,12 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
                       <div className={`flex gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
                         <button onClick={() => openView(g)} className={DS_btnEdit} title={t("View Record")}>
                           <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => openEdit(g)} className={DS_btnEdit} title={t("Edit")}>
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => confirmDelete(g)} className={DS_btnDanger} title={t("Delete")}>
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -338,44 +386,24 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
             </div>
             <div className={isRtl ? "text-right" : "text-left"}>
               <h3 className="text-xl font-bold text-white">
-                {modalMode === "view" ? currentGuardian?.name : (modalMode === "edit" ? t("Edit Parent") : t("Add New Parent"))}
+                {modalMode === "view" || modalMode === "view_students" ? currentGuardian?.name : (modalMode === "edit" ? t("Edit Parent") : t("Add New Parent"))}
               </h3>
-              {modalMode === "view" && <p className="text-[#7ba7e8] text-sm font-semibold">{currentGuardian?.national_id}</p>}
+              {(modalMode === "view" || modalMode === "view_students") && <p className="text-[#7ba7e8] text-sm font-semibold">{currentGuardian?.national_id}</p>}
             </div>
           </div>
           
           <div className="flex items-center gap-2">
-            {modalMode === "view" && (
-              <div className="flex items-center gap-2">
-                <Dropdown>
-                  <Dropdown.Trigger>
-                    <button className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                  </Dropdown.Trigger>
-                  <Dropdown.Content align={isRtl ? "left" : "right"} width="40" contentClasses="py-2 bg-white dark:bg-[#1a2845] shadow-2xl rounded-[16px] border border-gray-100 dark:border-[#243460]">
-                    <button onClick={handleEditFromView} className="w-full px-4 py-2.5 text-sm font-bold text-[#0f2044] dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-start flex items-center gap-2">
-                      <Edit2 className="w-4 h-4 text-blue-500" />
-                      {t("Edit")}
-                    </button>
-                    <button onClick={handleDeleteFromView} className="w-full px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-start flex items-center gap-2">
-                      <Trash2 className="w-4 h-4" />
-                      {t("Delete")}
-                    </button>
-                  </Dropdown.Content>
-                </Dropdown>
-              </div>
-            )}
             <button onClick={closeModal} className={DS_modalClose}><X className="w-5 h-5" /></button>
           </div>
         </div>
 
         {/* Modal Body */}
-        <div className={`p-8 ${modalMode === "view" ? "space-y-8" : "space-y-4"} overflow-y-auto max-h-[80vh]`}>
-          {modalMode === "view" ? (
+        <div className={`p-8 ${modalMode === "view" || modalMode === "view_students" ? "space-y-8" : "space-y-4"} overflow-y-auto max-h-[80vh]`}>
+          {modalMode === "view" || modalMode === "view_students" ? (
             /* View Mode Body */
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {modalMode === "view" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
                   <div className="w-12 h-12 rounded-[14px] bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600"><Fingerprint className="w-6 h-6" /></div>
                   <div><p className={DS_labelCls}>{t("Civil ID")}</p><p className="font-bold text-[#0f2044] dark:text-white">{currentGuardian?.national_id}</p></div>
@@ -392,7 +420,8 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
                   <div className="w-12 h-12 rounded-[14px] bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600"><MapPin className="w-6 h-6" /></div>
                   <div><p className={DS_labelCls}>{t("Address")}</p><p className="font-bold text-[#0f2044] dark:text-white">{currentGuardian?.address || "—"}</p></div>
                 </div>
-              </div>
+                </div>
+              )}
 
               <div>
                 <div className="flex items-center justify-between mb-4 px-2">
@@ -441,6 +470,32 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
           ) : (
             /* Edit / Create Mode Body */
             <form onSubmit={submit} className="space-y-4">
+              <div className="flex flex-col items-center justify-center mb-6">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-[22px] bg-gray-50 dark:bg-white/5 border-2 border-dashed border-gray-200 dark:border-white/10 flex items-center justify-center overflow-hidden transition-all group-hover:border-[#f5b800]">
+                    {imagePreview ? (
+                      <img src={imagePreview} className="w-full h-full object-cover" alt="" />
+                    ) : (
+                      <div className="text-center">
+                        <Camera className="w-8 h-8 text-gray-300 mx-auto mb-1" />
+                        <p className="text-[8px] font-bold text-gray-400 uppercase">{t("Upload")}</p>
+                      </div>
+                    )}
+                    <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  </div>
+                  {imagePreview && (
+                    <button 
+                      type="button"
+                      onClick={() => { setImagePreview(null); setData("image", null); }}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-all"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <p className="mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("Guardian Image")}</p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className={DS_labelCls}>{t("Name (Arabic)")} *</label>
@@ -502,13 +557,13 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
       </Modal>
 
       {/* ── Dynamic Delete Confirm Modal ──────────────────────────── */}
-      <Modal show={showConfirmModal} onClose={() => setShowConfirmModal(false)} maxWidth="sm" zIndex={60}>
+      <Modal show={showConfirmModal} onClose={() => setShowConfirmModal(false)} maxWidth="md" zIndex={60}>
         <div className="p-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">⚠️</span>
+          <div className="w-20 h-20 rounded-[24px] bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-6 border-4 border-red-100 dark:border-red-900/30">
+            <Trash2 className="w-8 h-8 text-red-500" />
           </div>
-          <h3 className="text-xl font-bold text-[#0f2044] dark:text-white mb-2">{t("Confirm Delete")}</h3>
-          <p className="text-gray-500 dark:text-gray-400 text-sm font-semibold mb-6">
+          <h3 className="text-2xl font-black text-[#0f2044] dark:text-white mb-2">{t("Confirm Delete")}</h3>
+          <p className="text-gray-500 dark:text-gray-400 font-medium mb-8">
             {confirmType === "parent" 
               ? t("This guardian will be deleted. Are you sure?") 
               : (
@@ -522,9 +577,13 @@ export default function ParentsIndex({ auth, guardians, filters }: Props) {
                 </>
               )}
           </p>
-          <div className="flex gap-3">
-            <button onClick={() => setShowConfirmModal(false)} className={`flex-1 py-3 ${DS_cancelBtn}`}>{t("Cancel")}</button>
-            <button onClick={handleConfirmDelete} className="flex-1 py-3 rounded-[14px] bg-red-600 hover:bg-red-700 text-white font-bold transition-all shadow">{t("Delete")}</button>
+          <div className="flex gap-4">
+            <button onClick={() => setShowConfirmModal(false)} disabled={isDeleting} className={`flex-1 py-3 ${DS_cancelBtn} disabled:opacity-50`}>
+              {t("Cancel")}
+            </button>
+            <button onClick={handleConfirmDelete} disabled={isDeleting} className="flex-1 flex justify-center items-center gap-2 py-3 px-6 rounded-[14px] bg-red-500 hover:bg-red-600 text-white font-bold transition-all shadow-lg shadow-red-500/25 disabled:opacity-50">
+              {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : t("Delete")}
+            </button>
           </div>
         </div>
       </Modal>

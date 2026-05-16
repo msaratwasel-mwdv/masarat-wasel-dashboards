@@ -9,7 +9,7 @@ import PrintReportHeader from "@/Components/PrintReportHeader";
 import { motion } from "framer-motion";
 import { 
   Users, CheckCircle2, UserX, UserPlus, Printer, X, GraduationCap, Edit2, Trash2,
-  Eye, MoreVertical, Phone, Mail, Fingerprint
+  Eye, MoreVertical, Phone, Mail, Fingerprint, AlertTriangle
 } from "lucide-react";
 import Dropdown from "@/Components/Dropdown";
 import Toggle from "@/Components/Toggle";
@@ -81,6 +81,7 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
     _method: "post" as "post" | "put",
@@ -204,6 +205,8 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
   };
 
   const handleDelete = () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
     if (teacherToDelete) {
       router.delete(route("school.teachers.destroy", teacherToDelete.id), {
         onSuccess: () => {
@@ -211,6 +214,7 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
           setTeacherToDelete(null);
           setIsModalOpen(false);
         },
+        onFinish: () => setIsDeleting(false),
       });
     }
   };
@@ -279,15 +283,45 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
       </div>
 
       {/* ── Main UI ─────────────────────────────────────────────────── */}
-      <div className={DS_pageWrapper}>
+      <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-8`}>
 
+        {/* Simple Analytics Row */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
+          <div className="flex items-center gap-3 p-3 md:p-4 rounded-[18px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm">
+            <div className="w-10 h-10 rounded-[12px] bg-[#0f2044]/10 dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8] flex items-center justify-center flex-shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[9px] md:text-[10px] font-bold uppercase text-gray-400 dark:text-gray-500 leading-none mb-1 truncate">{t("Total Teachers")}</p>
+              <h4 className="text-lg md:text-xl font-black text-[#0f2044] dark:text-white leading-none">{counts.all}</h4>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-3 md:p-4 rounded-[18px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm">
+            <div className="w-10 h-10 rounded-[12px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[9px] md:text-[10px] font-bold uppercase text-gray-400 dark:text-gray-500 leading-none mb-1 truncate">{t("Active")}</p>
+              <h4 className="text-lg md:text-xl font-black text-[#0f2044] dark:text-white leading-none">{counts.active}</h4>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-3 md:p-4 rounded-[18px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm">
+            <div className="w-10 h-10 rounded-[12px] bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0">
+              <UserX className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[9px] md:text-[10px] font-bold uppercase text-gray-400 dark:text-gray-500 leading-none mb-1 truncate">{t("Inactive")}</p>
+              <h4 className="text-lg md:text-xl font-black text-[#0f2044] dark:text-white leading-none">{counts.inactive}</h4>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Table Card */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className={DS_card}>
 
           {/* Toolbar */}
           <div className={DS_sectionHeader(isRtl)}>
-            <div className="flex-1 min-w-[200px]">
+            <div className="flex-1 min-w-0">
               <input
                 type="text"
                 value={search}
@@ -297,10 +331,10 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
                 dir={isRtl ? "rtl" : "ltr"}
               />
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap order-3 w-full md:w-auto mt-2 md:mt-0">
               {filterBtns.map(f => (
-                <button key={f.key} onClick={() => setActiveFilter(f.key)} className={`${DS_filterBtn(activeFilter === f.key)} flex items-center gap-2`}>
-                  <span>{f.label}</span>
+                <button key={f.key} onClick={() => setActiveFilter(f.key)} className={`${DS_filterBtn(activeFilter === f.key)} flex items-center gap-2 flex-1 md:flex-none justify-center`}>
+                  <span className="text-[11px] sm:text-xs whitespace-nowrap">{f.label}</span>
                   {f.count !== undefined && (
                     <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
                       activeFilter === f.key 
@@ -313,7 +347,7 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button 
                 onClick={() => window.print()} 
                 className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-[#0f2044] dark:hover:text-white transition-all shadow-sm"
@@ -322,8 +356,8 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
                 <Printer className="w-4 h-4" />
               </button>
               <button onClick={openAdd} className={DS_btnSuccess}>
-                <UserPlus className="w-4 h-4" />
-                <span>{t("Add New Teacher")}</span>
+                <UserPlus className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline whitespace-nowrap">{t("Add New Teacher")}</span>
               </button>
             </div>
           </div>
@@ -381,6 +415,12 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
                         <button onClick={() => openView(teacher)} className={DS_btnEdit} title={t("View Record")}>
                           <Eye size={14} />
                         </button>
+                        <button onClick={() => openEdit(teacher)} className={DS_btnEdit} title={t("Edit")}>
+                          <Edit2 size={14} />
+                        </button>
+                        <button onClick={() => confirmDelete(teacher)} className={DS_btnDanger} title={t("Delete")}>
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -408,33 +448,6 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
           </div>
           
           <div className="flex items-center gap-2">
-            {modalMode === "view" && (
-              <div className="flex items-center gap-2">
-                <Dropdown>
-                  <Dropdown.Trigger>
-                    <button className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                  </Dropdown.Trigger>
-                  <Dropdown.Content align={isRtl ? "left" : "right"} width="32" contentClasses="py-2 bg-white dark:bg-[#1a2845] shadow-2xl rounded-[16px] border border-gray-100 dark:border-[#243460]">
-                    <button 
-                      onClick={() => currentTeacher && openEdit(currentTeacher)} 
-                      className="w-full px-4 py-2.5 text-sm font-bold text-[#0f2044] dark:text-white hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-start flex items-center gap-2"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                      {t("Edit")}
-                    </button>
-                    <button 
-                      onClick={() => currentTeacher && confirmDelete(currentTeacher)} 
-                      className="w-full px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-start flex items-center gap-2"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      {t("Delete")}
-                    </button>
-                  </Dropdown.Content>
-                </Dropdown>
-              </div>
-            )}
             <button onClick={closeModal} className={DS_modalClose}><X className="w-5 h-5" /></button>
           </div>
         </div>
@@ -445,15 +458,15 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
             /* View Mode Body */
             <>
               {/* Profile Card */}
-              <div className="flex items-center gap-6 p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm">
-                <div className={DS_avatar + " w-24 h-24 rounded-[22px] border-4 border-white dark:border-[#243460] overflow-hidden shadow-lg"}>
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 p-4 sm:p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm text-center sm:text-start">
+                <div className={DS_avatar + " w-20 h-20 sm:w-24 sm:h-24 rounded-[22px] border-4 border-white dark:border-[#243460] overflow-hidden shadow-lg shrink-0"}>
                   {currentTeacher?.image ? <img src={`/storage/${currentTeacher.image}`} className="w-full h-full object-cover" alt={currentTeacher.name} /> : currentTeacher?.name.charAt(0)}
                 </div>
-                <div>
-                  <h4 className="text-2xl font-black text-[#0f2044] dark:text-white mb-1">
+                <div className="flex-1">
+                  <h4 className="text-xl sm:text-2xl font-black text-[#0f2044] dark:text-white mb-2">
                     {!isRtl && currentTeacher?.name_en ? currentTeacher?.name_en : currentTeacher?.name}
                   </h4>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap justify-center sm:justify-start items-center gap-2">
                     <span className={DS_badge(currentTeacher?.is_active || false)}>{currentTeacher?.is_active ? t("Active") : t("Inactive")}</span>
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-[#0f2044]/[0.07] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8]">
                       {currentTeacher?.grade_name || t("No Grade")}
@@ -517,7 +530,7 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
                 {/* Arabic Name Parts */}
                 <div className="md:col-span-2 space-y-3">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t("Name (Arabic)")} *</label>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" dir="rtl">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" dir="rtl">
                     {["first", "second", "third", "last"].map(p => (
                       <div key={p}>
                         <input type="text" value={(data as any)[`${p}_name_ar`]} onChange={e => setData(`${p}_name_ar` as any, e.target.value)} className={DS_inputCls} placeholder={t(`${p} Name`)} dir="rtl" required />
@@ -529,7 +542,7 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
                 {/* English Name Parts */}
                 <div className="md:col-span-2 space-y-3 pt-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t("Name (English)")}</label>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" dir="ltr">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" dir="ltr">
                     {["first", "second", "third", "last"].map(p => (
                       <div key={p}>
                         <input type="text" value={(data as any)[`${p}_name_en`]} onChange={e => setData(`${p}_name_en` as any, e.target.value)} className={DS_inputCls} placeholder={t(`${p} Name`)} dir="ltr" />
@@ -594,21 +607,28 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
         </div>
       </Modal>
 
-      {/* ── Delete Modal ──────────────────────────────────────────── */}
+      {/* ── Delete Confirmation Modal ───────────────────────────────── */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setShowDeleteModal(false)}>
-          <div className={DS_confirmModal} onClick={e => e.stopPropagation()}>
+        <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)} maxWidth="sm">
+          <div className={DS_confirmModal}>
             <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">⚠️</span>
+              <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
             <h3 className="text-xl font-bold text-[#0f2044] dark:text-white mb-2">{t("Confirm Deletion")}</h3>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">{t("Are you sure? This cannot be undone.")}</p>
+            <p className="font-bold text-[#0f2044] dark:text-[#7ba7e8] bg-[#0f2044]/5 dark:bg-[#0f2044]/30 py-2 px-4 rounded-xl inline-block mb-3">
+              {!isRtl && teacherToDelete?.name_en ? teacherToDelete?.name_en : teacherToDelete?.name}
+            </p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
+              {t("Are you sure you want to delete this? This action cannot be undone.")}
+            </p>
             <div className="flex gap-3">
-              <button onClick={() => setShowDeleteModal(false)} className={`flex-1 py-3 ${DS_cancelBtn}`}>{t("Cancel")}</button>
-              <button onClick={handleDelete} className="flex-1 py-3 rounded-[14px] bg-red-600 hover:bg-red-700 text-white font-bold transition-all shadow">{t("Delete")}</button>
+              <button onClick={() => setShowDeleteModal(false)} disabled={isDeleting} className={`flex-1 py-3 ${DS_cancelBtn} disabled:opacity-50`}>{t("Cancel")}</button>
+              <button onClick={handleDelete} disabled={isDeleting} className="flex-1 py-3 rounded-[14px] bg-red-600 hover:bg-red-700 text-white font-bold transition-all shadow disabled:opacity-50">
+                {isDeleting ? t("Deleting...") : t("Yes, Delete")}
+              </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </SchoolAuthenticatedLayout>
   );

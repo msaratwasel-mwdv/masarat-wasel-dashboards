@@ -64,6 +64,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Selection states
   const [entityToEdit, setEntityToEdit] = useState<any>(null);
@@ -122,13 +123,15 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
   };
 
   const handleDelete = () => {
-    if (!entityToDelete) return;
+    if (!entityToDelete || isDeleting) return;
+    setIsDeleting(true);
     const deleteRoute = activeTab === "classrooms" 
         ? route("school.classrooms.destroy", entityToDelete.id)
         : route("school.classrooms.grades.destroy", entityToDelete.id);
 
     router.delete(deleteRoute, {
       onSuccess: () => { setShowDeleteModal(false); setEntityToDelete(null); },
+      onFinish: () => setIsDeleting(false),
     });
   };
 
@@ -162,10 +165,32 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
     >
       <Head title={t("Classes & Grades")} />
 
-      <div className={DS_pageWrapper}>
+      <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-8`}>
         
+        {/* Simple Analytics Row */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+          <div className="flex items-center gap-3 p-3 md:p-4 rounded-[18px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm">
+            <div className="w-10 h-10 rounded-[12px] bg-[#0f2044]/10 dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8] flex items-center justify-center flex-shrink-0">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[9px] md:text-[10px] font-bold uppercase text-gray-400 dark:text-gray-500 leading-none mb-1 truncate">{t("Total Classrooms")}</p>
+              <h4 className="text-lg md:text-xl font-black text-[#0f2044] dark:text-white leading-none">{classrooms.length}</h4>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-3 md:p-4 rounded-[18px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm">
+            <div className="w-10 h-10 rounded-[12px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[9px] md:text-[10px] font-bold uppercase text-gray-400 dark:text-gray-500 leading-none mb-1 truncate">{t("Total Grades")}</p>
+              <h4 className="text-lg md:text-xl font-black text-[#0f2044] dark:text-white leading-none">{grades.length}</h4>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Top Header & Tabs */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           {/* Tab Switcher */}
           <div className={`flex p-1.5 bg-white dark:bg-[#1a2845] rounded-[20px] shadow-sm border border-[#0f2044]/5 dark:border-[#243460] w-fit ${isRtl ? "md:mr-auto" : "md:ml-auto"}`}>
             <button
@@ -212,8 +237,8 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <div className="relative w-full sm:w-72">
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+              <div className="relative w-full sm:w-72 flex-shrink-0">
                 <Search className={`absolute ${isRtl ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none`} />
                 <input
                   type="text"
@@ -224,9 +249,9 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                   dir={isRtl ? "rtl" : "ltr"}
                 />
               </div>
-              <button onClick={() => setShowAddModal(true)} className={DS_btnGold}>
-                <Plus className="w-4 h-4" />
-                {activeTab === "classrooms" ? t("Add New Class") : t("Add New Grade")}
+              <button onClick={() => setShowAddModal(true)} className={`${DS_btnGold} w-full sm:w-auto flex justify-center`}>
+                <Plus className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap">{activeTab === "classrooms" ? t("Add New Class") : t("Add New Grade")}</span>
               </button>
             </div>
           </div>

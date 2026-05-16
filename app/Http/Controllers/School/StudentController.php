@@ -81,6 +81,12 @@ class StudentController extends Controller
             'all' => (clone $baseQuery)->count(),
             'active' => (clone $baseQuery)->where('is_active', true)->count(),
             'inactive' => (clone $baseQuery)->where('is_active', false)->count(),
+            'male' => (clone $baseQuery)->where('gender', 'male')->count(),
+            'female' => (clone $baseQuery)->where('gender', 'female')->count(),
+            'with_bus' => (clone $baseQuery)->where(function($q) {
+                $q->whereNotNull('forth_bus_id')->orWhereNotNull('back_bus_id');
+            })->count(),
+            'no_bus' => (clone $baseQuery)->whereNull('forth_bus_id')->whereNull('back_bus_id')->count(),
         ];
 
         // ⬅️ أضف where لفلترة حسب المدرسة

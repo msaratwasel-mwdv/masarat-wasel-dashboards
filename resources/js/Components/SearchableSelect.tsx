@@ -21,6 +21,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   label?: string;
   className?: string;
+  forceBottom?: boolean;
 }
 
 export default function SearchableSelect({
@@ -30,6 +31,7 @@ export default function SearchableSelect({
   placeholder = "Select...",
   label,
   className = "",
+  forceBottom = false,
 }: SearchableSelectProps) {
   const [query, setQuery] = useState("");
 
@@ -81,8 +83,8 @@ export default function SearchableSelect({
           </div>
 
           <ComboboxOptions
-            anchor="bottom start"
-            className="z-[99] mt-2 max-h-60 w-[var(--input-width)] overflow-auto rounded-2xl bg-white dark:bg-[#1a2845] py-2 text-base shadow-2xl border border-gray-100 dark:border-[#243460] focus:outline-none sm:text-sm empty:invisible transition duration-100 ease-in data-[leave]:opacity-0"
+            anchor={forceBottom ? undefined : "bottom start"}
+            className={`${forceBottom ? "absolute top-full left-0 right-0 w-full" : "w-[var(--input-width)]"} z-[99] mt-2 max-h-60 overflow-auto rounded-2xl bg-white dark:bg-[#1a2845] py-2 text-base shadow-2xl border border-gray-100 dark:border-[#243460] focus:outline-none sm:text-sm empty:invisible transition duration-100 ease-in data-[leave]:opacity-0`}
           >
             {query.length > 0 && filteredOptions.length === 0 && (
               <div className="relative cursor-default select-none py-3 px-4 text-gray-500 dark:text-gray-400 text-xs italic">
