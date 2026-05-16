@@ -205,10 +205,26 @@ class AuthController extends Controller
             );
         } catch (\Throwable $e) {
             Log::error("[FCM] Failed to register token: " . $e->getMessage());
-            // نرجع نجاح لأننا لا نريد منع المستخدم من دخول التطبيق بسبب خطأ في التنبيهات
         }
+        
+        return response()->json(['success' => true]);
+    }
 
-        return response()->json(['success' => true, 'message' => 'تم تسجيل FCM Token بنجاح.']);
+        /**
+     * إزالة FCM Token يدوياً (مثلاً عند تعطيل التنبيهات)
+     * POST /api/auth/fcm-token/delete
+     */
+    public function deleteFcmToken(Request $request): JsonResponse
+    {
+        $request->validate([
+            'fcm_token' => 'required|string',
+        ]);
+
+        \App\Models\FcmToken::where('user_id', $request->user()->id)
+            ->where('token', $request->fcm_token)
+            ->delete();
+
+        return response()->json(['success' => true, 'message' => 'تم إزالة FCM Token بنجاح.']);
     }
 
     /**

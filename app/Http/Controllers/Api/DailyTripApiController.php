@@ -98,14 +98,19 @@ class DailyTripApiController extends Controller
         }
 
         // ✅ تنفيذ الركوب
-
-        Log::info('board: Valid transition', [
-            'bus_id' => $bus->id, 'student_id' => $student->id,
-            'from' => $currentStatus, 'to' => 'onBus', 'direction' => $direction,
-            'trip_id' => $trip->id
-        ]);
-
         $boardedAt = now();
+        $isAlreadyBoarded = TripAttendance::where('trip_id', $trip->id)
+            ->where('student_id', $student->id)
+            ->where('status', 'boarded')
+            ->exists();
+
+        if ($isAlreadyBoarded) {
+             return response()->json([
+                'message' => 'الطالب مسجّل ركوب بالفعل.',
+                'current_status' => 'onBus',
+            ], 200);
+        }
+
         $attendance = DB::transaction(function () use ($trip, $student, $boardedAt) {
             return TripAttendance::updateOrCreate(
                 ['trip_id' => $trip->id, 'student_id' => $student->id],
@@ -200,20 +205,29 @@ class DailyTripApiController extends Controller
             ->toArray();
 
         // ✅ T-05: Atomic transaction for all attendance records
-        DB::transaction(function () use ($validStudentIds, $trip, $recordedAt) {
+        $newlyBoardedStudentIds = [];
+        DB::transaction(function () use ($validStudentIds, $trip, $recordedAt, &$newlyBoardedStudentIds) {
             foreach ($validStudentIds as $studentId) {
-                TripAttendance::updateOrCreate(
-                    ['trip_id' => $trip->id, 'student_id' => $studentId],
-                    [
-                        'check_in_time' => $recordedAt,
-                        'status' => 'boarded',
-                    ]
-                );
+                $alreadyBoarded = TripAttendance::where('trip_id', $trip->id)
+                    ->where('student_id', $studentId)
+                    ->where('status', 'boarded')
+                    ->exists();
+                
+                if (!$alreadyBoarded) {
+                    $newlyBoardedStudentIds[] = $studentId;
+                    TripAttendance::updateOrCreate(
+                        ['trip_id' => $trip->id, 'student_id' => $studentId],
+                        [
+                            'check_in_time' => $recordedAt,
+                            'status' => 'boarded',
+                        ]
+                    );
+                }
             }
         });
 
-        // Notifications & broadcasts outside transaction
-        foreach ($validStudentIds as $studentId) {
+        // Notifications & broadcasts only for newly boarded students
+        foreach ($newlyBoardedStudentIds as $studentId) {
             $student = Student::find($studentId);
             if (!$student) continue;
 
@@ -228,7 +242,7 @@ class DailyTripApiController extends Controller
                     messageKey: 'notifications.student_picked_up',
                     translationParams: ['student' => $student->full_name],
                     data: [
-                        'type' => $notificationType,
+                        'notification_type' => $notificationType,
                         'student_id' => $studentId,
                         'student_name_en' => $studentNameEn,
                         'bus_id' => $bus->id,
@@ -242,7 +256,7 @@ class DailyTripApiController extends Controller
             }
 
             try {
-                broadcast(new StudentStatusUpdated(Student::find($studentId), $bus, 'boarding', $direction));
+                broadcast(new StudentStatusUpdated($student, $bus, 'boarding', $direction));
             } catch (\Exception $e) {}
         }
 
@@ -318,14 +332,17 @@ class DailyTripApiController extends Controller
         }
 
         // ✅ تنفيذ النزول
+        $isAlreadyDropped = TripAttendance::where('trip_id', $trip->id)
+            ->where('student_id', $student->id)
+            ->where('status', 'dropped')
+            ->exists();
 
-        $newStatus = $direction === 'to_school' ? 'atSchool' : 'atHome';
-
-        Log::info('alight: Valid transition', [
-            'bus_id' => $bus->id, 'student_id' => $student->id,
-            'from' => 'onBus', 'to' => $newStatus, 'direction' => $direction,
-            'trip_id' => $trip->id
-        ]);
+        if ($isAlreadyDropped) {
+            return response()->json([
+                'message' => 'تم تسجيل النزول بالفعل لهذه الرحلة.',
+                'current_status' => $expectedNewStatus,
+            ], 200);
+        }
 
         $attendance = DB::transaction(function () use ($trip, $student) {
             return TripAttendance::updateOrCreate(
@@ -405,20 +422,29 @@ class DailyTripApiController extends Controller
         $recordedAt = now();
 
         // ✅ T-05: Atomic transaction for all drop-offs
-        DB::transaction(function () use ($request, $trip, $recordedAt) {
+        $newlyDroppedStudentIds = [];
+        DB::transaction(function () use ($request, $trip, $recordedAt, &$newlyDroppedStudentIds) {
             foreach ($request->student_ids as $studentId) {
-                TripAttendance::updateOrCreate(
-                    ['trip_id' => $trip->id, 'student_id' => $studentId],
-                    [
-                        'check_out_time' => $recordedAt,
-                        'status' => 'dropped',
-                    ]
-                );
+                $alreadyDropped = TripAttendance::where('trip_id', $trip->id)
+                    ->where('student_id', $studentId)
+                    ->where('status', 'dropped')
+                    ->exists();
+
+                if (!$alreadyDropped) {
+                    $newlyDroppedStudentIds[] = $studentId;
+                    TripAttendance::updateOrCreate(
+                        ['trip_id' => $trip->id, 'student_id' => $studentId],
+                        [
+                            'check_out_time' => $recordedAt,
+                            'status' => 'dropped',
+                        ]
+                    );
+                }
             }
         });
 
-        // Notifications & broadcasts outside transaction
-        foreach ($request->student_ids as $studentId) {
+        // Notifications & broadcasts only for newly dropped students
+        foreach ($newlyDroppedStudentIds as $studentId) {
             $student = Student::find($studentId);
             if (!$student) continue;
 
@@ -444,7 +470,6 @@ class DailyTripApiController extends Controller
             }
 
             try {
-                $student = Student::find($studentId);
                 broadcast(new StudentStatusUpdated($student, $bus, 'alight', $direction));
             } catch (\Exception $e) {
                 Log::error("Broadcast error (groupAlight): " . $e->getMessage());

@@ -43,20 +43,38 @@ class NotificationService
         ?string $messageEn = null,
         ?string $fromUserNameEn = null
     ): Notification {
-        // 1. Save to database immediately (Sync)
-        $notification = Notification::create([
-            'user_id'          => $userId,
-            'type'             => $type,
-            'title'            => $title,
-            'title_en'         => $titleEn,
-            'message'          => $message,
-            'message_en'       => $messageEn,
-            'data'             => $data,
-            'from_user_name'   => $fromUserName,
-            'status'           => 'unread',
-            'recipient_type'   => 'individual',
-            'total_recipients' => 1,
-        ]);
+        // 1. Save to database (Skip for chat messages to avoid badge inflation)
+        if ($type === 'chat_message') {
+            $notification = new Notification([
+                'user_id'          => $userId,
+                'type'             => $type,
+                'title'            => $title,
+                'title_en'         => $titleEn,
+                'message'          => $message,
+                'message_en'       => $messageEn,
+                'data'             => $data,
+                'from_user_name'   => $fromUserName,
+                'status'           => 'unread',
+                'recipient_type'   => 'individual',
+                'total_recipients' => 1,
+                'created_at'       => now(),
+            ]);
+        } else {
+            $notification = Notification::create([
+                'user_id'          => $userId,
+                'type'             => $type,
+                'title'            => $title,
+                'title_en'         => $titleEn,
+                'message'          => $message,
+                'message_en'       => $messageEn,
+                'data'             => $data,
+                'from_user_name'   => $fromUserName,
+                'status'           => 'unread',
+                'recipient_type'   => 'individual',
+                'total_recipients' => 1,
+                'created_at'       => now(),
+            ]);
+        }
 
         $correlationId = (string) \Illuminate\Support\Str::uuid();
 
@@ -90,14 +108,16 @@ class NotificationService
                         // Send Arabic
                         if (!empty($tokensAr)) {
                             $payloadAr = array_merge($data ?? [], [
-                                'notification_id' => (string) $notification->id,
+                                'notification_id' => $notification->id ? (string) $notification->id : (string) ($data['message_id'] ?? $correlationId),
                                 'type'            => $type,
+                                'category'        => $data['category'] ?? $type,
                                 'correlation_id'  => $correlationId,
                                 'language'        => 'ar',
                                 'sender_name'     => $fromUserName,
                                 'sender_name_en'  => $fromUserNameEn ?: $fromUserName,
                                 'title_en'        => $titleEn ?: $title,
                                 'message_en'      => $messageEn ?: $message,
+                                'unread_count'    => (string) $this->getUnreadCount($userId),
                             ]);
 
                             if ($immediate) {
@@ -110,14 +130,16 @@ class NotificationService
                         // Send English
                         if (!empty($tokensEn)) {
                             $payloadEn = array_merge($data ?? [], [
-                                'notification_id' => (string) $notification->id,
+                                'notification_id' => $notification->id ? (string) $notification->id : (string) ($data['message_id'] ?? $correlationId),
                                 'type'            => $type,
+                                'category'        => $data['category'] ?? $type,
                                 'correlation_id'  => $correlationId,
                                 'language'        => 'en',
                                 'sender_name'     => $fromUserNameEn ?: $fromUserName,
                                 'sender_name_en'  => $fromUserNameEn ?: $fromUserName,
                                 'title_en'        => $titleEn ?: $title,
                                 'message_en'      => $messageEn ?: $message,
+                                'unread_count'    => (string) $this->getUnreadCount($userId),
                             ]);
 
                             if ($immediate) {
@@ -169,20 +191,38 @@ class NotificationService
         $pushTitle = $lang === 'en' ? $titleEn : $titleAr;
         $pushMessage = $lang === 'en' ? $messageEn : $messageAr;
 
-        // 2. حفظ الإشعار في قاعدة البيانات مع دعم اللغتين
-        $notification = Notification::create([
-            'user_id'          => $userId,
-            'type'             => $type,
-            'title'            => $titleAr,
-            'title_en'         => $titleEn,
-            'message'          => $messageAr,
-            'message_en'       => $messageEn,
-            'data'             => $data,
-            'from_user_name'   => $fromUserName,
-            'status'           => 'unread',
-            'recipient_type'   => 'individual',
-            'total_recipients' => 1,
-        ]);
+        // 2. Save to database (Skip for chat messages)
+        if ($type === 'chat_message') {
+            $notification = new Notification([
+                'user_id'          => $userId,
+                'type'             => $type,
+                'title'            => $titleAr,
+                'title_en'         => $titleEn,
+                'message'          => $messageAr,
+                'message_en'       => $messageEn,
+                'data'             => $data,
+                'from_user_name'   => $fromUserName,
+                'status'           => 'unread',
+                'recipient_type'   => 'individual',
+                'total_recipients' => 1,
+                'created_at'       => now(),
+            ]);
+        } else {
+            $notification = Notification::create([
+                'user_id'          => $userId,
+                'type'             => $type,
+                'title'            => $titleAr,
+                'title_en'         => $titleEn,
+                'message'          => $messageAr,
+                'message_en'       => $messageEn,
+                'data'             => $data,
+                'from_user_name'   => $fromUserName,
+                'status'           => 'unread',
+                'recipient_type'   => 'individual',
+                'total_recipients' => 1,
+                'created_at'       => now(),
+            ]);
+        }
 
         $correlationId = (string) \Illuminate\Support\Str::uuid();
 
@@ -196,9 +236,9 @@ class NotificationService
                     $tokens = $records->pluck('token')->toArray();
 
                     $payload = array_merge($data ?? [], [
-                        'notification_id' => (string) $notification->id,
+                        'notification_id' => $notification->id ? (string) $notification->id : (string) ($data['message_id'] ?? $correlationId),
                         'type'            => $type,
-                        'category'        => $type,
+                        'category'        => $data['category'] ?? $type,
                         'language'        => $lang,
                         'correlation_id'  => $correlationId,
                         'sender_name'     => $fromUserName,
@@ -207,6 +247,7 @@ class NotificationService
                         'title_en'        => $titleEn,
                         'message'         => $messageAr,
                         'message_en'      => $messageEn,
+                        'unread_count'    => (string) $this->getUnreadCount($userId),
                     ]);
 
                     $collapseKey = in_array($type, ['trip_started', 'bus_nearby', 'boarding_confirmed']) ? $type : null;
@@ -260,7 +301,6 @@ class NotificationService
 
         $now = now();
 
-        // 1. Bulk DB Insert — all notifications in one query
         $notificationsData = array_map(fn($userId) => [
             'user_id'          => $userId,
             'type'             => $type,
@@ -277,13 +317,26 @@ class NotificationService
             'updated_at'       => $now,
         ], $userIds);
 
-        Notification::insert($notificationsData);
-
-        // 2. Fetch inserted notifications for return value
-        $notifications = Notification::whereIn('user_id', $userIds)
-            ->where('type', $type)
-            ->where('created_at', '>=', $now->subSecond())
-            ->get();
+        // 1. Bulk DB Insert (Skip for chat messages to avoid badge inflation)
+        if ($type !== 'chat_message') {
+            Notification::insert($notificationsData);
+            
+            // 2. Fetch inserted notifications for return value
+            $notifications = Notification::whereIn('user_id', $userIds)
+                ->where('type', $type)
+                ->where('created_at', '>=', $now->subSecond())
+                ->get();
+        } else {
+            // Create a collection of virtual models for real-time broadcast only
+            $notifications = collect(array_map(function($data) {
+                $n = new Notification($data);
+                // Ensure data is an array for the model if it was json_encoded for bulk insert
+                if (isset($data['data']) && is_string($data['data'])) {
+                    $n->data = json_decode($data['data'], true);
+                }
+                return $n;
+            }, $notificationsData));
+        }
 
         // 3. FCM Multicast — send to all tokens in grouped batches
         try {
@@ -333,6 +386,7 @@ class NotificationService
                     'sender_name_en' => $fromUserNameEn ?: $fromUserName,
                     'title_en' => $titleEn ?: $title,
                     'message_en' => $messageEn ?: $message,
+                    'unread_count' => (string) $this->getUnreadCount($user->id),
                 ]);
 
                 // Always queue large multicast batches for reliability
@@ -367,7 +421,8 @@ class NotificationService
         string $message,
         array $data = [],
         ?string $topic = null,
-        bool $isQueued = false
+        bool $isQueued = false,
+        bool $withNotification = true
     ): void {
         $fcmTokens = array_values(array_unique(array_filter($fcmTokens)));
         
@@ -438,14 +493,17 @@ class NotificationService
         }
 
         $fcmMessage = CloudMessage::new()
-            ->withNotification(FcmNotification::create($title, $message))
             ->withData($stringData)
             ->withAndroidConfig([
-                'priority' => 'high',
                 'collapse_key' => $collapseKey,
                 'notification' => $androidNotificationConfig,
-            ])
-            ->withApnsConfig([
+            ]);
+
+        if ($withNotification) {
+            $fcmMessage = $fcmMessage->withNotification(FcmNotification::create($title, $message));
+        }
+
+        $fcmMessage = $fcmMessage->withApnsConfig([
                 'headers' => [
                     'apns-priority' => '10',
                     'apns-push-type' => 'alert',
@@ -675,6 +733,22 @@ class NotificationService
             ->toArray();
 
         return $this->sendToUsers($guardianUserIds, $type, $title, $message, $data, $fromUserName, $titleEn, $messageEn, $fromUserNameEn);
+    }
+
+    /**
+     * Get unread notification count for a user.
+     */
+    public function getUnreadCount(int $userId): int
+    {
+        return Notification::where(function($q) use ($userId) {
+                $q->where('user_id', $userId)
+                  ->where('status', 'unread');
+            })
+            ->orWhereHas('recipients', function($q) use ($userId) {
+                $q->where('user_id', $userId)
+                  ->whereNull('read_at');
+            })
+            ->count();
     }
 }
 

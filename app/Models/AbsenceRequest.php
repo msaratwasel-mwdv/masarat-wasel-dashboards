@@ -25,6 +25,14 @@ class AbsenceRequest extends Model
         'date' => 'date',
     ];
 
+    /**
+     * Prepare a date for array / JSON serialization.
+     */
+    protected function serializeDate(\DateTimeInterface $date): string
+    {
+        return $date->format('Y-m-d');
+    }
+
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class);

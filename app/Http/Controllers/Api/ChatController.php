@@ -436,6 +436,7 @@ class ChatController extends Controller
     {
         $user = $request->user();
 
+        // 1. Update chat participant read time
         $conversation->chatParticipants()
             ->where('user_id', $user->id)
             ->update(['last_read_at' => now()]);

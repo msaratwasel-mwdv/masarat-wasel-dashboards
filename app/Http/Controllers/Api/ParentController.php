@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Student;
+use App\Models\StudentLocationRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Services\NotificationService;
@@ -391,21 +392,21 @@ class ParentController extends Controller
                     translationParams: [
                         'type' => $typeName,
                         'student' => $student->full_name,
-                        'date' => $request->date,
+                        'date' => $absenceRequest->date->format('Y-m-d'),
                     ],
                     data: [
                         'type'         => 'student_absence',
                         'student_id'   => (string) $student->id,
                         'student_name' => $student->full_name,
                         'absence_type' => $request->type,
-                        'date'         => $request->date,
+                        'date'         => $absenceRequest->date->format('Y-m-d'),
                         'category'     => 'absence',
                         'target_screen' => 'absence_history',
                     ],
                     translationParamsEn: [
                         'type' => $typeNameEn,
                         'student' => $student->full_name_en ?: $student->full_name,
-                        'date' => $request->date,
+                        'date' => $absenceRequest->date->format('Y-m-d'),
                     ]
                 );
             }
@@ -518,6 +519,20 @@ class ParentController extends Controller
     public function updateStudentLocation(Request $request): JsonResponse
     {
         Log::debug("🚀 updateStudentLocation API hit", ['data' => $request->all()]);
+        
+        $user = $request->user();
+        $studentId = $request->student_id;
+        
+        // 🔒 Race condition guard: Prevent processing multiple requests for the same student within 5 seconds
+        $cacheKey = "location_update_lock_{$user->id}_{$studentId}";
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'يتم معالجة الطلب بالفعل.',
+            ]);
+        }
+        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 5);
+
         $request->validate([
             'student_id' => 'required|exists:students,id',
             'latitude'   => 'required|numeric|between:-90,90',
@@ -553,8 +568,40 @@ class ParentController extends Controller
             ], 422);
         }
 
-        // تحديد ما إذا كان هذا تحديد أول أم تغيير
-        $isInitialSetup = !($student->latitude && $student->latitude != 0);
+        // نعتبره تحدياً أولاً إذا كانت الإحداثيات صفرية أو إذا لم يسبق لولي الأمر تحديد الموقع بنجاح (0 طلبات مقبولة)
+        $hasApprovedRequests = \App\Models\StudentLocationRequest::where('student_id', $student->id)
+            ->where('status', 'approved')
+            ->exists();
+
+        $isInitialSetup = !($student->latitude && floatval($student->latitude) != 0) || !$hasApprovedRequests;
+        
+        if ($isInitialSetup) {
+            Log::info("🆕 Initial Location Setup: Direct update for student ID {$student->id}");
+            
+            \Illuminate\Support\Facades\DB::transaction(function () use ($student, $request) {
+                // 1. Update student coordinates directly
+                $student->update([
+                    'latitude'  => $request->latitude,
+                    'longitude' => $request->longitude,
+                    'address'   => $request->address,
+                    'location_note' => $request->note,
+                ]);
+
+                // 2. Clear any existing pending requests for this student to keep data clean
+                \App\Models\StudentLocationRequest::where('student_id', $student->id)
+                    ->where('status', 'pending')
+                    ->update([
+                        'status' => 'rejected',
+                        'rejection_reason' => 'تم تحديد الموقع بنجاح من خلال الإعداد الأولي.'
+                    ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تحديد موقع المنزل لأول مرة بنجاح.',
+            ]);
+        }
+
 
         // تحديد معرف المدرسة بشكل أكثر دقة مع بدائل (Fallbacks)
         $schoolId = $student->school_id;
@@ -614,6 +661,7 @@ class ParentController extends Controller
                 $notificationService = app(\App\Services\NotificationService::class);
                 $adminIds = \App\Models\User::atSchool($schoolId)
                     ->whereHas('roles', fn($q) => $q->where('name', 'school_admin'))
+                    ->where('id', '!=', $user->id)
                     ->pluck('id');
                     
                 Log::info("🔔 Notifying " . count($adminIds) . " school admins for location request ID {$locationRequest->id}");

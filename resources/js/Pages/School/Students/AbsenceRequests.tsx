@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import { Head, router } from "@inertiajs/react";
+import { useEchoEvent } from "@/hooks/useEcho";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, User, FileText, CheckCircle, XCircle, Clock, Search, ChevronRight, AlertCircle } from "lucide-react";
@@ -69,6 +70,23 @@ export default function AbsenceRequests({ auth, absenceRequests }: Props) {
     const [action, setAction] = useState<'approve' | 'reject' | null>(null);
     const [rejectionReason, setRejectionReason] = useState("");
     const [isProcessing, setIsProcessing] = useState(false);
+
+    // --- Real-time Refresh ---
+    useEchoEvent(
+        'private',
+        `App.Models.User.${auth.user.id}`,
+        'notification.pushed',
+        (data: any) => {
+            // If the notification is related to absence requests, refresh the page data
+            if (data.type === 'absence_request') {
+                router.reload({ 
+                    only: ['absenceRequests'],
+                    preserveScroll: true,
+                    preserveState: true
+                });
+            }
+        }
+    );
 
     const openProcessModal = (request: AbsenceRequest, type: 'approve' | 'reject') => {
         setProcessingRequest(request);

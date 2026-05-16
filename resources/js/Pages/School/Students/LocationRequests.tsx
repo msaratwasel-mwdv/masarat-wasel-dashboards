@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
-import { Head, router } from "@inertiajs/react";
+import { Head, router, usePage } from "@inertiajs/react";
+import { useEchoEvent } from "@/hooks/useEcho";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, User, FileText, CheckCircle, XCircle, Clock, ChevronRight, AlertCircle, Map as MapIcon, Info, Check, X } from "lucide-react";
+import { MapPin, User, FileText, CheckCircle, XCircle, Clock, ChevronRight, AlertCircle, Map as MapIcon, Info, Check, X, RefreshCw } from "lucide-react";
 import MiniMap from "@/Components/MiniMap";
 import LocationComparisonMap from "@/Components/LocationComparisonMap";
 import SearchableSelect from "@/Components/SearchableSelect";
@@ -96,6 +97,23 @@ export default function LocationRequests({ auth, locationRequests, buses = [], s
     const [forthBusId, setForthBusId] = useState<string | number>("");
     const [backBusId, setBackBusId] = useState<string | number>("");
     const [isProcessing, setIsProcessing] = useState(false);
+
+    // --- Real-time Refresh ---
+    useEchoEvent(
+        'private',
+        `App.Models.User.${auth.user.id}`,
+        'notification.pushed',
+        (data: any) => {
+            // If the notification is related to location requests, refresh the page data
+            if (data.type === 'location_request') {
+                router.reload({ 
+                    only: ['locationRequests', 'stats'],
+                    preserveScroll: true,
+                    preserveState: true
+                });
+            }
+        }
+    );
 
     const openProcessModal = (request: LocationRequest, type: 'approve' | 'reject') => {
         setProcessingRequest(request);

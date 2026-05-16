@@ -29,6 +29,10 @@ return [
     'location_request_message' => 'قام ولي الأمر :guardian بتقديم طلب لتغيير موقع منزل الطالب :student',
     'initial_location_setup_title' => 'تحديد موقع منزل طالب',
     'initial_location_setup_message' => 'قام ولي الأمر :guardian بتحديد موقع منزل الطالب :student لأول مرة.',
+    'location_approved_title' => 'تحديث طلب الموقع: مقبول',
+    'location_approved_message' => 'تم قبول طلب تغيير موقع الطالب :student وتحديث بيانات الحافلة.',
+    'location_rejected_title' => 'تحديث طلب الموقع: مرفوض',
+    'location_rejected_message' => 'تم رفض طلب تغيير موقع الطالب :student. السبب: :reason',
 
     // Bus Approaching / Proximity
     'bus_approaching_title' => 'الحافلة تقترب',

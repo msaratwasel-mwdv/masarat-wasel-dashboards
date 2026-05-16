@@ -7,6 +7,8 @@ import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import { Head, Link } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { useEffect, useState } from "react";
+import { router } from "@inertiajs/react";
+import { useEchoEvent } from "@/hooks/useEcho";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   GraduationCap, Bus, Users, Route as RouteIcon,
@@ -90,6 +92,17 @@ export default function SchoolDashboard({
   system_status,
 }: DashboardProps) {
   const { isRTL: isRtl } = useTheme();
+
+  // Real-time updates for dashboard stats
+  useEchoEvent(
+    'private',
+    `App.Models.User.${auth.user.id}`,
+    '.notification.pushed',
+    (e: any) => {
+      // Reload stats and recent data when a new notification arrives
+      router.reload({ only: ['stats', 'recentActivities', 'recent_students'], preserveState: true, preserveScroll: true });
+    }
+  );
   
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },

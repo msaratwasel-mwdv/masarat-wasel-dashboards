@@ -79,7 +79,7 @@ class AbsenceRequestController extends Controller
                 'request_id' => $absenceRequest->id,
                 'status' => $validated['status'],
                 'student_id' => $absenceRequest->student_id,
-                'category' => 'absences',
+                'category' => 'absence',
                 'target_screen' => 'absence_history',
             ],
             translationParamsEn: $translationParamsEn

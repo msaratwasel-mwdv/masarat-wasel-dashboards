@@ -230,7 +230,7 @@ class NotificationController extends Controller
         });
         $stats = [
             'total' => (clone $receivedBase)->count(),
-            'unread' => (clone $receivedBase)->whereIn('status', ['sent', 'pending'])->count(),
+            'unread' => (clone $receivedBase)->where('status', 'unread')->count(),
             'incidents' => (clone $receivedBase)->where('type', 'incident')->count(),
         ];
 
@@ -367,32 +367,25 @@ class NotificationController extends Controller
 
             // Create recipient records AND group tokens by language
             foreach ($recipients as $parentUser) {
-                // Get all token records with preferred_language
+                // 1. Create exactly ONE recipient record per user for tracking read status
+                $notification->recipients()->create([
+                    'user_id' => $parentUser->id,
+                    'status' => 'pending',
+                    // No token here, we track per user
+                ]);
+
+                // 2. Collect all tokens for sending
                 $tokenRecords = $parentUser->fcmTokens()
                     ->select(['token', 'preferred_language'])
                     ->get();
                 
-                if ($tokenRecords->isEmpty()) {
-                    $notification->recipients()->create([
-                        'user_id' => $parentUser->id,
-                        'fcm_token' => null,
-                        'status' => 'failed',
-                    ]);
-                } else {
-                    foreach ($tokenRecords as $record) {
-                        $notification->recipients()->create([
-                            'user_id' => $parentUser->id,
-                            'fcm_token' => $record->token,
-                            'status' => 'pending',
-                        ]);
-                        // Group by language: English tokens vs Arabic tokens
-                        if ($record->preferred_language === 'en') {
-                            $tokensEn[] = $record->token;
-                        } else {
-                            $tokensAr[] = $record->token;
-                        }
-                        $allTokenCount++;
+                foreach ($tokenRecords as $record) {
+                    if ($record->preferred_language === 'en') {
+                        $tokensEn[] = $record->token;
+                    } else {
+                        $tokensAr[] = $record->token;
                     }
+                    $allTokenCount++;
                 }
             }
 

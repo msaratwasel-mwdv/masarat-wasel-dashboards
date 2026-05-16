@@ -29,6 +29,10 @@ return [
     'location_request_message' => 'Guardian :guardian submitted a request to change the home location for student :student',
     'initial_location_setup_title' => 'Student Home Location Setup',
     'initial_location_setup_message' => 'Guardian :guardian has set the home location for student :student for the first time.',
+    'location_approved_title' => 'Location Request Update: Approved',
+    'location_approved_message' => 'The location change request for :student has been approved and bus details updated.',
+    'location_rejected_title' => 'Location Request Update: Rejected',
+    'location_rejected_message' => 'The location change request for :student has been rejected. Reason: :reason',
 
     // Bus Approaching / Proximity
     'bus_approaching_title' => 'Bus is approaching',

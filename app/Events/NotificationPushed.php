@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Cache;
 
 class NotificationPushed implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable, InteractsWithSockets;
 
     public ?int $targetUserId = null;
     public ?string $correlationId = null;
@@ -58,7 +58,7 @@ class NotificationPushed implements ShouldBroadcast
         $lang = $user ? ($user->preferred_language ?? 'ar') : 'ar';
 
         return [
-            'id' => $this->notification->id,
+            'id' => $this->notification->id ?? (string) ($this->notification->data['message_id'] ?? $this->correlationId),
             'type' => $this->notification->type,
             'title' => $this->notification->title,
             'title_en' => $this->notification->title_en,
@@ -70,7 +70,7 @@ class NotificationPushed implements ShouldBroadcast
             'from_user_name' => $this->notification->from_user_name,
             'from_user_name_en' => $this->notification->from_user_name_en,
             'status' => $this->notification->status,
-            'created_at' => $this->notification->created_at->toIso8601String(),
+            'created_at' => ($this->notification->created_at ?? now())->toIso8601String(),
             'unread_count' => $unreadCount,
             'correlation_id' => $this->correlationId,
         ];

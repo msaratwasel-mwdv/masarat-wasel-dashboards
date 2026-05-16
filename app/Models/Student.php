@@ -214,6 +214,14 @@ class Student extends Model
     }
 
     /**
+     * طلبات تحديد الموقع الخاصة بالطالب
+     */
+    public function locationRequests(): HasMany
+    {
+        return $this->hasMany(StudentLocationRequest::class, 'student_id');
+    }
+
+    /**
      * Scope a query to only include students in a specific school.
      */
     public function scopeInSchool($query, $schoolId)

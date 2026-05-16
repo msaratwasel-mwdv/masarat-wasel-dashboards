@@ -116,7 +116,7 @@ class HandleInertiaRequests extends Middleware
                 });
 
                 $activeEmergenciesCount = \Illuminate\Support\Facades\Cache::remember("global_active_emergencies_count", 60, function() {
-                    return \App\Models\Emergency::whereIn('status', ['reported', 'active'])->count();
+                    return \App\Models\Incident::whereIn('status', ['active', 'pending', 'in_progress'])->count();
                 });
             }
         }
