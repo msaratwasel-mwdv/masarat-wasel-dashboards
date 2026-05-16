@@ -3,7 +3,6 @@
 namespace App\Observers;
 
 use App\Models\Notification;
-use App\Events\NotificationPushed;
 use Illuminate\Support\Facades\Cache;
 
 class NotificationObserver
@@ -17,8 +16,10 @@ class NotificationObserver
 
     public function created(Notification $notification): void
     {
+        // ⚠️ Broadcasting is handled by NotificationService::sendTranslatedToUser
+        // to avoid duplicate pushes. Only invalidate cache here.
         if ($notification->user_id) {
-            broadcast(new NotificationPushed($notification));
+            Cache::forget("user_{$notification->user_id}_notifications_count");
         }
     }
 

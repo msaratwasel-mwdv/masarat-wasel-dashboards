@@ -259,6 +259,28 @@ export default function SchoolAuthenticatedLayout({
     }
   }, [flash]);
 
+  // --- Real-time Badge Updates ---
+  useEchoEvent(
+    'private',
+    `App.Models.User.${user.id}`,
+    'notification.pushed',
+    (data: any) => {
+      // Show notification toast
+      notifyEvent('notification', data.title, data.message);
+      
+      // Refresh badge counts from server without full page reload
+      router.reload({ 
+        only: [
+          'pending_location_requests_count', 
+          'pending_absence_requests_count', 
+          'received_incidents_count', 
+          'notifications_count'
+        ],
+        preserveScroll: true
+      });
+    }
+  );
+
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
@@ -472,7 +494,18 @@ export default function SchoolAuthenticatedLayout({
                                 : "text-gray-400 hover:text-white"
                             } ${isRTL ? "text-right" : "text-left"}`}
                           >
-                            {sub.label}
+                            <div className="flex items-center justify-between w-full">
+                              <span>{sub.label}</span>
+                              {sub.route === 'school.notifications.received' && usePage<any>().props.received_incidents_count > 0 && (
+                                <motion.span 
+                                  initial={{ scale: 0 }} 
+                                  animate={{ scale: 1 }}
+                                  className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-2"
+                                >
+                                  {usePage<any>().props.received_incidents_count}
+                                </motion.span>
+                              )}
+                            </div>
                           </Link>
                         );
                       })}
@@ -502,9 +535,57 @@ export default function SchoolAuthenticatedLayout({
                 </span>
 
                 {!isCollapsed && (
-                  <span className={`flex-1 text-sm font-medium ${isRTL ? "text-right" : "text-left"} whitespace-nowrap`}>
-                    {item.label}
+                  <span className={`flex-1 text-sm font-medium ${isRTL ? "text-right" : "text-left"} whitespace-nowrap flex items-center justify-between`}>
+                    <span>{item.label}</span>
+                    
+                    {/* Badge for Location Requests */}
+                    {item.route === 'school.location-requests.index' && usePage<any>().props.pending_location_requests_count > 0 && (
+                      <motion.span 
+                        initial={{ scale: 0 }} 
+                        animate={{ scale: 1 }}
+                        className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-2"
+                      >
+                        {usePage<any>().props.pending_location_requests_count}
+                      </motion.span>
+                    )}
+
+                    {/* Badge for Absence Requests */}
+                    {item.route === 'school.absence-requests.index' && usePage<any>().props.pending_absence_requests_count > 0 && (
+                      <motion.span 
+                        initial={{ scale: 0 }} 
+                        animate={{ scale: 1 }}
+                        className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-2"
+                      >
+                        {usePage<any>().props.pending_absence_requests_count}
+                      </motion.span>
+                    )}
+
+                    {/* Badge for General Notifications Parent */}
+                    {item.label === (isRTL ? "الإشعارات" : "Notifications") && (usePage<any>().props.notifications_count > 0 || usePage<any>().props.received_incidents_count > 0) && (
+                      <motion.span 
+                        initial={{ scale: 0 }} 
+                        animate={{ scale: 1 }}
+                        className="bg-brand-yellow text-brand-dark text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-2"
+                      >
+                        {Number(usePage<any>().props.notifications_count || 0) + Number(usePage<any>().props.received_incidents_count || 0)}
+                      </motion.span>
+                    )}
                   </span>
+                )}
+
+                {/* Collapsed Indicator Dot */}
+                {isCollapsed && (
+                  <>
+                    {item.route === 'school.location-requests.index' && usePage<any>().props.pending_location_requests_count > 0 && (
+                      <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-brand-dark shadow-sm" />
+                    )}
+                    {item.route === 'school.absence-requests.index' && usePage<any>().props.pending_absence_requests_count > 0 && (
+                      <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-brand-dark shadow-sm" />
+                    )}
+                    {item.label === (isRTL ? "الإشعارات" : "Notifications") && (usePage<any>().props.notifications_count > 0 || usePage<any>().props.received_incidents_count > 0) && (
+                      <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-brand-yellow rounded-full border-2 border-brand-dark shadow-sm" />
+                    )}
+                  </>
                 )}
 
                 {isActive && (

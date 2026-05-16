@@ -53,13 +53,20 @@ class FieldTripController extends Controller
         if ($schoolAdmin) {
             try {
                 $notificationService = app(NotificationService::class);
-                $notificationService->sendToUser(
-                    $schoolAdmin->id,
-                    'field_trip_approved',
-                    'تمت الموافقة على الرحلة الميدانية ✅',
-                    "وافقت الشركة على رحلة: {$fieldTrip->name}. التكلفة المقدرة: {$fieldTrip->cost} ر.ع",
-                    ['trip_id' => $fieldTrip->id],
-                    auth()->user()->name
+                $notificationService->sendTranslatedToUser(
+                    userId: $schoolAdmin->id,
+                    type: 'field_trip_approved',
+                    titleKey: 'notifications.field_trip_approved_title',
+                    messageKey: 'notifications.field_trip_approved_message',
+                    translationParams: [
+                        'trip' => $fieldTrip->name,
+                        'cost' => $fieldTrip->cost
+                    ],
+                    data: ['trip_id' => $fieldTrip->id, 'category' => 'trips', 'target_screen' => 'trip_details'],
+                    translationParamsEn: [
+                        'trip' => $fieldTrip->name,
+                        'cost' => $fieldTrip->cost
+                    ]
                 );
             } catch (\Exception $e) {
                 // Ignore notification failure
@@ -94,13 +101,20 @@ class FieldTripController extends Controller
                 $notificationService = app(NotificationService::class);
                 $messageAddon = ($fieldTrip->rejection_reason) ? " السبب: {$fieldTrip->rejection_reason}" : "";
 
-                $notificationService->sendToUser(
-                    $schoolAdmin->id,
-                    'field_trip_rejected',
-                    'تم رفض طلب الرحلة الميدانية ❌',
-                    "تم رفض طلب رحلة: {$fieldTrip->name} من قبل الإدارة." . $messageAddon,
-                    ['trip_id' => $fieldTrip->id],
-                    auth()->user()->name
+                $notificationService->sendTranslatedToUser(
+                    userId: $schoolAdmin->id,
+                    type: 'field_trip_rejected',
+                    titleKey: 'notifications.field_trip_rejected_title',
+                    messageKey: 'notifications.field_trip_rejected_message',
+                    translationParams: [
+                        'trip' => $fieldTrip->name,
+                        'reason' => $fieldTrip->rejection_reason ?? 'بدون سبب'
+                    ],
+                    data: ['trip_id' => $fieldTrip->id, 'category' => 'trips', 'target_screen' => 'trip_details'],
+                    translationParamsEn: [
+                        'trip' => $fieldTrip->name,
+                        'reason' => $fieldTrip->rejection_reason ?? 'No reason provided'
+                    ]
                 );
             } catch (\Exception $e) {
                 // Ignore notification failure

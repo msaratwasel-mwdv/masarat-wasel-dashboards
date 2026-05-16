@@ -105,58 +105,107 @@ class TeacherController extends Controller
 
         $attendance = Attendance::updateOrCreate(
             [
-                'student_id' => $studentId,
+                'student_id' => $student->id, // Use the ID from the student object found above
                 'classroom_id' => $enrollment->classroom_id,
                 'date' => today(),
             ],
             [
                 'status' => $request->status,
                 'recorded_by' => $request->user()->id,
+                'is_notified' => false, // Reset notification status if changed
             ]
         );
 
         $student->load('guardians');
         if ($student->guardians->isNotEmpty()) {
-            \Log::info("Broadcasting attendance update for Student: {$student->id}, Guardians: " . $student->guardians->pluck('id')->implode(', '));
+            \Log::info("Broadcasting internal event for Student: {$student->id}");
             event(new \App\Events\TeacherAttendanceMarked($student, $request->status, today()->toDateString()));
+        }
 
-            // ── إرسال إشعار FCM Push + حفظ في قاعدة البيانات ──
-            $statusAr = match ($request->status) {
+        return response()->json(['message' => 'Attendance marked successfully', 'attendance' => $attendance]);
+    }
+
+    /**
+     * Confirm and send notifications for classroom attendance.
+     */
+    public function confirmAttendance(Request $request, $classId)
+    {
+        $classroom = Classroom::findOrFail($classId);
+        
+        $notifiedCount = 0;
+
+        DB::transaction(function () use ($classId, &$notifiedCount) {
+            // 1. Lock and get records that haven't been notified yet
+            $attendances = Attendance::with(['student.guardians'])
+                ->where('classroom_id', $classId)
+                ->whereDate('date', today())
+                ->where('is_notified', false)
+                ->lockForUpdate()
+                ->get();
+
+            if ($attendances->isEmpty()) {
+                return;
+            }
+
+            // 2. Mark as notified immediately inside the transaction
+            Attendance::whereIn('id', $attendances->pluck('id'))->update(['is_notified' => true]);
+
+            // 3. Process notifications (can be done inside or outside, but here inside for atomicity)
+            foreach ($attendances as $attendance) {
+                $student = $attendance->student;
+                if (!$student || $student->guardians->isEmpty()) continue;
+
+            $statusAr = match ($attendance->status) {
                 'present' => 'حاضراً',
                 'absent'  => 'غائباً',
                 'late'    => 'متأخراً',
                 'excused' => 'معذوراً',
-                default   => $request->status,
+                default   => $attendance->status,
             };
 
-            $statusEn = match ($request->status) {
+            $statusEn = match ($attendance->status) {
                 'present' => 'present',
                 'absent'  => 'absent',
                 'late'    => 'late',
                 'excused' => 'excused',
-                default   => $request->status,
+                default   => $attendance->status,
             };
 
-            $this->notificationService->notifyStudentGuardian(
-                studentId: $student->id,
-                type: 'school_attendance',
-                title: 'تحديث سجل الحضور المدرسي',
-                message: "تم تسجيل {$student->full_name} {$statusAr} اليوم.",
-                titleEn: 'School Attendance Update',
-                messageEn: "{$student->full_name_en} has been marked as {$statusEn} today.",
-                data: [
-                    'student_id'   => (string) $student->id,
-                    'student_name' => $student->full_name,
-                    'student_name_en' => $student->full_name_en,
-                    'status'       => $request->status,
-                    'date'         => today()->toDateString(),
-                ]
-            );
-        } else {
-            \Log::warning("No guardian assigned for student: {$student->id}, skipping broadcast.");
-        }
+            foreach ($student->guardians as $guardian) {
+                $this->notificationService->sendTranslatedToUser(
+                    userId: $guardian->id,
+                    type: 'school_attendance',
+                    titleKey: 'notifications.school_attendance_title',
+                    messageKey: 'notifications.school_attendance_message',
+                    translationParams: [
+                        'student' => $student->full_name,
+                        'status' => $statusAr,
+                    ],
+                    data: [
+                        'student_id'   => (string) $student->id,
+                        'student_name' => $student->full_name,
+                        'student_name_en' => $student->full_name_en,
+                        'status'       => $attendance->status,
+                        'date'         => today()->toDateString(),
+                        'category'     => 'attendance',
+                        'target_screen' => 'attendance_details',
+                    ],
+                    translationParamsEn: [
+                        'student' => $student->full_name_en ?: $student->full_name,
+                        'status' => $statusEn,
+                    ]
+                );
+            }
 
-        return response()->json(['message' => 'Attendance marked successfully', 'attendance' => $attendance]);
+            $attendance->update(['is_notified' => true]);
+            $notifiedCount++;
+            }
+        });
+
+        return response()->json([
+            'message' => "تم إرسال إشعارات الحضور لعدد $notifiedCount طلاب بنجاح.",
+            'notified_count' => $notifiedCount
+        ]);
     }
 
     /**

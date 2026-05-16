@@ -277,36 +277,39 @@ class BusLocationController extends Controller
                 $direction = ($activeTrip?->type === 'forth') ? 'to_school' : 'to_home';
                 
                 // SCRUM-85 & SCRUM-88: التنبيه عند اقتراب الحافلة (مسافة 2 كم + زمن تقديري دقيقتين)
-                if ($direction === 'to_school') {
-                    $title = "الحافلة تقترب لاستلام {$student->full_name}";
-                    $titleEn = "Bus is approaching to pick up {$student->full_name_en}";
-                    $message = "الحافلة على بعد {$distanceText} من منزلك، ستصل خلال دقيقتين تقريباً. يرجى تجهيز الطالب للركوب.";
-                    $messageEn = "The bus is {$distanceText} from your house and will arrive in approximately 2 minutes. Please prepare the student.";
-                } else {
-                    $title = "طالبك {$student->full_name} سيصل خلال دقيقتين";
-                    $titleEn = "Your student {$student->full_name_en} will arrive in 2 minutes";
-                    $message = "الحافلة على بعد {$distanceText} من منزلك، ستصل خلال دقيقتين تقريباً. يرجى الاستعداد لاستلام الطالب.";
-                    $messageEn = "The bus is {$distanceText} from your house and will arrive in approximately 2 minutes. Please be ready to receive the student.";
-                }
+                $titleKey = $direction === 'to_school' ? 'notifications.bus_proximity_to_school_title' : 'notifications.bus_proximity_to_home_title';
+                $messageKey = $direction === 'to_school' ? 'notifications.bus_proximity_to_school_message' : 'notifications.bus_proximity_to_home_message';
 
-                $this->notificationService->notifyStudentGuardian(
-                    studentId: $student->id,
-                    type: 'bus_proximity',
-                    title: $title,
-                    message: $message,
-                    data: [
-                        'bus_id' => $bus->id,
-                        'student_id' => $student->id,
-                        'distance_meters' => round($distance),
-                        'distance_text' => $distanceText,
-                        'bus_latitude' => $busLat,
-                        'bus_longitude' => $busLon,
-                        'eta_minutes' => 2,
-                        'direction' => $direction,
-                    ],
-                    titleEn: $titleEn,
-                    messageEn: $messageEn
-                );
+                $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+
+                foreach ($student->guardians as $guardian) {
+                    $this->notificationService->sendTranslatedToUser(
+                        userId: $guardian->id,
+                        type: 'bus_proximity',
+                        titleKey: $titleKey,
+                        messageKey: $messageKey,
+                        translationParams: [
+                            'student' => $student->full_name,
+                            'distance' => $distanceText
+                        ],
+                        data: [
+                            'bus_id' => $bus->id,
+                            'student_id' => $student->id,
+                            'distance_meters' => round($distance),
+                            'distance_text' => $distanceText,
+                            'bus_latitude' => $busLat,
+                            'bus_longitude' => $busLon,
+                            'eta_minutes' => 2,
+                            'direction' => $direction,
+                            'category' => 'tracking',
+                            'target_screen' => 'map_page',
+                        ],
+                        translationParamsEn: [
+                            'student' => $studentNameEn,
+                            'distance' => $distanceText
+                        ]
+                    );
+                }
 
                 // منع الإشعار المكرر لمدة 10 دقائق
                 cache()->put($cacheKey, true, now()->addMinutes(10));

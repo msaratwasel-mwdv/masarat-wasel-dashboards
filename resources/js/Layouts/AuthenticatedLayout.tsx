@@ -507,7 +507,27 @@ export default function Authenticated({
                                 : "text-gray-400 hover:text-white"
                             } ${isRTL ? "text-right" : "text-left"}`}
                           >
-                            {sub.label}
+                            <div className="flex items-center justify-between w-full">
+                              <span>{sub.label}</span>
+                              {sub.route === 'admin.bus-requests.index' && usePage<any>().props.pending_bus_requests_count > 0 && (
+                                <motion.span 
+                                  initial={{ scale: 0 }} 
+                                  animate={{ scale: 1 }}
+                                  className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-2"
+                                >
+                                  {usePage<any>().props.pending_bus_requests_count}
+                                </motion.span>
+                              )}
+                              {sub.route === 'admin.emergencies.index' && usePage<any>().props.active_emergencies_count > 0 && (
+                                <motion.span 
+                                  initial={{ scale: 0 }} 
+                                  animate={{ scale: 1 }}
+                                  className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-2"
+                                >
+                                  {usePage<any>().props.active_emergencies_count}
+                                </motion.span>
+                              )}
+                            </div>
                           </Link>
                         );
                       })}
@@ -537,9 +557,57 @@ export default function Authenticated({
                 </span>
 
                 {!isCollapsed && (
-                  <span className={`flex-1 text-sm font-medium ${isRTL ? "text-right" : "text-left"} whitespace-nowrap`}>
-                    {item.label}
+                  <span className={`flex-1 text-sm font-medium ${isRTL ? "text-right" : "text-left"} whitespace-nowrap flex items-center justify-between`}>
+                    <span>{item.label}</span>
+
+                    {/* Badge for Conversations */}
+                    {item.route === 'admin.chat.index' && usePage<any>().props.notifications_count > 0 && (
+                      <motion.span 
+                        initial={{ scale: 0 }} 
+                        animate={{ scale: 1 }}
+                        className="bg-brand-yellow text-brand-dark text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-2"
+                      >
+                        {usePage<any>().props.notifications_count}
+                      </motion.span>
+                    )}
+
+                    {/* Parent Badge for Field Operations (Emergencies) */}
+                    {item.label === (isRTL ? "الرقابة الميدانية" : "Field Operations") && usePage<any>().props.active_emergencies_count > 0 && (
+                      <motion.span 
+                        initial={{ scale: 0 }} 
+                        animate={{ scale: 1 }}
+                        className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-2"
+                      >
+                        {usePage<any>().props.active_emergencies_count}
+                      </motion.span>
+                    )}
+
+                    {/* Parent Badge for Buses (Requests) */}
+                    {item.label === (isRTL ? "الحافلات" : "Buses") && usePage<any>().props.pending_bus_requests_count > 0 && (
+                      <motion.span 
+                        initial={{ scale: 0 }} 
+                        animate={{ scale: 1 }}
+                        className="bg-brand-yellow text-brand-dark text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-2"
+                      >
+                        {usePage<any>().props.pending_bus_requests_count}
+                      </motion.span>
+                    )}
                   </span>
+                )}
+
+                {/* Collapsed Indicator Dot */}
+                {isCollapsed && (
+                  <>
+                    {(item.route === 'admin.chat.index' && usePage<any>().props.notifications_count > 0) && (
+                      <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-brand-yellow rounded-full border-2 border-brand-dark shadow-sm" />
+                    )}
+                    {(item.label === (isRTL ? "الرقابة الميدانية" : "Field Operations") && usePage<any>().props.active_emergencies_count > 0) && (
+                      <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-brand-dark shadow-sm" />
+                    )}
+                    {(item.label === (isRTL ? "الحافلات" : "Buses") && usePage<any>().props.pending_bus_requests_count > 0) && (
+                      <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-brand-yellow rounded-full border-2 border-brand-dark shadow-sm" />
+                    )}
+                  </>
                 )}
 
                 {isActive && (

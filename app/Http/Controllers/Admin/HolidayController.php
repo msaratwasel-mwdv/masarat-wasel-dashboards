@@ -53,39 +53,45 @@ class HolidayController extends Controller
 
     protected function sendHolidayNotifications(Holiday $holiday)
     {
-        $title = "إجازة رسمية جديدة: " . $holiday->name;
-        $titleEn = "New Holiday: " . $holiday->name;
-        $message = "تم تسجيل إجازة من " . $holiday->start_date->format('Y-m-d') . " إلى " . $holiday->end_date->format('Y-m-d');
-        $messageEn = "A new holiday has been recorded from " . $holiday->start_date->format('Y-m-d') . " to " . $holiday->end_date->format('Y-m-d');
-        
+        $startDate = $holiday->start_date->format('Y-m-d');
+        $endDate = $holiday->end_date->format('Y-m-d');
+
+        $adminIds = [];
         if ($holiday->school_id) {
             // تنبيه مدرسة محددة
-            $this->notificationService->notifySchoolAdmins(
-                $holiday->school_id,
-                'holiday_announcement',
-                $title,
-                $message,
-                ['holiday_id' => $holiday->id],
-                'نظام الإدارة',
-                $titleEn,
-                $messageEn
-            );
+            $adminIds = User::atSchool($holiday->school_id)
+                ->whereHas('roles', fn($q) => $q->where('name', 'school_admin'))
+                ->pluck('id')
+                ->toArray();
         } else {
             // تنبيه جميع مديري المدارس
             $adminIds = User::whereHas('roles', fn($q) => $q->where('name', 'school_admin'))
                 ->pluck('id')
                 ->toArray();
+        }
 
-            if (!empty($adminIds)) {
-                $this->notificationService->sendToUsers(
-                    $adminIds,
-                    'holiday_announcement',
-                    $title,
-                    $message,
-                    ['holiday_id' => $holiday->id],
-                    'نظام الإدارة',
-                    $titleEn,
-                    $messageEn
+        if (!empty($adminIds)) {
+            foreach ($adminIds as $adminId) {
+                $this->notificationService->sendTranslatedToUser(
+                    userId: $adminId,
+                    type: 'holiday_announcement',
+                    titleKey: 'notifications.holiday_announcement_title',
+                    messageKey: 'notifications.holiday_announcement_message',
+                    translationParams: [
+                        'holiday' => $holiday->name,
+                        'start' => $startDate,
+                        'end' => $endDate,
+                    ],
+                    data: [
+                        'holiday_id' => $holiday->id,
+                        'category' => 'announcements',
+                        'target_screen' => 'holiday_details',
+                    ],
+                    translationParamsEn: [
+                        'holiday' => $holiday->name,
+                        'start' => $startDate,
+                        'end' => $endDate,
+                    ]
                 );
             }
         }

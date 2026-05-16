@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Student;
+use App\Models\StudentLocationRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Services\NotificationService;
@@ -115,7 +116,8 @@ class ParentController extends Controller
                 'backBus.assistant',
                 'lastTripAttendance',
                 'currentEnrollment.classroom.school',
-                'currentEnrollment.classroom.grade'
+                'currentEnrollment.classroom.grade',
+                'locationRequests' => fn($q) => $q->where('status', 'pending')->latest()
             ])
             ->get();
 
@@ -161,6 +163,9 @@ class ParentController extends Controller
                 }
             }
 
+            // جلب طلب تحديد الموقع المعلق إن وجد
+            $pendingReq = $student->locationRequests->first();
+
             // اقتراح اتجاه الرحلة بناءً على حالة الباص
             $suggestedDirection = ($activeBus && in_array($activeBus->trip_status, ['to_home'])) ? 'to_home' : 'to_school';
 
@@ -181,6 +186,12 @@ class ParentController extends Controller
                 'home_lng'               => $student->longitude ?? $user->longitude,
                 'home_address'           => $student->address ?? $user->address,
                 'location_note'          => $student->location_note,
+                'pending_location' => $pendingReq ? [
+                    'latitude' => $pendingReq->new_latitude,
+                    'longitude' => $pendingReq->new_longitude,
+                    'address' => $pendingReq->new_address,
+                    'created_at' => $pendingReq->created_at->toIso8601String(),
+                ] : null,
                 'school'      => $student->currentEnrollment?->classroom?->school ? [
                     'id'      => $student->currentEnrollment->classroom->school->id,
                     'name'    => $student->currentEnrollment->classroom->school->name,
@@ -358,34 +369,45 @@ class ParentController extends Controller
 
             $staffUserIds = array_unique(array_filter($staffUserIds));
 
-            $typeName = [
+            $typeKeys = [
                 'morning'   => 'ذهاب فقط',
                 'afternoon' => 'عودة فقط',
                 'full_day'  => 'يوم كامل',
-            ][$request->type] ?? 'يوم كامل';
+            ];
+            $typeName = $typeKeys[$request->type] ?? 'يوم كامل';
 
-            $typeNamesEn = [
+            $typeKeysEn = [
                 'morning'   => 'Morning only',
                 'afternoon' => 'Afternoon only',
                 'full_day'  => 'Full day',
             ];
-            $typeNameEn = $typeNamesEn[$request->type] ?? 'Full day';
+            $typeNameEn = $typeKeysEn[$request->type] ?? 'Full day';
 
             foreach ($staffUserIds as $userId) {
-                $this->notificationService->sendToUser(
+                $this->notificationService->sendTranslatedToUser(
                     userId: $userId,
                     type: 'student_absence',
-                    title: "تنبيه غياب ($typeName): {$student->full_name}",
-                    message: "أفاد ولي الأمر بغياب الطالب ($typeName) يوم ({$request->date}). يرجى عدم المرور بالمنزل.",
-                    titleEn: "Absence Alert ($typeNameEn): {$student->full_name_en}",
-                    messageEn: "The guardian reported the student's absence ($typeNameEn) on ({$request->date}). Please do not stop at the house.",
+                    titleKey: 'notifications.absence_alert_title',
+                    messageKey: 'notifications.absence_alert_message',
+                    translationParams: [
+                        'type' => $typeName,
+                        'student' => $student->full_name,
+                        'date' => $absenceRequest->date->format('Y-m-d'),
+                    ],
                     data: [
+                        'type'         => 'student_absence',
                         'student_id'   => (string) $student->id,
                         'student_name' => $student->full_name,
                         'absence_type' => $request->type,
-                        'date'         => $request->date,
+                        'date'         => $absenceRequest->date->format('Y-m-d'),
+                        'category'     => 'absence',
+                        'target_screen' => 'absence_history',
                     ],
-                    immediate: true
+                    translationParamsEn: [
+                        'type' => $typeNameEn,
+                        'student' => $student->full_name_en ?: $student->full_name,
+                        'date' => $absenceRequest->date->format('Y-m-d'),
+                    ]
                 );
             }
         } catch (\Exception $e) {
@@ -454,6 +476,7 @@ class ParentController extends Controller
                 'new_latitude' => $r->new_latitude,
                 'new_longitude' => $r->new_longitude,
                 'new_address' => $r->new_address,
+                'note' => $r->note,
                 'rejection_reason' => $r->rejection_reason,
             ];
         });
@@ -495,6 +518,21 @@ class ParentController extends Controller
      */
     public function updateStudentLocation(Request $request): JsonResponse
     {
+        Log::debug("🚀 updateStudentLocation API hit", ['data' => $request->all()]);
+        
+        $user = $request->user();
+        $studentId = $request->student_id;
+        
+        // 🔒 Race condition guard: Prevent processing multiple requests for the same student within 5 seconds
+        $cacheKey = "location_update_lock_{$user->id}_{$studentId}";
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'يتم معالجة الطلب بالفعل.',
+            ]);
+        }
+        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 5);
+
         $request->validate([
             'student_id' => 'required|exists:students,id',
             'latitude'   => 'required|numeric|between:-90,90',
@@ -505,9 +543,10 @@ class ParentController extends Controller
 
         $user = $request->user();
         
-        // التحقق من أن الطالب يتبع لولي الأمر
+        // التحقق من أن الطالب يتبع لولي الأمر مع تحميل بيانات المدرسة
         $student = $user->students()
             ->where('students.id', $request->student_id)
+            ->with(['currentEnrollment.classroom.grade', 'forthBus', 'backBus'])
             ->first();
 
         if (!$student) {
@@ -517,48 +556,152 @@ class ParentController extends Controller
             ], 404);
         }
 
-        Log::info("📍 Student Location Change Request: Guardian ID {$user->id} for Student ID {$student->id} to Lat: {$request->latitude}, Lng: {$request->longitude}");
+        // --- منع تكرار الطلبات المعلقة ---
+        $pendingRequest = \App\Models\StudentLocationRequest::where('student_id', $student->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($pendingRequest) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يوجد طلب تحديد/تغيير موقع معلق بالفعل لهذا الطالب لدى إدارة المدرسة. يرجى الانتظار حتى تتم معالجته.',
+            ], 422);
+        }
+
+        // نعتبره تحدياً أولاً إذا كانت الإحداثيات صفرية أو إذا لم يسبق لولي الأمر تحديد الموقع بنجاح (0 طلبات مقبولة)
+        $hasApprovedRequests = \App\Models\StudentLocationRequest::where('student_id', $student->id)
+            ->where('status', 'approved')
+            ->exists();
+
+        $isInitialSetup = !($student->latitude && floatval($student->latitude) != 0) || !$hasApprovedRequests;
         
-        // إنشاء طلب تغيير الموقع بدلاً من التحديث المباشر
-        $locationRequest = \App\Models\StudentLocationRequest::create([
-            'student_id'   => $student->id,
-            'guardian_id'  => $user->id,
-            'school_id'    => $student->school_id,
-            'old_latitude' => $student->latitude,
-            'old_longitude'=> $student->longitude,
-            'old_address'  => $student->address,
-            'new_latitude' => $request->latitude,
-            'new_longitude'=> $request->longitude,
-            'new_address'  => $request->address,
-            'note'         => $request->note,
-            'status'       => 'pending',
-        ]);
+        if ($isInitialSetup) {
+            Log::info("🆕 Initial Location Setup: Direct update for student ID {$student->id}");
+            
+            \Illuminate\Support\Facades\DB::transaction(function () use ($student, $request) {
+                // 1. Update student coordinates directly
+                $student->update([
+                    'latitude'  => $request->latitude,
+                    'longitude' => $request->longitude,
+                    'address'   => $request->address,
+                    'location_note' => $request->note,
+                ]);
+
+                // 2. Clear any existing pending requests for this student to keep data clean
+                \App\Models\StudentLocationRequest::where('student_id', $student->id)
+                    ->where('status', 'pending')
+                    ->update([
+                        'status' => 'rejected',
+                        'rejection_reason' => 'تم تحديد الموقع بنجاح من خلال الإعداد الأولي.'
+                    ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تحديد موقع المنزل لأول مرة بنجاح.',
+            ]);
+        }
+
+
+        // تحديد معرف المدرسة بشكل أكثر دقة مع بدائل (Fallbacks)
+        $schoolId = $student->school_id;
+        if ($schoolId) {
+            Log::info("✅ Found school_id from student accessor: $schoolId");
+        }
+        
+        // 1. Try Enrollment chain (Preferred)
+        if (!$schoolId) {
+            $schoolId = $student->currentEnrollment?->classroom?->grade?->school_id;
+            if ($schoolId) Log::info("✅ Found school_id from enrollment chain: $schoolId");
+        }
+        
+        // 2. Try Bus associations (Fallback)
+        if (!$schoolId) {
+            $schoolId = $student->forthBus?->school_id ?? $student->backBus?->school_id;
+            if ($schoolId) Log::info("✅ Found school_id from bus association: $schoolId");
+        }
+
+        if (!$schoolId) {
+            Log::warning("⚠️ Could not determine school_id for student ID {$student->id} in location request.");
+        }
+
+        Log::info("📍 Student Location Change Request: Guardian ID {$user->id} for Student ID {$student->id} (School: {$schoolId}) to Lat: {$request->latitude}, Lng: {$request->longitude}");
+        
+        // إنشاء طلب تغيير الموقع مع منطق "البحث الذكي" عن الموقع القديم (Fallback)
+        $oldLat = ($student->latitude && $student->latitude != 0) ? $student->latitude : $user->latitude;
+        $oldLng = ($student->longitude && $student->longitude != 0) ? $student->longitude : $user->longitude;
+        $oldAddr = $student->address ?: $user->address;
+
+        try {
+            $locationRequest = \App\Models\StudentLocationRequest::create([
+                'student_id'   => $student->id,
+                'guardian_id'  => $user->id,
+                'school_id'    => $schoolId,
+                'old_latitude' => $oldLat,
+                'old_longitude'=> $oldLng,
+                'old_address'  => $oldAddr,
+                'new_latitude' => $request->latitude,
+                'new_longitude'=> $request->longitude,
+                'new_address'  => $request->address,
+                'note'         => $request->note,
+                'status'       => 'pending',
+            ]);
+            Log::info("✅ StudentLocationRequest created successfully: ID {$locationRequest->id}");
+        } catch (\Exception $e) {
+            Log::error("❌ Failed to create StudentLocationRequest: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء حفظ الطلب.',
+            ], 500);
+        }
 
         // إخطار مديري المدرسة بالطلب الجديد
         try {
-            $notificationService = app(\App\Services\NotificationService::class);
-            $notificationService->notifySchoolAdmins(
-                schoolId: $student->school_id,
-                type: 'location_request',
-                title: 'طلب تغيير موقع منزل',
-                message: "قام ولي الأمر {$user->name} بتقديم طلب لتغيير موقع منزل الطالب {$student->full_name}",
-                titleEn: 'Home Location Change Request',
-                messageEn: "Guardian {$user->name_en} submitted a request to change the home location for student {$student->full_name_en}",
-                data: [
-                    'type' => 'location_request',
-                    'location_request_id' => $locationRequest->id,
-                    'student_id' => $student->id
-                ],
-                fromUserName: $user->name,
-                fromUserNameEn: $user->name_en
-            );
+            if ($schoolId) {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $adminIds = \App\Models\User::atSchool($schoolId)
+                    ->whereHas('roles', fn($q) => $q->where('name', 'school_admin'))
+                    ->where('id', '!=', $user->id)
+                    ->pluck('id');
+                    
+                Log::info("🔔 Notifying " . count($adminIds) . " school admins for location request ID {$locationRequest->id}");
+
+                foreach ($adminIds as $adminId) {
+                    $notificationService->sendTranslatedToUser(
+                        userId: $adminId,
+                        type: 'location_request',
+                        titleKey: $isInitialSetup ? 'notifications.initial_location_setup_title' : 'notifications.location_request_title',
+                        messageKey: $isInitialSetup ? 'notifications.initial_location_setup_message' : 'notifications.location_request_message',
+                        translationParams: [
+                            'guardian' => $user->name,
+                            'student' => $student->full_name,
+                        ],
+                        data: [
+                            'type' => 'location_request',
+                            'location_request_id' => $locationRequest->id,
+                            'student_id' => $student->id,
+                            'category' => 'location_requests',
+                            'target_screen' => 'location_request_details'
+                        ],
+                        fromUserName: $user->name,
+                        translationParamsEn: [
+                            'guardian' => $user->name_en ?: $user->name,
+                            'student' => $student->full_name_en ?: $student->full_name,
+                        ]
+                    );
+                }
+            } else {
+                Log::error("❌ Cannot notify admins: School ID is null for student {$student->id}");
+            }
         } catch (\Exception $e) {
             Log::error("❌ Failed to notify admins about location request: " . $e->getMessage());
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال طلب تغيير الموقع للمدرسة للمراجعة والموافقة.',
+            'message' => $isInitialSetup 
+                ? 'تم إرسال موقع المنزل للمراجعة. سيظهر الموقع على الخريطة فور موافقة إدارة المدرسة.' 
+                : 'تم إرسال طلب تغيير الموقع للمدرسة للمراجعة والموافقة.',
         ]);
     }
 }

@@ -253,11 +253,31 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
                                         }`}
                                         onClick={() => {
                                             if (notification.status !== 'read') markAsRead(notification.id);
-                                            if (notification.data?.bus_request_id) {
-                                                router.visit('/admin/bus-requests');
+                                            
+                                            const data = notification.data || {};
+                                            const type = notification.type || data.type;
+                                            const category = data.category || notification.category; // Fallback to category if exists
+                                            const targetScreen = data.target_screen;
+
+                                            // 1. Bus Requests
+                                            if (data.bus_request_id || type === 'bus_request' || category === 'bus_request') {
+                                                router.visit('/school/bus-requests');
                                                 setIsOpen(false);
-                                            } else if (notification.data?.location_request_id || notification.data?.request_id || notification.type === 'location_request' || notification.data?.type === 'location_request') {
+                                            } 
+                                            // 2. Absence Requests (Priority check to avoid generic request_id overlap)
+                                            else if (category === 'absence' || targetScreen === 'absence_history' || type === 'student_absence' || type === 'absence_request_processed') {
+                                                router.visit('/school/absence-requests');
+                                                setIsOpen(false);
+                                            }
+                                            // 3. Location Requests
+                                            else if (data.location_request_id || category === 'location_requests' || targetScreen === 'location_request_details' || type === 'location_request') {
                                                 router.visit('/school/location-requests');
+                                                setIsOpen(false);
+                                            }
+                                            // 4. Generic request_id fallback (if any)
+                                            else if (data.request_id) {
+                                                // Default to absence if no other info, or keep generic
+                                                router.visit('/school/absence-requests');
                                                 setIsOpen(false);
                                             }
                                         }}

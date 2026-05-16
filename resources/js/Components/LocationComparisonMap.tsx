@@ -154,18 +154,18 @@ export default function LocationComparisonMap({
 
                             {oldPos && (
                                 <AdvancedMarker position={oldPos}>
-                                    <Pin background={'#94a3b8'} glyphColor={'#f8fafc'} borderColor={'#64748b'} scale={1}>
+                                    <Pin background={'#ef4444'} glyphColor={'#ffffff'} borderColor={'#991b1b'} scale={1}>
                                         <div className="flex flex-col items-center">
-                                            <span className="text-[10px] font-black text-white px-1">OLD</span>
+                                            <span className="text-[10px] font-black text-white px-1">{isRtl ? 'السابق' : 'OLD'}</span>
                                         </div>
                                     </Pin>
                                 </AdvancedMarker>
                             )}
 
                             <AdvancedMarker position={newPos}>
-                                <Pin background={'#f5b800'} glyphColor={'#0f2044'} borderColor={'#b48a00'} scale={1.2}>
+                                <Pin background={'#10b981'} glyphColor={'#ffffff'} borderColor={'#065f46'} scale={1.2}>
                                     <div className="flex flex-col items-center">
-                                        <span className="text-[10px] font-black text-[#0f2044] px-1">NEW</span>
+                                        <span className="text-[10px] font-black text-white px-1">{isRtl ? 'الجديد' : 'NEW'}</span>
                                     </div>
                                 </Pin>
                             </AdvancedMarker>
@@ -189,7 +189,7 @@ export default function LocationComparisonMap({
                     
                     {oldPos && isMapReady && (
                         <div className="bg-[#0f2044]/90 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 shadow-xl self-center flex items-center gap-2 pointer-events-auto">
-                            <span className="w-2 h-2 rounded-full bg-[#f5b800] animate-pulse" />
+                            <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
                             <p className="text-[10px] font-black text-white uppercase tracking-wider text-center">
                                 {isRtl ? `تغيير المسافة: ${distance}` : `DISTANCE SHIFT: ${distance}`}
                             </p>
@@ -215,20 +215,20 @@ export default function LocationComparisonMap({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className={`p-4 rounded-2xl border transition-all ${!oldPos ? 'bg-gray-100/50 dark:bg-white/5 border-gray-200 dark:border-white/5 opacity-60' : 'bg-white dark:bg-[#1a2845]/50 border-gray-100 dark:border-[#243460]'}`}>
                     <p className="text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-gray-400" />
-                        {isRtl ? 'الموقع الحالي المسجل' : 'CURRENT REGISTERED LOCATION'}
+                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                        {isRtl ? 'الموقع السابق المسجل' : 'CURRENT REGISTERED LOCATION'}
                     </p>
                     <p className="text-xs font-bold text-[#0f2044] dark:text-gray-300 leading-relaxed">
                         {oldPos ? (oldAddress || (isRtl ? 'جاري جلب العنوان...' : 'Fetching address...')) : (isRtl ? 'لا يوجد موقع سابق مخزن لهذا الطالب' : 'No previous location stored for this student')}
                     </p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-100 dark:border-amber-900/30 shadow-sm">
-                    <p className="text-[10px] font-black text-amber-600 uppercase mb-1 tracking-widest flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#f5b800] animate-pulse" />
+                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border-2 border-emerald-100 dark:border-emerald-900/30 shadow-sm">
+                    <p className="text-[10px] font-black text-emerald-600 uppercase mb-1 tracking-widest flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                         {isRtl ? 'الموقع الجديد المطلوب' : 'REQUESTED NEW LOCATION'}
                     </p>
-                    <p className="text-xs font-bold text-amber-900 dark:text-amber-200 leading-relaxed">
+                    <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200 leading-relaxed">
                         {newAddress || (isRtl ? 'جاري جلب العنوان...' : 'Fetching address...')}
                     </p>
                 </div>

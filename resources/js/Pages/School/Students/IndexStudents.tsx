@@ -11,8 +11,10 @@ import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
 import PrintReportHeader from "@/Components/PrintReportHeader";
+import StudentAnalyticsOverview from "@/Components/StudentAnalyticsOverview";
 import Dropdown from "@/Components/Dropdown";
 import Toggle from "@/Components/Toggle";
+import SearchableSelect from "@/Components/SearchableSelect";
 import BaseDataTable, { type FilterTab, type PaginationMeta } from "@/Components/BaseDataTable";
 import { createColumnHelper } from "@tanstack/react-table";
 import { toast } from "react-toastify";
@@ -60,13 +62,15 @@ interface GuardianEntry {
   verified: boolean;
   hasSearched: boolean;
   isSearching: boolean;
+  image?: File | null;
+  imagePreview?: string | null;
 }
 
 const RELATIONSHIP_TYPES = ['father', 'mother', 'uncle', 'aunt', 'grandparent', 'sibling', 'other'] as const;
 
 const emptyGuardianEntry = (): GuardianEntry => ({
   national_id: '', name: '', name_en: '', phone: '', email: '', address: '', home_number: '',
-  relationship_type: 'father', guardian_id: '', verified: false, hasSearched: false, isSearching: false,
+  relationship_type: 'father', guardian_id: '', verified: false, hasSearched: false, isSearching: false, image: null, imagePreview: null
 });
 
 interface Supervisor {
@@ -158,6 +162,7 @@ export default function IndexStudents({
   const [search, setSearch] = useState(filters.search || "");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -223,6 +228,7 @@ export default function IndexStudents({
       verified: true,
       hasSearched: true,
       isSearching: false,
+      imagePreview: g.image ? getImageUrl(g.image, "guardian") : null,
     }));
     if (entries.length === 0) entries.push(emptyGuardianEntry());
     setGuardianEntries(entries);
@@ -344,6 +350,17 @@ export default function IndexStudents({
     setGuardianEntries(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleGuardianImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateGuardianEntry(index, { image: file, imagePreview: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Guardian Verification (per entry)
   const handleGuardianLookup = (index: number) => {
     const entry = guardianEntries[index];
@@ -360,6 +377,7 @@ export default function IndexStudents({
             phone: res.guardian.phone || '', email: res.guardian.email || '',
             address: res.guardian.address || '', home_number: res.guardian.home_number || '',
             guardian_id: res.guardian.id.toString(), verified: true, hasSearched: true, isSearching: false,
+            imagePreview: res.guardian.image ? getImageUrl(res.guardian.image, "guardian") : null
           });
         } else {
           toast.info(t('Guardian not found. Please enter details.'));
@@ -397,8 +415,10 @@ export default function IndexStudents({
           router.post(route('school.guardians.store'), {
             name: entry.name, name_en: entry.name_en, national_id: entry.national_id,
             phone: entry.phone, email: entry.email, address: entry.address, home_number: entry.home_number,
+            ...(entry.image && { image: entry.image })
           }, {
             preserveScroll: true,
+            forceFormData: true,
             onSuccess: (page: any) => {
               const res = page.props.guardianResult;
               if (res?.found && res.guardian) {
@@ -406,7 +426,11 @@ export default function IndexStudents({
               }
               resolve();
             },
-            onError: () => reject(),
+            onError: (errors) => {
+              toast.error(Object.values(errors)[0] as string);
+              updateGuardianEntry(idx, { isSearching: false });
+              reject();
+            },
           });
         });
       } catch { return; }
@@ -445,11 +469,13 @@ export default function IndexStudents({
 
   // Delete
   const handleDelete = () => {
-    if (!studentToDelete) return;
+    if (!studentToDelete || isDeleting) return;
 
+    setIsDeleting(true);
     router.delete(route("school.students.destroy", studentToDelete.id), {
       preserveScroll: true,
       onSuccess: () => setShowDeleteModal(false),
+      onFinish: () => setIsDeleting(false),
     });
   };
 
@@ -481,6 +507,7 @@ export default function IndexStudents({
         {
           preserveScroll: true,
           onSuccess: closeModal,
+          onError: (errors) => toast.error(Object.values(errors)[0] as string),
           forceFormData: true,
         }
       );
@@ -489,6 +516,8 @@ export default function IndexStudents({
       router.post(route("school.students.store"), data, {
         preserveScroll: true,
         onSuccess: closeModal,
+        onError: (errors) => toast.error(Object.values(errors)[0] as string),
+        forceFormData: true,
       });
     }
   };
@@ -578,9 +607,9 @@ export default function IndexStudents({
       cell: (info) => {
         const val = info.getValue();
         return val === "male" ? (
-          <span className="text-blue-500 text-lg" title={t("Male")}>♂</span>
+          <span className="text-blue-600 font-bold text-xs bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-md">{t("Male")}</span>
         ) : val === "female" ? (
-          <span className="text-pink-500 text-lg" title={t("Female")}>♀</span>
+          <span className="text-pink-600 font-bold text-xs bg-pink-50 dark:bg-pink-900/20 px-2 py-1 rounded-md">{t("Female")}</span>
         ) : "—";
       },
     }),
@@ -607,11 +636,16 @@ export default function IndexStudents({
         const primaryG = student.guardians?.[0];
         if (!primaryG) return "—";
         const name = !isRtl && primaryG.name_en ? primaryG.name_en : primaryG.name;
-        const rel = primaryG.pivot?.relationship_type ? ` (${t(primaryG.pivot.relationship_type.charAt(0).toUpperCase() + primaryG.pivot.relationship_type.slice(1))})` : '';
+        const rel = primaryG.pivot?.relationship_type ? t(primaryG.pivot.relationship_type.charAt(0).toUpperCase() + primaryG.pivot.relationship_type.slice(1)) : '';
         return (
-          <div className="flex flex-col">
-            <span className="font-semibold text-[#0f2044] dark:text-gray-200 text-xs">{name}</span>
-            <span className="text-[10px] text-gray-400 font-bold">{rel}</span>
+          <div className="flex items-center gap-3">
+            <div className={DS_avatar}>
+              {primaryG.image ? <img src={getImageUrl(primaryG.image, "guardian")} alt={name} className="w-full h-full object-cover" onError={(e) => handleImageError(e, "guardian")} /> : name.charAt(0)}
+            </div>
+            <div className="flex flex-col">
+              <span className="font-semibold text-[#0f2044] dark:text-gray-200 text-xs">{name}</span>
+              <span className="text-[10px] text-gray-400 font-bold">{rel}</span>
+            </div>
           </div>
         );
       },
@@ -637,6 +671,19 @@ export default function IndexStudents({
           <div className={`flex items-center gap-2 ${isRtl ? 'justify-start' : 'justify-end'}`}>
             <button onClick={() => openView(student)} className={DS_btnEdit} title={t("View Record")}>
               <Eye size={14} />
+            </button>
+            <button onClick={() => openEdit(student)} className={DS_btnEdit} title={t("Edit")}>
+              <Edit2 size={14} />
+            </button>
+            <button 
+              onClick={() => { 
+                setStudentToDelete(student); 
+                setShowDeleteModal(true); 
+              }} 
+              className={DS_btnDanger} 
+              title={t("Delete")}
+            >
+              <Trash2 size={14} />
             </button>
             <button
               onClick={() => {
@@ -745,8 +792,8 @@ export default function IndexStudents({
 
       <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-8`} dir={isRtl ? 'rtl' : 'ltr'}>
 
-
-
+        {/* Analytics Overview */}
+        <StudentAnalyticsOverview stats={counts} />
 
         {/* Main DataTable */}
         <div className={DS_card}>
@@ -770,8 +817,8 @@ export default function IndexStudents({
                   <Printer size={16} />
                 </button>
                 <button onClick={openAdd} className={DS_btnSuccess}>
-                  <UserPlus className="w-4 h-4" />
-                  <span>{t("Enroll New Student")}</span>
+                  <UserPlus className="w-4 h-4 shrink-0" />
+                  <span className="hidden sm:inline whitespace-nowrap">{t("Enroll New Student")}</span>
                 </button>
               </div>
             }
@@ -801,52 +848,25 @@ export default function IndexStudents({
           </div>
           
           <div className="flex items-center gap-2">
-            {modalMode === "view" && (
-              <Dropdown>
-                <Dropdown.Trigger>
-                  <button className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all">
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-                </Dropdown.Trigger>
-                <Dropdown.Content align={isRtl ? "left" : "right"} width="32" contentClasses="py-2 bg-white dark:bg-[#1a2845] shadow-2xl rounded-[16px] border border-gray-100 dark:border-[#243460]">
-                  <button onClick={() => currentStudent && openEdit(currentStudent)} className="w-full px-4 py-2.5 text-sm font-bold text-[#0f2044] dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-start flex items-center gap-2">
-                    <Edit2 className="w-4 h-4 text-blue-500" />
-                    {t("Edit")}
-                  </button>
-                  <button 
-                    onClick={() => { 
-                      if (currentStudent) {
-                        setStudentToDelete(currentStudent); 
-                        setShowDeleteModal(true); 
-                      }
-                    }} 
-                    className="w-full px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-start flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    {t("Delete")}
-                  </button>
-                </Dropdown.Content>
-              </Dropdown>
-            )}
             <button onClick={closeModal} className={DS_modalClose}><X className="w-5 h-5" /></button>
           </div>
         </div>
 
         {/* Modal Body */}
-        <div className={`p-8 ${modalMode === "view" ? "space-y-8" : "space-y-4"} overflow-y-auto max-h-[80vh]`}>
+        <div className={`p-4 sm:p-6 md:p-8 ${modalMode === "view" ? "space-y-6 md:space-y-8" : "space-y-4"} overflow-y-auto max-h-[85vh]`}>
           {modalMode === "view" ? (
             /* View Mode Body */
             <>
               {/* Profile Card */}
-              <div className="flex items-center gap-6 p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm">
-                <div className="w-24 h-24 rounded-[22px] border-4 border-white dark:border-[#243460] overflow-hidden shadow-lg">
+              <div className="flex flex-col md:flex-row items-center md:items-start text-center md:text-start gap-4 md:gap-6 p-4 md:p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-[22px] border-4 border-white dark:border-[#243460] overflow-hidden shadow-lg flex-shrink-0">
                   <img src={getImageUrl(currentStudent?.image, "student")} className="w-full h-full object-cover" alt={currentStudent?.full_name} />
                 </div>
-                <div>
-                  <h4 className="text-2xl font-black text-[#0f2044] dark:text-white mb-1">
+                <div className="flex-1">
+                  <h4 className="text-xl md:text-2xl font-black text-[#0f2044] dark:text-white mb-2">
                     {!isRtl && currentStudent?.full_name_en ? currentStudent?.full_name_en : currentStudent?.full_name}
                   </h4>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                     <span className={DS_badge(currentStudent?.is_active || false)}>{currentStudent?.is_active ? t("Active") : t("Inactive")}</span>
                     <span className={`text-lg font-bold ${currentStudent?.gender === 'male' ? 'text-blue-500' : 'text-pink-500'}`} title={currentStudent?.gender === 'male' ? t("Male") : t("Female")}>
                       {currentStudent?.gender === 'male' ? "♂" : "♀"}
@@ -938,7 +958,7 @@ export default function IndexStudents({
 
               {createStep === 1 ? (
                 /* Guardian Form */
-                <form onSubmit={handleGuardiansSubmit} className="space-y-6">
+                <form onSubmit={handleGuardiansSubmit} className="space-y-6 pb-[150px]">
                   {/* Reuse Existing Guardian Form Logic but styled */}
                   <div className="space-y-6">
                     {guardianEntries.map((entry, idx) => {
@@ -956,27 +976,52 @@ export default function IndexStudents({
                             <ShieldCheck className="w-4 h-4 text-emerald-500" /> {t("Guardian")} {modalMode === "create" ? `#${idx + 1}` : ""}
                           </h5>
                           
-                          <div className="mb-4">
-                            <label className={DS_labelCls}>{t("Civil ID")} *</label>
-                            <div className="flex gap-2">
-                              <input type="text" value={entry.national_id} onChange={e => updateGuardianEntry(idx, { national_id: e.target.value, hasSearched: false, verified: false })} className={DS_inputCls} placeholder="10xxxxxxxx" />
-                              <button type="button" onClick={() => handleGuardianLookup(idx)} disabled={entry.isSearching} className="px-4 py-2 bg-[#0f2044] text-white rounded-[14px] font-bold text-xs hover:bg-[#1a2e5a] transition-all disabled:opacity-50">
-                                {entry.isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : t("Verify")}
-                              </button>
+                          <div className="mb-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+                            {/* Civil ID & Search */}
+                            <div className="md:col-span-8">
+                              <label className={DS_labelCls}>{t("Civil ID")} *</label>
+                              <div className="flex gap-2">
+                                <input type="text" value={entry.national_id} onChange={e => updateGuardianEntry(idx, { national_id: e.target.value, hasSearched: false, verified: false, guardian_id: '' })} className={DS_inputCls} placeholder="10xxxxxxxx" />
+                                <button type="button" onClick={() => handleGuardianLookup(idx)} disabled={entry.isSearching} className="px-4 py-2 bg-[#0f2044] text-white rounded-[14px] font-bold text-xs hover:bg-[#1a2e5a] transition-all disabled:opacity-50">
+                                  {entry.isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : t("Verify")}
+                                </button>
+                              </div>
                             </div>
+
+                            {/* Guardian Image */}
+                            {(entry.hasSearched || modalMode === "edit") && (
+                              <div className="md:col-span-4 flex justify-center md:justify-end">
+                                <div className="relative group cursor-pointer w-24 h-24 rounded-[20px] bg-gray-100 dark:bg-[#0f2044]/30 border-2 border-dashed border-gray-300 dark:border-[#243460] flex flex-col items-center justify-center overflow-hidden transition-all hover:border-[#f5b800] hover:bg-[#f5b800]/5">
+                                  {entry.imagePreview || (modalMode === "edit" && entry.guardian_id) ? (
+                                    <img src={entry.imagePreview || getImageUrl(`guardians/${entry.guardian_id}.jpg`, "guardian")} alt="" className="w-full h-full object-cover" onError={(e) => handleImageError(e, "guardian")} />
+                                  ) : (
+                                    <>
+                                      <Camera className="w-6 h-6 text-gray-400 group-hover:text-[#f5b800] transition-colors mb-1" />
+                                      <span className="text-[9px] font-bold text-gray-400 group-hover:text-[#f5b800]">{t("Photo")}</span>
+                                    </>
+                                  )}
+                                  <input type="file" accept="image/*" onChange={(e) => handleGuardianImageChange(idx, e)} className="absolute inset-0 opacity-0 cursor-pointer" />
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           {(entry.hasSearched || modalMode === "edit") && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div><label className={DS_labelCls}>{t("Name (Arabic)")} *</label><input type="text" value={entry.name} onChange={e => updateGuardianEntry(idx, { name: e.target.value })} className={DS_inputCls} dir="rtl" required /></div>
                               <div><label className={DS_labelCls}>{t("Name (English)")}</label><input type="text" value={entry.name_en} onChange={e => updateGuardianEntry(idx, { name_en: e.target.value })} className={DS_inputCls} dir="ltr" /></div>
+                              
                               <div><label className={DS_labelCls}>{t("Relationship")} *</label>
-                                <select value={entry.relationship_type} onChange={e => updateGuardianEntry(idx, { relationship_type: e.target.value })} className={DS_selectCls}>
+                                <select value={entry.relationship_type} onChange={e => updateGuardianEntry(idx, { relationship_type: e.target.value })} className={DS_selectCls} required>
                                   {RELATIONSHIP_TYPES.map(r => <option key={r} value={r}>{t(r.charAt(0).toUpperCase() + r.slice(1))}</option>)}
                                 </select>
                               </div>
                               <div><label className={DS_labelCls}>{t("Phone")} *</label><input type="text" value={entry.phone} onChange={e => updateGuardianEntry(idx, { phone: e.target.value })} className={DS_inputCls} dir="ltr" required /></div>
+                              
                               <div><label className={DS_labelCls}>{t("Email")}</label><input type="email" value={entry.email} onChange={e => updateGuardianEntry(idx, { email: e.target.value })} className={DS_inputCls} dir="ltr" /></div>
+                              <div><label className={DS_labelCls}>{t("Address")}</label><input type="text" value={entry.address} onChange={e => updateGuardianEntry(idx, { address: e.target.value })} className={DS_inputCls} /></div>
+                              
+                              <div><label className={DS_labelCls}>{t("Home Number")}</label><input type="text" value={entry.home_number} onChange={e => updateGuardianEntry(idx, { home_number: e.target.value })} className={DS_inputCls} dir="ltr" /></div>
                             </div>
                           )}
                         </div>
@@ -996,56 +1041,86 @@ export default function IndexStudents({
                 </form>
               ) : (
                 /* Student Form */
-                <form onSubmit={handleSubmitStudent} className="space-y-6">
+                <form onSubmit={handleSubmitStudent} className="space-y-6 pb-[250px]">
                    <div className="p-6 rounded-[22px] bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/5 space-y-6">
-                      <div>
-                        <label className={DS_labelCls}>{t("Gender")} *</label>
-                        <div className="flex gap-2">
-                          {['male', 'female'].map(g => (
-                            <button key={g} type="button" onClick={() => studentForm.setData("gender", g)} className={`flex-1 py-2.5 rounded-xl font-bold text-xs border-2 transition-all ${studentForm.data.gender === g ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20' : 'bg-white dark:bg-white/5 text-gray-400 border-gray-100 dark:border-white/5'}`}>
-                              {g === 'male' ? t("Male") : t("Female")}
-                            </button>
-                          ))}
+                      
+                      {/* Student Image */}
+                      <div className="flex justify-center mb-6">
+                        <div className="relative group cursor-pointer w-28 h-28 rounded-[24px] bg-white dark:bg-[#0f2044]/30 border-2 border-dashed border-gray-300 dark:border-[#243460] shadow-sm flex flex-col items-center justify-center overflow-hidden transition-all hover:border-[#f5b800] hover:bg-[#f5b800]/5">
+                          {studentImagePreview ? (
+                            <>
+                              <img src={studentImagePreview} alt="Student" className="w-full h-full object-cover" onError={(e) => handleImageError(e, "student")} />
+                              <button type="button" onClick={(e) => { e.stopPropagation(); removeStudentImage(); }} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"><X className="w-3 h-3" /></button>
+                            </>
+                          ) : (
+                            <>
+                              <Camera className="w-8 h-8 text-gray-400 group-hover:text-[#f5b800] transition-colors mb-2" />
+                              <span className="text-[10px] font-bold text-gray-400 group-hover:text-[#f5b800]">{t("Photo")}</span>
+                            </>
+                          )}
+                          {!studentImagePreview && <input type="file" accept="image/*" onChange={handleStudentImageChange} className="absolute inset-0 opacity-0 cursor-pointer" />}
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="md:col-span-2 grid grid-cols-2 lg:grid-cols-4 gap-2">
+                        <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-2">
                            {["first", "second", "third", "last"].map(p => (
-                             <div key={p}><label className="text-[10px] font-bold text-gray-400 mb-1 block">{t(`${p} Name`)} (Ar)</label>
+                             <div key={p}><label className="text-[10px] font-bold text-gray-400 mb-1 block">{t(`${p} Name`)} (Ar) *</label>
                              <input type="text" value={(studentForm.data as any)[`${p}_name_ar`]} onChange={e => studentForm.setData(`${p}_name_ar` as any, e.target.value)} className={DS_inputCls} dir="rtl" required /></div>
                            ))}
                         </div>
-                        <div className="md:col-span-2 grid grid-cols-2 lg:grid-cols-4 gap-2 pt-2">
+                        <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-2 pt-2">
                            {["first", "second", "third", "last"].map(p => (
-                             <div key={p}><label className="text-[10px] font-bold text-gray-400 mb-1 block">{t(`${p} Name`)} (En)</label>
-                             <input type="text" value={(studentForm.data as any)[`${p}_name_en`]} onChange={e => studentForm.setData(`${p}_name_en` as any, e.target.value)} className={`${DS_inputCls} text-left`} dir="ltr" /></div>
+                             <div key={p}><label className="text-[10px] font-bold text-gray-400 mb-1 block">{t(`${p} Name`)} (En) *</label>
+                             <input type="text" value={(studentForm.data as any)[`${p}_name_en`]} onChange={e => studentForm.setData(`${p}_name_en` as any, e.target.value)} className={`${DS_inputCls} text-left`} dir="ltr" required /></div>
                            ))}
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div><label className={DS_labelCls}>{t("Civil ID")} *</label><input type="text" value={studentForm.data.national_id} onChange={e => studentForm.setData("national_id", e.target.value)} className={DS_inputCls} dir="ltr" required /></div>
-                        <div><label className={DS_labelCls}>{t("Class")} *</label>
-                          <select value={studentForm.data.classroom_id} onChange={e => studentForm.setData("classroom_id", e.target.value)} className={DS_selectCls} required>
-                            <option value="">{t("Select Class")}</option>
-                            {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                          </select>
+                        <div>
+                          <label className={DS_labelCls}>{t("Gender")} *</label>
+                          <div className="flex gap-2">
+                            {['male', 'female'].map(g => (
+                              <button key={g} type="button" onClick={() => studentForm.setData("gender", g)} className={`flex-1 py-2 rounded-xl font-bold text-xs border-2 transition-all ${studentForm.data.gender === g ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20' : 'bg-white dark:bg-white/5 text-gray-400 border-gray-100 dark:border-white/5'}`}>
+                                {g === 'male' ? t("Male") : t("Female")}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className={DS_labelCls}>{t("Morning Route")}</label>
-                          <select value={studentForm.data.forth_bus_id} onChange={e => studentForm.setData("forth_bus_id", e.target.value)} className={DS_selectCls}>
-                            <option value="">{t("None")}</option>
-                            {buses.map(b => <option key={b.id} value={b.id}>{b.bus_number} - {b.plate_number}</option>)}
-                          </select>
+                        <div className="md:col-span-2">
+                          <SearchableSelect 
+                            label={`${t("Class")} *`}
+                            placeholder={t("Select Class")}
+                            value={studentForm.data.classroom_id} 
+                            onChange={v => studentForm.setData("classroom_id", v as string)} 
+                            options={classrooms.map(c => ({ id: c.id, label: c.name }))}
+                            forceBottom={true}
+                          />
                         </div>
-                        <div><label className={DS_labelCls}>{t("Afternoon Route")}</label>
-                          <select value={studentForm.data.back_bus_id} onChange={e => studentForm.setData("back_bus_id", e.target.value)} className={DS_selectCls}>
-                            <option value="">{t("None")}</option>
-                            {buses.map(b => <option key={b.id} value={b.id}>{b.bus_number} - {b.plate_number}</option>)}
-                          </select>
+                        <div>
+                          <SearchableSelect 
+                            label={t("Morning Route")}
+                            placeholder={t("None")}
+                            value={studentForm.data.forth_bus_id} 
+                            onChange={v => studentForm.setData("forth_bus_id", v as string)} 
+                            options={[{ id: "", label: t("None") }, ...buses.map(b => ({ id: b.id, label: `${b.bus_number} - ${b.plate_number}` }))]}
+                            forceBottom={true}
+                          />
+                        </div>
+                        <div>
+                          <SearchableSelect 
+                            label={t("Afternoon Route")}
+                            placeholder={t("None")}
+                            value={studentForm.data.back_bus_id} 
+                            onChange={v => studentForm.setData("back_bus_id", v as string)} 
+                            options={[{ id: "", label: t("None") }, ...buses.map(b => ({ id: b.id, label: `${b.bus_number} - ${b.plate_number}` }))]}
+                            forceBottom={true}
+                          />
                         </div>
                       </div>
 
@@ -1073,35 +1148,26 @@ export default function IndexStudents({
       </Modal>
 
       {/* Delete Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <div className={DS_confirmModal}>
-            <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">⚠️</span>
-            </div>
-            <h3 className="text-xl font-bold text-[#0f2044] dark:text-white mb-2">
-              {t("Confirm Deletion")}
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
-              {t("Are you sure you want to delete this student?")}
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className={`flex-1 py-3 ${DS_cancelBtn}`}
-              >
-                {t("Cancel")}
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex-1 py-3 rounded-[14px] bg-red-600 hover:bg-red-700 text-white font-bold transition-all shadow"
-              >
-                {t("Yes, Delete")}
-              </button>
-            </div>
+      {/* Delete Modal */}
+      <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)} maxWidth="md">
+        <div className="p-8 text-center">
+          <div className="w-20 h-20 rounded-[24px] bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-6 border-4 border-red-100 dark:border-red-900/30">
+            <Trash2 className="w-8 h-8 text-red-500" />
+          </div>
+          <h3 className="text-2xl font-black text-[#0f2044] dark:text-white mb-2">{t("Confirm Deletion")}</h3>
+          <p className="text-gray-500 dark:text-gray-400 font-medium mb-8">
+            {t("Are you sure you want to delete this student?")}
+          </p>
+          <div className="flex gap-4">
+            <button onClick={() => setShowDeleteModal(false)} disabled={isDeleting} className={`flex-1 py-3 ${DS_cancelBtn} disabled:opacity-50`}>
+              {t("Cancel")}
+            </button>
+            <button onClick={handleDelete} disabled={isDeleting} className="flex-1 py-3 px-6 rounded-[14px] bg-red-500 hover:bg-red-600 text-white font-bold transition-all shadow-lg shadow-red-500/25 disabled:opacity-50 disabled:cursor-not-allowed">
+              {isDeleting ? t("Deleting...") : t("Delete")}
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
     </SchoolAuthenticatedLayout>
   );
 }

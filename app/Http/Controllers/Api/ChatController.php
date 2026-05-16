@@ -343,11 +343,18 @@ class ChatController extends Controller
                 $senderNameEn = $user->name_en ?: $user->name;
                 $senderAvatarUrl = $user->avatar_url ?: url('/images/default_avatar.png');
                 
-                $this->notificationService->sendToUser(
+                $messageText = $message->body ?: 'أرسل لك مرفقاً';
+                $messageTextEn = $message->body ?: 'Sent you an attachment';
+                
+                $this->notificationService->sendTranslatedToUser(
                     userId: $otherParticipant->id,
                     type: 'chat_message',
-                    title: 'رسالة جديدة من ' . $user->name,
-                    message: $message->body ?: 'أرسل لك مرفقاً',
+                    titleKey: 'notifications.chat_message_title',
+                    messageKey: 'notifications.chat_message_message',
+                    translationParams: [
+                        'name' => $user->name,
+                        'message' => $messageText
+                    ],
                     data: [
                         'conversation_id' => (string) $conversation->id,
                         'sender_id'       => (string) $user->id,
@@ -356,15 +363,16 @@ class ChatController extends Controller
                         'sender_avatar'   => $senderAvatarUrl,
                         'message_id'      => (string) $message->id,
                         'notification_id' => (string) $message->id, // For Flutter deduplication
-                        'message'         => $message->body ?: 'أرسل لك مرفقاً',
-                        'message_en'      => $message->body ?: 'Sent you an attachment',
+                        'message'         => $messageText,
+                        'message_en'      => $messageTextEn,
                         'click_action'    => 'FLUTTER_NOTIFICATION_CLICK',
+                        'category'        => 'chat',
+                        'target_screen'   => 'chat_details'
                     ],
-                    fromUserName: $user->name,
-                    immediate: true,
-                    titleEn: 'New message from ' . $senderNameEn,
-                    messageEn: $message->body ?: 'Sent you an attachment',
-                    fromUserNameEn: $senderNameEn
+                    translationParamsEn: [
+                        'name' => $senderNameEn,
+                        'message' => $messageTextEn
+                    ]
                 );
             }
         } catch (\Exception $e) {
@@ -428,6 +436,7 @@ class ChatController extends Controller
     {
         $user = $request->user();
 
+        // 1. Update chat participant read time
         $conversation->chatParticipants()
             ->where('user_id', $user->id)
             ->update(['last_read_at' => now()]);

@@ -152,6 +152,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/classes', [\App\Http\Controllers\Api\TeacherController::class, 'getClasses']);
         Route::get('/classes/{classId}/students', [\App\Http\Controllers\Api\TeacherController::class, 'getStudents']);
         Route::put('/students/{studentId}/attendance', [\App\Http\Controllers\Api\TeacherController::class, 'markAttendance']);
+        Route::post('/classes/{classId}/confirm-attendance', [\App\Http\Controllers\Api\TeacherController::class, 'confirmAttendance']);
         Route::get('/classes/{classId}/attendance-history', [\App\Http\Controllers\Api\TeacherController::class, 'getClassAttendanceHistory']);
         Route::get('/attendance-history', [\App\Http\Controllers\Api\TeacherController::class, 'getTeacherAttendanceHistory']);
         Route::get('/reports/stats', [\App\Http\Controllers\Api\TeacherController::class, 'getAttendanceStats']);

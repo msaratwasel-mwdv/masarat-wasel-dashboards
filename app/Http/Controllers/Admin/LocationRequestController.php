@@ -74,16 +74,19 @@ class LocationRequestController extends Controller
         // 3. إخطار ولي الأمر
         try {
             $notificationService = app(NotificationService::class);
-            $notificationService->sendToUser(
-                $locationRequest->guardian_id,
-                'location_approved',
-                'تمت الموافقة على تغيير الموقع',
-                "تمت الموافقة على طلب تغيير موقع منزل الطالب {$student->full_name} وتحديثه في النظام.",
-                ['type' => 'location_approved', 'student_id' => $student->id],
-                null,
-                false,
-                'Location Change Approved',
-                "The request to change student {$student->full_name_en}'s home location has been approved and updated in the system."
+            $notificationService->sendTranslatedToUser(
+                userId: $locationRequest->guardian_id,
+                type: 'location_approved',
+                titleKey: 'notifications.location_approved_title',
+                messageKey: 'notifications.location_approved_message',
+                translationParams: ['student' => $student->full_name],
+                data: [
+                    'type' => 'location_approved', 
+                    'student_id' => $student->id,
+                    'category' => 'requests',
+                    'target_screen' => 'location_requests'
+                ],
+                translationParamsEn: ['student' => $student->full_name_en ?: $student->full_name]
             );
         } catch (\Exception $e) {
             Log::error("❌ Failed to notify guardian about location approval: " . $e->getMessage());
@@ -116,16 +119,25 @@ class LocationRequestController extends Controller
         // 2. إخطار ولي الأمر
         try {
             $notificationService = app(NotificationService::class);
-            $notificationService->sendToUser(
-                $locationRequest->guardian_id,
-                'location_rejected',
-                'تم رفض طلب تغيير الموقع',
-                "تم رفض طلب تغيير موقع منزل الطالب {$student->full_name}. السبب: {$request->rejection_reason}",
-                ['type' => 'location_rejected', 'student_id' => $student->id],
-                null,
-                false,
-                'Location Change Request Rejected',
-                "The request to change student {$student->full_name_en}'s home location has been rejected. Reason: {$request->rejection_reason}"
+            $notificationService->sendTranslatedToUser(
+                userId: $locationRequest->guardian_id,
+                type: 'location_rejected',
+                titleKey: 'notifications.location_rejected_title',
+                messageKey: 'notifications.location_rejected_message',
+                translationParams: [
+                    'student' => $student->full_name,
+                    'reason' => $request->rejection_reason,
+                ],
+                data: [
+                    'type' => 'location_rejected', 
+                    'student_id' => $student->id,
+                    'category' => 'requests',
+                    'target_screen' => 'location_requests'
+                ],
+                translationParamsEn: [
+                    'student' => $student->full_name_en ?: $student->full_name,
+                    'reason' => $request->rejection_reason,
+                ]
             );
         } catch (\Exception $e) {
             Log::error("❌ Failed to notify guardian about location rejection: " . $e->getMessage());
@@ -147,16 +159,19 @@ class LocationRequestController extends Controller
             foreach (array_unique($busIds) as $busId) {
                 $bus = \App\Models\Bus::find($busId);
                 if ($bus && $bus->driver) {
-                    $notificationService->sendToUser(
-                        $bus->driver->user_id,
-                        'address_change',
-                        'تم تحديث موقع طالب',
-                        "تم تحديث موقع منزل الطالب {$student->full_name} المرتبط بحافلتك.",
-                        ['type' => 'address_change', 'student_id' => $student->id],
-                        null,
-                        false,
-                        'Student Location Updated',
-                        "The home location for student {$student->full_name_en} linked to your bus has been updated."
+                    $notificationService->sendTranslatedToUser(
+                        userId: $bus->driver->user_id,
+                        type: 'address_change',
+                        titleKey: 'notifications.address_change_title',
+                        messageKey: 'notifications.address_change_message',
+                        translationParams: ['student' => $student->full_name],
+                        data: [
+                            'type' => 'address_change', 
+                            'student_id' => $student->id,
+                            'category' => 'bus_management',
+                            'target_screen' => 'bus_details'
+                        ],
+                        translationParamsEn: ['student' => $student->full_name_en ?: $student->full_name]
                     );
                 }
             }

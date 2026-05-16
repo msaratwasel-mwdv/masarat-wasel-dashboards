@@ -303,20 +303,6 @@ class FieldSupervisorController extends Controller
                 $icon = $request->type === 'sos' ? 'sos' : 'warning';
                 $color = ($request->type === 'sos' || $request->type === 'traffic') ? '#EF4444' : '#F59E0B';
 
-                $notification = \App\Models\Notification::create([
-                    'type'             => 'incident',
-                    'title'            => ($request->type === 'sos' ? '🚨 ' : '⚠️ ') . "{$typeLabel} - حافلة {$busNumber}",
-                    'message'          => "تم الإبلاغ بواسطة ({$reporterRoleName}) {$reporterName}. التفاصيل: {$details}",
-                    'data'             => ['incident_id' => $incident->id, 'type' => $request->type],
-                    'sender_id'        => $request->user()->id,
-                    'from_user_name'   => $reporterName,
-                    'recipient_type'   => 'multi',
-                    'total_recipients' => count($recipientUserIds),
-                    'status'           => 'sent',
-                    'icon'             => $icon,
-                    'color'            => $color,
-                ]);
-
                 $typeLabelsEn = [
                     'sos'        => 'SOS Emergency',
                     'behavioral' => 'Behavioral Report',
@@ -336,26 +322,33 @@ class FieldSupervisorController extends Controller
                 $reporterRoleNameEn = $roleNamesEn[$request->user()->role] ?? 'User';
                 $reporterNameEn = $request->user()->name_en ?? $reporterName;
 
-                $titleEn = ($request->type === 'sos' ? '🚨 ' : '⚠️ ') . "{$typeLabelEn} - Bus {$busNumber}";
-                $messageEn = "Reported by ({$reporterRoleNameEn}) {$reporterNameEn}. Details: {$request->description}";
-
                 foreach ($recipientUserIds as $userId) {
-                    \App\Models\NotificationRecipient::create([
-                        'notification_id' => $notification->id,
-                        'user_id'         => $userId,
-                        'status'          => 'sent',
-                        'sent_at'         => now(),
-                    ]);
-                    
-                    // إرسال عبر Push Notification
-                    $this->notificationService->sendToUser(
+                    $this->notificationService->sendTranslatedToUser(
                         userId: $userId, 
                         type: 'incident', 
-                        title: $notification->title, 
-                        message: $notification->message, 
-                        data: $notification->data,
-                        titleEn: $titleEn,
-                        messageEn: $messageEn
+                        titleKey: 'notifications.incident_title', 
+                        messageKey: 'notifications.incident_message', 
+                        translationParams: [
+                            'type' => ($request->type === 'sos' ? '🚨 ' : '⚠️ ') . $typeLabel,
+                            'bus' => $busNumber,
+                            'role' => $reporterRoleName,
+                            'name' => $reporterName,
+                            'details' => $details
+                        ],
+                        data: [
+                            'incident_id' => $incident->id, 
+                            'type' => $request->type,
+                            'category' => 'incidents',
+                            'target_screen' => 'incident_details'
+                        ],
+                        fromUserName: $reporterName,
+                        translationParamsEn: [
+                            'type' => ($request->type === 'sos' ? '🚨 ' : '⚠️ ') . $typeLabelEn,
+                            'bus' => $busNumber,
+                            'role' => $reporterRoleNameEn,
+                            'name' => $reporterNameEn,
+                            'details' => $request->description
+                        ]
                     );
                 }
             }

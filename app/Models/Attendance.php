@@ -15,11 +15,18 @@ class Attendance extends Model
         'classroom_id',
         'date',
         'status',
+        'recorded_by',
+        'is_notified',
     ];
 
     protected $casts = [
         'date' => 'date',
     ];
+
+    protected function serializeDate(\DateTimeInterface $date): string
+    {
+        return $date->format('Y-m-d');
+    }
 
     public function student(): BelongsTo
     {

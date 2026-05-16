@@ -24,10 +24,13 @@ class GuardianController extends Controller
         $search   = $request->input('search');
 
         // أولياء الأمور المرتبطون بطلاب في هذه المدرسة
-        // student_school_enrollments has no school_id — must go through classroom
+        // نعدل الاستعلام ليشمل أيضاً أولياء الأمور الذين ليس لديهم طلاب بعد (ليظهروا فور إضافتهم)
         $guardians = User::withRole('parent')
-            ->whereHas('students.enrollments.classroom', function ($q) use ($schoolId) {
-                $q->atSchool($schoolId);
+            ->where(function ($query) use ($schoolId) {
+                $query->whereHas('students.enrollments.classroom', function ($q) use ($schoolId) {
+                    $q->atSchool($schoolId);
+                })
+                ->orWhereDoesntHave('students'); // السماح بظهور أولياء الأمور الجدد الذين لم يتم ربطهم بطلاب بعد
             })
             ->with([
                 'guardian:user_id,status',
@@ -69,9 +72,21 @@ class GuardianController extends Controller
                     ]),
                 ];
             });
+        // حساب الإحصائيات من البيانات المسترجعة
+        $stats = [
+            'total'          => $guardians->count(),
+            'active'         => $guardians->where('status', 'active')->count(),
+            'inactive'       => $guardians->where('status', 'inactive')->count(),
+            'with_students'  => $guardians->filter(fn($g) => count($g['students']) > 0)->count(),
+            'no_students'    => $guardians->filter(fn($g) => count($g['students']) === 0)->count(),
+            'multi_students' => $guardians->filter(fn($g) => count($g['students']) > 1)->count(),
+            'ar_lang'        => $guardians->where('preferred_language', 'ar')->count(),
+            'en_lang'        => $guardians->where('preferred_language', 'en')->count(),
+        ];
 
         return Inertia::render('School/Guardians/Index', [
             'guardians' => $guardians,
+            'stats'     => $stats,
             'filters'   => $request->only(['search']),
         ]);
     }
@@ -90,9 +105,10 @@ class GuardianController extends Controller
             'address'            => 'nullable|string|max:500',
             'status'             => 'nullable|in:active,inactive',
             'preferred_language' => 'nullable|in:ar,en',
+            'image'              => 'nullable|image|max:2048',
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $request) {
             $nameParts   = User::parseFullName($validated['name'] ?? '');
             $enNameParts = User::parseFullName($validated['name_en'] ?? $validated['name']);
 
@@ -111,6 +127,7 @@ class GuardianController extends Controller
                 'address'            => $validated['address'] ?? null,
                 'password'           => Hash::make($validated['phone']),
                 'preferred_language' => $validated['preferred_language'] ?? 'ar',
+                'image'              => $request->hasFile('image') ? $request->file('image')->store('users', 'public') : null,
             ]);
 
             $role = Role::firstOrCreate(['name' => 'parent']);
@@ -139,9 +156,10 @@ class GuardianController extends Controller
             'address'            => 'nullable|string|max:500',
             'status'             => 'nullable|in:active,inactive',
             'preferred_language' => 'nullable|in:ar,en',
+            'image'              => 'nullable|image|max:2048',
         ]);
 
-        DB::transaction(function () use ($validated, $parent) {
+        DB::transaction(function () use ($validated, $parent, $request) {
             $nameParts   = User::parseFullName($validated['name']);
             $enNameParts = User::parseFullName($validated['name_en'] ?? $validated['name']);
 
@@ -161,6 +179,14 @@ class GuardianController extends Controller
                 'preferred_language' => $validated['preferred_language'] ?? 'ar',
             ]);
 
+            if ($request->hasFile('image')) {
+                // Delete old image if exists
+                if ($parent->image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($parent->image);
+                }
+                $parent->update(['image' => $request->file('image')->store('users', 'public')]);
+            }
+
             if ($parent->guardian) {
                 $parent->guardian->update(['status' => $validated['status'] ?? 'active']);
             } else {
@@ -172,23 +198,50 @@ class GuardianController extends Controller
     }
 
     /**
-     * [Delete] فصل ولي الأمر عن طلاب المدرسة
+     * [Delete] حذف ولي الأمر أو فصله من طلاب المدرسة
      */
     public function destroy(User $parent)
     {
         $schoolId = Auth::user()->getSchoolId();
 
-        // استخراج معرّفات الطلاب التابعين لهذا الولي والمسجلين في هذه المدرسة
-        $studentsInSchool = $parent->students()->whereHas('enrollments.classroom', function ($q) use ($schoolId) {
-            $q->atSchool($schoolId);
-        })->pluck('students.id');
+        try {
+            DB::transaction(function () use ($parent, $schoolId) {
+                // استخراج معرّفات الطلاب التابعين لهذا الولي والمسجلين في هذه المدرسة
+                $studentsInSchool = $parent->students()
+                    ->whereHas('enrollments.classroom', function ($q) use ($schoolId) {
+                        $q->atSchool($schoolId);
+                    })->pluck('students.id');
 
-        // إلغاء ربط هؤلاء الطلاب بولي الأمر
-        if ($studentsInSchool->isNotEmpty()) {
-            $parent->students()->detach($studentsInSchool);
+                // إلغاء ربط هؤلاء الطلاب بولي الأمر
+                if ($studentsInSchool->isNotEmpty()) {
+                    $parent->students()->detach($studentsInSchool);
+                }
+
+                // إذا لم يعد لدى ولي الأمر أي طلاب في النظام نهائياً، نحذفه بالكامل
+                if ($parent->students()->count() === 0) {
+                    // حذف صورته إن وجدت
+                    if ($parent->image) {
+                        \Illuminate\Support\Facades\Storage::disk('public')->delete($parent->image);
+                    }
+                    // حذف أدواره المرتبطة
+                    $parent->roles()->detach();
+                    // حذف سجل ولي الأمر في جدول guardians (إن وُجد)
+                    $parent->guardian()->delete();
+                    // حذف المستخدم نفسه
+                    $parent->delete();
+                }
+            });
+
+            // إعادة التوجيه بعد الانتهاء — نتحقق إذا تم الحذف أو فقط الفصل
+            if (!User::find($parent->id)) {
+                return redirect()->back()->with('success', 'تم حذف ولي الأمر بنجاح.');
+            }
+
+            return redirect()->back()->with('success', 'تم فصل ولي الأمر من طلاب المدرسة بنجاح.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'حدث خطأ أثناء الحذف: ' . $e->getMessage());
         }
-
-        return redirect()->back()->with('success', 'Parent detached from school students successfully.');
     }
 
     /**

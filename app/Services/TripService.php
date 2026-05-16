@@ -309,23 +309,35 @@ class TripService
 
         if ($status === 'boarded') {
             $updateData['check_in_time'] = now();
+            $studentName = $attendance->student->full_name ?? 'الطالب';
             $this->notificationService->notifyStudentGuardian(
                 studentId: $studentId,
                 type: 'bus_boarding',
                 title: '🚌 ركب الحافلة',
-                message: 'تم تسجيل ركوب الطالب في رحلة ' . ($trip->type === 'forth' ? 'الذهاب' : 'العودة'),
+                message: 'تم تسجيل ركوب الطالب (' . $studentName . ') في رحلة ' . ($trip->type === 'forth' ? 'الذهاب' : 'العودة'),
+                data: [
+                    'student_id' => (string) $studentId,
+                    'direction' => $trip->type === 'forth' ? 'to_school' : 'to_home',
+                    'target_screen' => 'children_status',
+                ],
                 titleEn: '🚌 Boarded the bus',
-                messageEn: 'The student has been recorded as boarded for the ' . ($trip->type === 'forth' ? 'forth' : 'back') . ' trip.'
+                messageEn: 'Student (' . ($attendance->student->full_name_en ?? $studentName) . ') has been recorded as boarded for the ' . ($trip->type === 'forth' ? 'forth' : 'back') . ' trip.'
             );
         } elseif ($status === 'dropped') {
             $updateData['check_out_time'] = now();
+            $studentName = $attendance->student->full_name ?? 'الطالب';
             $this->notificationService->notifyStudentGuardian(
                 studentId: $studentId,
                 type: 'bus_alighting',
                 title: '✅ نزل من الحافلة',
-                message: 'تم تسجيل نزول الطالب من الرحلة بأمان',
+                message: 'تم تسجيل نزول الطالب (' . $studentName . ') من الرحلة بأمان',
+                data: [
+                    'student_id' => (string) $studentId,
+                    'direction' => $trip->type === 'forth' ? 'to_school' : 'to_home',
+                    'target_screen' => 'children_status',
+                ],
                 titleEn: '✅ Alighted from the bus',
-                messageEn: 'The student has been recorded as safely alighted from the trip.'
+                messageEn: 'Student (' . ($attendance->student->full_name_en ?? $studentName) . ') has been recorded as safely alighted from the trip.'
             );
         }
 
