@@ -475,6 +475,24 @@ const dictionary = {
   "National ID": { ar: "الرقم المدني", en: "Civil ID" },
   Email: { ar: "البريد الإلكتروني", en: "Email" },
   "Phone Number": { ar: "رقم الهاتف", en: "Phone Number" },
+
+  Phone: { ar: "الهاتف", en: "Phone" },
+
+  "Active Teacher Account": {
+    ar: "حساب المعلم مفعل",
+    en: "Active Teacher Account",
+  },
+
+  "Search name, ID, phone...": {
+    ar: "ابحث بالاسم أو الهوية أو الهاتف...",
+    en: "Search name, ID, phone...",
+  },
+
+  "No Grade": {
+    ar: "لا توجد مرحلة",
+    en: "No Grade",
+  },
+
   "Search by Name, ID...": {
     ar: "بحث بالاسم أو الهوية...",
     en: "Search by Name, ID...",

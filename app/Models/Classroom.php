@@ -21,8 +21,8 @@ class Classroom extends Model
 
     protected $fillable = [
         'name',
-        'grade_id',
-    ];
+        'grade_id',    'school_id',
+];
 
     public function school(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
     {
