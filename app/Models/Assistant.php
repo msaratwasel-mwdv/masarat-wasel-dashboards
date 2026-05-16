@@ -20,11 +20,18 @@ class Assistant extends Model
         'id_card_back_image',
     ];
 
+    protected $appends = ['name', 'name_en'];
+
     // NOTE: 'name' removed from $appends to prevent N+1 reverse-lookup.
 
     public function getNameAttribute(): ?string
     {
         return $this->relationLoaded('user') ? $this->user?->name : null;
+    }
+
+    public function getNameEnAttribute(): ?string
+    {
+        return $this->relationLoaded('user') ? $this->user?->name_en : null;
     }
 
     public function user(): BelongsTo

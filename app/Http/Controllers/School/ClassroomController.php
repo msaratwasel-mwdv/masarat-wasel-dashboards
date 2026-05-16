@@ -69,8 +69,10 @@ class ClassroomController extends Controller
                         return [
                             'user_id' => $t->user_id,
                             'name' => $t->name,
+                            'name_en' => $t->name_en,
                         ];
                     })
+
                 ];
             });
 
@@ -85,6 +87,7 @@ class ClassroomController extends Controller
                     'name' => $g->name,
                     'teacher_id' => $g->teacher?->user_id,
                     'teacher_name' => $g->teacher?->name,
+                    'teacher_name_en' => $g->teacher?->name_en,
                     'classrooms_count' => $g->classrooms_count,
                     'students_count' => $g->classrooms->sum(function($c) {
                         return $c->students->count();
@@ -101,6 +104,8 @@ class ClassroomController extends Controller
                 return [
                     'id' => $u->id,
                     'name' => $u->name,
+                    'name_en' => $u->name_en,
+
                     'email' => $u->email,
                 ];
             });

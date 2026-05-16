@@ -3,6 +3,7 @@ import { Head, Link, useForm } from "@inertiajs/react";
 import { FormEventHandler } from "react";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { Loader2 } from "lucide-react";
+import useTranslation from "@/hooks/useTranslation";
 
 // تعريف نوع المدرسة والمستخدم
 interface School {
@@ -25,6 +26,7 @@ export default function EditSchoolAdmin({
   user: User;
 }) {
   const { isRTL, theme } = useTheme();
+  const { t } = useTranslation();
   const isDark = theme === "dark";
 
   const { data, setData, put, processing, errors } = useForm({
@@ -173,9 +175,7 @@ export default function EditSchoolAdmin({
                   isDark ? "text-gray-300" : "text-gray-600"
                 }`}
               >
-                {isRTL
-                  ? "اترك حقل كلمة المرور فارغاً إذا كنت لا تريد تغييرها"
-                  : "Leave password fields empty if you don't want to change it"}
+                {t("Leave blank to keep current")}
               </p>
 
               <div className={`grid grid-cols-2 gap-4 ${isRTL ? "rtl" : ""}`}>

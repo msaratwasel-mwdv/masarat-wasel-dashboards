@@ -27,6 +27,11 @@ class Teacher extends Model
         return $this->user ? $this->user->name : '';
     }
 
+    public function getNameEnAttribute()
+    {
+        return $this->user ? $this->user->name_en : '';
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
