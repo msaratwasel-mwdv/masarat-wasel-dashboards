@@ -139,7 +139,7 @@ class DailyTripApiController extends Controller
         foreach ($student->guardians as $guardian) {
             $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
 
-            $this->notificationService->sendTranslatedToUser(
+            $notification = $this->notificationService->sendTranslatedToUser(
                 userId: $guardian->id,
                 type: $notificationType,
                 titleKey: 'notifications.student_status_title',
@@ -161,6 +161,9 @@ class DailyTripApiController extends Controller
                 fromUserName: 'نظام النقل',
                 translationParamsEn: ['student' => $studentNameEn]
             );
+
+            // 📢 Sync Real-time UI
+            event(new \App\Events\NotificationPushed($notification, $guardian->id));
         }
 
         return response()->json([
@@ -235,7 +238,7 @@ class DailyTripApiController extends Controller
             $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
 
             foreach ($student->guardians as $guardian) {
-                $this->notificationService->sendTranslatedToUser(
+                $notification = $this->notificationService->sendTranslatedToUser(
                     userId: $guardian->id,
                     type: $notificationType,
                     titleKey: 'notifications.student_status_title',
@@ -253,6 +256,9 @@ class DailyTripApiController extends Controller
                     fromUserName: 'نظام النقل',
                     translationParamsEn: ['student' => $studentNameEn]
                 );
+
+                // 📢 Sync Real-time UI
+                event(new \App\Events\NotificationPushed($notification, $guardian->id));
             }
 
             try {
@@ -540,7 +546,7 @@ class DailyTripApiController extends Controller
             $messageKey = $direction === 'to_school' ? 'notifications.student_alighted_school_message' : 'notifications.student_alighted_home_message';
 
             foreach ($student->guardians as $guardian) {
-                $this->notificationService->sendTranslatedToUser(
+                $notification = $this->notificationService->sendTranslatedToUser(
                     userId: $guardian->id,
                     type: 'student_alighted',
                     titleKey: $titleKey,
@@ -555,6 +561,9 @@ class DailyTripApiController extends Controller
                     ],
                     translationParamsEn: ['student' => $studentNameEn]
                 );
+
+                // 📢 Sync Real-time UI
+                event(new \App\Events\NotificationPushed($notification, $guardian->id));
             }
 
             // ✅ T-12: بث حدث الوصول لكل طالب

@@ -114,9 +114,9 @@ class NotificationService
                                 'correlation_id'  => $correlationId,
                                 'language'        => 'ar',
                                 'sender_name'     => $fromUserName,
-                                'sender_name_en'  => $fromUserNameEn ?: $fromUserName,
-                                'title_en'        => $titleEn ?: $title,
-                                'message_en'      => $messageEn ?: $message,
+                                'sender_name_en'  => $fromUserNameEn,
+                                'title_en'        => $titleEn,
+                                'message_en'      => $messageEn,
                                 'unread_count'    => (string) $this->getUnreadCount($userId),
                             ]);
 
@@ -137,8 +137,8 @@ class NotificationService
                                 'language'        => 'en',
                                 'sender_name'     => $fromUserNameEn ?: $fromUserName,
                                 'sender_name_en'  => $fromUserNameEn ?: $fromUserName,
-                                'title_en'        => $titleEn ?: $title,
-                                'message_en'      => $messageEn ?: $message,
+                                'title_en'        => $titleEn,
+                                'message_en'      => $messageEn,
                                 'unread_count'    => (string) $this->getUnreadCount($userId),
                             ]);
 

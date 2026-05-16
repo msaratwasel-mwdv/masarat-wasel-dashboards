@@ -422,20 +422,12 @@ class NotificationController extends Controller
                     }
 
                     // إرسال النسخة الإنجليزية للأجهزة الإنجليزية
-                    if (!empty($tokensEn) && !empty($finalTitleEn)) {
+                    if (!empty($tokensEn)) {
                         $notificationService->sendMulticast(
                             $tokensEn,
-                            $finalTitleEn,
+                            $finalTitleEn, 
                             $finalMessageEn,
                             array_merge($basePayload, ['language' => 'en'])
-                        );
-                    } elseif (!empty($tokensEn)) {
-                        // Fallback: لا يوجد محتوى إنجليزي، أرسل العربي
-                        $notificationService->sendMulticast(
-                            $tokensEn,
-                            $finalTitle,
-                            $finalMessage,
-                            array_merge($basePayload, ['language' => 'ar']) // Original is Arabic
                         );
                     }
                     
