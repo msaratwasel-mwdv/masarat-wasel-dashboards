@@ -36,9 +36,8 @@ class AbsenceRequestController extends Controller
     {
         $schoolId = Auth::user()->getSchoolId();
 
-        // التأكد أن الطالب يتبع لمدرسة المستخدم الحالي
-        $studentSchoolId = $absenceRequest->student->enrollments()->latest()->first()?->classroom?->school_id;
-        if ($studentSchoolId !== $schoolId) {
+        // التأكد أن الطالب يتبع لمدرسة المستخدم الحالي بطريقة موثوقة
+        if (!\App\Models\Student::where('id', $absenceRequest->student_id)->inSchool($schoolId)->exists()) {
             abort(403);
         }
 
