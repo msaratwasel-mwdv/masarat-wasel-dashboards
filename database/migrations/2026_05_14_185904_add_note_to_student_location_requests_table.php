@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('student_location_requests', function (Blueprint $table) {
-            $table->string('note', 1000)->nullable()->after('new_address');
-        });
+        if (!Schema::hasColumn('student_location_requests', 'note')) {
+            Schema::table('student_location_requests', function (Blueprint $table) {
+                $table->string('note', 1000)->nullable()->after('new_address');
+            });
+        }
     }
 
     /**
@@ -21,8 +23,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('student_location_requests', function (Blueprint $table) {
-            $table->dropColumn('note');
-        });
+        if (Schema::hasColumn('student_location_requests', 'note')) {
+            Schema::table('student_location_requests', function (Blueprint $table) {
+                $table->dropColumn('note');
+            });
+        }
     }
 };
