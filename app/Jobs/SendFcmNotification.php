@@ -48,7 +48,7 @@ class SendFcmNotification implements ShouldQueue
                 topic: $this->topic,
                 isQueued: true
             );
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('[FCM Job] Failed to send notification', [
                 'error' => $e->getMessage(),
                 'tokens_count' => count($this->fcmTokens)

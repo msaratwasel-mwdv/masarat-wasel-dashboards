@@ -22,7 +22,7 @@ class NotificationService
     {
         try {
             return app(Messaging::class);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('[FCM] Firebase Messaging could not be initialized. Check service-account.json: ' . $e->getMessage());
             return null;
         }
