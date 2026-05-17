@@ -469,7 +469,7 @@ class NotificationService
 
         // Custom channel and tags based on notification type
         if ($type === 'chat_message' && isset($data['conversation_id'])) {
-            $androidNotificationConfig['channel_id'] = 'chat_messages';
+            $androidNotificationConfig['channel_id'] = 'chat_messages_v3';
             $androidNotificationConfig['tag'] = 'conversation_' . $data['conversation_id'];
         }
 
