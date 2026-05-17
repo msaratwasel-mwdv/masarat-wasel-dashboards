@@ -471,9 +471,6 @@ class NotificationService
         if ($type === 'chat_message' && isset($data['conversation_id'])) {
             $androidNotificationConfig['channel_id'] = 'chat_messages';
             $androidNotificationConfig['tag'] = 'conversation_' . $data['conversation_id'];
-        } elseif ($type === 'admin_announcement') {
-            $androidNotificationConfig['channel_id'] = 'school_announcements';
-            $androidNotificationConfig['default_vibrate_timings'] = true;
         }
 
         $apnsPayloadAps = [
