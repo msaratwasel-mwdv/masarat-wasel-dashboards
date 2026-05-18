@@ -26,12 +26,8 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'first_name_ar',
-        'second_name_ar',
-        'third_name_ar',
         'last_name_ar',
         'first_name_en',
-        'second_name_en',
-        'third_name_en',
         'last_name_en',
         'national_id',
         'email',
@@ -136,8 +132,6 @@ class User extends Authenticatable
     {
         $names = [
             $this->first_name_ar,
-            $this->second_name_ar,
-            $this->third_name_ar,
             $this->last_name_ar
         ];
 
@@ -167,11 +161,11 @@ class User extends Authenticatable
         $parts = array_filter(explode(' ', trim($fullName)));
 
         $first = count($parts) > 0 ? array_shift($parts) : '';
-        $last = count($parts) > 0 ? array_pop($parts) : '';
-        $second = count($parts) > 0 ? array_shift($parts) : '';
-        $third = implode(' ', $parts);
+        $last = implode(' ', $parts);
 
-        return [$first, $second, $third, $last];
+        // Return 4 elements to avoid breaking list() destructuring in controllers
+        // The middle names are empty as they are deprecated
+        return [$first, '', '', $last];
     }
 
     /**
@@ -181,8 +175,6 @@ class User extends Authenticatable
     {
         $namesEn = [
             $this->first_name_en,
-            $this->second_name_en,
-            $this->third_name_en,
             $this->last_name_en
         ];
 

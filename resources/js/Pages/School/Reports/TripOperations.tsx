@@ -29,9 +29,22 @@ interface Trip {
   arrival_time: string | null;
   status: string;
   bus?: { id: number; bus_number: string; plate_number: string; capacity: number };
-  driver?: { id: number; first_name_ar: string; last_name_ar: string };
+  driver?: { id: number; first_name_ar: string; last_name_ar: string; first_name_en?: string | null; last_name_en?: string | null };
   route?: { id: number; name: string };
 }
+
+export const getTripDriverName = (driver: any, isRTL: boolean) => {
+  if (!driver) return "—";
+  if (isRTL) {
+    const arName = [driver.first_name_ar, driver.last_name_ar].filter(Boolean).join(" ");
+    if (arName) return arName;
+    return [driver.first_name_en, driver.last_name_en].filter(Boolean).join(" ") || "—";
+  } else {
+    const enName = [driver.first_name_en, driver.last_name_en].filter(Boolean).join(" ");
+    if (enName) return enName;
+    return [driver.first_name_ar, driver.last_name_ar].filter(Boolean).join(" ") || "—";
+  }
+};
 
 interface BusSummary {
   bus_number: string;
@@ -129,7 +142,7 @@ export default function TripOperationsReport({ trips, stats, tripsByBus, buses, 
     }),
     columnHelper.display({
       id: "driver", header: isRTL ? "السائق" : "Driver",
-      cell: (info) => <span className="font-bold text-slate-600 dark:text-slate-300 text-xs">{info.row.original.driver ? `${info.row.original.driver.first_name_ar} ${info.row.original.driver.last_name_ar}` : "—"}</span>,
+      cell: (info) => <span className="font-bold text-slate-600 dark:text-slate-300 text-xs">{getTripDriverName(info.row.original.driver, isRTL)}</span>,
     }),
   ], [isRTL]);
 
@@ -157,7 +170,7 @@ export default function TripOperationsReport({ trips, stats, tripsByBus, buses, 
     trip.departure_time ? new Date(trip.departure_time).toLocaleTimeString(isRTL ? "ar-SA" : "en-US", { hour: '2-digit', minute: '2-digit' }) : "—",
     trip.arrival_time ? new Date(trip.arrival_time).toLocaleTimeString(isRTL ? "ar-SA" : "en-US", { hour: '2-digit', minute: '2-digit' }) : "—",
     trip.status === "finished" ? (isRTL ? "مكتملة" : "Completed") : trip.status === "cancelled" ? (isRTL ? "ملغاة" : "Cancelled") : (isRTL ? "قيد التنفيذ" : "In Progress"),
-    trip.driver ? `${trip.driver.first_name_ar} ${trip.driver.last_name_ar}` : "—"
+    getTripDriverName(trip.driver, isRTL)
   ]);
 
   return (

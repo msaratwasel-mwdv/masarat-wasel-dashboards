@@ -43,12 +43,8 @@ class DriverController extends Controller
                     'plate_number' => $driver->assignedBus?->plate_number,
                     'image' => $driver->image,
                     'first_name_ar' => $driver->first_name_ar,
-                    'second_name_ar' => $driver->second_name_ar,
-                    'third_name_ar' => $driver->third_name_ar,
                     'last_name_ar' => $driver->last_name_ar,
                     'first_name_en' => $driver->first_name_en,
-                    'second_name_en' => $driver->second_name_en,
-                    'third_name_en' => $driver->third_name_en,
                     'last_name_en' => $driver->last_name_en,
                     'address' => $driver->address,
                     'license_front_image' => $driver->driver?->license_front_image,
@@ -74,14 +70,10 @@ class DriverController extends Controller
         }
 
         $request->validate([
-            'first_name_ar' => 'required|string|max:255',
-            'second_name_ar' => 'nullable|string|max:255',
-            'third_name_ar' => 'nullable|string|max:255',
-            'last_name_ar' => 'required|string|max:255',
-            'first_name_en' => 'nullable|string|max:255',
-            'second_name_en' => 'nullable|string|max:255',
-            'third_name_en' => 'nullable|string|max:255',
-            'last_name_en' => 'nullable|string|max:255',
+            'first_name_ar' => 'required_without:first_name_en|nullable|string|max:255',
+            'last_name_ar' => 'required_with:first_name_ar|nullable|string|max:255',
+            'first_name_en' => 'required_without:first_name_ar|nullable|string|max:255',
+            'last_name_en' => 'required_with:first_name_en|nullable|string|max:255',
             'national_id' => ['required', 'numeric', \Illuminate\Validation\Rule::unique('users')->ignore($driver->id)],
             'email' => ['required', 'email', \Illuminate\Validation\Rule::unique('users')->ignore($driver->id)],
             'phone' => ['required', \Illuminate\Validation\Rule::unique('users')->ignore($driver->id)],
@@ -98,12 +90,8 @@ class DriverController extends Controller
         \Illuminate\Support\Facades\DB::transaction(function () use ($request, $driver) {
             $updateData = [
                 'first_name_ar' => $request->first_name_ar,
-                'second_name_ar' => $request->second_name_ar ?? '',
-                'third_name_ar' => $request->third_name_ar ?? '',
                 'last_name_ar' => $request->last_name_ar,
                 'first_name_en' => $request->first_name_en ?? '',
-                'second_name_en' => $request->second_name_en ?? '',
-                'third_name_en' => $request->third_name_en ?? '',
                 'last_name_en' => $request->last_name_en ?? '',
                 'national_id' => $request->national_id,
                 'email' => $request->email,
@@ -111,7 +99,12 @@ class DriverController extends Controller
                 'address' => $request->address,
             ];
 
-            if ($request->hasFile('image')) {
+            if ($request->remove_image) {
+                if ($driver->image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver->image);
+                }
+                $updateData['image'] = null;
+            } elseif ($request->hasFile('image')) {
                 if ($driver->image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver->image);
                 }
@@ -128,28 +121,48 @@ class DriverController extends Controller
                 'status' => strtolower($request->status ?? 'active'),
             ];
 
-            if ($request->hasFile('license_front_image')) {
+            if ($request->remove_license_front_image) {
+                if ($driver_ext->license_front_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_front_image);
+                }
+                $driverExtData['license_front_image'] = null;
+            } elseif ($request->hasFile('license_front_image')) {
                 if ($driver_ext->license_front_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_front_image);
                 }
                 $driverExtData['license_front_image'] = $request->file('license_front_image')->store('drivers/licenses', 'public');
             }
 
-            if ($request->hasFile('license_back_image')) {
+            if ($request->remove_license_back_image) {
+                if ($driver_ext->license_back_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_back_image);
+                }
+                $driverExtData['license_back_image'] = null;
+            } elseif ($request->hasFile('license_back_image')) {
                 if ($driver_ext->license_back_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_back_image);
                 }
                 $driverExtData['license_back_image'] = $request->file('license_back_image')->store('drivers/licenses', 'public');
             }
 
-            if ($request->hasFile('id_card_front_image')) {
+            if ($request->remove_id_card_front_image) {
+                if ($driver_ext->id_card_front_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->id_card_front_image);
+                }
+                $driverExtData['id_card_front_image'] = null;
+            } elseif ($request->hasFile('id_card_front_image')) {
                 if ($driver_ext->id_card_front_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->id_card_front_image);
                 }
                 $driverExtData['id_card_front_image'] = $request->file('id_card_front_image')->store('drivers/id_cards', 'public');
             }
 
-            if ($request->hasFile('id_card_back_image')) {
+            if ($request->remove_id_card_back_image) {
+                if ($driver_ext->id_card_back_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->id_card_back_image);
+                }
+                $driverExtData['id_card_back_image'] = null;
+            } elseif ($request->hasFile('id_card_back_image')) {
                 if ($driver_ext->id_card_back_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->id_card_back_image);
                 }

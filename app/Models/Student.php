@@ -36,12 +36,8 @@ class Student extends Model
     // ⬅️ أضف الحقول الجديدة هنا
     protected $fillable = [
         'first_name_ar',
-        'second_name_ar',
-        'third_name_ar',
         'last_name_ar',
         'first_name_en',
-        'second_name_en',
-        'third_name_en',
         'last_name_en',
         'student_code',
         'national_id',
@@ -99,8 +95,6 @@ class Student extends Model
     {
         $names = [
             $this->first_name_ar,
-            $this->second_name_ar,
-            $this->third_name_ar,
             $this->last_name_ar
         ];
 
@@ -121,8 +115,6 @@ class Student extends Model
     {
         $namesEn = [
             $this->first_name_en,
-            $this->second_name_en,
-            $this->third_name_en,
             $this->last_name_en
         ];
         

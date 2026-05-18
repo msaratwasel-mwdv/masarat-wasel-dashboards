@@ -32,22 +32,19 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
     public function headings(): array
     {
         return [
-            ['ملاحظة هامة: الأعمدة الملونة باللون الأزرق إجبارية (يجب تعبئتها)، بينما الأعمدة باللون الأبيض اختيارية.'],
+            ['ملاحظة هامة: الأعمدة الملونة باللون الأزرق إجبارية (يجب تعبئتها)، بينما الأعمدة باللون الأبيض اختيارية. يجب تعبئة إما الاسم العربي أو الإنجليزي.'],
             [
                 'الاسم الأول (عربي)',
-                'اسم الأب (عربي)',
-                'اسم الجد (عربي)',
                 'الاسم الأخير (عربي)',
                 'الاسم الأول (انجليزي)',
-                'اسم الأب (انجليزي)',
-                'اسم الجد (انجليزي)',
                 'الاسم الأخير (انجليزي)',
                 'الرقم المدني',
                 'رقم الجوال',
                 'البريد الإلكتروني',
                 'العنوان',
                 'اسم جهة الطوارئ',
-                'رقم الطوارئ'
+                'رقم الطوارئ',
+                'اللغة المفضلة'
             ]
         ];
     }
@@ -60,12 +57,8 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
 
         return [
             $row->first_name_ar,
-            $row->second_name_ar,
-            $row->third_name_ar,
             $row->last_name_ar,
             $row->first_name_en,
-            $row->second_name_en,
-            $row->third_name_en,
             $row->last_name_en,
             $row->national_id ? ' ' . $row->national_id : '',
             $row->phone ? ' ' . $row->phone : '',
@@ -73,15 +66,16 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
             $row->address,
             $row->assistant?->emergency_contact_name,
             $row->assistant?->emergency_contact_phone ? ' ' . $row->assistant?->emergency_contact_phone : '',
+            $row->preferred_language ?? 'ar',
         ];
     }
 
     public function columnFormats(): array
     {
         return [
-            'I' => NumberFormat::FORMAT_TEXT,
+            'E' => NumberFormat::FORMAT_TEXT,
+            'F' => NumberFormat::FORMAT_TEXT,
             'J' => NumberFormat::FORMAT_TEXT,
-            'N' => NumberFormat::FORMAT_TEXT,
         ];
     }
 
@@ -94,7 +88,7 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
         $sheet->getDefaultRowDimension()->setRowHeight(25);
 
         // توسيط النص في جميع الخلايا
-        $sheet->getStyle('A:N')->applyFromArray([
+        $sheet->getStyle('A:K')->applyFromArray([
             'alignment' => [
                 'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER
@@ -102,7 +96,7 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
         ]);
 
         // دمج خلايا الصف الأول للملاحظة
-        $sheet->mergeCells('A1:N1');
+        $sheet->mergeCells('A1:K1');
 
         // تنسيق الصف الأول (الملاحظة)
         $sheet->getStyle('A1')->applyFromArray([
@@ -112,7 +106,7 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
         $sheet->getRowDimension(1)->setRowHeight(35);
 
         // التنسيق الافتراضي للصف الثاني (العناوين الاختيارية باللون الأبيض)
-        $sheet->getStyle('A2:N2')->applyFromArray([
+        $sheet->getStyle('A2:K2')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['argb' => 'FF000000'], 'size' => 11],
             'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['argb' => 'FFFFFFFF']],
             'borders' => [
@@ -122,7 +116,8 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
         $sheet->getRowDimension(2)->setRowHeight(30);
 
         // تنسيق الأعمدة الإجبارية باللون الأزرق الداكن
-        $mandatoryColumns = ['A2', 'D2', 'I2', 'J2', 'M2', 'N2'];
+        // E (National ID), F (Phone), I (Emergency Name), J (Emergency Phone)
+        $mandatoryColumns = ['E2', 'F2', 'I2', 'J2'];
         foreach ($mandatoryColumns as $col) {
             $sheet->getStyle($col)->applyFromArray([
                 'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],

@@ -106,6 +106,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
 
         // Drivers Routes
         Route::get('drivers', [StaffController::class, 'index'])->name('drivers.index');
+        Route::get('drivers/print-all', [StaffController::class, 'printAll'])->name('drivers.print-all');
         Route::get('drivers/export', [StaffController::class, 'export'])->name('drivers.export');
         Route::get('drivers/template', [StaffController::class, 'downloadTemplate'])->name('drivers.template');
         Route::post('drivers/import', [StaffController::class, 'import'])->name('drivers.import');
@@ -115,6 +116,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('drivers/{driver}/print', [StaffController::class, 'printCard'])->name('drivers.print');
 
         // المشرفين
+        Route::get('assistants/print-all', [AssistantController::class, 'printAll'])->name('assistants.print-all');
         Route::get('assistants/export', [AssistantController::class, 'export'])->name('assistants.export');
         Route::get('assistants/template', [AssistantController::class, 'downloadTemplate'])->name('assistants.template');
         Route::post('assistants/import', [AssistantController::class, 'import'])->name('assistants.import');

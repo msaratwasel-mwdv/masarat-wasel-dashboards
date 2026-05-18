@@ -182,6 +182,7 @@ class AnalyticsController extends Controller
                     'utilization' => $utilization,
                     'completed_trips' => $tripCount,
                     'driver_name' => $bus->driver?->user?->name ?? '—',
+                    'driver_name_en' => $bus->driver?->user?->name_en ?? '—',
                     'route_name' => $bus->route?->name ?? '—',
                     'school_name' => $bus->school?->name ?? '—',
                 ];
@@ -304,6 +305,7 @@ class AnalyticsController extends Controller
                     'id' => $driver->id,
                     'user_id' => $userId,
                     'name' => $driver->user?->name ?? '—',
+                    'name_en' => $driver->user?->name_en ?? '—',
                     'phone' => $driver->user?->phone ?? '—',
                     'image' => $driver->user?->image ?? null,
                     'license_number' => $driver->license_number,

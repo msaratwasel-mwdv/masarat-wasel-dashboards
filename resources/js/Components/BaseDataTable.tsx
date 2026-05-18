@@ -331,9 +331,7 @@ export default function BaseDataTable<T extends { id?: number | string }>({
                         }`}
                       >
                         <div
-                          className={`flex items-center gap-1.5 ${
-                            isRTL ? "flex-row-reverse justify-end" : ""
-                          }`}
+                          className="flex items-center gap-1.5 justify-start w-full"
                         >
                           {header.isPlaceholder
                             ? null

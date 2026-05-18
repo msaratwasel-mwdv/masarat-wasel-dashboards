@@ -1,183 +1,410 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
-import InputLabel from '@/Components/InputLabel';
-import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
-import PrimaryButton from '@/Components/PrimaryButton';
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useState } from 'react';
+import { Users, User, CreditCard, Briefcase, Mail, Upload, ArrowLeft, Loader2, X } from 'lucide-react';
 
 export default function CreateDriver() {
-    // إعداد الـ Form باستخدام Inertia
-    const { data, setData, post, processing, errors, reset } = useForm({
-        name: '',
+    const { data, setData, post, processing, errors } = useForm({
+        first_name_ar: '',
+        last_name_ar: '',
+        first_name_en: '',
+        last_name_en: '',
         national_id: '',
         email: '',
         phone: '',
         license_number: '',
         license_expiry_date: '',
+        preferred_language: 'ar',
+        address: '',
+        image: null as File | null,
+        license_front_image: null as File | null,
+        license_back_image: null as File | null,
+        id_card_front_image: null as File | null,
+        id_card_back_image: null as File | null,
     });
+
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [previewLicenseFront, setPreviewLicenseFront] = useState<string | null>(null);
+    const [previewLicenseBack, setPreviewLicenseBack] = useState<string | null>(null);
+    const [previewIdCardFront, setPreviewIdCardFront] = useState<string | null>(null);
+    const [previewIdCardBack, setPreviewIdCardBack] = useState<string | null>(null);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('admin.drivers.store')); // تأكد أن الراوت موجود
+        post(route('admin.drivers.store'), {
+            forceFormData: true,
+        });
     };
+
+    // Design tokens synced with Admin Driver Index
+    const DS_label = "text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-wider block";
+    const DS_input = "w-full text-xs font-bold text-[#0f2044] dark:text-white bg-gray-50/50 dark:bg-[#0f2044]/15 border border-gray-200 dark:border-[#243460] rounded-xl px-3.5 py-2.5 outline-none focus:border-[#f5b800] dark:focus:border-[#f5b800] focus:ring-1 focus:ring-[#f5b800] dark:focus:ring-[#f5b800] transition-all placeholder-gray-400";
+    const DS_select = "w-full text-xs font-bold text-[#0f2044] dark:text-white bg-gray-50/50 dark:bg-[#0f2044]/15 border border-gray-200 dark:border-[#243460] rounded-xl px-3.5 py-2.5 outline-none focus:border-[#f5b800] dark:focus:border-[#f5b800] transition-all appearance-none cursor-pointer";
+    const DS_btnGold = "inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#f5b800] to-[#e0a800] text-xs font-black text-[#0f2044] uppercase tracking-wider rounded-xl hover:shadow-lg hover:shadow-amber-500/10 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none";
+
+    const isArabicNameRequired = !data.first_name_en && !data.last_name_en;
+    const isEnglishNameRequired = !data.first_name_ar && !data.last_name_ar;
 
     return (
         <AuthenticatedLayout
-            header={<h2 className="font-bold text-xl text-gray-800 leading-tight">Register New Driver</h2>}
+            header={
+                <div className="flex items-center gap-3">
+                    <Link href={route('admin.drivers.index')} className="p-2 text-gray-400 hover:text-gray-900 transition-colors">
+                        <ArrowLeft size={18} />
+                    </Link>
+                    <h2 className="font-bold text-xl text-gray-800 dark:text-white leading-tight">Register New Driver</h2>
+                </div>
+            }
         >
             <Head title="Add Driver" />
 
-            <div className="py-2">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-
-                    {/* --- Header Section --- */}
-                    <div className="mb-4 flex items-center justify-between">
+            <div className="py-8">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Header */}
+                    <div className="mb-6 flex items-center justify-between">
                         <div>
-                            <h1 className="text-2xl font-bold text-brand-dark">New Driver Registration</h1>
-                            <p className="text-sm text-gray-500 mt-1">Add a new driver to the company fleet pool.</p>
+                            <h1 className="text-2xl font-extrabold text-[#0f2044] dark:text-white tracking-tight">New Driver Registration</h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enroll a new driver with their documents in a single compact interface.</p>
                         </div>
-                        <Link
-                            href={route('admin.drivers.index')} // سننشئ صفحة العرض لاحقاً
-                            className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition font-medium text-sm"
-                        >
-                            Cancel & Return
-                        </Link>
                     </div>
 
-                    {/* --- Form Card --- */}
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100">
-                        <div className="p-6">
-                            <form onSubmit={submit}>
-
-                                {/* Section 1: Personal Information */}
-                                <div className="mb-4">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-brand-yellow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                        Personal Information
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* Full Name */}
-                                        <div>
-                                            <InputLabel htmlFor="name" value="Full Name" />
-                                            <TextInput
-                                                id="name"
-                                                type="text"
-                                                className="mt-1 block w-full"
-                                                value={data.name}
-                                                onChange={(e) => setData('name', e.target.value)}
-                                                placeholder="e.g. Faisal Al-Harbi"
-                                                isFocused={true}
-                                            />
-                                            <InputError message={errors.name} className="mt-2" />
+                    {/* Main Card */}
+                    <div className="bg-white dark:bg-[#121e3d] overflow-hidden shadow-xl sm:rounded-3xl border border-gray-100 dark:border-[#243460]/40">
+                        <form onSubmit={submit} className="flex flex-col">
+                            <div className="p-6 md:p-8 space-y-8">
+                                
+                                {/* §1 The Names */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#243460] pb-2">
+                                        <h4 className="text-xs font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] flex items-center gap-2">
+                                            <Users size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                                            Official Names
+                                        </h4>
+                                        <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded">
+                                            * Req: Arabic or English
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Arabic Panel */}
+                                        <div className="p-4 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-2xl border border-gray-100/85 dark:border-[#243460]/40 space-y-3">
+                                            <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 tracking-wider">ARABIC DOSSIER</span>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <label className={DS_label}>First Name {isArabicNameRequired && <span className="text-rose-500">*</span>}</label>
+                                                    <input type="text" value={data.first_name_ar} onChange={e => setData("first_name_ar", e.target.value)} className={DS_input} dir="rtl" required={isArabicNameRequired} />
+                                                    <InputError message={errors.first_name_ar} />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className={DS_label}>Last Name {isArabicNameRequired && <span className="text-rose-500">*</span>}</label>
+                                                    <input type="text" value={data.last_name_ar} onChange={e => setData("last_name_ar", e.target.value)} className={DS_input} dir="rtl" required={isArabicNameRequired} />
+                                                    <InputError message={errors.last_name_ar} />
+                                                </div>
+                                            </div>
                                         </div>
-
-                                        {/* Civil ID */}
-                                        <div>
-                                            <InputLabel htmlFor="national_id" value="Civil ID / Iqama" />
-                                            <TextInput
-                                                id="national_id"
-                                                type="text"
-                                                className="mt-1 block w-full"
-                                                value={data.national_id}
-                                                onChange={(e) => setData('national_id', e.target.value)}
-                                                placeholder="10xxxxxxxx"
-                                            />
-                                            <InputError message={errors.national_id} className="mt-2" />
+                                        {/* English Panel */}
+                                        <div className="p-4 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-2xl border border-gray-100/85 dark:border-[#243460]/40 space-y-3">
+                                            <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 tracking-wider">ENGLISH DOSSIER</span>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <label className={DS_label}>First Name {isEnglishNameRequired && <span className="text-rose-500">*</span>}</label>
+                                                    <input type="text" value={data.first_name_en} onChange={e => setData("first_name_en", e.target.value)} className={DS_input} dir="ltr" required={isEnglishNameRequired} />
+                                                    <InputError message={errors.first_name_en} />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className={DS_label}>Last Name {isEnglishNameRequired && <span className="text-rose-500">*</span>}</label>
+                                                    <input type="text" value={data.last_name_en} onChange={e => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" required={isEnglishNameRequired} />
+                                                    <InputError message={errors.last_name_en} />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Section 2: Contact Details */}
-                                <div className="mb-4">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-brand-yellow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                                        Contact Details
-                                    </h3>
+                                {/* §2 Personal Identity */}
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-2 flex items-center gap-2">
+                                        <CreditCard size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                                        Personal Identity & Documents
+                                    </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* Phone Number */}
-                                        <div>
-                                            <InputLabel htmlFor="phone" value="Mobile Number" />
-                                            <TextInput
-                                                id="phone"
-                                                type="text"
-                                                className="mt-1 block w-full"
-                                                value={data.phone}
-                                                onChange={(e) => setData('phone', e.target.value)}
-                                                placeholder="05xxxxxxxx"
-                                            />
-                                            <p className="text-xs text-gray-400 mt-1">This will be used as the initial password.</p>
-                                            <InputError message={errors.phone} className="mt-2" />
+                                        {/* Left Col: Inputs & Profile photo */}
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <label className={DS_label}>Civil ID / Iqama <span className="text-rose-500">*</span></label>
+                                                    <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
+                                                    <InputError message={errors.national_id} />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className={DS_label}>Phone Number <span className="text-rose-500">*</span></label>
+                                                    <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" placeholder="5XXXXXXXX" required />
+                                                    <InputError message={errors.phone} />
+                                                </div>
+                                            </div>
+                                            {/* Profile photo upload directly under */}
+                                            <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                                                <div className="w-12 h-12 rounded-xl border border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden bg-white dark:bg-[#0f2044] flex-shrink-0 relative group">
+                                                    {data.image ? (
+                                                        <>
+                                                            <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
+                                                            <button type="button" onClick={() => { setData("image", null); setPreviewImage(null); }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <X size={14} className="text-white" />
+                                                            </button>
+                                                        </>
+                                                    ) : previewImage ? (
+                                                        <>
+                                                            <img src={previewImage} className="w-full h-full object-cover" />
+                                                            <button type="button" onClick={() => setPreviewImage(null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <X size={14} className="text-white" />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <User size={20} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                                                    )}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-xs font-bold text-[#0f2044] dark:text-white leading-tight">Profile Photo</p>
+                                                    {!data.image && !previewImage ? (
+                                                        <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline mt-1 inline-block">
+                                                            Choose Photo
+                                                            <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                                                const file = e.target.files?.[0] || null;
+                                                                setData("image", file);
+                                                                if (file) setPreviewImage(URL.createObjectURL(file));
+                                                            }} />
+                                                        </label>
+                                                    ) : (
+                                                        <button type="button" onClick={() => { setData("image", null); setPreviewImage(null); }} className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase underline mt-1 inline-block">
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                    <InputError message={errors.image} />
+                                                </div>
+                                            </div>
                                         </div>
-
-                                        {/* Email Address */}
-                                        <div>
-                                            <InputLabel htmlFor="email" value="Email Address" />
-                                            <TextInput
-                                                id="email"
-                                                type="email"
-                                                className="mt-1 block w-full"
-                                                value={data.email}
-                                                onChange={(e) => setData('email', e.target.value)}
-                                                placeholder="driver@example.com"
-                                            />
-                                            <InputError message={errors.email} className="mt-2" />
+                                        {/* Right Col: ID Docs grouped next to inputs */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className={DS_label}>ID Card Front</label>
+                                                <div className="flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460] min-h-[100px] text-center relative group">
+                                                    <div className="w-12 h-12 rounded overflow-hidden bg-white dark:bg-[#0f2044] border border-gray-200 dark:border-[#243460]/50 flex items-center justify-center mb-2 relative">
+                                                        {data.id_card_front_image ? (
+                                                            <>
+                                                                <img src={URL.createObjectURL(data.id_card_front_image)} className="w-full h-full object-cover" />
+                                                                <button type="button" onClick={() => { setData("id_card_front_image", null); setPreviewIdCardFront(null); }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <X size={12} className="text-white" />
+                                                                </button>
+                                                            </>
+                                                        ) : previewIdCardFront ? (
+                                                            <>
+                                                                <img src={previewIdCardFront} className="w-full h-full object-cover" />
+                                                                <button type="button" onClick={() => setPreviewIdCardFront(null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <X size={12} className="text-white" />
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <CreditCard size={18} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                                                        )}
+                                                    </div>
+                                                    {!data.id_card_front_image && !previewIdCardFront ? (
+                                                        <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">
+                                                            Upload Front
+                                                            <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                                                const file = e.target.files?.[0] || null;
+                                                                setData("id_card_front_image", file);
+                                                                if (file) setPreviewIdCardFront(URL.createObjectURL(file));
+                                                            }} />
+                                                        </label>
+                                                    ) : (
+                                                        <button type="button" onClick={() => { setData("id_card_front_image", null); setPreviewIdCardFront(null); }} className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase underline">
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className={DS_label}>ID Card Back</label>
+                                                <div className="flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460] min-h-[100px] text-center relative group">
+                                                    <div className="w-12 h-12 rounded overflow-hidden bg-white dark:bg-[#0f2044] border border-gray-200 dark:border-[#243460]/50 flex items-center justify-center mb-2 relative">
+                                                        {data.id_card_back_image ? (
+                                                            <>
+                                                                <img src={URL.createObjectURL(data.id_card_back_image)} className="w-full h-full object-cover" />
+                                                                <button type="button" onClick={() => { setData("id_card_back_image", null); setPreviewIdCardBack(null); }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <X size={12} className="text-white" />
+                                                                </button>
+                                                            </>
+                                                        ) : previewIdCardBack ? (
+                                                            <>
+                                                                <img src={previewIdCardBack} className="w-full h-full object-cover" />
+                                                                <button type="button" onClick={() => setPreviewIdCardBack(null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <X size={12} className="text-white" />
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <CreditCard size={18} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                                                        )}
+                                                    </div>
+                                                    {!data.id_card_back_image && !previewIdCardBack ? (
+                                                        <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">
+                                                            Upload Back
+                                                            <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                                                const file = e.target.files?.[0] || null;
+                                                                setData("id_card_back_image", file);
+                                                                if (file) setPreviewIdCardBack(URL.createObjectURL(file));
+                                                            }} />
+                                                        </label>
+                                                    ) : (
+                                                        <button type="button" onClick={() => { setData("id_card_back_image", null); setPreviewIdCardBack(null); }} className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase underline">
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Section 3: Professional Details */}
-                                <div className="mb-4">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-brand-yellow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0c0 .883-.393 1.627-1.008 2.138a3.001 3.001 0 01-1.464 2.868A3.001 3.001 0 0113.5 12a2.48 2.48 0 01-1.04-.226l-1.636 2.046a.75.75 0 01-1.166 0l-1.636-2.046A2.48 2.48 0 017 12a3.001 3.001 0 012-5.862z" /></svg>
-                                        License Information
-                                    </h3>
+                                {/* §3 Driving Credentials */}
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-2 flex items-center gap-2">
+                                        <Briefcase size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                                        Driving Credentials & Documents
+                                    </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* License Number */}
-                                        <div>
-                                            <InputLabel htmlFor="license_number" value="Driving License Number" />
-                                            <TextInput
-                                                id="license_number"
-                                                type="text"
-                                                className="mt-1 block w-full bg-yellow-50 border-yellow-200 focus:border-yellow-400 focus:ring-yellow-200"
-                                                value={data.license_number}
-                                                onChange={(e) => setData('license_number', e.target.value)}
-                                                placeholder="License No."
-                                            />
-                                            <InputError message={errors.license_number} className="mt-2" />
+                                        {/* Left Col: License Inputs */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                                <label className={DS_label}>License Number <span className="text-rose-500">*</span></label>
+                                                <input type="text" value={data.license_number} onChange={e => setData("license_number", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
+                                                <InputError message={errors.license_number} />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className={DS_label}>License Expiry <span className="text-rose-500">*</span></label>
+                                                <input type="date" value={data.license_expiry_date} onChange={e => setData("license_expiry_date", e.target.value)} className={DS_input} dir="ltr" required />
+                                                <InputError message={errors.license_expiry_date} />
+                                            </div>
                                         </div>
-
-                                        {/* Expiry Date */}
-                                        <div>
-                                            <InputLabel htmlFor="license_expiry_date" value="License Expiry Date" />
-                                            <TextInput
-                                                id="license_expiry_date"
-                                                type="date"
-                                                className="mt-1 block w-full"
-                                                value={data.license_expiry_date}
-                                                onChange={(e) => setData('license_expiry_date', e.target.value)}
-                                            />
-                                            <InputError message={errors.license_expiry_date} className="mt-2" />
+                                        {/* Right Col: License Copy front/back */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className={DS_label}>License Front</label>
+                                                <div className="flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460] min-h-[100px] text-center relative group">
+                                                    <div className="w-12 h-12 rounded overflow-hidden bg-white dark:bg-[#0f2044] border border-gray-200 dark:border-[#243460]/50 flex items-center justify-center mb-2 relative">
+                                                        {data.license_front_image ? (
+                                                            <>
+                                                                <img src={URL.createObjectURL(data.license_front_image)} className="w-full h-full object-cover" />
+                                                                <button type="button" onClick={() => { setData("license_front_image", null); setPreviewLicenseFront(null); }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <X size={12} className="text-white" />
+                                                                </button>
+                                                            </>
+                                                        ) : previewLicenseFront ? (
+                                                            <>
+                                                                <img src={previewLicenseFront} className="w-full h-full object-cover" />
+                                                                <button type="button" onClick={() => setPreviewLicenseFront(null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <X size={12} className="text-white" />
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <CreditCard size={18} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                                                        )}
+                                                    </div>
+                                                    {!data.license_front_image && !previewLicenseFront ? (
+                                                        <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">
+                                                            Upload Front
+                                                            <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                                                const file = e.target.files?.[0] || null;
+                                                                setData("license_front_image", file);
+                                                                if (file) setPreviewLicenseFront(URL.createObjectURL(file));
+                                                            }} />
+                                                        </label>
+                                                    ) : (
+                                                        <button type="button" onClick={() => { setData("license_front_image", null); setPreviewLicenseFront(null); }} className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase underline">
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className={DS_label}>License Back</label>
+                                                <div className="flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460] min-h-[100px] text-center relative group">
+                                                    <div className="w-12 h-12 rounded overflow-hidden bg-white dark:bg-[#0f2044] border border-gray-200 dark:border-[#243460]/50 flex items-center justify-center mb-2 relative">
+                                                        {data.license_back_image ? (
+                                                            <>
+                                                                <img src={URL.createObjectURL(data.license_back_image)} className="w-full h-full object-cover" />
+                                                                <button type="button" onClick={() => { setData("license_back_image", null); setPreviewLicenseBack(null); }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <X size={12} className="text-white" />
+                                                                </button>
+                                                            </>
+                                                        ) : previewLicenseBack ? (
+                                                            <>
+                                                                <img src={previewLicenseBack} className="w-full h-full object-cover" />
+                                                                <button type="button" onClick={() => setPreviewLicenseBack(null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <X size={12} className="text-white" />
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <CreditCard size={18} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                                                        )}
+                                                    </div>
+                                                    {!data.license_back_image && !previewLicenseBack ? (
+                                                        <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">
+                                                            Upload Back
+                                                            <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                                                const file = e.target.files?.[0] || null;
+                                                                setData("license_back_image", file);
+                                                                if (file) setPreviewLicenseBack(URL.createObjectURL(file));
+                                                            }} />
+                                                        </label>
+                                                    ) : (
+                                                        <button type="button" onClick={() => { setData("license_back_image", null); setPreviewLicenseBack(null); }} className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase underline">
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Form Actions */}
-                                <div className="flex items-center justify-end gap-4 pt-6 border-t">
-                                    <Link
-                                        href={route('admin.drivers.index')}
-                                        className="text-sm text-gray-600 hover:text-gray-900 underline"
-                                    >
-                                        Cancel
-                                    </Link>
-
-                                    <PrimaryButton className="px-8 py-3 bg-brand-dark hover:bg-brand-navy" disabled={processing}>
-                                        {processing ? 'Registering...' : 'Save & Register Driver'}
-                                    </PrimaryButton>
+                                {/* §4 Contact & Preferences */}
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-2 flex items-center gap-2">
+                                        <Mail size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                                        Contact & Preferences
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>Email Address</label>
+                                            <input type="email" value={data.email} onChange={e => setData("email", e.target.value)} className={DS_input} dir="ltr" placeholder="driver@company.com" />
+                                            <InputError message={errors.email} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>Preferred Language</label>
+                                            <select value={data.preferred_language} onChange={e => setData("preferred_language", e.target.value)} className={DS_select}>
+                                                <option value="ar">العربية (Arabic)</option>
+                                                <option value="en">English</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>Residential Address</label>
+                                            <input type="text" value={data.address} onChange={e => setData("address", e.target.value)} className={DS_input} placeholder="Street, City" />
+                                        </div>
+                                    </div>
                                 </div>
+                            </div>
 
-                            </form>
-                        </div>
+                            {/* Footer Actions */}
+                            <div className="px-6 py-5 bg-gray-50 dark:bg-white/5 border-t border-gray-100 dark:border-[#243460] flex items-center justify-end gap-3">
+                                <Link href={route('admin.drivers.index')} className="text-xs font-bold text-gray-400 hover:text-[#0f2044] dark:hover:text-white transition-colors">
+                                    Cancel
+                                </Link>
+                                <button type="submit" disabled={processing} className={DS_btnGold}>
+                                    {processing && <Loader2 size={16} className="animate-spin" />}
+                                    Save &amp; Register Driver
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
