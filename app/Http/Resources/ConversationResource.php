@@ -38,6 +38,7 @@ class ConversationResource extends JsonResource
             'participants' => $otherParticipants->map(fn($p) => [
                 'id'     => $p->id,
                 'name'   => $p->name,
+                'name_en' => $p->name_en ?? $p->name,
                 'role'   => $p->role,
                 'avatar_url' => $p->avatar_url,
             ])->values(),

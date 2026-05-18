@@ -21,8 +21,10 @@ class Classroom extends Model
 
     protected $fillable = [
         'name',
-        'grade_id',    'school_id',
-];
+        'name_en',
+        'grade_id',
+        'school_id',
+    ];
 
     public function school(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
     {
@@ -89,6 +91,19 @@ class Classroom extends Model
     public function attendances()
     {
         return $this->hasMany(Attendance::class);
+    }
+
+    public function getNameAttribute($value): string
+    {
+        $isEn = (request()->header('Accept-Language') === 'en' 
+            || request()->input('lang') === 'en' 
+            || (auth()->check() && auth()->user()->preferred_language === 'en'));
+
+        if ($isEn && !empty(trim($this->name_en))) {
+            return $this->name_en;
+        }
+
+        return $value ?? '';
     }
 }
 

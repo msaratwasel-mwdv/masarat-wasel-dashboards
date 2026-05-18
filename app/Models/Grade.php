@@ -31,4 +31,30 @@ class Grade extends Model
     {
         return $this->hasOne(Teacher::class);
     }
+
+    public function getNameAttribute($value): string
+    {
+        $isEn = (request()->header('Accept-Language') === 'en' 
+            || request()->input('lang') === 'en' 
+            || (auth()->check() && auth()->user()->preferred_language === 'en'));
+
+        if ($isEn) {
+            $map = [
+                'الصف الأول'  => 'First Grade',
+                'الصف الثاني' => 'Second Grade',
+                'الصف الثالث' => 'Third Grade',
+                'أول ثانوي'   => 'First Secondary',
+                'ثاني ثانوي'  => 'Second Secondary',
+                'ثالث ثانوي'  => 'Third Secondary',
+                'الروضة'      => 'Kindergarten',
+                'الابتدائي'   => 'Primary',
+                'المتوسط'     => 'Intermediate',
+                'غير محدد'    => 'Undetermined',
+            ];
+            $trimmed = trim($value);
+            return $map[$trimmed] ?? $value;
+        }
+
+        return $value ?? '';
+    }
 }

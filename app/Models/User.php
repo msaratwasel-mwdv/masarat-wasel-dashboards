@@ -134,6 +134,17 @@ class User extends Authenticatable
      */
     public function getNameAttribute(): string
     {
+        $isEn = (request()->header('Accept-Language') === 'en' 
+            || request()->input('lang') === 'en' 
+            || (auth()->check() && auth()->user()->preferred_language === 'en'));
+
+        if ($isEn) {
+            $nameEn = $this->name_en;
+            if (!empty(trim($nameEn)) && $nameEn !== $this->email) {
+                return $nameEn;
+            }
+        }
+
         $names = [
             $this->first_name_ar,
             $this->second_name_ar,

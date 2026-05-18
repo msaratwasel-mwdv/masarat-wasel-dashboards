@@ -8,6 +8,7 @@ use App\Models\Student;
 use App\Models\Attendance;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TeacherController extends Controller
 {
@@ -33,6 +34,7 @@ class TeacherController extends Controller
             return [
                 'id' => (string) $cls->id,
                 'name' => $cls->name ?? 'غير معروف',
+                'nameEn' => $cls->name_en ?? $cls->name ?? 'Unknown',
                 'grade' => $cls->grade_level ?? 'غير مسجل',
                 'studentCount' => $cls->students_count ?? 0,
                 'teacherId' => (string) $teacher->id,
@@ -72,7 +74,9 @@ class TeacherController extends Controller
             return [
                 'id' => (string) $student->id,
                 'name' => $student->full_name ?? ($student->full_name_en ?? 'غير معروف'),
+                'nameEn' => $student->full_name_en ?? $student->full_name ?? 'Unknown',
                 'parentName' => $guardian ? $guardian->name : 'غير محدد',
+                'parentNameEn' => $guardian ? ($guardian->name_en ?? $guardian->name) : 'Not Specified',
                 'parentPhone' => $guardian ? $guardian->phone : 'غير محدد',
                 'photoUrl' => $photoUrl,
                 'parentPhotoUrl' => $parentPhotoUrl,

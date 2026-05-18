@@ -38,12 +38,17 @@ class ClassroomSeeder extends Seeder
             }
 
             // 3. Create a couple of classrooms for this grade
+            $gradesEn = ['Grade 1', 'Grade 2', 'Grade 3'];
+            $gradeEnName = $gradesEn[$index] ?? 'Grade ' . ($index + 1);
             for ($c = 1; $c <= 2; $c++) {
                 Classroom::updateOrCreate(
                     [
                         'school_id' => $school->id, 
                         'grade_id' => $grade->id,
                         'name' => "فصل " . $gradeName . " ($c)"
+                    ],
+                    [
+                        'name_en' => $gradeEnName . " ($c)"
                     ]
                 );
             }

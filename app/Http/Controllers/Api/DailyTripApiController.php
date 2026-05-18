@@ -1063,15 +1063,6 @@ class DailyTripApiController extends Controller
                 translationParamsEn: ['students' => $studentNamesEn]
             );
         }
-
-        Log::info('confirmTrip: Trip confirmed by assistant', ['bus_id' => $bus->id, 'trip_id' => $trip->id, 'confirmed_by' => $user->id]);
-
-        return response()->json([
-            'message' => 'تم تأكيد بدء الرحلة.',
-            'trip_id' => $trip->id,
-            'status' => 'in_progress',
-            'departure_time' => $trip->departure_time,
-        ]);
     }
     /**
      * إرسال إشعار "بجوار المنزل" لولي الأمر

@@ -178,7 +178,43 @@ class ParentController extends Controller
                 'student_code' => $student->student_code,
                 'status'       => $studentStatus,
                 'suggested_direction' => $suggestedDirection,
-                'grade'                  => $student->currentEnrollment?->classroom?->grade?->name ?? 'غير محدد',
+                'grade'                  => (function() use ($student) {
+                    $classroom = $student->currentEnrollment?->classroom;
+                    $gradeNameAr = $classroom?->grade ? ($classroom->grade->getAttributes()['name'] ?? null) : null;
+                    $classroomNameAr = $classroom ? ($classroom->getAttributes()['name'] ?? null) : null;
+                    if ($gradeNameAr && $classroomNameAr) {
+                        return "{$gradeNameAr} - {$classroomNameAr}";
+                    }
+                    return $gradeNameAr ?? $classroomNameAr ?? 'غير محدد';
+                })(),
+                'grade_en'               => (function() use ($student) {
+                    $classroom = $student->currentEnrollment?->classroom;
+                    if (!$classroom) return 'Not specified';
+
+                    $gradeRaw = trim($classroom->grade ? ($classroom->grade->getAttributes()['name'] ?? '') : '');
+                    $gradeMap = [
+                        'الصف الأول'  => 'First Grade',
+                        'الصف الثاني' => 'Second Grade',
+                        'الصف الثالث' => 'Third Grade',
+                        'أول ثانوي'   => 'First Secondary',
+                        'ثاني ثانوي'  => 'Second Secondary',
+                        'ثالث ثانوي'  => 'Third Secondary',
+                        'الروضة'      => 'Kindergarten',
+                        'الابتدائي'   => 'Primary',
+                        'المتوسط'     => 'Intermediate',
+                        'غير محدد'    => 'Undetermined',
+                    ];
+                    $gradeEn = $gradeMap[$gradeRaw] ?? $gradeRaw;
+
+                    $classroomEn = !empty(trim($classroom->getAttributes()['name_en'] ?? ''))
+                        ? $classroom->getAttributes()['name_en']
+                        : ($classroom->getAttributes()['name'] ?? '');
+
+                    if ($gradeEn && $classroomEn) {
+                        return "{$gradeEn} - {$classroomEn}";
+                    }
+                    return $gradeEn ?: $classroomEn ?: 'Not specified';
+                })(),
                 'trip_count'             => $student->trips_count ?? 0,
                 'attendance_percentage'  => $attendancePercentage,
                 'image_url'              => $imageUrl,
