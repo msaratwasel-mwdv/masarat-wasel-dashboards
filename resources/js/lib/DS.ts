@@ -93,7 +93,7 @@ export function DS_filterBtn(active: boolean): string {
 }
 
 export function DS_tableTh(isRtl: boolean): string {
-  return `px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#0f2044]/60 dark:text-[#7ba7e8]/70 text-start`;
+  return `px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#0f2044]/60 dark:text-[#7ba7e8]/70 ${isRtl ? "text-right" : "text-left"}`;
 }
 
 export function DS_modalHeader(isRtl: boolean): string {

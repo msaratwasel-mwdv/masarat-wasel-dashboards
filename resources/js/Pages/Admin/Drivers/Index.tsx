@@ -362,13 +362,20 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
               </div>
               <div className="flex flex-col">
                 <span className={`text-sm font-black ${isDark ? "text-white" : "text-[#0f2044]"} tracking-tight`}>
-                  {driver.name}
+                  {isRTL ? (driver.name || driver.name_en) : (driver.name_en || driver.name)}
                 </span>
-                {driver.name_en && (
-                  <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
-                    {driver.name_en}
-                  </span>
-                )}
+                {(() => {
+                  const altName = isRTL ? driver.name_en : driver.name;
+                  const displayName = isRTL ? (driver.name || driver.name_en) : (driver.name_en || driver.name);
+                  if (altName && altName !== displayName) {
+                    return (
+                      <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
+                        {altName}
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
           );
@@ -676,7 +683,7 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                                     <img src={`/storage/${selectedDriver.image}`} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-4xl font-black text-[#0f2044] dark:text-[#f5b800] bg-gray-50">
-                                        {selectedDriver.name.charAt(0)}
+                                        {(isRTL ? (selectedDriver.name || selectedDriver.name_en) : (selectedDriver.name_en || selectedDriver.name)).charAt(0)}
                                     </div>
                                 )}
                             </div>
@@ -686,10 +693,14 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-gray-100 dark:border-[#243460] pb-8">
                                 <div className="space-y-1">
                                     <h2 className="text-3xl font-black text-[#0f2044] dark:text-white tracking-tighter">
-                                        {selectedDriver.name}
+                                        {isRTL ? (selectedDriver.name || selectedDriver.name_en) : (selectedDriver.name_en || selectedDriver.name)}
                                     </h2>
                                     <p className="text-lg font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                                        {selectedDriver.name_en || (isRTL ? "غير محدد" : "UNSPECIFIED")}
+                                        {(() => {
+                                            const altName = isRTL ? selectedDriver.name_en : selectedDriver.name;
+                                            const displayName = isRTL ? (selectedDriver.name || selectedDriver.name_en) : (selectedDriver.name_en || selectedDriver.name);
+                                            return altName && altName !== displayName ? altName : "";
+                                        })()}
                                     </p>
                                     <div className="flex gap-2 mt-4">
                                         <StatusBadge status={selectedDriver.driver?.status === "active" ? "active" : "inactive"} />

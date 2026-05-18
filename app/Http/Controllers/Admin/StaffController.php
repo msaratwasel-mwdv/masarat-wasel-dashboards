@@ -94,14 +94,10 @@ class StaffController extends Controller
     public function storeDriver(Request $request)
     {
         $request->validate([
-            'first_name_ar' => 'required|string|max:255',
-            'second_name_ar' => 'nullable|string|max:255',
-            'third_name_ar' => 'nullable|string|max:255',
-            'last_name_ar' => 'required|string|max:255',
-            'first_name_en' => 'nullable|string|max:255',
-            'second_name_en' => 'nullable|string|max:255',
-            'third_name_en' => 'nullable|string|max:255',
-            'last_name_en' => 'nullable|string|max:255',
+            'first_name_ar' => 'required_without:first_name_en|nullable|string|max:255',
+            'last_name_ar' => 'required_with:first_name_ar|nullable|string|max:255',
+            'first_name_en' => 'required_without:first_name_ar|nullable|string|max:255',
+            'last_name_en' => 'required_with:first_name_en|nullable|string|max:255',
             'national_id' => 'required|numeric|unique:users,national_id',
             'email' => 'nullable|email|unique:users,email',
             'phone' => 'required|unique:users,phone',
@@ -118,12 +114,8 @@ class StaffController extends Controller
         DB::transaction(function () use ($request) {
             $user = User::create([
                 'first_name_ar' => $request->first_name_ar,
-                'second_name_ar' => $request->second_name_ar ?? '',
-                'third_name_ar' => $request->third_name_ar ?? '',
                 'last_name_ar' => $request->last_name_ar,
                 'first_name_en' => $request->first_name_en ?? '',
-                'second_name_en' => $request->second_name_en ?? '',
-                'third_name_en' => $request->third_name_en ?? '',
                 'last_name_en' => $request->last_name_en ?? '',
                 'email' => $request->email,
                 'phone' => $request->phone,
@@ -156,14 +148,10 @@ class StaffController extends Controller
     public function updateDriver(Request $request, User $driver)
     {
         $request->validate([
-            'first_name_ar' => 'required|string|max:255',
-            'second_name_ar' => 'nullable|string|max:255',
-            'third_name_ar' => 'nullable|string|max:255',
-            'last_name_ar' => 'required|string|max:255',
-            'first_name_en' => 'nullable|string|max:255',
-            'second_name_en' => 'nullable|string|max:255',
-            'third_name_en' => 'nullable|string|max:255',
-            'last_name_en' => 'nullable|string|max:255',
+            'first_name_ar' => 'required_without:first_name_en|nullable|string|max:255',
+            'last_name_ar' => 'required_with:first_name_ar|nullable|string|max:255',
+            'first_name_en' => 'required_without:first_name_ar|nullable|string|max:255',
+            'last_name_en' => 'required_with:first_name_en|nullable|string|max:255',
             // نستخدم ignore لتجاهل السائق الحالي عند التحقق من التكرار
             'national_id' => ['required', 'numeric', Rule::unique('users')->ignore($driver->id)],
             'email' => ['required', 'email', Rule::unique('users')->ignore($driver->id)],
@@ -181,12 +169,8 @@ class StaffController extends Controller
         DB::transaction(function () use ($request, $driver) {
             $updateData = [
                 'first_name_ar' => $request->first_name_ar,
-                'second_name_ar' => $request->second_name_ar ?? '',
-                'third_name_ar' => $request->third_name_ar ?? '',
                 'last_name_ar' => $request->last_name_ar,
                 'first_name_en' => $request->first_name_en ?? '',
-                'second_name_en' => $request->second_name_en ?? '',
-                'third_name_en' => $request->third_name_en ?? '',
                 'last_name_en' => $request->last_name_en ?? '',
                 'national_id' => $request->national_id,
                 'email' => $request->email,
@@ -194,7 +178,12 @@ class StaffController extends Controller
                 'address' => $request->address,
             ];
 
-            if ($request->hasFile('image')) {
+            if ($request->remove_image) {
+                if ($driver->image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver->image);
+                }
+                $updateData['image'] = null;
+            } elseif ($request->hasFile('image')) {
                 if ($driver->image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver->image);
                 }
@@ -212,28 +201,48 @@ class StaffController extends Controller
                 'status' => strtolower($request->status ?? 'active'),
             ];
 
-            if ($request->hasFile('license_front_image')) {
+            if ($request->remove_license_front_image) {
+                if ($driver_ext->license_front_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_front_image);
+                }
+                $driverExtData['license_front_image'] = null;
+            } elseif ($request->hasFile('license_front_image')) {
                 if ($driver_ext->license_front_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_front_image);
                 }
                 $driverExtData['license_front_image'] = $request->file('license_front_image')->store('drivers/licenses', 'public');
             }
 
-            if ($request->hasFile('license_back_image')) {
+            if ($request->remove_license_back_image) {
+                if ($driver_ext->license_back_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_back_image);
+                }
+                $driverExtData['license_back_image'] = null;
+            } elseif ($request->hasFile('license_back_image')) {
                 if ($driver_ext->license_back_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_back_image);
                 }
                 $driverExtData['license_back_image'] = $request->file('license_back_image')->store('drivers/licenses', 'public');
             }
 
-            if ($request->hasFile('id_card_front_image')) {
+            if ($request->remove_id_card_front_image) {
+                if ($driver_ext->id_card_front_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->id_card_front_image);
+                }
+                $driverExtData['id_card_front_image'] = null;
+            } elseif ($request->hasFile('id_card_front_image')) {
                 if ($driver_ext->id_card_front_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->id_card_front_image);
                 }
                 $driverExtData['id_card_front_image'] = $request->file('id_card_front_image')->store('drivers/id_cards', 'public');
             }
 
-            if ($request->hasFile('id_card_back_image')) {
+            if ($request->remove_id_card_back_image) {
+                if ($driver_ext->id_card_back_image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->id_card_back_image);
+                }
+                $driverExtData['id_card_back_image'] = null;
+            } elseif ($request->hasFile('id_card_back_image')) {
                 if ($driver_ext->id_card_back_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->id_card_back_image);
                 }
@@ -283,11 +292,153 @@ class StaffController extends Controller
         ]);
 
         $import = new \App\Imports\DriversImport();
-        \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+        } catch (\Throwable $e) {
+            // General extreme failure (e.g., corrupt file structure)
+            $errorMsg = "فشل في معالجة ملف الاستيراد: " . $e->getMessage() . " / Excel Import file processing failed: " . $e->getMessage();
+            return redirect()->back()->with('import_errors', [$errorMsg]);
+        }
+
+        $errorsArray = [];
+
+        // 1. validation failures skipped per row
+        if ($import->failures()->isNotEmpty()) {
+            $customAttributes = (new \App\Imports\DriversImport())->customValidationAttributes();
+            foreach ($import->failures() as $failure) {
+                $row = $failure->row();
+                $attributeKey = $failure->attribute(); // This might be the translated string because of customValidationAttributes
+
+                // If it's already translated, reverse map it to get the original index (e.g., '4')
+                $originalKey = array_search($attributeKey, $customAttributes);
+                if ($originalKey === false) {
+                    $originalKey = $attributeKey; // Fallback if it wasn't translated
+                    $columnName = $customAttributes[$attributeKey] ?? $attributeKey;
+                } else {
+                    $columnName = $attributeKey;
+                }
+
+                $badValue = $failure->values()[$originalKey] ?? 'فارغة (Empty)';
+                if (is_scalar($badValue) && trim((string)$badValue) === '') $badValue = 'فارغة (Empty)';
+                if ($badValue === null) $badValue = 'فارغة (Empty)';
+
+                $errors = implode(' | ', $failure->errors());
+
+                $errorsArray[] = "السطر {$row} | العمود: [{$columnName}] | القيمة المدخلة: ({$badValue}) | الخطأ: {$errors}";
+            }
+        }
+
+        // 2. database or PHP exceptions skipped per row
+        if ($import->errors()->isNotEmpty()) {
+            foreach ($import->errors() as $error) {
+                $msg = $error->getMessage();
+                if (str_contains($msg, 'Duplicate entry') && str_contains($msg, 'users_email_unique')) {
+                    $errorsArray[] = "خطأ قاعدة بيانات: البريد الإلكتروني مكرر ومسجل مسبقاً لدى مستخدم آخر / Database Error: Email address is already taken by another user.";
+                } else {
+                    $errorsArray[] = "السطر خطأ: " . $msg . " / Skipped row processing error: " . $msg;
+                }
+            }
+        }
+
+        // If there are failures, flash them to Inertia
+        if (!empty($errorsArray)) {
+            $msg = "تم استيراد {$import->successCount} سائق بنجاح. وتم تخطي بعض الأسطر بسبب وجود أخطاء.";
+            return redirect()->back()
+                ->with('success', $msg)
+                ->with('import_errors', $errorsArray);
+        }
 
         return redirect()->back()->with('success', "تم استيراد {$import->successCount} سائق بنجاح وتحديث القائمة.");
     }
+
+    public function printAll(Request $request)
+    {
+        $statusFilter = $request->input('status', 'all');
+        $search = $request->input('search');
+
+        $query = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
+            ->with(['roles', 'driver', 'assignedBus.school']);
+
+        if ($statusFilter === 'assigned') {
+            $query->whereHas('assignedBus');
+        } elseif ($statusFilter === 'available') {
+            $query->whereDoesntHave('assignedBus');
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('first_name_ar', 'like', "%{$search}%")
+                  ->orWhere('last_name_ar', 'like', "%{$search}%")
+                  ->orWhere('first_name_en', 'like', "%{$search}%")
+                  ->orWhere('last_name_en', 'like', "%{$search}%")
+                  ->orWhere('national_id', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        // Apply sorting if passed (TanStack Sync)
+        $sortColumn = $request->input('sort');
+        $sortDirection = $request->input('direction', 'desc');
+        if ($sortColumn && in_array($sortDirection, ['asc', 'desc'])) {
+            if ($sortColumn === 'name') {
+                $query->orderBy('name', $sortDirection);
+            } elseif ($sortColumn === 'national_id') {
+                $query->orderBy('national_id', $sortDirection);
+            } else {
+                $query->orderBy($sortColumn, $sortDirection);
+            }
+        } else {
+            $query->latest();
+        }
+
+        $drivers = $query->get()->map(function($driver) {
+            return [
+                'id' => $driver->id,
+                'name' => $driver->name,
+                'name_en' => $driver->name_en,
+                'first_name_ar' => $driver->first_name_ar,
+                'last_name_ar' => $driver->last_name_ar,
+                'first_name_en' => $driver->first_name_en,
+                'last_name_en' => $driver->last_name_en,
+                'national_id' => $driver->national_id,
+                'phone' => $driver->phone,
+                'email' => $driver->email,
+                'address' => $driver->address,
+                'preferred_language' => $driver->preferred_language,
+                'driver' => $driver->driver ? [
+                    'license_number' => $driver->driver->license_number,
+                    'license_expiry_date' => $driver->driver->license_expiry_date,
+                ] : null,
+                'assigned_bus' => $driver->assignedBus ? [
+                    'bus_number' => $driver->assignedBus->bus_number,
+                ] : null,
+            ];
+        });
+        $userLang = $request->input('lang') ?? auth()->user()->preferred_language ?? 'ar';
+        $isRTL = $userLang === 'ar';
+
+        return Inertia::render('Print/SharedPrintReport', [
+            'title_ar' => 'تقرير بيانات السائقين',
+            'title_en' => 'Drivers Operational Report',
+            'subtitle_ar' => 'إدارة شركة مسارات واصل',
+            'subtitle_en' => 'Masarat Wasel Company',
+            'totalLabel_ar' => 'إجمالي الكادر',
+            'totalLabel_en' => 'Total Force',
+            'columns' => [
+                ['key' => 'name', 'label_ar' => 'السائق', 'label_en' => 'Driver', 'bold' => true],
+                ['key' => 'national_id', 'label_ar' => 'الرقم المدني', 'label_en' => 'Civil ID', 'mono' => true],
+                ['key' => 'phone', 'label_ar' => 'الجوال', 'label_en' => 'Phone'],
+                ['key' => 'driver.license_number', 'label_ar' => 'رقم الرخصة', 'label_en' => 'License'],
+                ['key' => 'driver.license_expiry_date', 'label_ar' => 'تاريخ الانتهاء', 'label_en' => 'Expiry'],
+                ['key' => 'assigned_bus.bus_number', 'label_ar' => 'الباص/الحافلة', 'label_en' => 'Bus/Coach'],
+                ['key' => 'preferred_language', 'label_ar' => 'اللغة', 'label_en' => 'Language'],
+            ],
+            'data' => $drivers,
+            'printDate' => now()->format('Y-m-d H:i:s'),
+            'isRTL' => $isRTL,
+        ]);
+    }
 }
-
-
-

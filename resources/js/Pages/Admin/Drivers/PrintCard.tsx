@@ -115,7 +115,7 @@ export default function PrintCard({ driver, jobTitle = "سائق حافلة" }: 
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-4xl text-[#182436] font-black bg-white">
-                  {driver.name.charAt(0)}
+                  {(driver.name_en || driver.name).charAt(0)}
                 </div>
               )}
             </div>
@@ -138,7 +138,7 @@ export default function PrintCard({ driver, jobTitle = "سائق حافلة" }: 
             <div className="mt-7 flex flex-col items-center space-y-2.5">
               <div className="text-[14.5px] font-bold text-gray-200">
                 الاسم الموظف :{" "}
-                <span className="text-white mr-1">{driver.name}</span>
+                <span className="text-white mr-1">{driver.name_en || driver.name}</span>
               </div>
               <div className="text-[14.5px] font-bold text-gray-200">
                 المسمى الوظيفي :{" "}

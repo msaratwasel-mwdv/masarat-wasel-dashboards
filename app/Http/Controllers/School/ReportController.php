@@ -75,7 +75,7 @@ class ReportController extends Controller
             'student:id,first_name_ar,last_name_ar,first_name_en,last_name_en,student_code,national_id,forth_bus_id',
             'trip:id,bus_id,trip_date,type,departure_time,arrival_time,driver_id',
             'trip.bus:id,bus_number,plate_number',
-            'trip.driver:id,first_name_ar,last_name_ar',
+            'trip.driver:id,first_name_ar,last_name_ar,first_name_en,last_name_en',
         ])
         ->whereHas('trip', function ($q) use ($schoolId, $dateFrom, $dateTo, $busId) {
             $q->where('school_id', $schoolId)
@@ -141,7 +141,7 @@ class ReportController extends Controller
 
         $query = Trip::with([
             'bus:id,bus_number,plate_number,capacity',
-            'driver:id,first_name_ar,last_name_ar',
+            'driver:id,first_name_ar,last_name_ar,first_name_en,last_name_en',
             'route:id,name',
         ])
         ->where('school_id', $schoolId)
