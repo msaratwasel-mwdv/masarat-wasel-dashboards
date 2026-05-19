@@ -368,8 +368,7 @@ class StaffController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('first_name_ar', 'like', "%{$search}%")
+                $q->where('first_name_ar', 'like', "%{$search}%")
                   ->orWhere('last_name_ar', 'like', "%{$search}%")
                   ->orWhere('first_name_en', 'like', "%{$search}%")
                   ->orWhere('last_name_en', 'like', "%{$search}%")
@@ -384,7 +383,8 @@ class StaffController extends Controller
         $sortDirection = $request->input('direction', 'desc');
         if ($sortColumn && in_array($sortDirection, ['asc', 'desc'])) {
             if ($sortColumn === 'name') {
-                $query->orderBy('name', $sortDirection);
+                $query->orderBy('first_name_ar', $sortDirection)
+                      ->orderBy('last_name_ar', $sortDirection);
             } elseif ($sortColumn === 'national_id') {
                 $query->orderBy('national_id', $sortDirection);
             } else {

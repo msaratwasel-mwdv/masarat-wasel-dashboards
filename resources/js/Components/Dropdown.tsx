@@ -52,17 +52,19 @@ const Trigger = ({ children }: PropsWithChildren) => {
 
 const Content = ({
     align = 'right',
+    verticalAlign = 'down',
     width = '48',
     contentClasses = 'py-1 bg-white',
     children,
 }: PropsWithChildren<{
     align?: 'left' | 'right';
+    verticalAlign?: 'down' | 'up';
     width?: '32' | '40' | '48' | string;
     contentClasses?: string;
 }>) => {
     const { open, setOpen } = useContext(DropDownContext);
 
-    let alignmentClasses = 'origin-top';
+    let alignmentClasses = '';
 
     if (align === 'left') {
         alignmentClasses = 'ltr:origin-top-left rtl:origin-top-right start-0';
@@ -82,6 +84,10 @@ const Content = ({
         widthClasses = 'w-' + width;
     }
 
+    const verticalClasses = verticalAlign === 'up' 
+        ? 'bottom-full mb-1.5 origin-bottom' 
+        : 'mt-2 origin-top';
+
     return (
         <>
             <Transition
@@ -94,7 +100,7 @@ const Content = ({
                 leaveTo="opacity-0 scale-95"
             >
                 <div
-                    className={`absolute z-50 mt-2 rounded-md shadow-lg ${alignmentClasses} ${widthClasses}`}
+                    className={`absolute z-50 rounded-md shadow-lg ${verticalClasses} ${alignmentClasses} ${widthClasses}`}
                     onClick={() => setOpen(false)}
                 >
                     <div

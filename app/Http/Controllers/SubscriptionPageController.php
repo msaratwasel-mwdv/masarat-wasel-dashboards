@@ -61,12 +61,8 @@ class SubscriptionPageController extends Controller
             // Create User
             $user = User::create([
                 'first_name_ar' => $firstNameAr,
-                'second_name_ar' => $secondNameAr,
-                'third_name_ar' => $thirdNameAr,
                 'last_name_ar' => $lastNameAr,
                 'first_name_en' => $firstNameEn,
-                'second_name_en' => $secondNameEn,
-                'third_name_en' => $thirdNameEn,
                 'last_name_en' => $lastNameEn,
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),

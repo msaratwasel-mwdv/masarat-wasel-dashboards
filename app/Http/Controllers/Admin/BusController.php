@@ -27,8 +27,8 @@ class BusController extends Controller
 
         // 1. Base query for buses
         $query = Bus::withStudentsCount()->with([
-            'driver.user:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,image',
-            'assistant:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,image',
+            'driver.user:id,first_name_ar,last_name_ar,image',
+            'assistant:id,first_name_ar,last_name_ar,image',
             'school:id,name',
             'route:id,name,code',
             'documents',
@@ -91,7 +91,7 @@ class BusController extends Controller
         $assignedDriverIds = Bus::whereNotNull('driver_id')->pluck('driver_id')->toArray();
         $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
             ->whereNotIn('id', $assignedDriverIds)
-            ->select('id', 'first_name_ar', 'second_name_ar', 'third_name_ar', 'last_name_ar', 'national_id')
+            ->select('id', 'first_name_ar', 'last_name_ar', 'national_id')
             ->get();
 
 
@@ -99,7 +99,7 @@ class BusController extends Controller
         $assignedAssistantIds = Bus::whereNotNull('assistant_id')->pluck('assistant_id')->toArray();
         $assistants = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
             ->whereNotIn('id', $assignedAssistantIds)
-            ->select('id', 'first_name_ar', 'second_name_ar', 'third_name_ar', 'last_name_ar', 'national_id')
+            ->select('id', 'first_name_ar', 'last_name_ar', 'national_id')
             ->get();
 
         // 6. جلب المدارس النشطة

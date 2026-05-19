@@ -26,10 +26,10 @@ class AttendanceController extends Controller
         $query = Attendance::whereHas('student', function ($q) {
             $q->inSchool(Auth::user()->getSchoolId());
         })->with([
-            'student.guardian:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,phone,national_id',
+            'student.guardian:id,first_name_ar,last_name_ar,phone,national_id',
             'student.currentEnrollment.classroom', // Fetch enrollment to get class
-            'student:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,national_id,student_code', 
-            'student.currentEnrollment.classroom.teacher:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,national_id'
+            'student:id,first_name_ar,last_name_ar,national_id,student_code', 
+            'student.currentEnrollment.classroom.teacher:id,first_name_ar,last_name_ar,national_id'
         ]);
 
         if ($request->has('student_id') && $request->student_id) {

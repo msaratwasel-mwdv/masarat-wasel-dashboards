@@ -59,12 +59,8 @@ class SchoolUsersExport implements FromCollection, WithHeadings, WithMapping, Sh
 
         return [
             $row->first_name_ar,
-            $row->second_name_ar,
-            $row->third_name_ar,
             $row->last_name_ar,
             $row->first_name_en,
-            $row->second_name_en,
-            $row->third_name_en,
             $row->last_name_en,
             $row->national_id ? ' ' . $row->national_id : '',
             $row->phone ? ' ' . $row->phone : '',

@@ -15,7 +15,7 @@ import {
   DS_pageWrapper, DS_pageTitle, DS_card, DS_tableWrapper, DS_tableBase,
   DS_tableHead, DS_tableTh, DS_tableRow, DS_tableTd, DS_searchInput, DS_avatar,
   DS_modalContainer, DS_modalHeader, DS_modalHeaderTitle, DS_modalHeaderAccent,
-  DS_modalClose, DS_modalBody, DS_modalFooter, DS_input, DS_label,
+  DS_modalClose, DS_modalBody, DS_modalFooter, DS_input, DS_select, DS_label,
   DS_btnPrimary, DS_btnGold, DS_btnSecondary, DS_btnEdit, DS_btnDanger,
   DS_sectionHeader, DS_confirmModal, DS_cancelBtn, DS_badge, DS_labelCls
 } from "@/lib/DS";
@@ -253,7 +253,7 @@ export default function DriversIndex({ auth, drivers, filters }: any) {
         {/* --- View Details Modal --- */}
         <AnimatePresence>
             {showDetailsModal && selectedDriver && (
-                <Modal show={showDetailsModal} onClose={() => setShowDetailsModal(false)} maxWidth="2xl">
+                <Modal show={showDetailsModal} onClose={() => setShowDetailsModal(false)} maxWidth="3xl">
                     <div className={DS_modalHeader(isRTL)}>
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-white/20 rounded-[12px] overflow-hidden flex items-center justify-center border border-white/10">
@@ -369,7 +369,7 @@ export default function DriversIndex({ auth, drivers, filters }: any) {
         </AnimatePresence>
 
         {/* --- Edit Modal --- */}
-        <Modal show={isModalOpen} onClose={closeModal} maxWidth="3xl">
+        <Modal show={isModalOpen} onClose={closeModal} maxWidth="4xl">
             <div className={DS_modalContainer}>
                 <div className={DS_modalHeader(isRTL)}>
                     <div className="flex items-center gap-3">

@@ -12,7 +12,7 @@ use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-class FieldSupervisorsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithColumnFormatting
+class GuardiansExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithColumnFormatting
 {
     protected $isTemplate;
     public function __construct($isTemplate = false) { $this->isTemplate = $isTemplate; }
@@ -20,13 +20,13 @@ class FieldSupervisorsExport implements FromCollection, WithHeadings, WithMappin
     public function collection()
     {
         if ($this->isTemplate) return collect([[]]);
-        return User::whereHas('roles', fn($q) => $q->where('name', 'field_supervisor'))->with('fieldSupervisor')->get();
+        return User::whereHas('roles', fn($q) => $q->where('name', 'parent'))->with('guardian')->get();
     }
 
     public function headings(): array
     {
         return [
-            ['ملاحظة هامة: الأعمدة الملونة باللون الأزرق إجبارية (يجب تعبئتها)، بينما الأعمدة باللون الأبيض اختيارية. يجب تعبئة إما الاسم العربي أو الإنجليزي.'],
+            ['ملاحظة هامة: الأعمدة الملونة باللون الأزرق إجبارية. يجب تعبئة إما الاسم العربي أو الإنجليزي.'],
             ['الاسم الأول (عربي)','الاسم الأخير (عربي)','الاسم الأول (انجليزي)','الاسم الأخير (انجليزي)','الرقم المدني','رقم الجوال','البريد الإلكتروني','العنوان','اللغة المفضلة']
         ];
     }

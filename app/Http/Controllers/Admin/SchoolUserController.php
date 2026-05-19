@@ -34,9 +34,21 @@ class SchoolUserController extends Controller
             return $paginated;
         }
 
+        $counts = \Illuminate\Support\Facades\Cache::remember('school_user_counts', 600, function() {
+            $ids = DB::table('user_roles')->join('roles','user_roles.role_id','=','roles.id')
+                ->where('roles.name','school_admin')->pluck('user_roles.user_id');
+            $activeCount = DB::table('school_admins')->whereIn('user_id',$ids)->where('status','active')->count();
+            $total = $ids->count();
+            return ['all'=>$total,'active'=>$activeCount,'inactive'=>$total-$activeCount];
+        });
+
         return Inertia::render('Admin/SchoolUsers/Index', [
             'users' => $paginated,
-            'filters' => $request->only(['search']),
+            'counts' => $counts,
+            'filters' => [
+                'search' => $request->input('search', ''),
+                'status' => $request->input('status', 'all')
+            ],
             'schools' => School::select('id', 'name')->orderBy('name')->get()
         ]);
     }
@@ -72,12 +84,8 @@ class SchoolUserController extends Controller
 
             $user = User::create([
                 'first_name_ar' => $ar[0],
-                'second_name_ar' => $ar[1],
-                'third_name_ar' => $ar[2],
                 'last_name_ar' => $ar[3] ?: $ar[0],
                 'first_name_en' => $en[0],
-                'second_name_en' => $en[1],
-                'third_name_en' => $en[2],
                 'last_name_en' => $en[3] ?: $en[0],
                 'email' => $request->email,
                 'phone' => $request->phone,
@@ -107,12 +115,8 @@ class SchoolUserController extends Controller
         
         $updateData = [
             'first_name_ar' => $ar[0],
-            'second_name_ar' => $ar[1],
-            'third_name_ar' => $ar[2],
             'last_name_ar' => $ar[3] ?: $ar[0],
             'first_name_en' => $en[0],
-            'second_name_en' => $en[1],
-            'third_name_en' => $en[2],
             'last_name_en' => $en[3] ?: $en[0],
             'email' => $request->email,
             'phone' => $request->phone,
