@@ -63,7 +63,14 @@ export default function PrintCard({ student }: Props) {
     return `${currentStorageUrl}/${cleanPath}`;
   };
 
-  const qrData = `STUDENT-${student.student_code || student.national_id}`;
+  const code = student.student_code || "";
+  const nameAr = student.full_name || "";
+  const nameEn = student.full_name_en || "";
+
+  const cleanNameAr = (nameAr.trim() && nameAr !== code) ? nameAr : "";
+  const cleanNameEn = (nameEn.trim() && nameEn !== code) ? nameEn : "";
+
+  const qrData = `STUDENT-${code || student.national_id}`;
   const className = student.current_enrollment?.classroom?.name || "—";
 
   // Formatting dates for display
@@ -77,7 +84,7 @@ export default function PrintCard({ student }: Props) {
 
   return (
     <>
-      <Head title={`طباعة بطاقة - ${student.full_name}`} />
+      <Head title={`طباعة بطاقة - ${cleanNameAr || cleanNameEn || code}`} />
 
       {/* Print Override Styles */}
       <style>{`
@@ -124,12 +131,17 @@ export default function PrintCard({ student }: Props) {
                 {student.current_enrollment?.classroom?.school?.name || ""}
               </span>
               {student.current_enrollment?.classroom?.school?.logo_url && (
-                <img
-                  src={student.current_enrollment.classroom.school.logo_url}
-                  alt="School Logo"
-                  className="w-12 h-12 object-contain rounded-lg bg-white/10 p-1 shrink-0"
-                  crossOrigin="anonymous"
-                />
+                <div 
+                  className="w-10 h-10 rounded-lg flex items-center justify-center p-1 shrink-0 bg-white"
+                  style={{ backgroundColor: '#ffffff', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}
+                >
+                  <img
+                    src={student.current_enrollment.classroom.school.logo_url}
+                    alt="School Logo"
+                    className="w-full h-full object-contain"
+                    crossOrigin="anonymous"
+                  />
+                </div>
               )}
             </div>
           </div>
@@ -159,7 +171,7 @@ export default function PrintCard({ student }: Props) {
                 />
               ) : (
                 <div className="w-full h-full rounded-full flex items-center justify-center text-3xl text-[#1f285c] font-black bg-gray-100">
-                  {student.full_name.charAt(0)}
+                  {(cleanNameAr || cleanNameEn || "—").charAt(0)}
                 </div>
               )}
             </div>
@@ -177,11 +189,11 @@ export default function PrintCard({ student }: Props) {
                   className="text-[12px] font-black text-[#1f285c] leading-tight w-full truncate"
                   dir="rtl"
                 >
-                  {student.full_name}
+                  {cleanNameAr || cleanNameEn || "—"}
                 </span>
-                {student.full_name_en && (
+                {cleanNameEn && cleanNameEn !== cleanNameAr && (
                   <span className="text-[8.5px] font-bold text-gray-500 uppercase leading-tight mt-0.5 w-full truncate">
-                    {student.full_name_en}
+                    {cleanNameEn}
                   </span>
                 )}
               </div>
@@ -190,24 +202,6 @@ export default function PrintCard({ student }: Props) {
                 dir="rtl"
               >
                 {student.gender == "male" ? "اسم الطالب:" : "اسم الطالبة:"}
-              </div>
-            </div>
-
-            {/* Student ID */}
-            <div className="flex items-center justify-between border-b border-gray-100 pb-1">
-              <div className="w-[75px] text-[8.5px] font-bold text-gray-400 text-left uppercase tracking-wide">
-                Student ID:
-              </div>
-              <div className="flex-1 px-1 flex items-center justify-center text-center">
-                <span className="text-[11px] font-black text-[#1f285c] font-mono">
-                  {student.student_code || student.national_id}
-                </span>
-              </div>
-              <div
-                className="w-[75px] text-[10px] font-black text-gray-500 text-right"
-                dir="rtl"
-              >
-                رقم البطاقة:
               </div>
             </div>
 
@@ -280,7 +274,7 @@ export default function PrintCard({ student }: Props) {
           </div>
 
           {/* QR Code Section */}
-          <div className="flex-1 flex justify-center items-center relative z-20 mt-1 mb-2">
+          <div className="flex-1 flex justify-center items-center relative z-20 mt-1 mb-8">
             <div className="p-1.5 bg-white border-[3px] border-[#f5db68] rounded-xl shadow-sm">
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(

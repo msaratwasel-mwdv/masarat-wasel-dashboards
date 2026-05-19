@@ -124,13 +124,13 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::resource('assistants', AssistantController::class)->except(['create', 'edit', 'show']);
 
         // المشرفين الميدانيين
+        Route::get('field-supervisors/print-all', [\App\Http\Controllers\Admin\FieldSupervisorController::class, 'printAll'])->name('field-supervisors.print-all');
         Route::get('field-supervisors/export', [\App\Http\Controllers\Admin\FieldSupervisorController::class, 'export'])->name('field-supervisors.export');
         Route::get('field-supervisors/template', [\App\Http\Controllers\Admin\FieldSupervisorController::class, 'downloadTemplate'])->name('field-supervisors.template');
         Route::post('field-supervisors/import', [\App\Http\Controllers\Admin\FieldSupervisorController::class, 'import'])->name('field-supervisors.import');
         Route::resource('field-supervisors', \App\Http\Controllers\Admin\FieldSupervisorController::class)
             ->parameters(['field-supervisors' => 'field_supervisor'])
             ->except(['create', 'edit', 'show']);
-
         // الحافلات - شامل جميع الوظائف
         Route::resource('buses', BusController::class);
         Route::post('buses/{bus}/assign', [BusController::class, 'assignToSchool'])->name('buses.assign');
@@ -225,11 +225,20 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::resource('classrooms', ClassroomController::class);
 
         // 3. إدارة المعلمين والمشرفين
+        Route::get('teachers/print-all', [TeacherController::class, 'printAll'])->name('teachers.print-all');
+        Route::get('teachers/export', [TeacherController::class, 'export'])->name('teachers.export');
+        Route::get('teachers/template', [TeacherController::class, 'downloadTemplate'])->name('teachers.template');
+        Route::post('teachers/import', [TeacherController::class, 'import'])->name('teachers.import');
         Route::resource('teachers', TeacherController::class)->except(['show']);
         Route::resource('supervisors', \App\Http\Controllers\School\SupervisorController::class)->except(['show']);
 
         // 4. إدارة الطلاب
         Route::get('students-api', [StudentController::class, 'apiIndex'])->name('students.api');
+        
+        Route::get('students/export/all', [StudentController::class, 'export'])->name('students.export');
+        Route::get('students/export/template', [StudentController::class, 'downloadTemplate'])->name('students.template');
+        Route::post('students/import/all', [StudentController::class, 'import'])->name('students.import');
+        
         Route::resource('students', StudentController::class);
         Route::post('students/{student}/update', [StudentController::class, 'update'])->name('students.update_post');
         Route::get('students/{student}/print', [StudentController::class, 'printCard'])->name('students.print');
@@ -238,6 +247,10 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::post('guardians', [StudentController::class, 'storeGuardian'])->name('guardians.store');
 
         // إدارة أولياء الأمور
+        Route::get('parents/export', [\App\Http\Controllers\School\GuardianController::class, 'export'])->name('parents.export');
+        Route::get('parents/template', [\App\Http\Controllers\School\GuardianController::class, 'downloadTemplate'])->name('parents.template');
+        Route::post('parents/import', [\App\Http\Controllers\School\GuardianController::class, 'import'])->name('parents.import');
+        
         Route::resource('parents', \App\Http\Controllers\School\GuardianController::class)
             ->parameters(['parents' => 'parent'])
             ->except(['create', 'edit', 'show']);

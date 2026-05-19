@@ -86,6 +86,7 @@ export interface BaseDataTableProps<T> {
   // Inline Expansion
   renderExpandedRow?: (data: T) => React.ReactNode;
   expandedRowId?: string | number | null;
+  hideCard?: boolean;
 }
 
 // ─── Skeleton Row ────────────────────────────────────────────────
@@ -208,6 +209,7 @@ export default function BaseDataTable<T extends { id?: number | string }>({
   exportEnabled = false,
   renderExpandedRow,
   expandedRowId,
+  hideCard = false,
 }: BaseDataTableProps<T>) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
@@ -233,7 +235,7 @@ export default function BaseDataTable<T extends { id?: number | string }>({
   const colCount = columns.length;
 
   return (
-    <div className={DS_card}>
+    <div className={hideCard ? "" : DS_card}>
       {/* ── Toolbar: Search + Filters + Actions ── */}
       {(title || headerAction || exportEnabled || filterTabs || onSearchChange) && (
         <div className={DS_sectionHeader(isRTL)}>

@@ -43,12 +43,8 @@ class AssistantController extends Controller
                     'plate_number' => $assistant->assignedBusAsAssistant?->plate_number,
                     'image' => $assistant->image,
                     'first_name_ar' => $assistant->first_name_ar,
-                    'second_name_ar' => $assistant->second_name_ar,
-                    'third_name_ar' => $assistant->third_name_ar,
                     'last_name_ar' => $assistant->last_name_ar,
                     'first_name_en' => $assistant->first_name_en,
-                    'second_name_en' => $assistant->second_name_en,
-                    'third_name_en' => $assistant->third_name_en,
                     'last_name_en' => $assistant->last_name_en,
                     'address' => $assistant->address,
                     'id_card_front_image' => $assistant->assistant?->id_card_front_image,
@@ -73,12 +69,8 @@ class AssistantController extends Controller
 
         $request->validate([
             'first_name_ar' => 'required|string|max:255',
-            'second_name_ar' => 'nullable|string|max:255',
-            'third_name_ar' => 'nullable|string|max:255',
             'last_name_ar' => 'required|string|max:255',
             'first_name_en' => 'nullable|string|max:255',
-            'second_name_en' => 'nullable|string|max:255',
-            'third_name_en' => 'nullable|string|max:255',
             'last_name_en' => 'nullable|string|max:255',
             'national_id' => ['required', 'numeric', \Illuminate\Validation\Rule::unique('users')->ignore($assistant->id)],
             'email' => ['required', 'email', \Illuminate\Validation\Rule::unique('users')->ignore($assistant->id)],
@@ -95,12 +87,8 @@ class AssistantController extends Controller
         \Illuminate\Support\Facades\DB::transaction(function () use ($request, $assistant) {
             $data = [
                 'first_name_ar' => $request->first_name_ar,
-                'second_name_ar' => $request->second_name_ar ?? '',
-                'third_name_ar' => $request->third_name_ar ?? '',
                 'last_name_ar' => $request->last_name_ar,
                 'first_name_en' => $request->first_name_en ?? '',
-                'second_name_en' => $request->second_name_en ?? '',
-                'third_name_en' => $request->third_name_en ?? '',
                 'last_name_en' => $request->last_name_en ?? '',
                 'national_id' => $request->national_id,
                 'email' => $request->email,

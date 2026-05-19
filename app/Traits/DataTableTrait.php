@@ -82,7 +82,15 @@ trait DataTableTrait
         $sortColumn = $request->input('sort');
         $sortDirection = $request->input('direction', 'desc');
         if ($sortColumn && in_array($sortDirection, ['asc', 'desc'])) {
-            $query->orderBy($sortColumn, $sortDirection);
+            if ($sortColumn === 'name') {
+                $query->orderBy('first_name_ar', $sortDirection)
+                      ->orderBy('last_name_ar', $sortDirection);
+            } elseif ($sortColumn === 'name_en') {
+                $query->orderBy('first_name_en', $sortDirection)
+                      ->orderBy('last_name_en', $sortDirection);
+            } else {
+                $query->orderBy($sortColumn, $sortDirection);
+            }
         } else {
             $query->latest();
         }

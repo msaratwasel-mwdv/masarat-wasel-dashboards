@@ -52,9 +52,13 @@ class GuardianController extends Controller
             ->get()
             ->map(function ($user) {
                 return [
-                    'id'           => $user->id,
-                    'name'         => $user->name,
-                    'name_en'            => $user->name_en,
+                    'id'                 => $user->id,
+                    'first_name_ar'      => $user->first_name_ar,
+                    'last_name_ar'       => $user->last_name_ar,
+                    'first_name_en'      => $user->first_name_en,
+                    'last_name_en'       => $user->last_name_en,
+                    'name'               => $user->name ?? trim("{$user->first_name_ar} {$user->last_name_ar}"),
+                    'name_en'            => $user->name_en ?? trim("{$user->first_name_en} {$user->last_name_en}"),
                     'national_id'        => $user->national_id,
                     'phone'              => $user->phone,
                     'email'              => $user->email,
@@ -97,8 +101,10 @@ class GuardianController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'               => 'required|string|max:255',
-            'name_en'            => 'nullable|string|max:255',
+            'first_name_ar'      => 'required|string|max:255',
+            'last_name_ar'       => 'required|string|max:255',
+            'first_name_en'      => 'required|string|max:255',
+            'last_name_en'       => 'required|string|max:255',
             'national_id'        => 'required|string|max:50|unique:users,national_id',
             'phone'              => 'required|string|max:50|unique:users,phone',
             'email'              => 'nullable|email|max:255|unique:users,email',
@@ -109,18 +115,11 @@ class GuardianController extends Controller
         ]);
 
         DB::transaction(function () use ($validated, $request) {
-            $nameParts   = User::parseFullName($validated['name'] ?? '');
-            $enNameParts = User::parseFullName($validated['name_en'] ?? $validated['name']);
-
             $user = User::create([
-                'first_name_ar'      => $nameParts[0],
-                'second_name_ar'     => $nameParts[1],
-                'third_name_ar'      => $nameParts[2],
-                'last_name_ar'       => $nameParts[3],
-                'first_name_en'      => $enNameParts[0],
-                'second_name_en'     => $enNameParts[1],
-                'third_name_en'      => $enNameParts[2],
-                'last_name_en'       => $enNameParts[3],
+                'first_name_ar'      => $validated['first_name_ar'],
+                'last_name_ar'       => $validated['last_name_ar'],
+                'first_name_en'      => $validated['first_name_en'],
+                'last_name_en'       => $validated['last_name_en'],
                 'national_id'        => $validated['national_id'],
                 'phone'              => preg_replace('/\s+/', '', $validated['phone']),
                 'email'              => $validated['email'] ?? null,
@@ -148,8 +147,10 @@ class GuardianController extends Controller
     public function update(Request $request, User $parent)
     {
         $validated = $request->validate([
-            'name'               => 'required|string|max:255',
-            'name_en'            => 'nullable|string|max:255',
+            'first_name_ar'      => 'required|string|max:255',
+            'last_name_ar'       => 'required|string|max:255',
+            'first_name_en'      => 'required|string|max:255',
+            'last_name_en'       => 'required|string|max:255',
             'national_id'        => ['required', 'string', 'max:50', Rule::unique('users', 'national_id')->ignore($parent->id)],
             'phone'              => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($parent->id)],
             'email'              => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($parent->id)],
@@ -160,18 +161,11 @@ class GuardianController extends Controller
         ]);
 
         DB::transaction(function () use ($validated, $parent, $request) {
-            $nameParts   = User::parseFullName($validated['name']);
-            $enNameParts = User::parseFullName($validated['name_en'] ?? $validated['name']);
-
             $parent->update([
-                'first_name_ar'      => $nameParts[0],
-                'second_name_ar'     => $nameParts[1],
-                'third_name_ar'      => $nameParts[2],
-                'last_name_ar'       => $nameParts[3],
-                'first_name_en'      => $enNameParts[0],
-                'second_name_en'     => $enNameParts[1],
-                'third_name_en'      => $enNameParts[2],
-                'last_name_en'       => $enNameParts[3],
+                'first_name_ar'      => $validated['first_name_ar'],
+                'last_name_ar'       => $validated['last_name_ar'],
+                'first_name_en'      => $validated['first_name_en'],
+                'last_name_en'       => $validated['last_name_en'],
                 'national_id'        => $validated['national_id'],
                 'phone'              => preg_replace('/\s+/', '', $validated['phone']),
                 'email'              => $validated['email'] ?? null,
@@ -212,7 +206,7 @@ class GuardianController extends Controller
                         $q->atSchool($schoolId);
                     })->pluck('students.id');
 
-                // إلغاء ربط هؤلاء الطلاب بولي الأمر
+                // إلغ إلغاء ربط هؤلاء الطلاب بولي الأمر
                 if ($studentsInSchool->isNotEmpty()) {
                     $parent->students()->detach($studentsInSchool);
                 }
@@ -251,5 +245,36 @@ class GuardianController extends Controller
     {
         $parent->students()->detach($student->id);
         return redirect()->back()->with('success', 'Student detached successfully.');
+    }
+
+    public function export()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\GuardiansExport(false), 'parents.xlsx');
+    }
+
+    public function downloadTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\GuardiansExport(true), 'parents_template.xlsx');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate(['file'=>'required|mimes:xlsx,xls,csv|max:10240']);
+        $import = new \App\Imports\GuardiansImport();
+        try { \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file')); }
+        catch (\Throwable $e) { return redirect()->back()->with('import_errors',["فشل في معالجة ملف الاستيراد: ".$e->getMessage()]); }
+        $errorsArray = [];
+        if ($import->failures()->isNotEmpty()) {
+            $ca = (new \App\Imports\GuardiansImport())->customValidationAttributes();
+            foreach ($import->failures() as $f) {
+                $ok = array_search($f->attribute(),$ca); $cn = $ok===false?($ca[$f->attribute()]??$f->attribute()):$f->attribute();
+                $bv = $f->values()[$ok===false?$f->attribute():$ok]??'فارغة (Empty)';
+                if (is_scalar($bv)&&trim((string)$bv)==='') $bv='فارغة (Empty)'; if ($bv===null) $bv='فارغة (Empty)';
+                $errorsArray[]="السطر {$f->row()} | العمود: [{$cn}] | القيمة: ({$bv}) | الخطأ: ".implode(' | ',$f->errors());
+            }
+        }
+        if ($import->errors()->isNotEmpty()) { foreach ($import->errors() as $e) { $errorsArray[]="خطأ: ".$e->getMessage(); } }
+        if (!empty($errorsArray)) return redirect()->back()->with('success',"تم استيراد {$import->successCount} ولي أمر بنجاح.")->with('import_errors',$errorsArray);
+        return redirect()->back()->with('success',"تم استيراد {$import->successCount} ولي أمر بنجاح وتحديث القائمة.");
     }
 }

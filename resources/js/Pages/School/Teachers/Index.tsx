@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import debounce from "lodash/debounce";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
-import { Head, useForm, router } from "@inertiajs/react";
+import { Head, useForm, router, usePage } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
 import InputError from "@/Components/InputError";
 import useTranslation from "@/hooks/useTranslation";
@@ -9,10 +9,13 @@ import PrintReportHeader from "@/Components/PrintReportHeader";
 import { motion } from "framer-motion";
 import { 
   Users, CheckCircle2, UserX, UserPlus, Printer, X, GraduationCap, Edit2, Trash2,
-  Eye, MoreVertical, Phone, Mail, Fingerprint, AlertTriangle
+  Eye, MoreVertical, Phone, Mail, Fingerprint, AlertTriangle, ArrowLeft, CreditCard,
+  Upload, Download, Loader2, Search
 } from "lucide-react";
 import Dropdown from "@/Components/Dropdown";
 import Toggle from "@/Components/Toggle";
+import BaseDataTable, { type FilterTab } from "@/Components/BaseDataTable";
+import { createColumnHelper } from "@tanstack/react-table";
 import {
   DS_card, DS_pageWrapper, DS_pageTitle, DS_statLabel, DS_statValue,
   DS_avatar, DS_tableWrapper, DS_tableBase, DS_tableHead, DS_tableRow, DS_tableTd,
@@ -43,6 +46,8 @@ interface Teacher {
   image?: string | null;
   grade_id?: number | null;
   grade_name?: string | null;
+  preferred_language?: string | null;
+  address?: string | null;
 }
 
 interface Grade {
@@ -65,13 +70,61 @@ const PRINT_STYLES = `
   body * { visibility: hidden !important; }
   main { margin: 0 !important; position: static !important; }
   #print-area, #print-area * { visibility: visible !important; }
-  #print-area { position: absolute; inset: 0; width: 100%; padding: 20px; background: white; }
+  #print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    padding: 30px 24px;
+    background: white !important;
+    color: black !important;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  }
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 8px 12px !important;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 10px !important;
+  }
+  th {
+    background-color: #f8fafc !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+  }
+  tr:nth-child(even) {
+    background-color: #f8fafc !important;
+  }
 }
 `;
+
+// Helper functions for dynamic name translations with fallbacks
+const getTeacherDisplayName = (teacher: any, isRtl: boolean): string => {
+  const nameAr = teacher.name || "";
+  const nameEn = teacher.name_en || "";
+  if (isRtl) {
+    return nameAr.trim() ? nameAr : (nameEn.trim() ? nameEn : "—");
+  } else {
+    return nameEn.trim() ? nameEn : (nameAr.trim() ? nameAr : "—");
+  }
+};
+
+const getTeacherAlternateName = (teacher: any, isRtl: boolean): string => {
+  const nameAr = teacher.name || "";
+  const nameEn = teacher.name_en || "";
+  if (isRtl) {
+    return nameEn.trim() && nameEn !== nameAr ? nameEn : "";
+  } else {
+    return nameAr.trim() && nameAr !== nameEn ? nameAr : "";
+  }
+};
 
 // ─── Component ───────────────────────────────────────────────────
 export default function TeachersIndex({ auth, teachers, counts, grades = [], filters }: Props) {
   const { t, isRtl } = useTranslation();
+  const { flash } = usePage().props as any;
 
   const [search, setSearch] = useState(filters.search || "");
   const [activeFilter, setActiveFilter] = useState("all");
@@ -83,24 +136,34 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Import / Export State
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const {
+    data: importData,
+    setData: setImportData,
+    post: postImport,
+    errors: importErrors,
+    reset: resetImport
+  } = useForm({
+    file: null as File | null
+  });
+
   const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
     _method: "post" as "post" | "put",
     first_name_ar: "",
-    second_name_ar: "",
-    third_name_ar: "",
     last_name_ar: "",
     first_name_en: "",
-    second_name_en: "",
-    third_name_en: "",
     last_name_en: "",
     national_id: "",
     email: "",
     phone: "",
-    password: "",
     is_active: true,
     image: null as File | null,
     remove_image: false,
     grade_id: "" as string | number,
+    preferred_language: "ar",
+    address: "",
   });
 
   // ── Debounced Search ──────────────────────────────────────────
@@ -141,21 +204,18 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
     setData({
       _method: "put",
       first_name_ar: teacher.first_name_ar || "",
-      second_name_ar: teacher.second_name_ar || "",
-      third_name_ar: teacher.third_name_ar || "",
       last_name_ar: teacher.last_name_ar || "",
       first_name_en: teacher.first_name_en || "",
-      second_name_en: teacher.second_name_en || "",
-      third_name_en: teacher.third_name_en || "",
       last_name_en: teacher.last_name_en || "",
       national_id: teacher.national_id || "",
       email: teacher.email || "",
       phone: teacher.phone || "",
-      password: "",
       is_active: !!teacher.is_active,
       image: null,
       remove_image: false,
       grade_id: teacher.grade_id || "",
+      preferred_language: teacher.preferred_language || "ar",
+      address: teacher.address || "",
     });
     setPreviewImage(teacher.image ? `/storage/${teacher.image}` : null);
     clearErrors();
@@ -219,18 +279,148 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
     }
   };
 
+  // Export & Import Handlers
+  const handleExport = () => {
+    window.location.href = route('school.teachers.export');
+  };
+  const handleDownloadTemplate = () => {
+    window.location.href = route('school.teachers.template');
+  };
+  const handleImportSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsImporting(true);
+    postImport(route('school.teachers.import'), {
+      preserveScroll: true,
+      forceFormData: true,
+      onSuccess: () => {
+        setShowImportModal(false);
+        resetImport();
+      },
+      onFinish: () => setIsImporting(false)
+    });
+  };
+
   const filterBtns = [
     { key: "all",      label: t("All"),      count: counts.all },
     { key: "active",   label: t("Active"),   count: counts.active },
     { key: "inactive", label: t("Inactive"), count: counts.inactive },
   ];
 
-  const tableHeaders = [
-    t("Teacher"), t("Civil ID"), t("Phone Number"), t("Email"),
-    t("Grade Responsible For"), t("Status"), t("Actions"),
-  ];
+  const columnHelper = createColumnHelper<Teacher>();
+  const columns = useMemo(() => [
+    columnHelper.accessor("name", {
+      header: t("Teacher"),
+      cell: (info) => {
+        const teacher = info.row.original;
+        return (
+          <div className="flex items-center gap-3">
+            <div className={DS_avatar}>
+              {teacher.image ? (
+                <img
+                  src={`/storage/${teacher.image}`}
+                  alt={teacher.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                getTeacherDisplayName(teacher, isRtl).charAt(0)
+              )}
+            </div>
+            <div className={isRtl ? "text-right" : "text-left"}>
+              <p className="font-semibold text-[#0f2044] dark:text-white">
+                {getTeacherDisplayName(teacher, isRtl)}
+              </p>
+              {getTeacherAlternateName(teacher, isRtl) ? (
+                <p className="text-xs text-gray-400">
+                  {getTeacherAlternateName(teacher, isRtl)}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor("national_id", {
+      header: t("Civil ID"),
+      cell: (info) => (
+        <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+          {info.getValue()}
+        </span>
+      ),
+    }),
+    columnHelper.accessor("phone", {
+      header: t("Phone Number"),
+      cell: (info) => (
+        <span className="font-mono text-gray-700 dark:text-gray-300 text-xs">
+          {info.getValue()}
+        </span>
+      ),
+    }),
+    columnHelper.accessor("email", {
+      header: t("Email"),
+      cell: (info) => (
+        <span className="text-gray-500 dark:text-gray-400 text-xs">
+          {info.getValue() || "—"}
+        </span>
+      ),
+    }),
+    columnHelper.accessor("grade_name", {
+      header: t("Grade Responsible For"),
+      cell: (info) => {
+        const name = info.getValue();
+        return name ? (
+          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#0f2044]/[0.07] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8]">
+            {name}
+          </span>
+        ) : (
+          <span className="text-gray-400 dark:text-gray-600 text-xs italic">
+            {t("No Grade Assigned")}
+          </span>
+        );
+      },
+    }),
+    columnHelper.accessor("is_active", {
+      header: t("Status"),
+      cell: (info) => (
+        <span className={DS_badge(info.getValue())}>
+          {info.getValue() ? t("Active") : t("Inactive")}
+        </span>
+      ),
+    }),
+    columnHelper.display({
+      id: "actions",
+      header: t("Actions"),
+      cell: (info) => {
+        const teacher = info.row.original;
+        return (
+          <div className={`flex gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
+            <button
+              onClick={() => openView(teacher)}
+              className={DS_btnEdit}
+              title={t("View Record")}
+            >
+              <Eye size={14} />
+            </button>
+            <button
+              onClick={() => openEdit(teacher)}
+              className={DS_btnEdit}
+              title={t("Edit")}
+            >
+              <Edit2 size={14} />
+            </button>
+            <button
+              onClick={() => confirmDelete(teacher)}
+              className={DS_btnDanger}
+              title={t("Delete")}
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        );
+      },
+    }),
+  ], [isRtl, t]);
 
-  const printHeaders = ["#", t("Teacher"), t("Civil ID"), t("Phone Number"), t("Grade Responsible For"), t("Status")];
+  const printHeaders = ["#", t("Teacher"), t("Civil ID"), t("Phone Number"), t("Grade Responsible For"), t("Preferred Language")];
 
   return (
     <SchoolAuthenticatedLayout
@@ -241,12 +431,12 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
       <style>{PRINT_STYLES}</style>
 
       {/* ── Print Area ─────────────────────────────────────────────── */}
-      <div id="print-area" className="hidden print:block bg-white font-sans text-black w-full" dir="rtl">
+      <div id="print-area" className="hidden print:block bg-white font-sans text-black w-full" dir={isRtl ? "rtl" : "ltr"}>
         <PrintReportHeader
           title={t("Teachers Report")}
-          schoolName={auth.user?.school?.name || t("School name not available")}
-          schoolLogo={auth.user?.school?.logo || null}
-          printDate={`${t("Print Date")}: ${new Date().toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })}`}
+          schoolName=""
+          schoolLogo={null}
+          printDate={`${t("Print Date")}: ${new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric" })}`}
           schoolAdminText={t("School Admin")}
         />
         <div className="px-4">
@@ -254,7 +444,7 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
             <thead>
               <tr className="bg-gray-100">
                 {printHeaders.map((h, i) => (
-                  <th key={i} className={`border border-gray-300 p-2 text-right font-bold text-black ${i === 0 ? "w-10" : ""}`}>{h}</th>
+                  <th key={i} className={`border border-gray-300 p-2 ${isRtl ? "text-right" : "text-left"} font-bold text-black ${i === 0 ? "w-10" : ""}`}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -262,14 +452,12 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
               {filtered.map((teacher, i) => (
                 <tr key={teacher.id} className="border-b border-gray-300">
                   <td className="border border-gray-300 p-2 text-center text-gray-700 font-semibold">{i + 1}</td>
-                  <td className="border border-gray-300 p-2 font-bold text-gray-900">{!isRtl && teacher.name_en ? teacher.name_en : teacher.name}</td>
-                  <td className="border border-gray-300 p-2 font-mono text-gray-700">{teacher.national_id}</td>
-                  <td className="border border-gray-300 p-2 font-mono text-gray-700" dir="ltr">{teacher.phone}</td>
-                  <td className="border border-gray-300 p-2 text-gray-700">{teacher.grade_name || "—"}</td>
-                  <td className="border border-gray-300 p-2 text-center">
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${teacher.is_active ? "bg-gray-100 text-black border-gray-400" : "bg-gray-50 text-gray-500 border-gray-200"}`}>
-                      {teacher.is_active ? t("Active") : t("Inactive")}
-                    </span>
+                  <td className="border border-gray-300 p-2 font-bold text-gray-900" style={{ textAlign: isRtl ? 'right' : 'left' }}>{getTeacherDisplayName(teacher, isRtl)}</td>
+                  <td className="border border-gray-300 p-2 font-mono text-gray-700" style={{ textAlign: isRtl ? 'right' : 'left' }}>{teacher.national_id}</td>
+                  <td className="border border-gray-300 p-2 font-mono text-gray-700" dir="ltr" style={{ textAlign: isRtl ? 'right' : 'left' }}>{teacher.phone}</td>
+                  <td className="border border-gray-300 p-2 text-gray-700" style={{ textAlign: isRtl ? 'right' : 'left' }}>{teacher.grade_name || "—"}</td>
+                  <td className="border border-gray-300 p-2 font-bold text-gray-900" style={{ textAlign: isRtl ? 'right' : 'left' }}>
+                    {teacher.preferred_language === "en" ? t("English") : t("Arabic")}
                   </td>
                 </tr>
               ))}
@@ -316,147 +504,127 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
           </div>
         </motion.div>
 
-        {/* Table Card */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className={DS_card}>
-
-          {/* Toolbar */}
-          <div className={DS_sectionHeader(isRtl)}>
-            <div className="flex-1 min-w-0">
-              <input
-                type="text"
-                value={search}
-                onChange={e => handleSearch(e.target.value)}
-                placeholder={t("Search name, ID, phone...")}
-                className={DS_searchInput}
-                dir={isRtl ? "rtl" : "ltr"}
-              />
-            </div>
-            <div className="flex gap-2 flex-wrap order-3 w-full md:w-auto mt-2 md:mt-0">
-              {filterBtns.map(f => (
-                <button key={f.key} onClick={() => setActiveFilter(f.key)} className={`${DS_filterBtn(activeFilter === f.key)} flex items-center gap-2 flex-1 md:flex-none justify-center`}>
-                  <span className="text-[11px] sm:text-xs whitespace-nowrap">{f.label}</span>
-                  {f.count !== undefined && (
-                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
-                      activeFilter === f.key 
-                        ? "bg-white/20 text-white" 
-                        : "bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400"
-                    }`}>
-                      {f.count}
-                    </span>
-                  )}
-                </button>
+        {/* Error reporting for import */}
+        {flash?.import_errors && flash.import_errors.length > 0 && (
+          <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/50 rounded-2xl">
+            <h4 className="text-rose-600 dark:text-rose-400 font-bold mb-2 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              {isRtl ? "أخطاء في عملية الاستيراد:" : "Import Validation Errors:"}
+            </h4>
+            <ul className="list-disc list-inside text-xs text-rose-500 dark:text-rose-400 space-y-1 overflow-y-auto max-h-40 custom-scrollbar">
+              {flash.import_errors.map((err: string, i: number) => (
+                <li key={i}>{err}</li>
               ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Table Card */}
+        <div className={DS_card}>
+          {/* Custom Responsive Toolbar */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-6 mb-6 border-b border-gray-100 dark:border-white/5">
+            {/* Search & Tabs */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 flex-1">
+              {/* Search Input */}
+              <div className="relative flex-1 max-w-md group">
+                <span className={`absolute ${isRtl ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#f5b800] transition-colors`}>
+                  <Search className="w-4 h-4" />
+                </span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  placeholder={t("Search name, ID, phone...")}
+                  className={`${DS_searchInput} ${isRtl ? "pr-11" : "pl-11"}`}
+                  dir={isRtl ? "rtl" : "ltr"}
+                />
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 md:py-0">
+                {filterBtns.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveFilter(tab.key)}
+                    className={`${DS_filterBtn(activeFilter === tab.key)} whitespace-nowrap flex items-center gap-2`}
+                  >
+                    <span>{tab.label}</span>
+                    {tab.count !== undefined && (
+                      <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
+                        activeFilter === tab.key 
+                          ? "bg-white/20 text-white" 
+                          : "bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400"
+                      }`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button 
-                onClick={() => window.print()} 
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                onClick={handleExport}
+                className={DS_btnGold}
+                title={t("Export Excel")}
+              >
+                <Download size={16} />
+                <span>{t("Export")}</span>
+              </button>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className={DS_btnSecondary}
+                title={t("Import Excel")}
+              >
+                <Upload size={16} />
+                <span>{t("Import")}</span>
+              </button>
+              <button
+                onClick={() => window.print()}
                 className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-[#0f2044] dark:hover:text-white transition-all shadow-sm"
                 title={t("Print")}
               >
-                <Printer className="w-4 h-4" />
+                <Printer size={16} />
               </button>
               <button onClick={openAdd} className={DS_btnSuccess}>
                 <UserPlus className="w-4 h-4 shrink-0" />
-                <span className="hidden sm:inline whitespace-nowrap">{t("Add New Teacher")}</span>
+                <span>{t("Add New Teacher")}</span>
               </button>
             </div>
           </div>
 
-          {/* Table */}
-          <div className={DS_tableWrapper}>
-            <table className={DS_tableBase}>
-              <thead className={DS_tableHead}>
-                <tr>{tableHeaders.map(h => <th key={h} className={DS_tableTh(isRtl)}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-16 text-center text-gray-400">
-                      <GraduationCap className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                      <p className="font-bold">{t("No Teachers Yet")}</p>
-                    </td>
-                  </tr>
-                ) : filtered.map(teacher => (
-                  <tr key={teacher.id} className={DS_tableRow}>
-                    {/* Name + Avatar */}
-                    <td className={DS_tableTd}>
-                      <div className="flex items-center gap-3">
-                        <div className={DS_avatar}>
-                          {teacher.image
-                            ? <img src={`/storage/${teacher.image}`} alt={teacher.name} className="w-full h-full object-cover" />
-                            : teacher.name.charAt(0)
-                          }
-                        </div>
-                        <div className={isRtl ? "text-right" : "text-left"}>
-                          <p className="font-semibold text-[#0f2044] dark:text-white">{!isRtl && teacher.name_en ? teacher.name_en : teacher.name}</p>
-                          {(!isRtl && teacher.name_en ? teacher.name : teacher.name_en) ? <p className="text-xs text-gray-400">{!isRtl && teacher.name_en ? teacher.name : teacher.name_en}</p> : null}
-                        </div>
-                      </div>
-                    </td>
-                    <td className={`${DS_tableTd} font-mono text-xs text-gray-500 dark:text-gray-400`}>{teacher.national_id}</td>
-                    <td className={`${DS_tableTd} font-mono text-gray-700 dark:text-gray-300 text-xs`}>{teacher.phone}</td>
-                    <td className={`${DS_tableTd} text-gray-500 dark:text-gray-400 text-xs`}>{teacher.email || "—"}</td>
-                    <td className={DS_tableTd}>
-                      {teacher.grade_name ? (
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#0f2044]/[0.07] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8]">
-                          {teacher.grade_name}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 dark:text-gray-600 text-xs italic">{t("No Grade Assigned")}</span>
-                      )}
-                    </td>
-                    <td className={DS_tableTd}>
-                      <span className={DS_badge(teacher.is_active)}>
-                        {teacher.is_active ? t("Active") : t("Inactive")}
-                      </span>
-                    </td>
-                    <td className={DS_tableTd}>
-                      <div className={`flex gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
-                        <button onClick={() => openView(teacher)} className={DS_btnEdit} title={t("View Record")}>
-                          <Eye size={14} />
-                        </button>
-                        <button onClick={() => openEdit(teacher)} className={DS_btnEdit} title={t("Edit")}>
-                          <Edit2 size={14} />
-                        </button>
-                        <button onClick={() => confirmDelete(teacher)} className={DS_btnDanger} title={t("Delete")}>
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
+          <BaseDataTable<Teacher>
+            columns={columns}
+            data={filtered}
+            hideCard={true}
+          />
+        </div>
       </div>
 
       {/* ── Add / Edit Modal ──────────────────────────────────────── */}
-      <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
-        {/* Modal Header */}
-        <div className={DS_modalHeader(isRtl)}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-[12px] flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-white" />
-            </div>
-            <div className={isRtl ? "text-right" : "text-left"}>
-              <h3 className="text-xl font-bold text-white">
-                {modalMode === "view" ? currentTeacher?.name : (modalMode === "edit" ? t("Edit Teacher") : t("Add New Teacher"))}
+      <Modal show={isModalOpen} onClose={closeModal} maxWidth="3xl">
+        <div className={DS_modalContainer}>
+          <div className={DS_modalHeader(isRtl)}>
+            <div className="flex items-center gap-3">
+              <div className={DS_modalHeaderAccent} />
+              <h3 className={DS_modalHeaderTitle}>
+                {modalMode === "view"
+                  ? (isRtl ? "بيانات المعلم" : "Teacher Dossier")
+                  : modalMode === "edit"
+                  ? (isRtl ? "تحديث ملف المعلم" : "Update Teacher Dossier")
+                  : (isRtl ? "تسجيل معلم جديد" : "Enroll New Teacher")}
               </h3>
-              {modalMode === "view" && <p className="text-[#7ba7e8] text-sm font-semibold">{currentTeacher?.national_id}</p>}
             </div>
+            <button onClick={closeModal} className={DS_modalClose}>
+              <ArrowLeft size={18} className={isRtl ? 'rotate-180' : ''} />
+            </button>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <button onClick={closeModal} className={DS_modalClose}><X className="w-5 h-5" /></button>
-          </div>
-        </div>
 
-        {/* Modal Body */}
-        <div className={`p-8 ${modalMode === "view" ? "space-y-8" : "space-y-4"} overflow-y-auto max-h-[80vh]`}>
           {modalMode === "view" ? (
             /* View Mode Body */
-            <>
+            <div className="p-8 space-y-8 overflow-y-auto max-h-[80vh]">
               {/* Profile Card */}
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 p-4 sm:p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm text-center sm:text-start">
                 <div className={DS_avatar + " w-20 h-20 sm:w-24 sm:h-24 rounded-[22px] border-4 border-white dark:border-[#243460] overflow-hidden shadow-lg shrink-0"}>
@@ -490,117 +658,200 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
                   <div className="min-w-0"><p className={DS_labelCls}>{t("Email")}</p><p className="font-bold text-[#0f2044] dark:text-white truncate">{currentTeacher?.email || "—"}</p></div>
                 </div>
               </div>
-            </>
+            </div>
           ) : (
             /* Edit / Create Mode Body */
-            <form onSubmit={submit} className="space-y-6">
-              {/* Profile Image Upload */}
-              <div className="flex flex-col items-center justify-center mb-4">
-                <div className="relative group">
-                  <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/5 border-2 border-dashed border-gray-300 dark:border-white/10 flex items-center justify-center transition-all group-hover:border-gold-500">
-                    {previewImage ? (
-                      <img src={previewImage} className="w-full h-full object-cover" alt="Preview" />
-                    ) : (
-                      <div className="text-center">
-                        <Users className="w-8 h-8 text-gray-400 mx-auto mb-1" />
-                        <span className="text-[9px] font-black text-gray-500 uppercase">{t("Photo")}</span>
-                      </div>
-                    )}
+            <form onSubmit={submit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-6 py-3.5 space-y-4 max-h-[85vh]">
+                
+                {/* §1 The Names */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#243460] pb-1.5">
+                    <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] flex items-center gap-2">
+                      <Users size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                      {isRtl ? "الأسماء الرسمية" : "Official Names"}
+                    </h4>
+                    <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded">
+                      {isRtl ? "* مطلوب عربي أو إنجليزي" : "* Req: Arabic or English"}
+                    </span>
                   </div>
-                  
-                  {previewImage && (
-                    <button 
-                      type="button" 
-                      onClick={removeImage}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors z-10"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-
-                  <label className="absolute inset-0 cursor-pointer flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
-                    <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
-                    <span className="text-white text-[10px] font-black uppercase tracking-widest">{t("Change")}</span>
-                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Arabic Panel */}
+                    <div className="p-2.5 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-xl border border-gray-100/80 dark:border-[#243460]/40 space-y-2">
+                      <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider">{isRtl ? "البيانات بالعربية" : "ARABIC DOSSIER"}</span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className={DS_labelCls}>{isRtl ? "الاسم الأول" : "First Name"} {!data.first_name_en && !data.last_name_en && <span className="text-rose-500">*</span>}</label>
+                          <input type="text" value={data.first_name_ar} onChange={e => setData("first_name_ar", e.target.value)} className={DS_inputCls} dir="rtl" required={!data.first_name_en && !data.last_name_en} />
+                          <InputError message={errors.first_name_ar} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className={DS_labelCls}>{isRtl ? "الاسم الأخير" : "Last Name"} {!data.first_name_en && !data.last_name_en && <span className="text-rose-500">*</span>}</label>
+                          <input type="text" value={data.last_name_ar} onChange={e => setData("last_name_ar", e.target.value)} className={DS_inputCls} dir="rtl" required={!data.first_name_en && !data.last_name_en} />
+                          <InputError message={errors.last_name_ar} />
+                        </div>
+                      </div>
+                    </div>
+                    {/* English Panel */}
+                    <div className="p-2.5 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-xl border border-gray-100/80 dark:border-[#243460]/40 space-y-2">
+                      <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider">{isRtl ? "البيانات بالإنجليزية" : "ENGLISH DOSSIER"}</span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className={DS_labelCls}>{isRtl ? "الاسم الأول" : "First Name"} {!data.first_name_ar && !data.last_name_ar && <span className="text-rose-500">*</span>}</label>
+                          <input type="text" value={data.first_name_en} onChange={e => setData("first_name_en", e.target.value)} className={DS_inputCls} dir="ltr" required={!data.first_name_ar && !data.last_name_ar} />
+                          <InputError message={errors.first_name_en} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className={DS_labelCls}>{isRtl ? "الاسم الأخير" : "Last Name"} {!data.first_name_ar && !data.last_name_ar && <span className="text-rose-500">*</span>}</label>
+                          <input type="text" value={data.last_name_en} onChange={e => setData("last_name_en", e.target.value)} className={DS_inputCls} dir="ltr" required={!data.first_name_ar && !data.last_name_ar} />
+                          <InputError message={errors.last_name_en} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <InputError message={errors.image} className="mt-2" />
+
+                {/* §2 Personal Identity & Profile Photo */}
+                <div className="space-y-2">
+                  <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-1.5 flex items-center gap-2">
+                    <CreditCard size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                    {isRtl ? "الهوية الشخصية والصورة" : "Personal Identity & Photo"}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className={DS_labelCls}>{isRtl ? "الرقم المدني" : "Civil ID"} <span className="text-rose-500">*</span></label>
+                          <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} className={`${DS_inputCls} font-mono`} dir="ltr" required />
+                          <InputError message={errors.national_id} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className={DS_labelCls}>{isRtl ? "رقم الجوال" : "Phone Number"} <span className="text-rose-500">*</span></label>
+                          <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} className={`${DS_inputCls} font-mono`} dir="ltr" required />
+                          <InputError message={errors.phone} />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 p-1.5 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                        <div className="w-10 h-10 rounded-lg border border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden bg-white dark:bg-[#0f2044] flex-shrink-0 relative group">
+                          {data.image ? (
+                            <>
+                              <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
+                              <button type="button" onClick={() => setData("image", null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <X size={12} className="text-white" />
+                              </button>
+                            </>
+                          ) : previewImage ? (
+                            <>
+                              <img src={previewImage} className="w-full h-full object-cover" />
+                              <button type="button" onClick={() => {
+                                setPreviewImage(null);
+                                setData("remove_image", true);
+                              }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <X size={12} className="text-white" />
+                              </button>
+                            </>
+                          ) : (
+                            <Users size={16} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[10px] font-bold text-[#0f2044] dark:text-white leading-tight">{isRtl ? "الصورة الشخصية" : "Profile Photo"}</p>
+                          {!data.image && !previewImage ? (
+                            <label className="cursor-pointer text-[9px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline mt-0.5 inline-block">
+                              {isRtl ? "اختيار صورة" : "Choose Photo"}
+                              <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                const file = e.target.files?.[0] || null;
+                                setData({ ...data, image: file, remove_image: false });
+                              }} />
+                            </label>
+                          ) : (
+                            <span className="text-[9px] font-black text-gray-400 mt-0.5 inline-block uppercase">{isRtl ? "مرفق ✓" : "Attached ✓"}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* §3 Academic Assignment */}
+                <div className="space-y-2">
+                  <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-1.5 flex items-center gap-2">
+                    <GraduationCap size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                    {isRtl ? "البيانات الأكاديمية والحساب" : "Academic Credentials & Account"}
+                  </h4>
+                  <div className="space-y-3">
+                    {/* Row 1: Grade & Preferred Language */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className={DS_labelCls}>{isRtl ? "الصف الدراسي" : "Grade"}</label>
+                        <select value={data.grade_id} onChange={e => setData("grade_id", e.target.value)} className={DS_selectCls}>
+                          <option value="">{t("Select Grade")}</option>
+                          {grades.map(g => {
+                            const isTaken = g.teacher_name && g.id !== currentTeacher?.grade_id;
+                            return (
+                              <option key={g.id} value={g.id} disabled={!!isTaken}>
+                                {g.name} {g.teacher_name ? `(${t("Taken by")}: ${g.teacher_name})` : ""}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <InputError message={errors.grade_id} />
+                      </div>
+                      <div>
+                        <label className={DS_labelCls}>{t("Preferred Language")}</label>
+                        <select value={data.preferred_language} onChange={e => setData("preferred_language", e.target.value)} className={DS_selectCls}>
+                          <option value="ar">{t("Arabic")}</option>
+                          <option value="en">{t("English")}</option>
+                        </select>
+                        <InputError message={errors.preferred_language} />
+                      </div>
+                    </div>
+
+                    {/* Row 2: Email & Address */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className={DS_labelCls}>{isRtl ? "البريد الإلكتروني" : "Email"}</label>
+                        <input type="email" value={data.email} onChange={e => setData("email", e.target.value)} className={DS_inputCls} />
+                        <InputError message={errors.email} />
+                      </div>
+                      <div>
+                        <label className={DS_labelCls}>{t("Address")}</label>
+                        <input type="text" value={data.address} onChange={e => setData("address", e.target.value)} className={DS_inputCls} />
+                        <InputError message={errors.address} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Arabic Name Parts */}
-                <div className="md:col-span-2 space-y-3">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t("Name (Arabic)")} *</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" dir="rtl">
-                    {["first", "second", "third", "last"].map(p => (
-                      <div key={p}>
-                        <input type="text" value={(data as any)[`${p}_name_ar`]} onChange={e => setData(`${p}_name_ar` as any, e.target.value)} className={DS_inputCls} placeholder={t(`${p} Name`)} dir="rtl" required />
-                        <InputError message={(errors as any)[`${p}_name_ar`]} className="mt-1" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {/* English Name Parts */}
-                <div className="md:col-span-2 space-y-3 pt-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t("Name (English)")}</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" dir="ltr">
-                    {["first", "second", "third", "last"].map(p => (
-                      <div key={p}>
-                        <input type="text" value={(data as any)[`${p}_name_en`]} onChange={e => setData(`${p}_name_en` as any, e.target.value)} className={DS_inputCls} placeholder={t(`${p} Name`)} dir="ltr" />
-                        <InputError message={(errors as any)[`${p}_name_en`]} className="mt-1" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
+              {/* Form Footer Bar with Inline Independent Toggle */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-6 py-4 bg-gray-50/50 dark:bg-white/[0.02] border-t border-gray-100 dark:border-white/5 gap-4">
                 <div>
-                  <label className={DS_labelCls}>{t("Civil ID")} *</label>
-                  <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} className={DS_inputCls} required />
-                  <InputError message={errors.national_id} className="mt-1" />
-                </div>
-                <div>
-                  <label className={DS_labelCls}>{t("Phone")} *</label>
-                  <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} className={DS_inputCls} required />
-                  <InputError message={errors.phone} className="mt-1" />
-                </div>
-                <div>
-                  <label className={DS_labelCls}>{t("Email")}</label>
-                  <input type="email" value={data.email} onChange={e => setData("email", e.target.value)} className={DS_inputCls} />
-                  <InputError message={errors.email} className="mt-1" />
-                </div>
-                <div>
-                  <label className={DS_labelCls}>{t("Grade")}</label>
-                  <select value={data.grade_id} onChange={e => setData("grade_id", e.target.value)} className={DS_selectCls}>
-                    <option value="">{t("Select Grade")}</option>
-                    {grades.map(g => {
-                      const isTaken = g.teacher_name && g.id !== currentTeacher?.grade_id;
-                      return (
-                        <option key={g.id} value={g.id} disabled={!!isTaken}>
-                          {g.name} {g.teacher_name ? `(${t("Taken by")}: ${g.teacher_name})` : ""}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <InputError message={errors.grade_id} className="mt-1" />
-                </div>
-                <div>
-                  <label className={DS_labelCls}>{t("Password")} {modalMode === "edit" ? `(${t("Leave blank to keep current")})` : "*"}</label>
-                  <input type="password" value={data.password} onChange={e => setData("password", e.target.value)} className={DS_inputCls} required={modalMode === "create"} />
-                  <InputError message={errors.password} className="mt-1" />
-                </div>
-                
-                <div className="md:col-span-2">
                   <Toggle 
                     label={t("Status")}
-                    description={data.is_active ? t("Active Teacher Account") : t("Deactivated Teacher Account")}
+                    description={data.is_active ? t("Active") : t("Inactive")}
                     enabled={data.is_active}
                     onChange={v => setData("is_active", v)}
                   />
                 </div>
-              </div>
-
-              <div className="flex justify-between pt-6 border-t border-gray-100 dark:border-white/5">
-                <button type="button" onClick={() => (modalMode === "edit" ? setModalMode("view") : closeModal())} className={DS_cancelBtn}>{t("Cancel")}</button>
-                <button type="submit" disabled={processing} className={DS_submitBtn(processing)}>{modalMode === "edit" ? t("Save Changes") : t("Add Teacher")}</button>
+                <div className="flex items-center gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => (modalMode === "edit" ? setModalMode("view") : closeModal())} 
+                    className={DS_cancelBtn}
+                  >
+                    {t("Cancel")}
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={processing} 
+                    className={DS_submitBtn(processing)}
+                  >
+                    {modalMode === "edit" ? t("Save Changes") : t("Add Teacher")}
+                  </button>
+                </div>
               </div>
             </form>
           )}
@@ -630,6 +881,60 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
           </div>
         </Modal>
       )}
+
+      {/* Import Modal */}
+      <Modal show={showImportModal} onClose={() => setShowImportModal(false)} maxWidth="md">
+        <div className={DS_modalHeader(isRtl)}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-[12px] flex items-center justify-center">
+              <Upload className="w-5 h-5 text-white" />
+            </div>
+            <div className={isRtl ? "text-right" : "text-left"}>
+              <h3 className="text-xl font-bold text-white">{t("Import Teachers")}</h3>
+              <p className="text-[#7ba7e8] text-xs font-bold tracking-wider">{t("Upload Excel File")}</p>
+            </div>
+          </div>
+          <button onClick={() => setShowImportModal(false)} className={DS_modalClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className={DS_modalBody}>
+          <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
+            <h4 className="text-sm font-bold text-blue-800 dark:text-blue-300 mb-2">{t("Important Notes:")}</h4>
+            <ul className="text-xs text-blue-700 dark:text-blue-400 list-disc list-inside space-y-1">
+              <li>{t("The file must be an Excel file (.xlsx, .xls) or CSV.")}</li>
+              <li>{t("First name, Last name, Civil ID, and Phone Number are strictly required.")}</li>
+              <li>{t("Grade/Stage is not present in Excel and should be assigned manually after import.")}</li>
+            </ul>
+            <div className="mt-4">
+              <button type="button" onClick={handleDownloadTemplate} className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                <Download size={14} /> {t("Download Excel Template")}
+              </button>
+            </div>
+          </div>
+          <form onSubmit={handleImportSubmit} className="space-y-4">
+            <div>
+              <label className={DS_labelCls}>{t("Select File")}</label>
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={(e) => setImportData('file', e.target.files?.[0] || null)}
+                className="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[#0f2044] file:text-white hover:file:bg-[#162d60] transition-all cursor-pointer border border-gray-200 dark:border-gray-700 rounded-xl"
+                required
+              />
+              <InputError message={importErrors.file} className="mt-2" />
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button type="button" onClick={() => setShowImportModal(false)} className={DS_cancelBtn}>
+                {t("Cancel")}
+              </button>
+              <button type="submit" disabled={isImporting || !importData.file} className={DS_submitBtn(isImporting || !importData.file)}>
+                {isImporting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t("Import Data")}
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
     </SchoolAuthenticatedLayout>
   );
 }

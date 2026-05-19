@@ -119,12 +119,8 @@ class SupervisorController extends Controller
             // إنشاء المستخدم
             $newSupervisor = User::create([
                 'first_name_ar' => $nameParts[0],
-                'second_name_ar' => $nameParts[1],
-                'third_name_ar' => $nameParts[2],
                 'last_name_ar' => $nameParts[3],
                 'first_name_en' => $enNameParts[0],
-                'second_name_en' => $enNameParts[1],
-                'third_name_en' => $enNameParts[2],
                 'last_name_en' => $enNameParts[3],
                 'national_id' => $validated['national_id'],
                 'email' => $validated['email'],
@@ -233,12 +229,8 @@ class SupervisorController extends Controller
             // تحديث المستخدم
             $supervisor->update([
                 'first_name_ar'  => $nameParts[0],
-                'second_name_ar' => $nameParts[1],
-                'third_name_ar'  => $nameParts[2],
                 'last_name_ar'   => $nameParts[3],
                 'first_name_en'  => $enNameParts[0],
-                'second_name_en' => $enNameParts[1],
-                'third_name_en'  => $enNameParts[2],
                 'last_name_en'   => $enNameParts[3],
                 'national_id' => $validated['national_id'],
                 'email'       => $validated['email'] ?? null,

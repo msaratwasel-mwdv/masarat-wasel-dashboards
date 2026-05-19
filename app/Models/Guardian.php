@@ -13,6 +13,7 @@ class Guardian extends Model
     protected $fillable = [
         'user_id',
         'fcm_token',
+        'status',
     ];
 
     public function students(): \Illuminate\Database\Eloquent\Relations\BelongsToMany

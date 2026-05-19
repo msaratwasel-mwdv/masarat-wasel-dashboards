@@ -48,14 +48,15 @@ export default function PrintReportHeader({
       {/* School Logo (Left) */}
       <div className="flex flex-col items-center justify-center w-1/4">
         {schoolLogo ? (
-          <img src={schoolLogo} alt="School Logo" className="w-16 h-16 rounded-xl object-contain bg-white border-2 border-gray-100 shadow-md p-1.5 mb-2" />
+          <>
+            <div className="w-16 h-16 rounded-xl flex items-center justify-center border-2 border-gray-100 shadow-md p-1.5 mb-2 bg-white" style={{ backgroundColor: '#ffffff', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+              <img src={schoolLogo} alt="School Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="text-xs font-bold text-gray-800 text-center">{schoolName}</span>
+          </>
         ) : (
-          <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-[#f59e0b] text-slate-900 shadow-lg mb-2">
-            <GraduationCap className="w-8 h-8" />
-          </div>
+          <span className="text-xs font-bold text-gray-800 text-center">{schoolName}</span>
         )}
-        <span className="text-xs font-bold text-gray-800">{schoolAdminText}</span>
-        <span className="text-[10px] text-gray-500 uppercase tracking-widest">School Admin</span>
       </div>
     </div>
   );

@@ -27,12 +27,8 @@ class SchoolUsersImport implements ToModel, SkipsEmptyRows, WithStartRow, WithCh
     {
         $data = [
             'first_name_ar' => trim($row[0] ?? ''),
-            'second_name_ar' => trim($row[1] ?? ''),
-            'third_name_ar' => trim($row[2] ?? ''),
             'last_name_ar' => trim($row[3] ?? ''),
             'first_name_en' => trim($row[4] ?? ''),
-            'second_name_en' => trim($row[5] ?? ''),
-            'third_name_en' => trim($row[6] ?? ''),
             'last_name_en' => trim($row[7] ?? ''),
             'national_id' => trim($row[8] ?? ''),
             'phone' => trim($row[9] ?? ''),
@@ -50,12 +46,8 @@ class SchoolUsersImport implements ToModel, SkipsEmptyRows, WithStartRow, WithCh
             [
                 'name' => trim($data['first_name_ar'] . ' ' . $data['last_name_ar']),
                 'first_name_ar' => $data['first_name_ar'],
-                'second_name_ar' => $data['second_name_ar'],
-                'third_name_ar' => $data['third_name_ar'],
                 'last_name_ar' => $data['last_name_ar'],
                 'first_name_en' => $data['first_name_en'],
-                'second_name_en' => $data['second_name_en'],
-                'third_name_en' => $data['third_name_en'],
                 'last_name_en' => $data['last_name_en'],
                 'email' => $data['email'] ?: null,
                 'phone' => $data['phone'],

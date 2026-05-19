@@ -1,37 +1,37 @@
 import { useState, useMemo } from "react";
+import debounce from "lodash/debounce";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, useForm, router, usePage } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
 import InputError from "@/Components/InputError";
-import PrimaryButton from "@/Components/PrimaryButton";
 import { useTheme } from "@/Contexts/ThemeContext";
+import useTranslation from "@/hooks/useTranslation";
 import BaseDataTable, {
-  ActionButton,
   StatusBadge,
   type FilterTab,
+  type PaginationMeta,
 } from "@/Components/BaseDataTable";
 import { createColumnHelper } from "@tanstack/react-table";
+import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
     Users, 
+    User,
     CheckCircle2, 
-    XCircle, 
-    MapPin, 
     Plus, 
     Eye, 
     Edit2, 
     Trash2, 
     X, 
     ArrowLeft, 
-    ChevronRight,
-    Phone,
+    Phone, 
     Mail,
+    MapPin,
+    ShieldCheck,
+    Briefcase,
     CreditCard,
     AlertCircle,
     Printer,
-    Briefcase,
-
-    ShieldCheck,
     Upload,
     Download,
     Loader2
@@ -67,122 +67,164 @@ const PRINT_STYLES = `
 @media print {
   body * { visibility: hidden !important; }
   main { margin: 0 !important; position: static !important; }
-  #field-print-area, #field-print-area * { visibility: visible !important; }
-  #field-print-area { position: absolute; inset: 0; width: 100%; padding: 20px; background: white; }
+  #supervisors-print-area, #supervisors-print-area * { visibility: visible !important; }
+  #supervisors-print-area { position: absolute; inset: 0; width: 100%; padding: 20px; background: white; }
 }
 `;
 
-interface FieldSupervisor {
+interface Supervisor {
   id: number;
+  first_name_ar: string;
+  last_name_ar: string;
+  first_name_en: string | null;
+  last_name_en: string | null;
   name: string;
   name_en: string | null;
   email: string;
   phone: string;
   national_id: string;
   user_code: string;
-  is_active: boolean;
+  field_supervisor: {
+    status: string;
+  } | null;
   image?: string | null;
-  first_name_ar?: string;
-  second_name_ar?: string;
-  third_name_ar?: string;
-  last_name_ar?: string;
-  first_name_en?: string;
-  second_name_en?: string;
-  third_name_en?: string;
-  last_name_en?: string;
+  address?: string | null;
   preferred_language?: string;
 }
 
-type FilterType = "all" | "active" | "inactive";
+export const getSupervisorName = (supervisor: Supervisor, isArabic?: boolean) => {
+  const isAr = isArabic !== undefined ? isArabic : (document.documentElement.lang === 'ar' || document.documentElement.dir === 'rtl');
+  const arName = [supervisor.first_name_ar, supervisor.last_name_ar].filter(Boolean).join(' ') || supervisor.name;
+  const enName = [supervisor.first_name_en, supervisor.last_name_en].filter(Boolean).join(' ') || supervisor.name_en;
+  
+  if (isAr) {
+    return arName || enName || supervisor.email;
+  } else {
+    return enName || arName || supervisor.email;
+  }
+};
 
-export default function FieldSupervisorsIndex({
-  auth,
-  supervisors,
-}: {
+interface Props {
   auth: any;
-  supervisors: FieldSupervisor[];
-}) {
+  supervisors: {
+    data: Supervisor[];
+    links: PaginationMeta["links"];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+  };
+  counts: {
+    all: number;
+    active: number;
+    inactive: number;
+  };
+  filters: {
+    search: string;
+    status: string;
+  };
+}
+
+export default function FieldSupervisorsIndex({ auth, supervisors, counts, filters }: Props) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
 
+  // --- State ---
+  const [search, setSearch] = useState(filters.search);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({ file: null as File | null });
   const flash = usePage().props.flash as any;
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<number | null>(null);
-  const [filter, setFilter] = useState<FilterType>("all");
-  const [search, setSearch] = useState("");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState(1);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedSupervisor, setSelectedSupervisor] = useState<FieldSupervisor | null>(null);
+  const [selectedSupervisor, setSelectedSupervisor] = useState<Supervisor | null>(null);
 
+  // --- Form ---
   const { data, setData, post, processing, errors, reset, clearErrors } =
     useForm({
-      _method: "post",
+      _method: "post" as "post" | "put",
       first_name_ar: "",
-      second_name_ar: "",
-      third_name_ar: "",
       last_name_ar: "",
       first_name_en: "",
-      second_name_en: "",
-      third_name_en: "",
       last_name_en: "",
       national_id: "",
       email: "",
       phone: "",
-      status: "Active",
-      is_active: true,
+      status: "active",
       address: "",
       preferred_language: "ar",
       image: null as File | null,
+      remove_image: false,
     });
+
+  // --- Handlers ---
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((value: string) => {
+        router.get(
+          route("admin.field-supervisors.index"),
+          {
+            search: value,
+            status: filters.status === "all" ? undefined : filters.status,
+          },
+          { preserveState: true, replace: true }
+        );
+      }, 300),
+    [filters.status]
+  );
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    debouncedSearch(value);
+  };
+
+  const handleFilterChange = (key: string) => {
+    router.get(
+      route("admin.field-supervisors.index"),
+      { search: filters.search, status: key === "all" ? undefined : key },
+      { preserveState: true, replace: true }
+    );
+  };
 
   const openAddModal = () => {
     setIsEditing(false);
     setCurrentId(null);
     setPreviewImage(null);
-    setCurrentStep(1);
     reset();
     setData("_method", "post");
     clearErrors();
     setIsModalOpen(true);
   };
 
-  const openEditModal = (sup: FieldSupervisor) => {
+  const openEditModal = (supervisor: Supervisor) => {
     setIsEditing(true);
-    setCurrentId(sup.id);
-    setPreviewImage(sup.image ? `/storage/${sup.image}` : null);
-    setCurrentStep(1);
+    setCurrentId(supervisor.id);
+    setPreviewImage(supervisor.image ? `/storage/${supervisor.image}` : null);
     setData({
       _method: "put",
-      first_name_ar: sup.first_name_ar || sup.name.split(" ")[0] || "",
-      second_name_ar: sup.second_name_ar || "",
-      third_name_ar: sup.third_name_ar || "",
-      last_name_ar: sup.last_name_ar || sup.name.split(" ").slice(-1)[0] || "",
-      first_name_en:
-        sup.first_name_en || (sup.name_en ? sup.name_en.split(" ")[0] : ""),
-      second_name_en: sup.second_name_en || "",
-      third_name_en: sup.third_name_en || "",
-      last_name_en:
-        sup.last_name_en ||
-        (sup.name_en ? sup.name_en.split(" ").slice(-1)[0] : ""),
-      national_id: sup.national_id || "",
-      email: sup.email,
-      phone: sup.phone || "",
-      status: sup.is_active ? "Active" : "Inactive",
-      is_active: sup.is_active,
-      address: sup.address || "",
-      preferred_language: sup.preferred_language || "ar",
+      first_name_ar: supervisor.first_name_ar || "",
+      last_name_ar: supervisor.last_name_ar || "",
+      first_name_en: supervisor.first_name_en || "",
+      last_name_en: supervisor.last_name_en || "",
+      national_id: supervisor.national_id || "",
+      email: supervisor.email || "",
+      phone: supervisor.phone || "",
+      status: supervisor.field_supervisor?.status === "active" ? "active" : "inactive",
+      address: supervisor.address || "",
+      preferred_language: supervisor.preferred_language || "ar",
       image: null,
+      remove_image: false,
     });
     clearErrors();
     setIsModalOpen(true);
   };
 
-  const openDetailsModal = (sup: FieldSupervisor) => {
-    setSelectedSupervisor(sup);
+  const openDetailsModal = (supervisor: Supervisor) => {
+    setSelectedSupervisor(supervisor);
     setShowDetailsModal(true);
   };
 
@@ -194,193 +236,33 @@ export default function FieldSupervisorsIndex({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Prevent implicit form submission (e.g., from mobile keyboard "Next/Go") from saving data prematurely.
-    if (currentStep === 1) {
-      setCurrentStep(2);
-      return;
-    }
 
     if (isEditing && currentId) {
       post(route("admin.field-supervisors.update", currentId), {
         forceFormData: true,
         onSuccess: () => closeModal(),
-        transform: (data) => ({
-          ...data,
-          is_active: data.status === "Active",
-        }),
       });
     } else {
-      post(route("admin.field-supervisors.store"), {
-        forceFormData: true,
-        onSuccess: () => closeModal(),
-        transform: (data) => ({
-          ...data,
-          is_active: data.status === "Active",
-        }),
-      });
+      post(route("admin.field-supervisors.store"), { onSuccess: () => closeModal() });
     }
   };
 
   const deleteSupervisor = (id: number) => {
-    if (confirm(isRTL ? "هل أنت متأكد من حذف هذا المشرف؟" : "Are you sure?")) {
+    if (confirm(isRTL ? "هل أنت متأكد من حذف هذا المشرف الميداني؟" : "Are you sure you want to delete this field supervisor?")) {
       router.delete(route("admin.field-supervisors.destroy", id));
     }
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    const url = route("admin.field-supervisors.print-all", {
+      status: filters.status,
+      search: filters.search,
+      lang: isRTL ? "ar" : "en",
+    });
+    window.open(url, "PrintAllSupervisors", "width=1200,height=800,scrollbars=yes,status=yes,resizable=yes");
+  };
 
-  const filtered = useMemo(() => {
-    let list = supervisors;
-    if (filter === "active") list = list.filter((s) => s.is_active);
-    if (filter === "inactive") list = list.filter((s) => !s.is_active);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) ||
-          (s.name_en?.toLowerCase().includes(q) ?? false) ||
-          s.national_id?.includes(q) ||
-          s.phone?.includes(q) ||
-          s.email?.toLowerCase().includes(q) ||
-          s.user_code?.toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [supervisors, filter, search]);
-
-  const counts = useMemo(
-    () => ({
-      all: supervisors.length,
-      active: supervisors.filter((s) => s.is_active).length,
-      inactive: supervisors.filter((s) => !s.is_active).length,
-    }),
-    [supervisors]
-  );
-
-  const filterBtnClass = (f: FilterType) =>
-    `px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${
-      filter === f
-        ? "bg-brand-dark text-white border-brand-dark shadow"
-        : isDark
-        ? "bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600"
-        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-    }`;
-
-  const statusLabel = (isActive: boolean) =>
-    isActive ? (isRTL ? "نشط" : "Active") : isRTL ? "غير نشط" : "Inactive";
-
-  // ── Columns for BaseDataTable ──
-  const columnHelper = createColumnHelper<FieldSupervisor>();
-
-  const columns = useMemo(
-    () => [
-      columnHelper.accessor("name", {
-        header: isRTL ? "المشرف الميداني" : "Field Supervisor",
-        cell: (info) => {
-          const sup = info.row.original;
-          return (
-            <div className="flex items-center gap-4">
-              <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-[#0f2044]/10 dark:bg-[#0f2044]/40 text-[#0f2044] dark:text-[#f5b800] flex items-center justify-center font-black text-sm overflow-hidden shadow-sm border border-gray-100 dark:border-white/5">
-                {sup.image ? (
-                  <img
-                    src={`/storage/${sup.image}`}
-                    alt={sup.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  sup.name.charAt(0)
-                )}
-              </div>
-              <div className="flex flex-col">
-                <span className={`text-sm font-black ${isDark ? "text-white" : "text-[#0f2044]"} tracking-tight`}>
-                  {sup.name}
-                </span>
-                {sup.name_en && (
-                  <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
-                    {sup.name_en}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        },
-      }),
-      columnHelper.accessor("national_id", {
-        header: isRTL ? "الرقم المدني" : "ID / Code",
-        cell: (info) => {
-          const sup = info.row.original;
-          return (
-            <div className="flex flex-col">
-              <span className={`text-sm font-black ${isDark ? "text-gray-300" : "text-[#0f2044]"} font-mono`}>
-                {sup.national_id || "—"}
-              </span>
-              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 tracking-widest uppercase">
-                {sup.user_code}
-              </span>
-            </div>
-          );
-        },
-      }),
-      columnHelper.accessor("phone", {
-        header: isRTL ? "بيانات الاتصال" : "Contact",
-        cell: (info) => {
-          const sup = info.row.original;
-          return (
-            <div className="flex flex-col">
-              <span className={`text-sm font-black ${isDark ? "text-gray-300" : "text-[#0f2044]"} font-mono`}>
-                {sup.phone}
-              </span>
-              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 truncate max-w-[160px]">
-                {sup.email}
-              </span>
-            </div>
-          );
-        },
-      }),
-      columnHelper.accessor("is_active", {
-        header: isRTL ? "الحالة" : "Status",
-        cell: (info) => {
-            const isActive = info.getValue();
-            return <StatusBadge status={isActive ? "active" : "inactive"} />;
-        },
-      }),
-      columnHelper.display({
-        id: "actions",
-        header: isRTL ? "الإجراءات" : "Actions",
-        cell: (info) => {
-          const sup = info.row.original;
-          return (
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => openDetailsModal(sup)}
-                className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                title={isRTL ? "عرض" : "View"}
-              >
-                <Eye size={16} />
-              </button>
-              <button 
-                onClick={() => openEditModal(sup)}
-                className={DS_btnEdit}
-                title={isRTL ? "تعديل" : "Edit"}
-              >
-                <Edit2 size={14} />
-              </button>
-              <button 
-                onClick={() => deleteSupervisor(sup.id)}
-                className={DS_btnDanger}
-                title={isRTL ? "حذف" : "Delete"}
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          );
-        },
-      }),
-    ],
-    [isRTL, isDark]
-  );
-
+  // --- Filter Tabs ---
   const filterTabs: FilterTab[] = [
     { key: "all", label: isRTL ? "الكل" : "All", count: counts.all },
     {
@@ -397,51 +279,147 @@ export default function FieldSupervisorsIndex({
     },
   ];
 
+  // --- Columns ---
+  const columnHelper = createColumnHelper<Supervisor>();
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("name", {
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "المشرف الميداني" : "Field Supervisor"}</div>,
+        cell: (info) => {
+          const supervisor = info.row.original;
+          const displayName = getSupervisorName(supervisor, isRTL);
+          const arName = [supervisor.first_name_ar, supervisor.last_name_ar].filter(Boolean).join(' ') || supervisor.name;
+          const enName = [supervisor.first_name_en, supervisor.last_name_en].filter(Boolean).join(' ') || supervisor.name_en;
+          const alternateName = isRTL ? enName : arName;
+              
+          return (
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-[#0f2044]/10 dark:bg-[#0f2044]/40 text-[#0f2044] dark:text-[#f5b800] flex items-center justify-center font-black text-sm overflow-hidden shadow-sm border border-gray-100 dark:border-white/5">
+                {supervisor.image ? (
+                  <img
+                    src={`/storage/${supervisor.image}`}
+                    alt={displayName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  displayName.charAt(0)
+                )}
+              </div>
+              <div className="flex flex-col">
+                <span className={`text-sm font-black ${isDark ? "text-white" : "text-[#0f2044]"} tracking-tight`}>
+                  {displayName}
+                </span>
+                {alternateName && alternateName !== displayName && (
+                  <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
+                    {alternateName}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("national_id", {
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "الرقم المدني" : "ID / Code"}</div>,
+        cell: (info) => {
+          const supervisor = info.row.original;
+          return (
+            <div className="flex flex-col">
+              <span className={`text-sm font-black ${isDark ? "text-gray-300" : "text-[#0f2044]"} font-mono`}>
+                {supervisor.national_id || "—"}
+              </span>
+              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 tracking-widest uppercase">
+                {supervisor.user_code}
+              </span>
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("phone", {
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "الاتصال" : "Contact"}</div>,
+        cell: (info) => {
+          const supervisor = info.row.original;
+          return (
+            <div className="flex flex-col">
+              <span className={`text-sm font-black ${isDark ? "text-gray-300" : "text-[#0f2044]"} font-mono`}>
+                {supervisor.phone}
+              </span>
+              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 truncate max-w-[150px]">
+                {supervisor.email}
+              </span>
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("preferred_language", {
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "اللغة المفضلة" : "Language"}</div>,
+        cell: (info) => {
+          const lang = info.row.original.preferred_language || "ar";
+          return (
+            <span className="px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-200 dark:border-gray-700">
+              {lang === "en" ? (isRTL ? "الإنجليزية" : "English") : (isRTL ? "العربية" : "Arabic")}
+            </span>
+          );
+        },
+      }),
+      columnHelper.accessor("field_supervisor.status", {
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "الحالة" : "Status"}</div>,
+        cell: (info) => {
+            const status = info.getValue() || "N/A";
+            return <StatusBadge status={status.toLowerCase() === "active" ? "active" : "inactive"} />;
+        }
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "الإجراءات" : "Actions"}</div>,
+        cell: (info) => {
+          const supervisor = info.row.original;
+          return (
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => openDetailsModal(supervisor)}
+                className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                title={isRTL ? "عرض" : "View"}
+              >
+                <Eye size={16} />
+              </button>
+              <button 
+                onClick={() => openEditModal(supervisor)}
+                className={DS_btnEdit}
+                title={isRTL ? "تعديل" : "Edit"}
+              >
+                <Edit2 size={14} />
+              </button>
+              <button 
+                onClick={() => deleteSupervisor(supervisor.id)}
+                className={DS_btnDanger}
+                title={isRTL ? "حذف" : "Delete"}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          );
+        },
+      }),
+    ],
+    [isRTL, isDark, openEditModal]
+  );
+
+  const pagination: PaginationMeta = {
+    links: supervisors.links,
+    current_page: supervisors.current_page,
+    last_page: supervisors.last_page,
+    per_page: supervisors.per_page,
+    total: supervisors.total,
+    from: supervisors.from,
+    to: supervisors.to,
+  };
+
   return (
     <AuthenticatedLayout user={auth.user}>
-      <Head title={isRTL ? "إدارة المشرفين الميدانيين" : "Field Supervisors Management"} />
+      <Head title={isRTL ? "إدارة المشرفين الميدانيين" : "Field Supervisors"} />
       <style>{PRINT_STYLES}</style>
-
-      {/* ── Print Area (Unified System) ── */}
-      <div id="field-print-area" className="hidden print:block bg-white font-sans text-black w-full" dir={isRTL ? "rtl" : "ltr"}>
-        <PrintReportHeader
-          title={isRTL ? "تقرير بيانات المشرفين الميدانيين" : "Field Supervisors Operational Report"}
-          schoolName={isRTL ? "إدارة شركة مسارات واصل" : "Masarat Wasel Company"}
-          schoolLogo={null}
-          printDate={`${isRTL ? "تاريخ الطباعة" : "Print Date"}: ${new Date().toLocaleDateString(isRTL ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric" })}`}
-          schoolAdminText={isRTL ? "إدارة الشركة" : "Company Admin"}
-        />
-        <div className="px-4">
-          <table className="w-full border-collapse border border-gray-300 text-[10px]">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-300 p-1.5 text-right font-bold w-8 text-black">#</th>
-                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "المشرف الميداني" : "Field Supervisor"}</th>
-                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الرقم المدني" : "ID"}</th>
-                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الجوال" : "Phone"}</th>
-                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "البريد الإلكتروني" : "Email"}</th>
-                <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRTL ? "الحالة" : "Status"}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((sup, i) => (
-                <tr key={sup.id} className="border-b border-gray-300">
-                  <td className="border border-gray-300 p-1.5 text-center text-gray-700">{i + 1}</td>
-                  <td className="border border-gray-300 p-1.5 font-bold text-gray-900">{sup.name}</td>
-                  <td className="border border-gray-300 p-1.5 font-mono text-gray-700">{sup.national_id}</td>
-                  <td className="border border-gray-300 p-1.5 text-gray-700">{sup.phone}</td>
-                  <td className="border border-gray-300 p-1.5 text-gray-700">{sup.email}</td>
-                  <td className="border border-gray-300 p-1.5 text-gray-700">{sup.is_active ? (isRTL ? "نشط" : "Active") : (isRTL ? "غير نشط" : "Inactive")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="mt-8 flex justify-between items-center text-sm font-bold text-gray-800">
-            <p>{isRTL ? "إجمالي الكادر" : "Total Force"}: {filtered.length}</p>
-            <p>{isRTL ? "التوقيع الرسمي" : "Official Signature"}: ............................</p>
-          </div>
-        </div>
-      </div>
 
       <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-8`} dir={isRTL ? 'rtl' : 'ltr'}>
         
@@ -449,18 +427,18 @@ export default function FieldSupervisorsIndex({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
             <div className="flex flex-col">
                 <h1 className={DS_pageTitle}>
-                    {isRTL ? "إدارة الأسطول: المشرفين الميدانيين" : "Fleet Management: Field Supervisors"}
+                    {isRTL ? "إدارة المشرفين الميدانيين" : "Operational: Field Supervisors"}
                 </h1>
                 <div className="flex items-center gap-2 mt-1">
                     <div className="w-1.5 h-1.5 bg-[#f5b800] rounded-full" />
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                        {supervisors.length} {isRTL ? "مشرف ميداني مسجل" : "Field Supervisors Enrolled"}
+                        {supervisors.total} {isRTL ? "مشرف ميداني مسجل" : "Field Supervisors Enrolled"}
                     </span>
                 </div>
             </div>
         </div>
 
-        {/* Intelligence Stats */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className={DS_statCard('blue')}>
                 <div className={DS_statIcon('blue')}><Users size={20} /></div>
@@ -472,15 +450,15 @@ export default function FieldSupervisorsIndex({
             <div className={DS_statCard('green')}>
                 <div className={DS_statIcon('green')}><CheckCircle2 size={20} /></div>
                 <div>
-                    <p className={DS_statLabel}>{isRTL ? "النشطون" : "Active Units"}</p>
+                    <p className={DS_statLabel}>{isRTL ? "النشطين" : "Active"}</p>
                     <p className={DS_statValue2('green')}>{counts.active}</p>
                 </div>
             </div>
-            <div className={DS_statCard('red')}>
-                <div className={DS_statIcon('red')}><XCircle size={20} /></div>
+            <div className={DS_statCard('gold')}>
+                <div className={DS_statIcon('gold')}><AlertCircle size={20} /></div>
                 <div>
-                    <p className={DS_statLabel}>{isRTL ? "غير النشطين" : "Inactive Units"}</p>
-                    <p className={DS_statValue2('red')}>{counts.inactive}</p>
+                    <p className={DS_statLabel}>{isRTL ? "غير النشطين" : "Inactive"}</p>
+                    <p className={DS_statValue2('gold')}>{counts.inactive}</p>
                 </div>
             </div>
         </div>
@@ -489,7 +467,7 @@ export default function FieldSupervisorsIndex({
         {flash?.import_errors && flash.import_errors.length > 0 && (
             <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl">
                 <h4 className="text-rose-600 font-bold mb-2">أخطاء في عملية الاستيراد:</h4>
-                <ul className="list-disc list-inside text-sm text-rose-500 space-y-1">
+                <ul className="list-disc list-inside text-sm text-rose-500 space-y-1 font-mono">
                     {flash.import_errors.map((err: string, i: number) => (
                         <li key={i}>{err}</li>
                     ))}
@@ -499,22 +477,22 @@ export default function FieldSupervisorsIndex({
 
         {/* Main Operational Table */}
         <div className={DS_card}>
-            <BaseDataTable<FieldSupervisor>
+            <BaseDataTable<Supervisor>
                 columns={columns}
-                data={filtered}
-                pagination={null as any}
+                data={supervisors.data}
+                pagination={pagination}
                 searchValue={search}
-                onSearchChange={setSearch}
-                searchPlaceholder={isRTL ? "البحث في ملفات المشرفين..." : "Search supervisor dossiers..."}
+                onSearchChange={handleSearch}
+                searchPlaceholder={isRTL ? "البحث في ملفات المشرفين الميدانيين..." : "Search field supervisor dossiers..."}
                 filterTabs={filterTabs}
-                activeFilter={filter}
-                onFilterChange={(key) => setFilter(key as FilterType)}
+                activeFilter={filters.status}
+                onFilterChange={handleFilterChange}
                 exportEnabled={false}
                 headerAction={
                     <div className="flex items-center gap-2">
                         <button onClick={openAddModal} className={DS_btnGold}>
                             <Plus size={16} />
-                            <span className="hidden sm:inline">{isRTL ? "إضافة مشرف ميداني" : "New Field Supervisor"}</span>
+                            <span className="hidden sm:inline">{isRTL ? "مشرف ميداني جديد" : "New Supervisor"}</span>
                         </button>
                         <button onClick={() => setIsImportModalOpen(true)} className={DS_btnSecondary}>
                             <Upload size={16} />
@@ -557,7 +535,7 @@ export default function FieldSupervisorsIndex({
                                     <img src={`/storage/${selectedSupervisor.image}`} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-4xl font-black text-[#0f2044] dark:text-[#f5b800] bg-gray-50">
-                                        {selectedSupervisor.name.charAt(0)}
+                                        {getSupervisorName(selectedSupervisor, isRTL).charAt(0)}
                                     </div>
                                 )}
                             </div>
@@ -567,13 +545,13 @@ export default function FieldSupervisorsIndex({
                             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-gray-100 dark:border-[#243460] pb-8">
                                 <div className="space-y-1">
                                     <h2 className="text-3xl font-black text-[#0f2044] dark:text-white tracking-tighter">
-                                        {selectedSupervisor.name}
+                                        {getSupervisorName(selectedSupervisor, isRTL)}
                                     </h2>
                                     <p className="text-lg font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                                        {selectedSupervisor.name_en || (isRTL ? "غير محدد" : "UNSPECIFIED")}
+                                        {isRTL ? selectedSupervisor.name_en : selectedSupervisor.name}
                                     </p>
                                     <div className="flex gap-2 mt-4">
-                                        <StatusBadge status={selectedSupervisor.is_active ? "active" : "inactive"} />
+                                        <StatusBadge status={selectedSupervisor.field_supervisor?.status === "active" ? "active" : "inactive"} />
                                         <span className="px-3 py-1 bg-[#0f2044]/5 dark:bg-[#0f2044]/40 rounded-full text-[10px] font-black text-gray-500 uppercase tracking-tighter">
                                             {isRTL ? "الصفة: مشرف ميداني" : "Role: Field Supervisor"}
                                         </span>
@@ -581,42 +559,21 @@ export default function FieldSupervisorsIndex({
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-10">
+                            <div className="grid grid-cols-1 gap-12 mt-10">
                                 {/* Section: Personal */}
                                 <div className="space-y-6">
                                     <h3 className="text-xs font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Users size={16} className="text-[#f5b800]" /> {isRTL ? "الهوية الشخصية" : "Personal Identity"}
+                                        <Users size={16} className="text-[#f5b800]" /> {isRTL ? "الهوية الشخصية والاتصال" : "Personal Identity & Contact"}
                                     </h3>
                                     <div className="space-y-4">
                                         <InfoRow icon={<CreditCard size={14} />} label={isRTL ? "الرقم المدني" : "Civil ID"} value={selectedSupervisor.national_id} isDark={isDark} />
                                         <InfoRow icon={<Phone size={14} />} label={isRTL ? "رقم الجوال" : "Primary Phone"} value={selectedSupervisor.phone} isDark={isDark} />
-                                        <InfoRow icon={<Mail size={14} />} label={isRTL ? "البريد الإلكتروني" : "Email Address"} value={selectedSupervisor.email} isDark={isDark} />
+                                        <InfoRow icon={<Mail size={14} />} label={isRTL ? "البريد الإلكتروني" : "Email Address"} value={selectedSupervisor.email || "—"} isDark={isDark} />
                                         <InfoRow icon={<MapPin size={14} />} label={isRTL ? "العنوان" : "Registered Address"} value={selectedSupervisor.address || "—"} isDark={isDark} />
                                     </div>
                                 </div>
-
-                                {/* Section: Operational */}
-                                <div className="space-y-6">
-                                    <h3 className="text-xs font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Briefcase size={16} className="text-[#f5b800]" /> {isRTL ? "البيانات التشغيلية" : "Operational Data"}
-                                    </h3>
-                                    <div className="space-y-4">
-                                        <div className="p-4 bg-gray-50 dark:bg-[#0f2044]/30 rounded-2xl border border-gray-100 dark:border-[#243460]">
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isRTL ? "كود المستخدم" : "Internal Code"}</p>
-                                            <p className="text-sm font-bold text-[#0f2044] dark:text-gray-300 font-mono">
-                                                {selectedSupervisor.user_code}
-                                            </p>
-                                        </div>
-                                        <div className="p-4 bg-[#f5b800]/5 rounded-2xl border border-[#f5b800]/10">
-                                            <p className="text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase tracking-widest mb-1">{isRTL ? "الوصول للنظام" : "System Access"}</p>
-                                            <p className="text-sm font-bold text-[#0f2044] dark:text-gray-300">
-                                                {selectedSupervisor.is_active ? (isRTL ? "مصرح له بالدخول" : "Authorized Access") : (isRTL ? "ممنوع من الدخول" : "Revoked Access")}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
-                            </div>
+                        </div>
                         </div>
                     </div>
                 </Modal>
@@ -638,178 +595,167 @@ export default function FieldSupervisorsIndex({
                     </button>
                 </div>
 
-                {/* Tactical Stepper */}
-                <div className="bg-[#0f2044]/5 dark:bg-[#0f2044]/30 px-10 py-3 border-b border-gray-100 dark:border-[#243460]">
-                    <div className="relative flex items-center justify-between">
-                        <div className="absolute inset-x-10 top-1/2 -translate-y-1/2 h-0.5 bg-gray-200 dark:bg-[#243460]" />
-                        <div className={`absolute left-10 top-1/2 -translate-y-1/2 h-0.5 bg-[#f5b800] transition-all duration-500`} style={{ width: currentStep === 1 ? '0%' : '100%' }} />
-                        
-                        <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg transition-all ${currentStep >= 1 ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] text-gray-400'}`}>1</div>
-                        <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg transition-all ${currentStep >= 2 ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] text-gray-400'}`}>2</div>
-                    </div>
-                    <div className="flex justify-between mt-1 px-4">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-[#0f2044] dark:text-[#f5b800]">{isRTL ? "الهوية الشخصية" : "Personal Identity"}</span>
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${currentStep === 2 ? 'text-[#0f2044] dark:text-[#f5b800]' : 'text-gray-400'}`}>{isRTL ? "بيانات الاتصال" : "Contact Details"}</span>
-                    </div>
-                </div>
-
                 <form onSubmit={submit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <div className={DS_modalBody}>
-                        {currentStep === 1 && (
-                            <motion.div initial={{ opacity: 0, x: isRTL ? 20 : -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-                                {/* Photo Upload */}
-                                <div className="flex items-center gap-4">
-                                    <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-[#0f2044]/40 border-2 border-dashed border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden">
-                                        {data.image ? (
-                                            <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
-                                        ) : previewImage ? (
-                                            <img src={previewImage} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <Users size={32} className="text-gray-300" />
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{isRTL ? "الصورة الشخصية" : "Supervisor Visual ID"}</label>
-                                        <label className="cursor-pointer px-4 py-2 bg-[#0f2044] text-white rounded-xl text-xs font-black hover:bg-[#1a3a7a] transition-all">
-                                            {isRTL ? "رفع صورة" : "Upload Dossier Photo"}
-                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => setData("image", e.target.files?.[0] || null)} />
-                                        </label>
-                                        <InputError message={errors.image} />
-                                    </div>
-                                </div>
-
-                                {/* Names Grid - Arabic */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
-                                        {isRTL ? "البيانات الرسمية (بالعربية)" : "Official Dossier Name (Arabic)"}
-                                    </h4>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"}</label>
-                                            <input type="text" value={data.first_name_ar} onChange={(e) => setData("first_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
+                    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 max-h-[78vh]">
+                        {/* Names */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#243460] pb-2">
+                                <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] flex items-center gap-2">
+                                    <Users size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                                    {isRTL ? "الأسماء الرسمية" : "Official Names"}
+                                </h4>
+                                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded">
+                                    {isRTL ? "* مطلوب عربي أو إنجليزي" : "* Req: Arabic or English"}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Arabic Panel */}
+                                <div className="p-3 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-xl border border-gray-100/80 dark:border-[#243460]/40 space-y-3">
+                                    <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider">{isRTL ? "البيانات بالعربية" : "ARABIC DOSSIER"}</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"} {!data.first_name_en && !data.last_name_en && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.first_name_ar} onChange={e => setData("first_name_ar", e.target.value)} className={DS_input} dir="rtl" required={!data.first_name_en && !data.last_name_en} />
+                                            <InputError message={errors.first_name_ar} />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم الأب" : "Father Name"}</label>
-                                            <input type="text" value={data.second_name_ar} onChange={(e) => setData("second_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم الجد" : "Grandfather Name"}</label>
-                                            <input type="text" value={data.third_name_ar} onChange={(e) => setData("third_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label>
-                                            <input type="text" value={data.last_name_ar} onChange={(e) => setData("last_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"} {!data.first_name_en && !data.last_name_en && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.last_name_ar} onChange={e => setData("last_name_ar", e.target.value)} className={DS_input} dir="rtl" required={!data.first_name_en && !data.last_name_en} />
+                                            <InputError message={errors.last_name_ar} />
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Names Grid - English */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
-                                        {isRTL ? "الاسم بناءً على الهوية (إنجليزي)" : "Official Dossier Name (English)"}
-                                    </h4>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"}</label>
-                                            <input type="text" value={data.first_name_en} onChange={(e) => setData("first_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                {/* English Panel */}
+                                <div className="p-3 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-xl border border-gray-100/80 dark:border-[#243460]/40 space-y-3">
+                                    <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider">{isRTL ? "البيانات بالإنجليزية" : "ENGLISH DOSSIER"}</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"} {!data.first_name_ar && !data.last_name_ar && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.first_name_en} onChange={e => setData("first_name_en", e.target.value)} className={DS_input} dir="ltr" required={!data.first_name_ar && !data.last_name_ar} />
+                                            <InputError message={errors.first_name_en} />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم الأب" : "Father Name"}</label>
-                                            <input type="text" value={data.second_name_en} onChange={(e) => setData("second_name_en", e.target.value)} className={DS_input} dir="ltr" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم الجد" : "Grandfather Name"}</label>
-                                            <input type="text" value={data.third_name_en} onChange={(e) => setData("third_name_en", e.target.value)} className={DS_input} dir="ltr" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label>
-                                            <input type="text" value={data.last_name_en} onChange={(e) => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"} {!data.first_name_ar && !data.last_name_ar && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.last_name_en} onChange={e => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" required={!data.first_name_ar && !data.last_name_ar} />
+                                            <InputError message={errors.last_name_en} />
                                         </div>
                                     </div>
                                 </div>
-                            </motion.div>
-                        )}
+                            </div>
+                        </div>
 
-                        {currentStep === 2 && (
-                            <motion.div initial={{ opacity: 0, x: isRTL ? -20 : 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                                {/* Contact & Preferences */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
-                                        {isRTL ? "معلومات التواصل واللغة" : "Contact & Preferences"}
-                                    </h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "رقم الجوال" : "Primary Phone"}</label>
-                                            <input type="text" value={data.phone} onChange={(e) => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" placeholder="5X XXX XXXX" required />
+                        {/* Identity & Photo */}
+                        <div className="space-y-3">
+                            <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-2 flex items-center gap-2">
+                                <CreditCard size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                                {isRTL ? "الهوية الشخصية والمرفقات" : "Personal Identity & Profile"}
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الرقم المدني" : "Civil ID"} <span className="text-rose-500">*</span></label>
+                                            <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
+                                            <InputError message={errors.national_id} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "رقم الجوال" : "Phone Number"} <span className="text-rose-500">*</span></label>
+                                            <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" placeholder="5XXXXXXXX" required />
                                             <InputError message={errors.phone} />
                                         </div>
-                                        <div className="space-y-1.5">
+                                    </div>
+
+                                    {/* Profile photo */}
+                                    <div className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                                        <div className="w-10 h-10 rounded-lg border border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden bg-white dark:bg-[#0f2044] flex-shrink-0 relative group">
+                                            {data.image ? (
+                                                <>
+                                                    <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
+                                                    <button type="button" onClick={() => setData("image", null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <X size={12} className="text-white" />
+                                                    </button>
+                                                </>
+                                            ) : previewImage ? (
+                                                <>
+                                                    <img src={previewImage} className="w-full h-full object-cover" />
+                                                    <button type="button" onClick={() => {
+                                                        setPreviewImage(null);
+                                                        setData("remove_image", true);
+                                                    }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <X size={12} className="text-white" />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <User size={16} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-[10px] font-bold text-[#0f2044] dark:text-white leading-tight">{isRTL ? "الصورة الشخصية" : "Profile Photo"}</p>
+                                            {!data.image && !previewImage ? (
+                                                <label className="cursor-pointer text-[9px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline mt-0.5 inline-block">
+                                                    {isRTL ? "اختيار صورة" : "Choose Photo"}
+                                                    <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setData({ ...data, image: file, remove_image: false });
+                                                    }} />
+                                                </label>
+                                            ) : (
+                                                <span className="text-[9px] font-black text-gray-400 mt-0.5 inline-block uppercase">{isRTL ? "مرفق ✓" : "Attached ✓"}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Address & Email */}
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
                                             <label className={DS_label}>{isRTL ? "البريد الإلكتروني" : "Email Address"}</label>
-                                            <input type="email" value={data.email} onChange={(e) => setData("email", e.target.value)} className={DS_input} dir="ltr" required />
+                                            <input type="email" value={data.email} onChange={e => setData("email", e.target.value)} className={DS_input} dir="ltr" />
                                             <InputError message={errors.email} />
                                         </div>
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "العنوان" : "Address"}</label>
+                                            <input type="text" value={data.address} onChange={e => setData("address", e.target.value)} className={DS_input} />
+                                            <InputError message={errors.address} />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
                                             <label className={DS_label}>{isRTL ? "اللغة المفضلة" : "Preferred Language"}</label>
-                                            <select value={data.preferred_language} onChange={(e) => setData("preferred_language", e.target.value)} className={DS_select} dir={isRTL ? "rtl" : "ltr"}>
+                                            <select value={data.preferred_language} onChange={(e) => setData("preferred_language", e.target.value)} className={DS_select}>
                                                 <option value="ar">{isRTL ? "العربية" : "Arabic"}</option>
                                                 <option value="en">{isRTL ? "الإنجليزية" : "English"}</option>
                                             </select>
                                             <InputError message={errors.preferred_language} />
                                         </div>
-                                    </div>
-                                    <div className="space-y-1.5 mt-4">
-                                        <label className={DS_label}>{isRTL ? "العنوان" : "Registered Address"}</label>
-                                        <input type="text" value={data.address} onChange={(e) => setData("address", e.target.value)} className={DS_input} dir={isRTL ? "rtl" : "ltr"} />
-                                    </div>
-                                </div>
-
-                                {/* Operational Data */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
-                                        {isRTL ? "البيانات الوظيفية" : "Operational Data"}
-                                    </h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الرقم المدني / الإقامة" : "Civil ID / Iqama"}</label>
-                                            <input type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
-                                            <InputError message={errors.national_id} />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الحالة" : "Operational Status"}</label>
-                                            <select value={data.status} onChange={(e) => setData("status", e.target.value)} className={DS_select} required>
-                                                <option value="Active">{isRTL ? "نشط" : "Active"}</option>
-                                                <option value="Inactive">{isRTL ? "غير نشط" : "Inactive"}</option>
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الحالة" : "Status"} <span className="text-rose-500">*</span></label>
+                                            <select value={data.status} onChange={e => setData("status", e.target.value)} className={DS_select} required>
+                                                <option value="active">{isRTL ? "نشط" : "Active"}</option>
+                                                <option value="inactive">{isRTL ? "غير نشط" : "Inactive"}</option>
                                             </select>
+                                            <InputError message={errors.status} />
                                         </div>
                                     </div>
                                 </div>
-                            </motion.div>
-                        )}
-                    </div>
+                            </div>
+                        </div>
 
+                    </div>
                     <div className={DS_modalFooter(isRTL)}>
-                        {currentStep === 2 && (
-                            <button type="button" onClick={() => setCurrentStep(1)} className={DS_btnSecondary}>
-                                {isRTL ? "رجوع" : "Back"}
-                            </button>
-                        )}
                         <div className="ml-auto flex items-center gap-3">
                             <button type="button" onClick={closeModal} className="text-xs font-bold text-gray-400 hover:text-[#0f2044] transition-colors">
                                 {isRTL ? "إلغاء" : "Cancel"}
                             </button>
-                            {currentStep === 1 ? (
-                                <button type="button" onClick={(e) => { e.preventDefault(); setCurrentStep(2); }} className={DS_btnPrimary}>
-                                    {isRTL ? "متابعة" : "Continue"} <ChevronRight size={16} />
-                                </button>
-                            ) : (
-                                <button type="submit" disabled={processing} className={DS_btnGold}>
-                                    {processing && <Loader2 size={16} className="animate-spin" />}
-                                    {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل المشرف" : "Enroll Supervisor")}
-                                </button>
-                            )}
+                            <button type="submit" disabled={processing} className={DS_btnGold}>
+                                {processing && <Loader2 size={16} className="animate-spin" />}
+                                {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل المشرف" : "Enroll Supervisor")}
+                            </button>
                         </div>
                     </div>
                 </form>
+
             </div>
         </Modal>
 
@@ -820,7 +766,7 @@ export default function FieldSupervisorsIndex({
                     <div className="flex items-center gap-3">
                         <div className={DS_modalHeaderAccent} />
                         <h3 className={DS_modalHeaderTitle}>
-                            {isRTL ? "استيراد المشرفين الميدانيين (Excel)" : "Import Field Supervisors (Excel)"}
+                            {isRTL ? "استيراد المشرفين الميدانيين" : "Import Field Supervisors (Excel)"}
                         </h3>
                     </div>
                     <button onClick={() => { setIsImportModalOpen(false); resetImport(); }} className={DS_modalClose}>
@@ -879,10 +825,6 @@ export default function FieldSupervisorsIndex({
 
 // ─── Sub-Components ───────────────────────────────────────
 
-function FSStatCard({ label, value, icon, color, isDark, isRTL }: any) {
-  return null; // Removed in favor of DS_statCard
-}
-
 function InfoRow({ icon, label, value, isDark, highlight = false }: any) {
   return (
     <div className="flex items-center justify-between">
@@ -900,4 +842,3 @@ function InfoRow({ icon, label, value, isDark, highlight = false }: any) {
     </div>
   );
 }
-

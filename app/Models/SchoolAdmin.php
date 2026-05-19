@@ -13,6 +13,7 @@ class SchoolAdmin extends Model
     protected $fillable = [
         'user_id',
         'school_id',
+        'status',
     ];
 
     public function user(): BelongsTo
