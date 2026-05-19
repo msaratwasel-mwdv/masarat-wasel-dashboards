@@ -35,19 +35,16 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
             ['ملاحظة هامة: الأعمدة الملونة باللون الأزرق إجبارية (يجب تعبئتها)، بينما الأعمدة باللون الأبيض اختيارية.'],
             [
                 'الاسم الأول (عربي)',
-                'اسم الأب (عربي)',
-                'اسم الجد (عربي)',
                 'الاسم الأخير (عربي)',
                 'الاسم الأول (انجليزي)',
-                'اسم الأب (انجليزي)',
-                'اسم الجد (انجليزي)',
                 'الاسم الأخير (انجليزي)',
                 'الرقم المدني',
                 'رقم الجوال',
                 'البريد الإلكتروني',
                 'العنوان',
                 'رقم الرخصة',
-                'تاريخ انتهاء الرخصة (YYYY-MM-DD)'
+                'تاريخ انتهاء الرخصة (YYYY-MM-DD)',
+                'اللغة المفضلة (ar / en)'
             ]
         ];
     }
@@ -61,12 +58,8 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
         // إرجاع مسافة قبل الرقم لضمان عدم تحويله إلى صيغة علمية في بعض نسخ الإكسيل
         return [
             $row->first_name_ar,
-            $row->second_name_ar,
-            $row->third_name_ar,
             $row->last_name_ar,
             $row->first_name_en,
-            $row->second_name_en,
-            $row->third_name_en,
             $row->last_name_en,
             $row->national_id ? ' ' . $row->national_id : '',
             $row->phone ? ' ' . $row->phone : '',
@@ -74,14 +67,15 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
             $row->address,
             $row->driver?->license_number,
             $row->driver?->license_expiry_date,
+            $row->preferred_language ?: 'ar',
         ];
     }
 
     public function columnFormats(): array
     {
         return [
-            'I' => NumberFormat::FORMAT_TEXT,
-            'J' => NumberFormat::FORMAT_TEXT,
+            'E' => NumberFormat::FORMAT_TEXT,
+            'F' => NumberFormat::FORMAT_TEXT,
         ];
     }
 
@@ -93,16 +87,16 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
         // ارتفاع الصفوف الافتراضي ليكون أكبر
         $sheet->getDefaultRowDimension()->setRowHeight(25);
 
-        // توسيط النص في جميع الخلايا
-        $sheet->getStyle('A:N')->applyFromArray([
+        // توسيط النص في جميع الخلايا (حتى العمود K)
+        $sheet->getStyle('A:K')->applyFromArray([
             'alignment' => [
                 'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER
             ]
         ]);
 
-        // دمج خلايا الصف الأول للملاحظة
-        $sheet->mergeCells('A1:N1');
+        // دمج خلايا الصف الأول للملاحظة (حتى العمود K)
+        $sheet->mergeCells('A1:K1');
 
         // تنسيق الصف الأول (الملاحظة)
         $sheet->getStyle('A1')->applyFromArray([
@@ -112,7 +106,7 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
         $sheet->getRowDimension(1)->setRowHeight(35);
 
         // التنسيق الافتراضي للصف الثاني (العناوين الاختيارية باللون الأبيض)
-        $sheet->getStyle('A2:N2')->applyFromArray([
+        $sheet->getStyle('A2:K2')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['argb' => 'FF000000'], 'size' => 11],
             'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['argb' => 'FFFFFFFF']],
             'borders' => [
@@ -122,7 +116,7 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
         $sheet->getRowDimension(2)->setRowHeight(30);
 
         // تنسيق الأعمدة الإجبارية باللون الأزرق الداكن
-        $mandatoryColumns = ['A2', 'D2', 'I2', 'J2', 'M2', 'N2'];
+        $mandatoryColumns = ['A2', 'B2', 'E2', 'F2', 'I2', 'J2'];
         foreach ($mandatoryColumns as $col) {
             $sheet->getStyle($col)->applyFromArray([
                 'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],

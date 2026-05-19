@@ -279,3 +279,9 @@ html[dir="rtl"] {
     padding-right: 2.5rem !important;
     padding-left: 1.25rem !important;
 }
+
+/* Fix native date picker calendar icon visibility in dark mode */
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.5);
+    cursor: pointer;
+}

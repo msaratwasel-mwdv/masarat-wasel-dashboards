@@ -17,6 +17,7 @@ import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
     Users, 
+    User,
     CheckCircle2, 
     Bus as BusIcon, 
     UserCog, 
@@ -86,12 +87,8 @@ interface AssignedBus {
 interface Assistant {
   id: number;
   first_name_ar: string;
-  second_name_ar: string;
-  third_name_ar: string;
   last_name_ar: string;
   first_name_en: string | null;
-  second_name_en: string | null;
-  third_name_en: string | null;
   last_name_en: string | null;
   name: string;
   name_en: string | null;
@@ -114,6 +111,18 @@ interface Assistant {
   assigned_bus_as_assistant: AssignedBus | null;
   preferred_language?: string;
 }
+
+export const getAssistantName = (assistant: Assistant, isArabic?: boolean) => {
+  const isAr = isArabic !== undefined ? isArabic : (document.documentElement.lang === 'ar' || document.documentElement.dir === 'rtl');
+  const arName = [assistant.first_name_ar, assistant.last_name_ar].filter(Boolean).join(' ') || assistant.name;
+  const enName = [assistant.first_name_en, assistant.last_name_en].filter(Boolean).join(' ') || assistant.name_en;
+  
+  if (isAr) {
+    return arName || enName || assistant.email;
+  } else {
+    return enName || arName || assistant.email;
+  }
+};
 
 interface Props {
   auth: any;
@@ -156,7 +165,6 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewIdCardFront, setPreviewIdCardFront] = useState<string | null>(null);
   const [previewIdCardBack, setPreviewIdCardBack] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState(1);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedAssistant, setSelectedAssistant] = useState<Assistant | null>(null);
 
@@ -165,12 +173,8 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
     useForm({
       _method: "post" as "post" | "put",
       first_name_ar: "",
-      second_name_ar: "",
-      third_name_ar: "",
       last_name_ar: "",
       first_name_en: "",
-      second_name_en: "",
-      third_name_en: "",
       last_name_en: "",
       national_id: "",
       email: "",
@@ -183,6 +187,9 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
       image: null as File | null,
       id_card_front_image: null as File | null,
       id_card_back_image: null as File | null,
+      remove_image: false,
+      remove_id_card_front_image: false,
+      remove_id_card_back_image: false,
     });
 
   // --- Handlers ---
@@ -223,7 +230,6 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
     reset();
     setData("_method", "post");
     clearErrors();
-    setCurrentStep(1);
     setIsModalOpen(true);
   };
 
@@ -231,17 +237,15 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
     setIsEditing(true);
     setCurrentId(assistant.id);
     setPreviewImage(assistant.image ? `/storage/${assistant.image}` : null);
-    setPreviewIdCardFront(assistant.id_card_front_image ? `/storage/${assistant.id_card_front_image}` : null);
-    setPreviewIdCardBack(assistant.id_card_back_image ? `/storage/${assistant.id_card_back_image}` : null);
+    const idFront = assistant.assistant?.id_card_front_image || assistant.id_card_front_image;
+    setPreviewIdCardFront(idFront ? `/storage/${idFront}` : null);
+    const idBack = assistant.assistant?.id_card_back_image || assistant.id_card_back_image;
+    setPreviewIdCardBack(idBack ? `/storage/${idBack}` : null);
     setData({
       _method: "put",
       first_name_ar: assistant.first_name_ar || "",
-      second_name_ar: assistant.second_name_ar || "",
-      third_name_ar: assistant.third_name_ar || "",
       last_name_ar: assistant.last_name_ar || "",
       first_name_en: assistant.first_name_en || "",
-      second_name_en: assistant.second_name_en || "",
-      third_name_en: assistant.third_name_en || "",
       last_name_en: assistant.last_name_en || "",
       national_id: assistant.national_id || "",
       email: assistant.email || "",
@@ -254,9 +258,11 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
       image: null,
       id_card_front_image: null,
       id_card_back_image: null,
+      remove_image: false,
+      remove_id_card_front_image: false,
+      remove_id_card_back_image: false,
     });
     clearErrors();
-    setCurrentStep(1);
     setIsModalOpen(true);
   };
 
@@ -275,12 +281,6 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Prevent implicit form submission (e.g., from mobile keyboard "Next/Go") from saving data prematurely.
-    if (currentStep === 1) {
-      setCurrentStep(2);
-      return;
-    }
 
     if (isEditing && currentId) {
       post(route("admin.assistants.update", currentId), {
@@ -298,7 +298,14 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
     }
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    const url = route("admin.assistants.print-all", {
+      status: filters.status,
+      search: filters.search,
+      lang: isRTL ? "ar" : "en",
+    });
+    window.open(url, "PrintAllAssistants", "width=1200,height=800,scrollbars=yes,status=yes,resizable=yes");
+  };
 
   // --- Filter Tabs ---
   const filterTabs: FilterTab[] = [
@@ -323,29 +330,34 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
   const columns = useMemo(
     () => [
       columnHelper.accessor("name", {
-        header: isRTL ? "المشرفة" : "Supervisor",
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "المشرفة" : "Supervisor"}</div>,
         cell: (info) => {
           const assistant = info.row.original;
+          const displayName = getAssistantName(assistant, isRTL);
+          const arName = [assistant.first_name_ar, assistant.last_name_ar].filter(Boolean).join(' ') || assistant.name;
+          const enName = [assistant.first_name_en, assistant.last_name_en].filter(Boolean).join(' ') || assistant.name_en;
+          const alternateName = isRTL ? enName : arName;
+              
           return (
             <div className="flex items-center gap-4">
               <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-[#0f2044]/10 dark:bg-[#0f2044]/40 text-[#0f2044] dark:text-[#f5b800] flex items-center justify-center font-black text-sm overflow-hidden shadow-sm border border-gray-100 dark:border-white/5">
                 {assistant.image ? (
                   <img
                     src={`/storage/${assistant.image}`}
-                    alt={assistant.name}
+                    alt={displayName}
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  assistant.name.charAt(0)
+                  displayName.charAt(0)
                 )}
               </div>
               <div className="flex flex-col">
                 <span className={`text-sm font-black ${isDark ? "text-white" : "text-[#0f2044]"} tracking-tight`}>
-                  {assistant.name}
+                  {displayName}
                 </span>
-                {assistant.name_en && (
+                {alternateName && alternateName !== displayName && (
                   <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
-                    {assistant.name_en}
+                    {alternateName}
                   </span>
                 )}
               </div>
@@ -354,7 +366,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
         },
       }),
       columnHelper.accessor("national_id", {
-        header: isRTL ? "الرقم المدني" : "ID / Code",
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "الرقم المدني" : "ID / Code"}</div>,
         cell: (info) => {
           const assistant = info.row.original;
           return (
@@ -370,7 +382,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
         },
       }),
       columnHelper.accessor("phone", {
-        header: isRTL ? "الاتصال" : "Contact",
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "الاتصال" : "Contact"}</div>,
         cell: (info) => {
           const assistant = info.row.original;
           return (
@@ -386,7 +398,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
         },
       }),
       columnHelper.accessor("preferred_language", {
-        header: isRTL ? "اللغة المفضلة" : "Language",
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "اللغة المفضلة" : "Language"}</div>,
         cell: (info) => {
           const lang = info.row.original.preferred_language || "ar";
           return (
@@ -397,7 +409,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
         },
       }),
       columnHelper.accessor("assigned_bus_as_assistant", {
-        header: isRTL ? "الباص المُعيَّن" : "Assigned Bus",
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "الباص المُعيَّن" : "Assigned Bus"}</div>,
         cell: (info) => {
           const bus = info.getValue() as AssignedBus | null;
           return bus ? (
@@ -419,7 +431,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
         },
       }),
       columnHelper.accessor("assistant.status", {
-        header: isRTL ? "الحالة" : "Status",
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "الحالة" : "Status"}</div>,
         cell: (info) => {
             const status = info.getValue() || "N/A";
             return <StatusBadge status={status.toLowerCase() === "active" ? "active" : "inactive"} />;
@@ -427,7 +439,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
       }),
       columnHelper.display({
         id: "actions",
-        header: isRTL ? "الإجراءات" : "Actions",
+        header: () => <div className={isRTL ? "text-right" : "text-left"}>{isRTL ? "الإجراءات" : "Actions"}</div>,
         cell: (info) => {
           const assistant = info.row.original;
           return (
@@ -642,7 +654,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
                                     <img src={`/storage/${selectedAssistant.image}`} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-4xl font-black text-[#0f2044] dark:text-[#f5b800] bg-gray-50">
-                                        {selectedAssistant.name.charAt(0)}
+                                        {(isRTL ? (selectedAssistant.name || selectedAssistant.name_en) : (selectedAssistant.name_en || selectedAssistant.name)).charAt(0)}
                                     </div>
                                 )}
                             </div>
@@ -652,10 +664,14 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
                             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-gray-100 dark:border-[#243460] pb-8">
                                 <div className="space-y-1">
                                     <h2 className="text-3xl font-black text-[#0f2044] dark:text-white tracking-tighter">
-                                        {selectedAssistant.name}
+                                        {isRTL ? (selectedAssistant.name || selectedAssistant.name_en) : (selectedAssistant.name_en || selectedAssistant.name)}
                                     </h2>
                                     <p className="text-lg font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                                        {selectedAssistant.name_en || (isRTL ? "غير محدد" : "UNSPECIFIED")}
+                                        {(() => {
+                                            const altName = isRTL ? selectedAssistant.name_en : selectedAssistant.name;
+                                            const displayName = isRTL ? (selectedAssistant.name || selectedAssistant.name_en) : (selectedAssistant.name_en || selectedAssistant.name);
+                                            return altName && altName !== displayName ? altName : "";
+                                        })()}
                                     </p>
                                     <div className="flex gap-2 mt-4">
                                         <StatusBadge status={selectedAssistant.assistant?.status === "active" ? "active" : "inactive"} />
@@ -742,113 +758,205 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
                     </button>
                 </div>
 
-                {/* Tactical Stepper */}
-                <div className="bg-[#0f2044]/5 dark:bg-[#0f2044]/30 px-10 py-3 border-b border-gray-100 dark:border-[#243460]">
-                    <div className="relative flex items-center justify-between">
-                        <div className="absolute inset-x-10 top-1/2 -translate-y-1/2 h-0.5 bg-gray-200 dark:bg-[#243460]" />
-                        <div className={`absolute left-10 top-1/2 -translate-y-1/2 h-0.5 bg-[#f5b800] transition-all duration-500`} style={{ width: currentStep === 1 ? '0%' : '100%' }} />
-                        
-                        <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg transition-all ${currentStep >= 1 ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] text-gray-400'}`}>1</div>
-                        <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg transition-all ${currentStep >= 2 ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] text-gray-400'}`}>2</div>
-                    </div>
-                    <div className="flex justify-between mt-1 px-4">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-[#0f2044] dark:text-[#f5b800]">{isRTL ? "الهوية الشخصية" : "Personal Identity"}</span>
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${currentStep === 2 ? 'text-[#0f2044] dark:text-[#f5b800]' : 'text-gray-400'}`}>{isRTL ? "بيانات العمل والطوارئ" : "Contact & Emergency"}</span>
-                    </div>
-                </div>
-
                 <form onSubmit={submit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <div className={DS_modalBody}>
-                        {currentStep === 1 && (
-                            <motion.div initial={{ opacity: 0, x: isRTL ? 20 : -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-                                {/* Photo Upload */}
-                                <div className="flex items-center gap-4">
-                                    <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-[#0f2044]/40 border-2 border-dashed border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden">
-                                        {data.image ? (
-                                            <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
-                                        ) : previewImage ? (
-                                            <img src={previewImage} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <Users size={32} className="text-gray-300" />
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{isRTL ? "الصورة الشخصية" : "Supervisor Visual ID"}</label>
-                                        <label className="cursor-pointer px-4 py-2 bg-[#0f2044] text-white rounded-xl text-xs font-black hover:bg-[#1a3a7a] transition-all">
-                                            {isRTL ? "رفع صورة" : "Upload Dossier Photo"}
-                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => setData("image", e.target.files?.[0] || null)} />
-                                        </label>
-                                        <InputError message={errors.image} />
-                                    </div>
-                                </div>
-
-                                {/* Names Grid - Arabic */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
-                                        {isRTL ? "البيانات الرسمية (بالعربية)" : "Official Dossier Name (Arabic)"}
-                                    </h4>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"}</label>
-                                            <input type="text" value={data.first_name_ar} onChange={(e) => setData("first_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
+                    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 max-h-[78vh]">
+                        {/* §1 The Names */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#243460] pb-2">
+                                <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] flex items-center gap-2">
+                                    <Users size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                                    {isRTL ? "الأسماء الرسمية" : "Official Names"}
+                                </h4>
+                                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded">
+                                    {isRTL ? "* مطلوب عربي أو إنجليزي" : "* Req: Arabic or English"}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Arabic Panel */}
+                                <div className="p-3 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-xl border border-gray-100/80 dark:border-[#243460]/40 space-y-3">
+                                    <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider">{isRTL ? "البيانات بالعربية" : "ARABIC DOSSIER"}</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"} {!data.first_name_en && !data.last_name_en && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.first_name_ar} onChange={e => setData("first_name_ar", e.target.value)} className={DS_input} dir="rtl" required={!data.first_name_en && !data.last_name_en} />
+                                            <InputError message={errors.first_name_ar} />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم الأب" : "Father Name"}</label>
-                                            <input type="text" value={data.second_name_ar} onChange={(e) => setData("second_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم الجد" : "Grandfather Name"}</label>
-                                            <input type="text" value={data.third_name_ar} onChange={(e) => setData("third_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label>
-                                            <input type="text" value={data.last_name_ar} onChange={(e) => setData("last_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"} {!data.first_name_en && !data.last_name_en && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.last_name_ar} onChange={e => setData("last_name_ar", e.target.value)} className={DS_input} dir="rtl" required={!data.first_name_en && !data.last_name_en} />
+                                            <InputError message={errors.last_name_ar} />
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Names Grid - English */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
-                                        {isRTL ? "الاسم بناءً على الهوية (إنجليزي)" : "Official Dossier Name (English)"}
-                                    </h4>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"}</label>
-                                            <input type="text" value={data.first_name_en} onChange={(e) => setData("first_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                {/* English Panel */}
+                                <div className="p-3 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-xl border border-gray-100/80 dark:border-[#243460]/40 space-y-3">
+                                    <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider">{isRTL ? "البيانات بالإنجليزية" : "ENGLISH DOSSIER"}</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"} {!data.first_name_ar && !data.last_name_ar && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.first_name_en} onChange={e => setData("first_name_en", e.target.value)} className={DS_input} dir="ltr" required={!data.first_name_ar && !data.last_name_ar} />
+                                            <InputError message={errors.first_name_en} />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم الأب" : "Father Name"}</label>
-                                            <input type="text" value={data.second_name_en} onChange={(e) => setData("second_name_en", e.target.value)} className={DS_input} dir="ltr" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم الجد" : "Grandfather Name"}</label>
-                                            <input type="text" value={data.third_name_en} onChange={(e) => setData("third_name_en", e.target.value)} className={DS_input} dir="ltr" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label>
-                                            <input type="text" value={data.last_name_en} onChange={(e) => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"} {!data.first_name_ar && !data.last_name_ar && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.last_name_en} onChange={e => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" required={!data.first_name_ar && !data.last_name_ar} />
+                                            <InputError message={errors.last_name_en} />
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
 
-                                {/* Contact & Preferences */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
-                                        {isRTL ? "معلومات التواصل واللغة" : "Contact & Preferences"}
-                                    </h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "رقم الجوال" : "Primary Phone"}</label>
-                                            <input type="text" value={data.phone} onChange={(e) => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" placeholder="5X XXX XXXX" required />
+                        {/* §2 Personal Identity & Employment */}
+                        <div className="space-y-3">
+                            <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-2 flex items-center gap-2">
+                                <CreditCard size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                                {isRTL ? "الهوية الشخصية والمرفقات" : "Personal Identity & Documents"}
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Left Col: Inputs & Profile photo */}
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الرقم المدني / الإقامة" : "Civil ID / Iqama"} <span className="text-rose-500">*</span></label>
+                                            <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
+                                            <InputError message={errors.national_id} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "رقم الجوال" : "Phone Number"} <span className="text-rose-500">*</span></label>
+                                            <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" placeholder="5XXXXXXXX" required />
                                             <InputError message={errors.phone} />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "البريد الإلكتروني" : "Email Address"}</label>
-                                            <input type="email" value={data.email} onChange={(e) => setData("email", e.target.value)} className={DS_input} dir="ltr" required />
-                                            <InputError message={errors.email} />
+                                    </div>
+
+
+                                    {/* Profile photo upload directly next/under */}
+                                    <div className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                                        <div className="w-10 h-10 rounded-lg border border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden bg-white dark:bg-[#0f2044] flex-shrink-0 relative group">
+                                            {data.image ? (
+                                                <>
+                                                    <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
+                                                    <button type="button" onClick={() => setData("image", null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <X size={12} className="text-white" />
+                                                    </button>
+                                                </>
+                                            ) : previewImage ? (
+                                                <>
+                                                    <img src={previewImage} className="w-full h-full object-cover" />
+                                                    <button type="button" onClick={() => {
+                                                        setPreviewImage(null);
+                                                        setData("remove_image", true);
+                                                    }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <X size={12} className="text-white" />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <User size={16} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                                            )}
                                         </div>
-                                        <div className="space-y-1.5">
+                                        <div className="flex-1">
+                                            <p className="text-[10px] font-bold text-[#0f2044] dark:text-white leading-tight">{isRTL ? "الصورة الشخصية" : "Profile Photo"}</p>
+                                            {!data.image && !previewImage ? (
+                                                <label className="cursor-pointer text-[9px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline mt-0.5 inline-block">
+                                                    {isRTL ? "اختيار صورة" : "Choose Photo"}
+                                                    <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setData({ ...data, image: file, remove_image: false });
+                                                    }} />
+                                                </label>
+                                            ) : (
+                                                <span className="text-[9px] font-black text-gray-400 mt-0.5 inline-block uppercase">{isRTL ? "مرفق ✓" : "Attached ✓"}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Col: Media Uploads */}
+                                <div className="space-y-2">
+                                    <div className="p-3 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-xl border border-gray-100/80 dark:border-[#243460]/40 space-y-2 h-full flex flex-col justify-between">
+                                        <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-2 block">{isRTL ? "المرفقات الثبوتية" : "DOCUMENTS"}</span>
+                                        
+                                        {/* ID Card Front */}
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-8 rounded border border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden bg-white dark:bg-[#0f2044] flex-shrink-0 relative group">
+                                                {data.id_card_front_image ? (
+                                                    <>
+                                                        <img src={URL.createObjectURL(data.id_card_front_image)} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => setData("id_card_front_image", null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} className="text-white" /></button>
+                                                    </>
+                                                ) : previewIdCardFront ? (
+                                                    <>
+                                                        <img src={previewIdCardFront} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => { setPreviewIdCardFront(null); setData("remove_id_card_front_image", true); }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} className="text-white" /></button>
+                                                    </>
+                                                ) : <CreditCard size={12} className="text-gray-400 dark:text-[#7ba7e8]/60" />}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-[10px] font-bold text-[#0f2044] dark:text-white leading-tight">{isRTL ? "صورة الهوية (الوجه)" : "ID Card Front"}</p>
+                                                {!data.id_card_front_image && !previewIdCardFront && (
+                                                    <label className="cursor-pointer text-[9px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline mt-0.5 inline-block">
+                                                        {isRTL ? "رفع الملف" : "Upload"} <input type="file" className="hidden" accept="image/*" onChange={e => setData({ ...data, id_card_front_image: e.target.files?.[0] || null, remove_id_card_front_image: false })} />
+                                                    </label>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* ID Card Back */}
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-8 rounded border border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden bg-white dark:bg-[#0f2044] flex-shrink-0 relative group">
+                                                {data.id_card_back_image ? (
+                                                    <>
+                                                        <img src={URL.createObjectURL(data.id_card_back_image)} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => setData("id_card_back_image", null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} className="text-white" /></button>
+                                                    </>
+                                                ) : previewIdCardBack ? (
+                                                    <>
+                                                        <img src={previewIdCardBack} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => { setPreviewIdCardBack(null); setData("remove_id_card_back_image", true); }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} className="text-white" /></button>
+                                                    </>
+                                                ) : <CreditCard size={12} className="text-gray-400 dark:text-[#7ba7e8]/60" />}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-[10px] font-bold text-[#0f2044] dark:text-white leading-tight">{isRTL ? "صورة الهوية (الخلف)" : "ID Card Back"}</p>
+                                                {!data.id_card_back_image && !previewIdCardBack && (
+                                                    <label className="cursor-pointer text-[9px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline mt-0.5 inline-block">
+                                                        {isRTL ? "رفع الملف" : "Upload"} <input type="file" className="hidden" accept="image/*" onChange={e => setData({ ...data, id_card_back_image: e.target.files?.[0] || null, remove_id_card_back_image: false })} />
+                                                    </label>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* §3 Contact & Emergency */}
+                        <div className="space-y-3">
+                            <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-2 flex items-center gap-2">
+                                <Briefcase size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                                {isRTL ? "جهات اتصال الطوارئ والحالة" : "Emergency & Status"}
+                            </h4>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-3 p-4 bg-rose-500/5 rounded-2xl border border-rose-500/10">
+                                    <h4 className="text-[10px] font-black text-rose-600 uppercase tracking-widest">{isRTL ? "بروتوكول الطوارئ" : "Emergency Protocol"}</h4>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "اسم جهة الطوارئ" : "Contact Name"}</label>
+                                            <input type="text" value={data.emergency_contact_name} onChange={e => setData("emergency_contact_name", e.target.value)} className={DS_input} />
+                                            <InputError message={errors.emergency_contact_name} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "رقم الطوارئ" : "Emergency Phone"}</label>
+                                            <input type="text" value={data.emergency_contact_phone} onChange={e => setData("emergency_contact_phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" />
+                                            <InputError message={errors.emergency_contact_phone} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
                                             <label className={DS_label}>{isRTL ? "اللغة المفضلة" : "Preferred Language"}</label>
                                             <select value={data.preferred_language} onChange={(e) => setData("preferred_language", e.target.value)} className={DS_select} dir={isRTL ? "rtl" : "ltr"}>
                                                 <option value="ar">{isRTL ? "العربية" : "Arabic"}</option>
@@ -856,99 +964,45 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
                                             </select>
                                             <InputError message={errors.preferred_language} />
                                         </div>
-                                    </div>
-                                    <div className="space-y-1.5 mt-4">
-                                        <label className={DS_label}>{isRTL ? "العنوان" : "Registered Address"}</label>
-                                        <input type="text" value={data.address} onChange={(e) => setData("address", e.target.value)} className={DS_input} dir={isRTL ? "rtl" : "ltr"} />
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {currentStep === 2 && (
-                            <motion.div initial={{ opacity: 0, x: isRTL ? -20 : 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                                {/* Operational Data */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
-                                        {isRTL ? "البيانات الوظيفية" : "Operational Data"}
-                                    </h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الرقم المدني / الإقامة" : "Civil ID / Iqama"}</label>
-                                            <input type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
-                                            <InputError message={errors.national_id} />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الحالة" : "Operational Status"}</label>
-                                            <select value={data.status} onChange={(e) => setData("status", e.target.value)} className={DS_select} required>
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الحالة" : "Operational Status"} <span className="text-rose-500">*</span></label>
+                                            <select value={data.status} onChange={e => setData("status", e.target.value)} className={DS_select} required>
                                                 <option value="active">{isRTL ? "نشط" : "Active"}</option>
                                                 <option value="inactive">{isRTL ? "غير نشط" : "Inactive"}</option>
                                             </select>
+                                            <InputError message={errors.status} />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "البريد الإلكتروني" : "Email Address"}</label>
+                                            <input type="email" value={data.email} onChange={e => setData("email", e.target.value)} className={DS_input} dir="ltr" />
+                                            <InputError message={errors.email} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "العنوان السكني" : "Registered Address"}</label>
+                                            <input type="text" value={data.address} onChange={e => setData("address", e.target.value)} className={DS_input} />
+                                            <InputError message={errors.address} />
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
 
-                                <div className="p-6 bg-rose-500/5 rounded-2xl border border-rose-500/10 space-y-4">
-                                    <h4 className="text-[10px] font-black text-rose-600 uppercase tracking-widest">{isRTL ? "جهات اتصال الطوارئ" : "Emergency Contact Protocol"}</h4>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم جهة الطوارئ" : "Contact Name"}</label>
-                                            <input type="text" value={data.emergency_contact_name} onChange={(e) => setData("emergency_contact_name", e.target.value)} className={DS_input} required />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "رقم هاتف الطوارئ" : "Emergency Phone"}</label>
-                                            <input type="text" value={data.emergency_contact_phone} onChange={(e) => setData("emergency_contact_phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className={DS_label}>{isRTL ? "الهوية (أمام)" : "ID Card Front Image"}</label>
-                                        <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460]">
-                                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white">
-                                                {data.id_card_front_image ? <img src={URL.createObjectURL(data.id_card_front_image)} className="w-full h-full object-cover" /> : previewIdCardFront ? <img src={previewIdCardFront} className="w-full h-full object-cover" /> : <CreditCard size={18} className="text-gray-300 m-auto mt-3" />}
-                                            </div>
-                                            <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">{isRTL ? "اختيار ملف" : "Choose File"}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("id_card_front_image", e.target.files?.[0] || null)} /></label>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className={DS_label}>{isRTL ? "الهوية (خلف)" : "ID Card Back Image"}</label>
-                                        <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460]">
-                                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white">
-                                                {data.id_card_back_image ? <img src={URL.createObjectURL(data.id_card_back_image)} className="w-full h-full object-cover" /> : previewIdCardBack ? <img src={previewIdCardBack} className="w-full h-full object-cover" /> : <CreditCard size={18} className="text-gray-300 m-auto mt-3" />}
-                                            </div>
-                                            <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">{isRTL ? "اختيار ملف" : "Choose File"}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("id_card_back_image", e.target.files?.[0] || null)} /></label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
                     </div>
-
                     <div className={DS_modalFooter(isRTL)}>
-                        {currentStep === 2 && (
-                            <button type="button" onClick={() => setCurrentStep(1)} className={DS_btnSecondary}>
-                                {isRTL ? "رجوع" : "Back"}
-                            </button>
-                        )}
                         <div className="ml-auto flex items-center gap-3">
                             <button type="button" onClick={closeModal} className="text-xs font-bold text-gray-400 hover:text-[#0f2044] transition-colors">
                                 {isRTL ? "إلغاء" : "Cancel"}
                             </button>
-                            {currentStep === 1 ? (
-                                <button type="button" onClick={(e) => { e.preventDefault(); setCurrentStep(2); }} className={DS_btnPrimary}>
-                                    {isRTL ? "متابعة" : "Continue"} <ChevronRight size={16} />
-                                </button>
-                            ) : (
-                                <button type="submit" disabled={processing} className={DS_btnGold}>
-                                    {processing && <Loader2 size={16} className="animate-spin" />}
-                                    {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل المشرفة" : "Enroll Supervisor")}
-                                </button>
-                            )}
+                            <button type="submit" disabled={processing} className={DS_btnGold}>
+                                {processing && <Loader2 size={16} className="animate-spin" />}
+                                {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل المشرفة" : "Enroll Supervisor")}
+                            </button>
                         </div>
                     </div>
                 </form>
+
             </div>
         </Modal>
 

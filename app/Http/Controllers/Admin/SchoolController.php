@@ -42,8 +42,6 @@ class SchoolController extends Controller
 
                 $adminData = [
                     'first_name_ar' => $ar[0],
-                    'second_name_ar' => $ar[1],
-                    'third_name_ar' => $ar[2],
                     'last_name_ar' => $ar[3] ?: $ar[0],
                     'email' => $request->admin_email,
                     'phone' => $request->admin_phone,

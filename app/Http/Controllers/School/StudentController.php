@@ -29,7 +29,7 @@ class StudentController extends Controller
 
         $students = Student::inSchool($schoolId)
             ->with([
-                'guardians:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,first_name_en,second_name_en,third_name_en,last_name_en,phone,national_id,address,image,email',
+                'guardians:id,first_name_ar,last_name_ar,first_name_en,last_name_en,phone,national_id,address,image,email',
                 'currentEnrollment.classroom:id,name'
             ])
             ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id']);
@@ -95,7 +95,7 @@ class StudentController extends Controller
                 $q->where('is_active', true);
             })
             ->with([
-                'guardians:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,first_name_en,second_name_en,third_name_en,last_name_en,phone,national_id,address,image,email',
+                'guardians:id,first_name_ar,last_name_ar,first_name_en,last_name_en,phone,national_id,address,image,email',
                 'currentEnrollment.classroom:id,name',
                 'forthBus.route', 'backBus.route'
             ])
@@ -120,12 +120,25 @@ class StudentController extends Controller
             $query->where('is_active', false);
         }
 
+        $allStudents = (clone $query)->orderBy('created_at', 'desc')->get();
+
         $students = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
         $buses = \App\Models\Bus::where('school_id', $schoolId)->orderBy('bus_number')->get(['id', 'bus_number', 'plate_number']);
 
+        $guardiansList = User::whereHas('roles', fn($q) => $q->whereIn('name', ['parent', 'guardian']))
+            ->where(function ($query) use ($schoolId) {
+                $query->whereHas('students.enrollments.classroom', function ($q) use ($schoolId) {
+                    $q->atSchool($schoolId);
+                })
+                ->orWhereDoesntHave('students');
+            })
+            ->orderBy('first_name_ar')
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'first_name_en', 'last_name_en', 'national_id', 'phone', 'email', 'address']);
+
         return Inertia::render('School/Students/IndexStudents', [
             'students' => $students,
+            'all_students' => $allStudents,
             'counts' => $counts,
             'filters' => [
                 'search' => $request->input('search', ''),
@@ -133,6 +146,7 @@ class StudentController extends Controller
             ],
             'classrooms' => Classroom::atSchool($schoolId)->orderBy('name')->get(['id', 'name']),
             'buses' => $buses,
+            'guardians' => $guardiansList,
             'guardianResult' => session('guardianResult'),
         ]);
     }
@@ -225,12 +239,8 @@ class StudentController extends Controller
 
             $guardianData = [
                 'first_name_ar'  => $nameParts[0],
-                'second_name_ar' => $nameParts[1],
-                'third_name_ar'  => $nameParts[2],
                 'last_name_ar'   => $nameParts[3],
                 'first_name_en'  => $enNameParts[0],
-                'second_name_en' => $enNameParts[1],
-                'third_name_en'  => $enNameParts[2],
                 'last_name_en'   => $enNameParts[3],
                 'national_id'    => $validated['national_id'],
                 'phone'          => $validated['phone'],
@@ -274,12 +284,8 @@ class StudentController extends Controller
         // ⬅️ تحديث validation rules لإضافة الحقول الجديدة
         $validated = $request->validate([
             'first_name_ar' => 'required|string|max:255',
-            'second_name_ar' => 'required|string|max:255',
-            'third_name_ar' => 'required|string|max:255',
             'last_name_ar' => 'required|string|max:255',
             'first_name_en' => 'required|string|max:255',
-            'second_name_en' => 'required|string|max:255',
-            'third_name_en' => 'required|string|max:255',
             'last_name_en' => 'required|string|max:255',
             'student_code' => 'nullable|string|max:50|unique:students,student_code',
             'national_id' => 'required|string|max:50|unique:students,national_id',
@@ -307,12 +313,8 @@ class StudentController extends Controller
             // ⬅️ تحديث بيانات إنشاء الطالب
             $studentData = [
                 'first_name_ar' => $validated['first_name_ar'],
-                'second_name_ar' => $validated['second_name_ar'],
-                'third_name_ar' => $validated['third_name_ar'],
                 'last_name_ar' => $validated['last_name_ar'],
                 'first_name_en' => $validated['first_name_en'],
-                'second_name_en' => $validated['second_name_en'],
-                'third_name_en' => $validated['third_name_en'],
                 'last_name_en' => $validated['last_name_en'],
                 'student_code' => $validated['student_code'] ?? 'ST-' . $validated['national_id'],
                 'national_id' => $validated['national_id'],
@@ -394,12 +396,8 @@ class StudentController extends Controller
         $validated = $request->validate([
             // Student Data
             'first_name_ar' => 'required|string|max:255',
-            'second_name_ar' => 'required|string|max:255',
-            'third_name_ar' => 'required|string|max:255',
             'last_name_ar' => 'required|string|max:255',
             'first_name_en' => 'required|string|max:255',
-            'second_name_en' => 'required|string|max:255',
-            'third_name_en' => 'required|string|max:255',
             'last_name_en' => 'required|string|max:255',
             'national_id' => ['nullable', 'string', 'max:50', Rule::unique('students')->ignore($student->id)],
             'gender' => 'required|in:male,female',
@@ -430,12 +428,8 @@ class StudentController extends Controller
         DB::transaction(function () use ($validated, $request, $student) {
             $studentData = [
                 'first_name_ar' => $validated['first_name_ar'],
-                'second_name_ar' => $validated['second_name_ar'],
-                'third_name_ar' => $validated['third_name_ar'],
                 'last_name_ar' => $validated['last_name_ar'],
                 'first_name_en' => $validated['first_name_en'],
-                'second_name_en' => $validated['second_name_en'],
-                'third_name_en' => $validated['third_name_en'],
                 'last_name_en' => $validated['last_name_en'],
                 'national_id' => $validated['national_id'],
                 'gender' => $validated['gender'],
@@ -476,12 +470,8 @@ class StudentController extends Controller
 
                     $guardianUser->update([
                         'first_name_ar'  => $arParts[0],
-                        'second_name_ar' => $arParts[1],
-                        'third_name_ar'  => $arParts[2],
                         'last_name_ar'   => $arParts[3],
                         'first_name_en'  => $enParts[0],
-                        'second_name_en' => $enParts[1],
-                        'third_name_en'  => $enParts[2],
                         'last_name_en'   => $enParts[3],
                         'phone' => $g['phone'],
                         'address' => $g['address'],
@@ -531,6 +521,41 @@ class StudentController extends Controller
         return Inertia::render('School/Students/PrintCard', [
             'student' => $student,
         ]);
+    }
+
+    /**
+     * [Export] تصدير بيانات الطلاب وأولياء الأمور
+     */
+    public function export()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\StudentsExport(false), 'students.xlsx');
+    }
+
+    /**
+     * [Export] تحميل قالب الاستيراد
+     */
+    public function downloadTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\StudentsExport(true), 'students_template.xlsx');
+    }
+
+    /**
+     * [Import] استيراد الطلاب وأولياء الأمور
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        $import = new \App\Imports\StudentsImport();
+        \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+        if (!empty($import->errors()) || !empty($import->failures())) {
+            return redirect()->back()->with('error', "تم استيراد {$import->successCount} بنجاح، وحدثت أخطاء في بعض الصفوف.");
+        }
+
+        return redirect()->back()->with('success', "تم استيراد {$import->successCount} طالب بنجاح وتحديث القائمة.");
     }
 }
 

@@ -181,7 +181,7 @@ class BusController extends Controller
         $students = \App\Models\Student::inSchool($schoolId)
             ->where('is_active', true)
             ->orderBy('first_name_ar')
-            ->get(['id', 'first_name_ar', 'second_name_ar', 'last_name_ar', 'student_code', 'national_id', 'gender', 'forth_bus_id', 'back_bus_id'])
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id', 'gender', 'forth_bus_id', 'back_bus_id'])
             ->map(fn($s) => [
                 'id'           => $s->id,
                 'name'         => $s->full_name,

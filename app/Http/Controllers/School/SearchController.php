@@ -32,7 +32,7 @@ class SearchController extends Controller
                     ->orWhere('national_id', 'like', "%{$query}%")
                     ->orWhere('student_code', 'like', "%{$query}%");
             })
-            ->with(['guardians:id,first_name_ar,second_name_ar,third_name_ar,last_name_ar,phone,national_id', 'currentEnrollment.classroom:id,name'])
+            ->with(['guardians:id,first_name_ar,last_name_ar,phone,national_id', 'currentEnrollment.classroom:id,name'])
             ->limit(5)
             ->get(['id', 'first_name_ar', 'last_name_ar', 'national_id', 'student_code']);
 

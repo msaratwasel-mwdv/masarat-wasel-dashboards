@@ -9,13 +9,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Search, User, FileText, CheckCircle, XCircle, Eye, Edit2, CreditCard,
   Phone, Mail, MapPin, Calendar, X, ArrowLeft, ChevronRight, Printer,
-  MoreVertical, Trash2
+  MoreVertical, Trash2, Briefcase, Upload, Loader2
 } from "lucide-react";
 import {
   DS_pageWrapper, DS_pageTitle, DS_card, DS_tableWrapper, DS_tableBase,
   DS_tableHead, DS_tableTh, DS_tableRow, DS_tableTd, DS_searchInput, DS_avatar,
   DS_modalContainer, DS_modalHeader, DS_modalHeaderTitle, DS_modalHeaderAccent,
-  DS_modalClose, DS_modalBody, DS_modalFooter, DS_input, DS_label,
+  DS_modalClose, DS_modalBody, DS_modalFooter, DS_input, DS_select, DS_label,
   DS_btnPrimary, DS_btnGold, DS_btnSecondary, DS_btnEdit, DS_btnDanger,
   DS_sectionHeader, DS_confirmModal, DS_cancelBtn, DS_badge, DS_labelCls
 } from "@/lib/DS";
@@ -31,6 +31,15 @@ const PRINT_STYLES = `
   #drivers-print-area { position: absolute; inset: 0; width: 100%; padding: 20px; background: white; }
 }
 `;
+
+export const getDriverName = (driver: any, isRTL: boolean) => {
+  if (!driver) return "";
+  if (isRTL) {
+    return driver.name || driver.name_en || driver.email;
+  } else {
+    return driver.name_en || driver.name || driver.email;
+  }
+};
 
 export default function DriversIndex({ auth, drivers, filters }: any) {
   const { t, isRtl: isRTL } = useTranslation();
@@ -55,8 +64,8 @@ export default function DriversIndex({ auth, drivers, filters }: any) {
   const { data, setData, post, processing, errors, reset, clearErrors } =
     useForm({
       _method: "put" as "put",
-      first_name_ar: "", second_name_ar: "", third_name_ar: "", last_name_ar: "",
-      first_name_en: "", second_name_en: "", third_name_en: "", last_name_en: "",
+      first_name_ar: "", last_name_ar: "",
+      first_name_en: "", last_name_en: "",
       national_id: "", email: "", phone: "",
       license_number: "", license_expiry_date: "",
       address: "",
@@ -65,6 +74,11 @@ export default function DriversIndex({ auth, drivers, filters }: any) {
       license_back_image: null as File | null,
       id_card_front_image: null as File | null,
       id_card_back_image: null as File | null,
+      remove_image: false,
+      remove_license_front_image: false,
+      remove_license_back_image: false,
+      remove_id_card_front_image: false,
+      remove_id_card_back_image: false,
     });
 
   const IS_EXPIRED = (date: string | undefined | null) => date && new Date(date) < new Date();
@@ -83,16 +97,19 @@ export default function DriversIndex({ auth, drivers, filters }: any) {
     setPreviewIdCardBack(driver.id_card_back_image ? `/storage/${driver.id_card_back_image}` : null);
     setData({
       _method: "put",
-      first_name_ar: driver.first_name_ar || "", second_name_ar: driver.second_name_ar || "",
-      third_name_ar: driver.third_name_ar || "", last_name_ar: driver.last_name_ar || "",
-      first_name_en: driver.first_name_en || "", second_name_en: driver.second_name_en || "",
-      third_name_en: driver.third_name_en || "", last_name_en: driver.last_name_en || "",
+      first_name_ar: driver.first_name_ar || "", last_name_ar: driver.last_name_ar || "",
+      first_name_en: driver.first_name_en || "", last_name_en: driver.last_name_en || "",
       national_id: driver.national_id || "", email: driver.email || "", phone: driver.phone || "",
       license_number: driver.license_number || driver.driver?.license_number || "",
       license_expiry_date: driver.license_expiry_date || driver.driver?.license_expiry_date || "",
       address: driver.address || "",
       image: null, license_front_image: null, license_back_image: null,
       id_card_front_image: null, id_card_back_image: null,
+      remove_image: false,
+      remove_license_front_image: false,
+      remove_license_back_image: false,
+      remove_id_card_front_image: false,
+      remove_id_card_back_image: false,
     });
     clearErrors(); setCurrentStep(1); setIsModalOpen(true);
   };
@@ -176,7 +193,18 @@ export default function DriversIndex({ auth, drivers, filters }: any) {
                       <div className="flex items-center gap-3">
                         <img src={driver.image ? `/storage/${driver.image}` : "/images/default-avatar.png"} alt="" className={DS_avatar} />
                         <div>
-                          <p className="font-bold text-gray-900 dark:text-white">{isRTL ? driver.name : (driver.name_en || driver.name)}</p>
+                          <p className="font-bold text-gray-900 dark:text-white">
+                            {getDriverName(driver, isRTL)}
+                          </p>
+                          {isRTL ? (
+                            driver.name_en && driver.name_en !== driver.name && (
+                              <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase">{driver.name_en}</p>
+                            )
+                          ) : (
+                            driver.name && driver.name !== driver.name_en && (
+                              <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase">{driver.name}</p>
+                            )
+                          )}
                           <p className="text-xs text-gray-500">{driver.email}</p>
                         </div>
                       </div>
@@ -225,7 +253,7 @@ export default function DriversIndex({ auth, drivers, filters }: any) {
         {/* --- View Details Modal --- */}
         <AnimatePresence>
             {showDetailsModal && selectedDriver && (
-                <Modal show={showDetailsModal} onClose={() => setShowDetailsModal(false)} maxWidth="2xl">
+                <Modal show={showDetailsModal} onClose={() => setShowDetailsModal(false)} maxWidth="3xl">
                     <div className={DS_modalHeader(isRTL)}>
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-white/20 rounded-[12px] overflow-hidden flex items-center justify-center border border-white/10">
@@ -279,8 +307,13 @@ export default function DriversIndex({ auth, drivers, filters }: any) {
                             </div>
                             <div>
                                 <h4 className="text-2xl font-black text-[#0f2044] dark:text-white mb-1">
-                                    {!isRTL && selectedDriver?.name_en ? selectedDriver?.name_en : selectedDriver?.name}
+                                    {getDriverName(selectedDriver, isRTL)}
                                 </h4>
+                                {selectedDriver && (isRTL ? selectedDriver.name_en : selectedDriver.name) && (isRTL ? selectedDriver.name_en : selectedDriver.name) !== getDriverName(selectedDriver, isRTL) && (
+                                    <p className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
+                                        {isRTL ? selectedDriver.name_en : selectedDriver.name}
+                                    </p>
+                                )}
                                 <div className="flex items-center gap-3">
                                     <span className={DS_badge(selectedDriver?.status === 'active')}>{selectedDriver?.status === 'active' ? (isRTL ? "نشط" : "Active") : (isRTL ? "غير نشط" : "Inactive")}</span>
                                 </div>
@@ -336,133 +369,390 @@ export default function DriversIndex({ auth, drivers, filters }: any) {
         </AnimatePresence>
 
         {/* --- Edit Modal --- */}
-        <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
+        <Modal show={isModalOpen} onClose={closeModal} maxWidth="4xl">
             <div className={DS_modalContainer}>
                 <div className={DS_modalHeader(isRTL)}>
                     <div className="flex items-center gap-3">
                         <div className={DS_modalHeaderAccent} />
                         <h3 className={DS_modalHeaderTitle}>{isRTL ? "تحديث بيانات السائق" : "Update Driver Info"}</h3>
                     </div>
-                    <button onClick={closeModal} className={DS_modalClose}><ArrowLeft size={18} className={isRTL ? 'rotate-180' : ''} /></button>
+                    <button onClick={closeModal} className={DS_modalClose}><X size={18} /></button>
                 </div>
-
-                <form onSubmit={submit}>
-                    <div className={`${DS_modalBody} max-h-[75vh] overflow-y-auto space-y-8`}>
-                        <div className="space-y-6">
-                                {/* Profile photo */}
-                                <div className="flex items-center gap-6 p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm">
-                                    <div className="w-24 h-24 rounded-[22px] border-4 border-white dark:border-[#243460] overflow-hidden shadow-lg flex-shrink-0 relative group bg-white">
-                                        {data.image ? (
-                                            <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
-                                        ) : previewImage ? (
-                                            <img src={previewImage} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <User size={32} className="text-gray-300 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                                        )}
-                                        <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
-                                            <span className="text-[10px] font-bold text-white uppercase tracking-wider">{isRTL ? "تغيير" : "Change"}</span>
-                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => setData("image", e.target.files?.[0] || null)} />
-                                        </label>
-                                    </div>
-                                    <div className="flex-1">
-                                        <h4 className="text-sm font-black text-[#0f2044] dark:text-white mb-1">
-                                            {isRTL ? "صورة الملف الشخصي" : "Profile Picture"}
-                                        </h4>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs leading-relaxed mb-3">
-                                            {isRTL ? "يُفضل استخدام صورة بخلفية بيضاء أو رمادية فاتحة." : "A clear photo with a white or light gray background is recommended."}
-                                        </p>
-                                        <label className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white dark:bg-[#0f2044] border border-gray-200 dark:border-[#243460] text-xs font-bold text-[#0f2044] dark:text-gray-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1a2845] transition-all shadow-sm">
-                                            {isRTL ? "اختيار صورة جديدة" : "Upload New Photo"}
-                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => setData("image", e.target.files?.[0] || null)} />
-                                        </label>
+                <form onSubmit={submit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 max-h-[78vh]">
+                        {/* §1 The Names */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#243460] pb-2">
+                                <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] flex items-center gap-2">
+                                    <User size={14} className="text-[#f5b800]" />
+                                    {isRTL ? "الأسماء الرسمية" : "Official Names"}
+                                </h4>
+                                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded">
+                                    {isRTL ? "* مطلوب عربي أو إنجليزي" : "* Req: Arabic or English"}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Arabic Panel */}
+                                <div className="p-3 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-xl border border-gray-100/80 dark:border-[#243460]/40 space-y-3">
+                                    <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider">{isRTL ? "البيانات بالعربية" : "ARABIC DOSSIER"}</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"} {!data.first_name_en && !data.last_name_en && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.first_name_ar} onChange={e => setData("first_name_ar", e.target.value)} className={DS_input} dir="rtl" required={!data.first_name_en && !data.last_name_en} />
+                                            <InputError message={errors.first_name_ar} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"} {!data.first_name_en && !data.last_name_en && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.last_name_ar} onChange={e => setData("last_name_ar", e.target.value)} className={DS_input} dir="rtl" required={!data.first_name_en && !data.last_name_en} />
+                                            <InputError message={errors.last_name_ar} />
+                                        </div>
                                     </div>
                                 </div>
-                                {/* Arabic Names */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">{isRTL ? "الاسم بناءً على الهوية (عربي)" : "Official Dossier Name (Arabic)"}</h4>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                        <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"}</label><input type="text" value={data.first_name_ar} onChange={(e) => setData("first_name_ar", e.target.value)} className={DS_input} required /><InputError message={errors.first_name_ar} /></div>
-                                        <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "اسم الأب" : "Father Name"}</label><input type="text" value={data.second_name_ar} onChange={(e) => setData("second_name_ar", e.target.value)} className={DS_input} /></div>
-                                        <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "اسم الجد" : "Grandfather"}</label><input type="text" value={data.third_name_ar} onChange={(e) => setData("third_name_ar", e.target.value)} className={DS_input} /></div>
-                                        <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label><input type="text" value={data.last_name_ar} onChange={(e) => setData("last_name_ar", e.target.value)} className={DS_input} required /><InputError message={errors.last_name_ar} /></div>
-                                    </div>
-                                </div>
-                                {/* English Names */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">{isRTL ? "الاسم بناءً على الهوية (إنجليزي)" : "Official Dossier Name (English)"}</h4>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                        <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"}</label><input type="text" value={data.first_name_en} onChange={(e) => setData("first_name_en", e.target.value)} className={DS_input} dir="ltr" /></div>
-                                        <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "اسم الأب" : "Father Name"}</label><input type="text" value={data.second_name_en} onChange={(e) => setData("second_name_en", e.target.value)} className={DS_input} dir="ltr" /></div>
-                                        <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "اسم الجد" : "Grandfather"}</label><input type="text" value={data.third_name_en} onChange={(e) => setData("third_name_en", e.target.value)} className={DS_input} dir="ltr" /></div>
-                                        <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label><input type="text" value={data.last_name_en} onChange={(e) => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" /></div>
+                                {/* English Panel */}
+                                <div className="p-3 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-xl border border-gray-100/80 dark:border-[#243460]/40 space-y-3">
+                                    <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider">{isRTL ? "البيانات بالإنجليزية" : "ENGLISH DOSSIER"}</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"} {!data.first_name_ar && !data.last_name_ar && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.first_name_en} onChange={e => setData("first_name_en", e.target.value)} className={DS_input} dir="ltr" required={!data.first_name_ar && !data.last_name_ar} />
+                                            <InputError message={errors.first_name_en} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"} {!data.first_name_ar && !data.last_name_ar && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.last_name_en} onChange={e => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" required={!data.first_name_ar && !data.last_name_ar} />
+                                            <InputError message={errors.last_name_en} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="border-t border-gray-100 dark:border-[#243460] pt-6 space-y-6">
-                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{isRTL ? "البيانات الإضافية والمستندات" : "Additional Info & Documents"}</h4>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "الرقم المدني / الإقامة" : "Civil ID / Iqama"}</label><input type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required /><InputError message={errors.national_id} /></div>
-                                    <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "رقم الجوال" : "Phone"}</label><input type="text" value={data.phone} onChange={(e) => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required /><InputError message={errors.phone} /></div>
-                                    <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "رقم الرخصة" : "License Serial"}</label><input type="text" value={data.license_number} onChange={(e) => setData("license_number", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required /><InputError message={errors.license_number} /></div>
-                                    <div className="space-y-1.5"><label className={DS_label}>{isRTL ? "انتهاء الرخصة" : "License Expiry"}</label><input type="date" value={data.license_expiry_date} onChange={(e) => setData("license_expiry_date", e.target.value)} className={DS_input} dir="ltr" required /><InputError message={errors.license_expiry_date} /></div>
-                                </div>
-
-                                {/* License images */}
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className={DS_label}>{isRTL ? "الرخصة (أمام)" : "License Front"}</label>
-                                        <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460]">
-                                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white">
-                                                {data.license_front_image ? <img src={URL.createObjectURL(data.license_front_image)} className="w-full h-full object-cover" /> : previewLicenseFront ? <img src={previewLicenseFront} className="w-full h-full object-cover" /> : <CreditCard size={18} className="text-gray-300 m-auto mt-3" />}
-                                            </div>
-                                            <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">{isRTL ? "اختيار ملف" : "Choose File"}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("license_front_image", e.target.files?.[0] || null)} /></label>
+                        {/* §2 Personal Identity */}
+                        <div className="space-y-3">
+                            <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-2 flex items-center gap-2">
+                                <CreditCard size={14} className="text-[#f5b800]" />
+                                {isRTL ? "الهوية الشخصية والمرفقات" : "Personal Identity & Documents"}
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Left Col: Inputs & Profile photo */}
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الرقم المدني / الإقامة" : "Civil ID / Iqama"} <span className="text-rose-500">*</span></label>
+                                            <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
+                                            <InputError message={errors.national_id} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "رقم الجوال" : "Phone Number"} <span className="text-rose-500">*</span></label>
+                                            <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" placeholder="5XXXXXXXX" required />
+                                            <InputError message={errors.phone} />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className={DS_label}>{isRTL ? "الرخصة (خلف)" : "License Back"}</label>
-                                        <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460]">
-                                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white">
-                                                {data.license_back_image ? <img src={URL.createObjectURL(data.license_back_image)} className="w-full h-full object-cover" /> : previewLicenseBack ? <img src={previewLicenseBack} className="w-full h-full object-cover" /> : <CreditCard size={18} className="text-gray-300 m-auto mt-3" />}
-                                            </div>
-                                            <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">{isRTL ? "اختيار ملف" : "Choose File"}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("license_back_image", e.target.files?.[0] || null)} /></label>
+                                    {/* Profile photo upload directly next/under */}
+                                    <div className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                                        <div className="w-10 h-10 rounded-lg border border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden bg-white dark:bg-[#0f2044] flex-shrink-0 relative group">
+                                            {data.image ? (
+                                                <>
+                                                    <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
+                                                    <button type="button" onClick={() => setData("image", null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <X size={12} className="text-white" />
+                                                    </button>
+                                                </>
+                                            ) : previewImage ? (
+                                                <>
+                                                    <img src={previewImage} className="w-full h-full object-cover" />
+                                                    <button type="button" onClick={() => {
+                                                        setPreviewImage(null);
+                                                        setData("remove_image", true);
+                                                    }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <X size={12} className="text-white" />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <User size={16} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-[10px] font-bold text-[#0f2044] dark:text-white leading-tight">{isRTL ? "الصورة الشخصية" : "Profile Photo"}</p>
+                                            {!data.image && !previewImage ? (
+                                                <label className="cursor-pointer text-[9px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline mt-0.5 inline-block">
+                                                    {isRTL ? "اختيار صورة" : "Choose Photo"}
+                                                    <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setData({ ...data, image: file, remove_image: false });
+                                                    }} />
+                                                </label>
+                                            ) : (
+                                                <button type="button" onClick={() => {
+                                                    if (data.image) {
+                                                        setData("image", null);
+                                                    } else {
+                                                        setPreviewImage(null);
+                                                        setData("remove_image", true);
+                                                    }
+                                                }} className="text-[9px] font-black text-rose-500 hover:text-rose-600 uppercase underline mt-0.5 inline-block">
+                                                    {isRTL ? "إزالة" : "Remove"}
+                                                </button>
+                                            )}
+                                            <InputError message={errors.image} />
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* ID Card images */}
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-2">
+                                {/* Right Col: ID Docs grouped next to inputs */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
                                         <label className={DS_label}>{isRTL ? "الهوية (أمام)" : "ID Card Front"}</label>
-                                        <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460]">
-                                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white">
-                                                {data.id_card_front_image ? <img src={URL.createObjectURL(data.id_card_front_image)} className="w-full h-full object-cover" /> : previewIdCardFront ? <img src={previewIdCardFront} className="w-full h-full object-cover" /> : <CreditCard size={18} className="text-gray-300 m-auto mt-3" />}
+                                        <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#0f2044]/20 rounded-xl border border-dashed border-gray-200 dark:border-[#243460] relative group">
+                                            <div className="w-8 h-8 rounded overflow-hidden bg-white dark:bg-[#0f2044] border border-gray-200 dark:border-[#243460]/50 flex items-center justify-center flex-shrink-0 relative">
+                                                {data.id_card_front_image ? (
+                                                    <>
+                                                        <img src={URL.createObjectURL(data.id_card_front_image)} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => setData("id_card_front_image", null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <X size={10} className="text-white" />
+                                                        </button>
+                                                    </>
+                                                ) : previewIdCardFront ? (
+                                                    <>
+                                                        <img src={previewIdCardFront} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => {
+                                                            setPreviewIdCardFront(null);
+                                                            setData("remove_id_card_front_image", true);
+                                                        }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <X size={10} className="text-white" />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <CreditCard size={14} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                                                )}
                                             </div>
-                                            <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">{isRTL ? "اختيار ملف" : "Choose File"}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("id_card_front_image", e.target.files?.[0] || null)} /></label>
+                                            {!data.id_card_front_image && !previewIdCardFront ? (
+                                                <label className="cursor-pointer text-[9px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">
+                                                    {isRTL ? "رفع" : "Upload"}
+                                                    <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setData({ ...data, id_card_front_image: file, remove_id_card_front_image: false });
+                                                    }} />
+                                                </label>
+                                            ) : (
+                                                <button type="button" onClick={() => {
+                                                    if (data.id_card_front_image) {
+                                                        setData("id_card_front_image", null);
+                                                    } else {
+                                                        setPreviewIdCardFront(null);
+                                                        setData("remove_id_card_front_image", true);
+                                                    }
+                                                }} className="text-[9px] font-black text-rose-500 hover:text-rose-600 uppercase underline ml-auto">
+                                                    {isRTL ? "إزالة" : "Remove"}
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-1">
                                         <label className={DS_label}>{isRTL ? "الهوية (خلف)" : "ID Card Back"}</label>
-                                        <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-dashed border-gray-200 dark:border-[#243460]">
-                                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white">
-                                                {data.id_card_back_image ? <img src={URL.createObjectURL(data.id_card_back_image)} className="w-full h-full object-cover" /> : previewIdCardBack ? <img src={previewIdCardBack} className="w-full h-full object-cover" /> : <CreditCard size={18} className="text-gray-300 m-auto mt-3" />}
+                                        <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#0f2044]/20 rounded-xl border border-dashed border-gray-200 dark:border-[#243460] relative group">
+                                            <div className="w-8 h-8 rounded overflow-hidden bg-white dark:bg-[#0f2044] border border-gray-200 dark:border-[#243460]/50 flex items-center justify-center flex-shrink-0 relative">
+                                                {data.id_card_back_image ? (
+                                                    <>
+                                                        <img src={URL.createObjectURL(data.id_card_back_image)} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => setData("id_card_back_image", null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <X size={10} className="text-white" />
+                                                        </button>
+                                                    </>
+                                                ) : previewIdCardBack ? (
+                                                    <>
+                                                        <img src={previewIdCardBack} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => {
+                                                            setPreviewIdCardBack(null);
+                                                            setData("remove_id_card_back_image", true);
+                                                        }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <X size={10} className="text-white" />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <CreditCard size={14} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                                                )}
                                             </div>
-                                            <label className="cursor-pointer text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">{isRTL ? "اختيار ملف" : "Choose File"}<input type="file" className="hidden" accept="image/*" onChange={(e) => setData("id_card_back_image", e.target.files?.[0] || null)} /></label>
+                                            {!data.id_card_back_image && !previewIdCardBack ? (
+                                                <label className="cursor-pointer text-[9px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">
+                                                    {isRTL ? "رفع" : "Upload"}
+                                                    <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setData({ ...data, id_card_back_image: file, remove_id_card_back_image: false });
+                                                    }} />
+                                                </label>
+                                            ) : (
+                                                <button type="button" onClick={() => {
+                                                    if (data.id_card_back_image) {
+                                                        setData("id_card_back_image", null);
+                                                    } else {
+                                                        setPreviewIdCardBack(null);
+                                                        setData("remove_id_card_back_image", true);
+                                                    }
+                                                }} className="text-[9px] font-black text-rose-500 hover:text-rose-600 uppercase underline ml-auto">
+                                                    {isRTL ? "إزالة" : "Remove"}
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                    </div>
+                        </div>
 
-                    <div className={`${DS_modalFooter(isRTL)} !justify-between`}>
-                        <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-bold text-gray-400 hover:text-[#0f2044] dark:hover:text-white transition-colors">{isRTL ? "إلغاء" : "Cancel"}</button>
-                        <button type="submit" disabled={processing} className={DS_btnGold}>{isRTL ? "حفظ التعديلات" : "Save Changes"}</button>
+                        {/* §3 Driving Credentials */}
+                        <div className="space-y-3">
+                            <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-2 flex items-center gap-2">
+                                <Briefcase size={14} className="text-[#f5b800]" />
+                                {isRTL ? "بيانات الرخصة والمرفقات" : "Driving Credentials & Documents"}
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Left Col: License Inputs */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className={DS_label}>{isRTL ? "رقم الرخصة" : "License Number"} <span className="text-rose-500">*</span></label>
+                                        <input type="text" value={data.license_number} onChange={e => setData("license_number", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
+                                        <InputError message={errors.license_number} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className={DS_label}>{isRTL ? "انتهاء الرخصة" : "License Expiry"} <span className="text-rose-500">*</span></label>
+                                        <input type="date" value={data.license_expiry_date} onChange={e => setData("license_expiry_date", e.target.value)} className={DS_input} dir="ltr" required />
+                                        <InputError message={errors.license_expiry_date} />
+                                    </div>
+                                </div>
+                                {/* Right Col: License Copy front/back */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className={DS_label}>{isRTL ? "الرخصة (أمام)" : "License Front"}</label>
+                                        <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#0f2044]/20 rounded-xl border border-dashed border-gray-200 dark:border-[#243460] relative group">
+                                            <div className="w-8 h-8 rounded overflow-hidden bg-white dark:bg-[#0f2044] border border-gray-200 dark:border-[#243460]/50 flex items-center justify-center flex-shrink-0 relative">
+                                                {data.license_front_image ? (
+                                                    <>
+                                                        <img src={URL.createObjectURL(data.license_front_image)} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => setData("license_front_image", null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <X size={10} className="text-white" />
+                                                        </button>
+                                                    </>
+                                                ) : previewLicenseFront ? (
+                                                    <>
+                                                        <img src={previewLicenseFront} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => {
+                                                            setPreviewLicenseFront(null);
+                                                            setData("remove_license_front_image", true);
+                                                        }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <X size={10} className="text-white" />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <CreditCard size={14} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                                                )}
+                                            </div>
+                                            {!data.license_front_image && !previewLicenseFront ? (
+                                                <label className="cursor-pointer text-[9px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">
+                                                    {isRTL ? "رفع" : "Upload"}
+                                                    <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setData({ ...data, license_front_image: file, remove_license_front_image: false });
+                                                    }} />
+                                                </label>
+                                            ) : (
+                                                <button type="button" onClick={() => {
+                                                    if (data.license_front_image) {
+                                                        setData("license_front_image", null);
+                                                    } else {
+                                                        setPreviewLicenseFront(null);
+                                                        setData("remove_license_front_image", true);
+                                                    }
+                                                }} className="text-[9px] font-black text-rose-500 hover:text-rose-600 uppercase underline ml-auto">
+                                                    {isRTL ? "إزالة" : "Remove"}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className={DS_label}>{isRTL ? "الرخصة (خلف)" : "License Back"}</label>
+                                        <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#0f2044]/20 rounded-xl border border-dashed border-gray-200 dark:border-[#243460] relative group">
+                                            <div className="w-8 h-8 rounded overflow-hidden bg-white dark:bg-[#0f2044] border border-gray-200 dark:border-[#243460]/50 flex items-center justify-center flex-shrink-0 relative">
+                                                {data.license_back_image ? (
+                                                    <>
+                                                        <img src={URL.createObjectURL(data.license_back_image)} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => setData("license_back_image", null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <X size={10} className="text-white" />
+                                                        </button>
+                                                    </>
+                                                ) : previewLicenseBack ? (
+                                                    <>
+                                                        <img src={previewLicenseBack} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => {
+                                                            setPreviewLicenseBack(null);
+                                                            setData("remove_license_back_image", true);
+                                                        }} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <X size={10} className="text-white" />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <CreditCard size={14} className="text-gray-400 dark:text-[#7ba7e8]/60" />
+                                                )}
+                                            </div>
+                                            {!data.license_back_image && !previewLicenseBack ? (
+                                                <label className="cursor-pointer text-[9px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase underline">
+                                                    {isRTL ? "رفع" : "Upload"}
+                                                    <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setData({ ...data, license_back_image: file, remove_license_back_image: false });
+                                                    }} />
+                                                </label>
+                                            ) : (
+                                                <button type="button" onClick={() => {
+                                                    if (data.license_back_image) {
+                                                        setData("license_back_image", null);
+                                                    } else {
+                                                        setPreviewLicenseBack(null);
+                                                        setData("remove_license_back_image", true);
+                                                    }
+                                                }} className="text-[9px] font-black text-rose-500 hover:text-rose-600 uppercase underline ml-auto">
+                                                    {isRTL ? "إزالة" : "Remove"}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* §4 Contact & Preferences */}
+                        <div className="space-y-3">
+                            <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-2 flex items-center gap-2">
+                                <Mail size={14} className="text-gray-300" />
+                                {isRTL ? "معلومات التواصل والتفضيلات" : "Contact & Preferences"}
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="space-y-1">
+                                    <label className={DS_label}>{isRTL ? "البريد الإلكتروني" : "Email"}</label>
+                                    <input type="email" value={data.email} onChange={e => setData("email", e.target.value)} className={DS_input} dir="ltr" />
+                                    <InputError message={errors.email} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className={DS_label}>{isRTL ? "اللغة المفضلة" : "Language"}</label>
+                                    <select value={data.preferred_language} onChange={e => setData("preferred_language", e.target.value)} className={DS_select}>
+                                        <option value="ar">{isRTL ? "العربية" : "Arabic"}</option>
+                                        <option value="en">{isRTL ? "الإنجليزية" : "English"}</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className={DS_label}>{isRTL ? "العنوان" : "Address"}</label>
+                                    <input type="text" value={data.address} onChange={e => setData("address", e.target.value)} className={DS_input} dir={isRTL ? "rtl" : "ltr"} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className={DS_modalFooter(isRTL)}>
+                        <div className="ml-auto flex items-center gap-3">
+                            <button type="button" onClick={closeModal} className="text-xs font-bold text-gray-400 hover:text-[#0f2044] transition-colors">{isRTL ? "إلغاء" : "Cancel"}</button>
+                            <button type="submit" disabled={processing} className={DS_btnGold}>{processing && <Loader2 size={16} className="animate-spin" />}{isRTL ? "حفظ التعديلات" : "Save Changes"}</button>
+                        </div>
                     </div>
                 </form>
             </div>
         </Modal>
-      </div>
-
     {/* --- Print Area --- */}
     <div id="drivers-print-area" className="hidden print:block">
         <PrintReportHeader 
@@ -509,6 +799,8 @@ export default function DriversIndex({ auth, drivers, filters }: any) {
             <p>{isRTL ? "إجمالي السائقين" : "Total Drivers"}: {drivers.length}</p>
             <p>{isRTL ? "التوقيع الرسمي" : "Official Signature"}: ............................</p>
         </div>
+      </div>
+
       </div>
 
       {/* Delete Modal */}

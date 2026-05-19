@@ -25,13 +25,9 @@ class UserFactory extends Factory
     {
         return [
             'first_name_ar' => fake('ar_SA')->firstName(),
-            'second_name_ar' => fake('ar_SA')->firstName(),
-            'third_name_ar' => fake('ar_SA')->firstName(),
             'last_name_ar' => fake('ar_SA')->lastName(),
 
             'first_name_en' => fake('en_US')->firstName(),
-            'second_name_en' => fake('en_US')->firstName(),
-            'third_name_en' => fake('en_US')->firstName(),
             'last_name_en' => fake('en_US')->lastName(),
 
             'national_id' => fake()->unique()->numerify('1#########'),
