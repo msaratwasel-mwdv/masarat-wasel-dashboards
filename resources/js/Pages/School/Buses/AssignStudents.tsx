@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Head, usePage, router, Link } from "@inertiajs/react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import useTranslation from "@/hooks/useTranslation";
@@ -17,7 +17,8 @@ import {
     Sunset, 
     Info,
     Users,
-    Printer
+    Printer,
+    ChevronDown
 } from "lucide-react";
 
 // ─── Print CSS ───────────────────────────────────────────────────
@@ -279,6 +280,29 @@ export default function AssignStudents() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [savedFlash, setSavedFlash] = useState<string | null>(null);
 
+  // Custom Dropdown State
+  const [isBusDropdownOpen, setIsBusDropdownOpen] = useState(false);
+  const [busSearchQuery, setBusSearchQuery] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+          if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+              setIsBusDropdownOpen(false);
+          }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredBuses = useMemo(() => {
+      return buses.filter(b => 
+          b.bus_number.toLowerCase().includes(busSearchQuery.toLowerCase()) || 
+          b.plate_number.toLowerCase().includes(busSearchQuery.toLowerCase()) ||
+          (b.driver && b.driver.toLowerCase().includes(busSearchQuery.toLowerCase()))
+      );
+  }, [buses, busSearchQuery]);
+
   const selectedBus = useMemo(() => buses.find((b) => b.id === selectedBusId), [buses, selectedBusId]);
 
   // Sync selections when bus changes
@@ -446,46 +470,56 @@ export default function AssignStudents() {
       )}
 
       <div className={DS_pageWrapper}>
-        {/* Header Actions */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
+        {/* Header Actions (Sticky) */}
+        <div className="sticky top-2 sm:top-[10px] z-40 bg-white/95 dark:bg-[#0b1428]/95 backdrop-blur-xl p-3 sm:p-4 rounded-[16px] sm:rounded-[20px] shadow-lg border border-gray-100 dark:border-[#243460] mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3">
             <Link
                 href={route('school.buses.index')}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-500 hover:text-[#0f2044] dark:hover:text-white transition-all bg-white dark:bg-[#1a2845] rounded-[14px] shadow-sm border border-gray-100 dark:border-[#243460] self-start"
+                className="flex items-center justify-center gap-2 px-3 py-2 text-xs sm:text-sm font-bold text-gray-500 hover:text-[#0f2044] dark:hover:text-white transition-all bg-gray-50 dark:bg-[#1a2845] rounded-[10px] sm:rounded-[14px] shadow-sm border border-gray-200 dark:border-[#243460]"
             >
                 {isRtl ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
-                {t('Back to Buses')}
+                <span className="hidden sm:inline">{t('Back to Buses')}</span>
             </Link>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-end gap-2 flex-1">
             {/* Change summary badge */}
             {hasChanges && (
                 <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-[14px] text-xs font-bold border ${hasConflicts ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-900/20 dark:border-red-900/30 dark:text-red-400" : "bg-[#f5b800]/10 border-[#f5b800]/20 text-[#0f2044] dark:text-[#f5b800]"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-[10px] sm:rounded-[14px] text-[10px] sm:text-xs font-bold border ${hasConflicts ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-900/20 dark:border-red-900/30 dark:text-red-400" : "bg-[#f5b800]/10 border-[#f5b800]/20 text-[#0f2044] dark:text-[#f5b800]"}`}
                 >
-                {hasConflicts ? <AlertTriangle className="w-4 h-4" /> : <Info className="w-4 h-4" />}
-                {hasConflicts
-                    ? (isRtl ? "يوجد تنازع — راجع قبل الحفظ" : "Conflict detected — review first")
-                    : (isRtl ? `${Object.values(changes).flat().length} تغييرات معلّقة` : `${Object.values(changes).flat().length} pending changes`)}
+                {hasConflicts ? <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" /> : <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />}
+                <span className="hidden sm:inline">
+                    {hasConflicts
+                        ? (isRtl ? "يوجد تنازع — راجع قبل الحفظ" : "Conflict detected — review first")
+                        : (isRtl ? `${Object.values(changes).flat().length} تغييرات معلّقة` : `${Object.values(changes).flat().length} pending changes`)}
+                </span>
+                <span className="sm:hidden">
+                    {hasConflicts ? (isRtl ? "يوجد تنازع" : "Conflict") : `${Object.values(changes).flat().length}`}
+                </span>
                 </motion.div>
             )}
 
             {selectedBus && (
                 <button
                     onClick={handlePrint}
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-[#0f2044] dark:hover:bg-[#1a2845] text-gray-700 dark:text-gray-300 rounded-[14px] font-bold text-sm transition-all flex items-center gap-2 border border-gray-200 dark:border-[#243460]"
+                    className="p-2 sm:px-4 sm:py-2 bg-gray-100 hover:bg-gray-200 dark:bg-[#0f2044] dark:hover:bg-[#1a2845] text-gray-700 dark:text-gray-300 rounded-[10px] sm:rounded-[14px] font-bold text-sm transition-all flex items-center justify-center gap-2 border border-gray-200 dark:border-[#243460]"
                 >
-                    <Printer className="w-4 h-4" />
-                    {isRtl ? "طباعة السجل" : "Print Roster"}
+                    <Printer className="w-4 h-4 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{isRtl ? "طباعة السجل" : "Print Roster"}</span>
                 </button>
             )}
 
             <button
                 onClick={handleReviewClick}
                 disabled={!selectedBusId || !hasChanges}
-                className={DS_btnGold + " disabled:opacity-50 disabled:cursor-not-allowed"}
+                className={`flex items-center justify-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-[10px] sm:rounded-[14px] text-xs sm:text-sm font-bold shadow-md transition-all ${
+                    !selectedBusId || !hasChanges 
+                    ? "bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600 cursor-not-allowed" 
+                    : "bg-[#f5b800] hover:bg-[#e0a900] text-[#0f2044]"
+                }`}
             >
-                <CheckCircle2 className="w-4 h-4" />
-                {isRtl ? "مراجعة وحفظ" : "Review & Save"}
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <span className="hidden sm:inline">{isRtl ? "مراجعة وحفظ" : "Review & Save"}</span>
+                <span className="sm:hidden">{isRtl ? "حفظ" : "Save"}</span>
             </button>
             </div>
         </div>
@@ -503,18 +537,18 @@ export default function AssignStudents() {
 
         {/* Stats Cards */}
         {selectedBusId && (
-          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
             {[
-              { label: isRtl ? "إجمالي الطلاب" : "Total Students", val: uniqueTotal, icon: <Users className="w-5 h-5" />, accent: "navy" as const },
-              { label: isRtl ? "رحلة ذهاب" : "Outbound Trip", val: forthStudentIds.length, icon: <Sunrise className="w-5 h-5" />, accent: "blue" as const },
-              { label: isRtl ? "رحلة عودة" : "Return Trip", val: backStudentIds.length, icon: <Sunset className="w-5 h-5" />, accent: "gold" as const },
-              { label: isRtl ? "المقاعد المتاحة" : "Available Seats", val: selectedBus ? Math.max(0, selectedBus.capacity - uniqueTotal) : 0, icon: <BusIcon className="w-5 h-5" />, accent: overCapacity ? "red" as const : "green" as const },
+              { label: isRtl ? "إجمالي الطلاب" : "Total Students", val: uniqueTotal, icon: <Users className="w-4 h-4 sm:w-5 sm:h-5" />, accent: "navy" as const },
+              { label: isRtl ? "رحلة ذهاب" : "Outbound", val: forthStudentIds.length, icon: <Sunrise className="w-4 h-4 sm:w-5 sm:h-5" />, accent: "blue" as const },
+              { label: isRtl ? "رحلة عودة" : "Return", val: backStudentIds.length, icon: <Sunset className="w-4 h-4 sm:w-5 sm:h-5" />, accent: "gold" as const },
+              { label: isRtl ? "المقاعد المتاحة" : "Available Seats", val: selectedBus ? Math.max(0, selectedBus.capacity - uniqueTotal) : 0, icon: <BusIcon className="w-4 h-4 sm:w-5 sm:h-5" />, accent: overCapacity ? "red" as const : "green" as const },
             ].map(s => (
-              <div key={s.label} className={`${DS_statCard(s.accent)} ${isRtl ? "flex-row-reverse" : ""}`}>
-                <div className={DS_statIcon(s.accent)}>{s.icon}</div>
-                <div className={isRtl ? "text-right" : "text-left"}>
-                  <p className={DS_statLabel}>{s.label}</p>
-                  <p className={DS_statValue}>{s.val}</p>
+              <div key={s.label} className={`${DS_statCard(s.accent)} !p-3 sm:!p-5 ${isRtl ? "flex-row-reverse" : ""}`}>
+                <div className={`${DS_statIcon(s.accent)} !w-8 !h-8 sm:!w-12 sm:!h-12 flex items-center justify-center flex-shrink-0`}>{s.icon}</div>
+                <div className={`${isRtl ? "text-right" : "text-left"} min-w-0`}>
+                  <p className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-gray-500 line-clamp-1 break-words leading-tight mb-1">{s.label}</p>
+                  <p className="text-lg sm:text-2xl font-black text-[#0f2044] dark:text-white leading-none">{s.val}</p>
                 </div>
               </div>
             ))}
@@ -525,22 +559,86 @@ export default function AssignStudents() {
           {/* ── Left Panel ─────────────────────────────────────────── */}
           <div className="lg:col-span-1 space-y-4">
             {/* Bus Selector */}
-            <div className={DS_card + " p-5"}>
-              <label className="block text-sm font-bold text-[#0f2044] dark:text-gray-300 mb-2">
-                {isRtl ? "اختر الحافلة" : "Select Bus"}
+            <div className={DS_card + " !overflow-visible p-6 border-2 border-transparent hover:border-[#7ba7e8]/30 transition-colors bg-gradient-to-br from-white to-gray-50/50 dark:from-[#1a2845] dark:to-[#0f2044]"} ref={dropdownRef}>
+              <label className="flex items-center gap-2 text-sm font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-wider mb-4">
+                <BusIcon className="w-5 h-5 text-[#f5b800]" />
+                {isRtl ? "البحث أو اختيار الحافلة" : "Search or Select Bus"}
               </label>
-              <select
-                value={selectedBusId}
-                onChange={(e) => setSelectedBusId(e.target.value ? Number(e.target.value) : "")}
-                className={DS_searchInput}
-              >
-                <option value="">{isRtl ? "— اختر حافلة —" : "— Select a bus —"}</option>
-                {buses.map((bus) => (
-                  <option key={bus.id} value={bus.id}>
-                    {bus.bus_number} ({bus.plate_number})
-                  </option>
-                ))}
-              </select>
+              
+              <div className="relative">
+                  <div className="relative flex items-center">
+                      <Search className={`absolute w-5 h-5 text-gray-400 ${isRtl ? 'right-4' : 'left-4'}`} />
+                      <input
+                          type="text"
+                          value={isBusDropdownOpen ? busSearchQuery : (selectedBus ? `${selectedBus.bus_number} (${selectedBus.plate_number})` : '')}
+                          onChange={(e) => {
+                              setBusSearchQuery(e.target.value);
+                              setIsBusDropdownOpen(true);
+                          }}
+                          onClick={() => {
+                              setBusSearchQuery('');
+                              setIsBusDropdownOpen(true);
+                          }}
+                          placeholder={isRtl ? "اكتب للبحث أو اختر من القائمة..." : "Type to search or select from list..."}
+                          className={`w-full bg-white dark:bg-[#0b1428] border-2 text-gray-900 dark:text-white font-bold text-lg rounded-[16px] py-4 ${isRtl ? 'pr-12 pl-12' : 'pl-12 pr-12'} transition-all shadow-sm focus:ring-0 ${isBusDropdownOpen ? 'border-[#7ba7e8] ring-4 ring-[#7ba7e8]/20' : 'border-gray-200 dark:border-[#243460] cursor-pointer'}`}
+                      />
+                      <button 
+                          type="button"
+                          onClick={() => {
+                              if (!isBusDropdownOpen) setBusSearchQuery('');
+                              setIsBusDropdownOpen(!isBusDropdownOpen);
+                          }}
+                          className={`absolute ${isRtl ? 'left-3' : 'right-3'} p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1a2845] transition-colors`}
+                      >
+                          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isBusDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                  </div>
+
+                  <AnimatePresence>
+                      {isBusDropdownOpen && (
+                          <motion.div 
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              transition={{ duration: 0.15 }}
+                              className="absolute z-50 w-full mt-2 bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] rounded-[16px] shadow-2xl overflow-hidden"
+                          >
+                              <div className="max-h-64 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                  {filteredBuses.length > 0 ? (
+                                      filteredBuses.map((bus) => (
+                                          <button
+                                              key={bus.id}
+                                              onClick={() => {
+                                                  setSelectedBusId(bus.id);
+                                                  setIsBusDropdownOpen(false);
+                                                  setBusSearchQuery('');
+                                              }}
+                                              className={`w-full text-start px-4 py-3 rounded-[12px] transition-colors flex flex-col gap-1 ${
+                                                  selectedBusId === bus.id 
+                                                  ? 'bg-[#0f2044] text-white shadow-md' 
+                                                  : 'hover:bg-gray-50 dark:hover:bg-white/5 text-[#0f2044] dark:text-gray-200'
+                                              }`}
+                                          >
+                                              <span className="font-bold flex items-center justify-between">
+                                                  {bus.bus_number}
+                                                  {selectedBusId === bus.id && <CheckCircle2 className="w-4 h-4 text-[#f5b800]" />}
+                                              </span>
+                                              <span className={`text-xs font-semibold ${selectedBusId === bus.id ? 'text-gray-300' : 'text-gray-500'}`}>
+                                                  {bus.plate_number} {bus.driver ? `• ${bus.driver}` : ''}
+                                              </span>
+                                          </button>
+                                      ))
+                                  ) : (
+                                      <div className="py-6 text-center text-gray-500 text-sm font-bold flex flex-col items-center gap-2">
+                                          <BusIcon className="w-6 h-6 text-gray-300 dark:text-gray-600" />
+                                          {isRtl ? "لا توجد حافلات مطابقة للبحث" : "No buses match your search"}
+                                      </div>
+                                  )}
+                              </div>
+                          </motion.div>
+                      )}
+                  </AnimatePresence>
+              </div>
             </div>
 
             {/* Bus Details */}
@@ -625,31 +723,31 @@ export default function AssignStudents() {
           <div className="lg:col-span-3">
             <div className={DS_card}>
               {/* Toolbar */}
-              <div className="p-4 border-b border-gray-100 dark:border-[#243460] flex flex-wrap gap-4 items-center justify-between bg-gray-50/50 dark:bg-[#0f2044]/5">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="relative flex-1 max-w-sm">
+              <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-[#243460] flex flex-col lg:flex-row gap-3 sm:gap-4 items-start lg:items-center justify-between bg-gray-50/50 dark:bg-[#0f2044]/5">
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:flex-1 min-w-0">
+                  <div className="relative w-full sm:max-w-xs flex-1">
                     <Search className={`absolute w-4 h-4 text-gray-400 top-1/2 -translate-y-1/2 ${isRtl ? "right-3" : "left-3"}`} />
                     <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-                      placeholder={isRtl ? "البحث عن طالب (الاسم، الرقم المدني)..." : "Search student (Name, Civil ID)..."}
-                      className={`${DS_searchInput} ${isRtl ? "pr-10" : "pl-10"}`}
+                      placeholder={isRtl ? "البحث عن طالب..." : "Search student..."}
+                      className={`${DS_searchInput} w-full ${isRtl ? "pr-10" : "pl-10"}`}
                     />
                   </div>
-                  <div className="flex rounded-[14px] bg-[#0f2044]/5 dark:bg-[#0f2044]/30 p-1">
+                  <div className="flex w-full sm:w-auto overflow-x-auto custom-scrollbar rounded-[14px] bg-[#0f2044]/5 dark:bg-[#0f2044]/30 p-1 flex-shrink-0">
                     {(["all", "male", "female"] as const).map((g) => (
                       <button key={g} onClick={() => setGenderFilter(g)}
-                        className={`px-4 py-1.5 rounded-[10px] text-xs font-bold transition-all ${genderFilter === g ? "bg-white dark:bg-[#0f2044] text-[#0f2044] dark:text-[#f5b800] shadow-sm" : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"}`}
+                        className={`flex-1 sm:flex-none px-4 py-1.5 rounded-[10px] text-xs font-bold transition-all whitespace-nowrap ${genderFilter === g ? "bg-white dark:bg-[#1a2845] text-[#0f2044] dark:text-[#f5b800] shadow-md border border-gray-200 dark:border-[#f5b800]/50" : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white border border-transparent"}`}
                       >
                         {g === "all" ? (isRtl ? "الكل" : "All") : g === "male" ? (isRtl ? "بنين" : "Male") : (isRtl ? "بنات" : "Female")}
                       </button>
                     ))}
                   </div>
                 </div>
-                <div className="flex gap-4 text-xs font-bold flex-shrink-0">
-                  <button onClick={toggleAllForth} className="text-[#0f2044] dark:text-[#7ba7e8] hover:opacity-70 bg-[#0f2044]/10 dark:bg-[#0f2044]/30 px-3 py-1.5 rounded-[10px] transition-all">
-                    {allForthSelected ? (isRtl ? "إلغاء رحلة ذهاب" : "Deselect Outbound") : (isRtl ? "تحديد الكل رحلة ذهاب" : "Select All Outbound")}
+                <div className="flex gap-2 sm:gap-4 w-full lg:w-auto flex-shrink-0">
+                  <button onClick={toggleAllForth} className="flex-1 lg:flex-none text-[#0f2044] dark:text-[#7ba7e8] hover:opacity-70 bg-[#0f2044]/10 dark:bg-[#0f2044]/30 px-2 sm:px-3 py-2 sm:py-1.5 rounded-[10px] transition-all text-[10px] sm:text-xs font-bold text-center flex items-center justify-center">
+                    {allForthSelected ? (isRtl ? "إلغاء الكل ذهاب" : "Clear Outbound") : (isRtl ? "تحديد الكل ذهاب" : "All Outbound")}
                   </button>
-                  <button onClick={toggleAllBack} className="text-[#7a5c00] dark:text-[#f5b800] hover:opacity-70 bg-[#f5b800]/20 px-3 py-1.5 rounded-[10px] transition-all">
-                    {allBackSelected ? (isRtl ? "إلغاء رحلة عودة" : "Deselect Return") : (isRtl ? "تحديد الكل رحلة عودة" : "Select All Return")}
+                  <button onClick={toggleAllBack} className="flex-1 lg:flex-none text-[#7a5c00] dark:text-[#f5b800] hover:opacity-70 bg-[#f5b800]/20 px-2 sm:px-3 py-2 sm:py-1.5 rounded-[10px] transition-all text-[10px] sm:text-xs font-bold text-center flex items-center justify-center">
+                    {allBackSelected ? (isRtl ? "إلغاء الكل عودة" : "Clear Return") : (isRtl ? "تحديد الكل عودة" : "All Return")}
                   </button>
                 </div>
               </div>
@@ -666,11 +764,11 @@ export default function AssignStudents() {
                 ) : filteredStudents.length === 0 ? (
                   <div className="py-20 text-center text-gray-500 font-bold text-lg">{isRtl ? "لا يوجد طلاب متطابقين مع البحث" : "No students found"}</div>
                 ) : (
-                  <div className={DS_tableWrapper + " max-h-[700px] overflow-y-auto"}>
+                  <div className={DS_tableWrapper + " !mx-0 px-2 sm:px-4 max-h-[700px] overflow-y-auto"}>
                     <table className={DS_tableBase}>
                         <thead className={`${DS_tableHead} sticky top-0 z-10 shadow-sm shadow-[#0f2044]/5`}>
                             <tr>
-                                <th className={DS_tableTh(isRtl)}>{isRtl ? "الطالب" : "Student"}</th>
+                                <th className={`${DS_tableTh(isRtl)} px-2 sm:px-4 min-w-[150px]`}>{isRtl ? "الطالب" : "Student"}</th>
                                 <th className={DS_tableTh(isRtl)}>{isRtl ? "الرقم المدني" : "Civil ID"}</th>
                                 <th className={DS_tableTh(isRtl) + " text-center"}>{isRtl ? "رحلة ذهاب" : "Outbound"}</th>
                                 <th className={DS_tableTh(isRtl) + " text-center"}>{isRtl ? "رحلة عودة" : "Return"}</th>
@@ -685,7 +783,7 @@ export default function AssignStudents() {
 
                                 return (
                                     <tr key={student.id} className={DS_tableRow}>
-                                        <td className={DS_tableTd}>
+                                        <td className={`${DS_tableTd} px-2 sm:px-4`}>
                                             <div className="flex flex-col gap-1">
                                                 <span className="font-bold text-[#0f2044] dark:text-white text-sm">{student.name}</span>
                                                 {(forthConflict || backConflict) && (
@@ -699,18 +797,20 @@ export default function AssignStudents() {
                                             {student.national_id || student.student_code || "—"}
                                         </td>
                                         <td className={`${DS_tableTd} text-center`}>
-                                            <label className={`inline-flex items-center justify-center p-2 rounded-[12px] cursor-pointer transition-all border ${isForth ? 'bg-[#0f2044]/5 border-[#0f2044]/20 dark:bg-[#0f2044]/30 dark:border-[#7ba7e8]/30 shadow-inner' : 'border-transparent hover:bg-gray-50 dark:hover:bg-white/5'}`}>
-                                                <input type="checkbox" checked={isForth} onChange={() => toggleForth(student.id)}
-                                                    className="w-4 h-4 rounded-[4px] border-gray-300 text-[#0f2044] focus:ring-[#0f2044] cursor-pointer"
-                                                />
-                                            </label>
+                                            <button 
+                                                onClick={() => toggleForth(student.id)}
+                                                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#0f2044] focus:ring-offset-2 ${isForth ? 'bg-[#0f2044] dark:bg-[#7ba7e8]' : 'bg-gray-200 dark:bg-[#1a2845] border border-gray-300 dark:border-[#243460]'}`}
+                                            >
+                                                <span className={`${isForth ? (isRtl ? '-translate-x-5' : 'translate-x-5') : 'translate-x-0'} inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform mx-1`} />
+                                            </button>
                                         </td>
                                         <td className={`${DS_tableTd} text-center`}>
-                                            <label className={`inline-flex items-center justify-center p-2 rounded-[12px] cursor-pointer transition-all border ${isBack ? 'bg-[#f5b800]/10 border-[#f5b800]/30 shadow-inner' : 'border-transparent hover:bg-gray-50 dark:hover:bg-white/5'}`}>
-                                                <input type="checkbox" checked={isBack} onChange={() => toggleBack(student.id)}
-                                                    className="w-4 h-4 rounded-[4px] border-gray-300 text-[#f5b800] focus:ring-[#f5b800] cursor-pointer"
-                                                />
-                                            </label>
+                                            <button 
+                                                onClick={() => toggleBack(student.id)}
+                                                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#f5b800] focus:ring-offset-2 ${isBack ? 'bg-[#f5b800]' : 'bg-gray-200 dark:bg-[#1a2845] border border-gray-300 dark:border-[#243460]'}`}
+                                            >
+                                                <span className={`${isBack ? (isRtl ? '-translate-x-5' : 'translate-x-5') : 'translate-x-0'} inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform mx-1`} />
+                                            </button>
                                         </td>
                                     </tr>
                                 );

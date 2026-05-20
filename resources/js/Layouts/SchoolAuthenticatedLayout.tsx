@@ -94,12 +94,11 @@ const getMenuItems = (isRTL: boolean) => [
         label: isRTL ? "مشرفات الحافلات" : "Bus Supervisors",
         route: "school.assistants.index",
       },
+      {
+        label: isRTL ? "المسارات" : "Routes",
+        route: "school.routes.index",
+      },
     ],
-  },
-  {
-    label: isRTL ? "المسارات" : "Routes",
-    route: "school.routes.index",
-    icon: "route",
   },
   {
     label: isRTL ? "الإشعارات" : "Notifications",

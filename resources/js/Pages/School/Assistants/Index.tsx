@@ -124,46 +124,46 @@ export default function AssistantsIndex({ auth, assistants, filters }: any) {
         <div className={DS_card}>
           {/* Toolbar */}
           <div className={DS_sectionHeader(isRTL)}>
-            <div className="flex-1 min-w-[200px]">
-              <form onSubmit={handleSearch} className="relative">
+            <div className="w-full md:flex-1 md:max-w-md">
+              <form onSubmit={handleSearch} className="relative w-full">
                 <input
                   type="text"
                   placeholder={isRTL ? "البحث بالاسم، الهوية، أو الجوال..." : "Search by name, ID, or phone..."}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className={DS_searchInput}
+                  className={`${DS_searchInput} ${isRTL ? 'pr-10' : 'pl-10'} w-full`}
                 />
-                <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 ${isRTL ? 'right-3' : 'left-3'}`} />
+                <Search className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 ${isRTL ? 'right-3' : 'left-3'}`} />
               </form>
             </div>
             
             <button 
               onClick={handlePrint}
-              className={DS_btnSecondary}
+              className="w-full md:w-auto justify-center px-5 py-2.5 bg-[#0f2044] hover:bg-[#1a2845] text-white text-sm font-bold rounded-xl shadow-md flex items-center gap-2 transition-all"
             >
-                <Printer className="w-4 h-4" />
+                <Printer className="w-4 h-4 text-[#f5b800]" />
                 {isRTL ? "طباعة القائمة" : "Print List"}
             </button>
           </div>
 
           {/* Table */}
-          <div className={DS_tableWrapper}>
+          <div className={`${DS_tableWrapper} !mx-0 px-2 sm:px-4`}>
             <table className={DS_tableBase}>
               <thead className={DS_tableHead}>
                 <tr>
-                  <th className={DS_tableTh(isRTL)}>{isRTL ? "المشرفة" : "Supervisor"}</th>
+                  <th className={`${DS_tableTh(isRTL)} px-2 sm:px-4`}>{isRTL ? "المشرفة" : "Supervisor"}</th>
                   <th className={DS_tableTh(isRTL)}>{isRTL ? "الرقم المدني" : "Civil ID"}</th>
                   <th className={DS_tableTh(isRTL)}>{isRTL ? "رقم الجوال" : "Phone"}</th>
                   <th className={DS_tableTh(isRTL)}>{isRTL ? "التواصل وقت الطوارئ" : "Emergency Contact"}</th>
                   <th className={DS_tableTh(isRTL)}>{isRTL ? "الحافلة" : "Assigned Bus"}</th>
                   <th className={DS_tableTh(isRTL)}>{isRTL ? "الحالة" : "Status"}</th>
-                  <th className={DS_tableTh(isRTL)}>{isRTL ? "إجراءات" : "Actions"}</th>
+                  <th className={`${DS_tableTh(isRTL)} px-2 sm:px-4`}>{isRTL ? "إجراءات" : "Actions"}</th>
                 </tr>
               </thead>
               <tbody>
                 {assistants.map((assistant: any) => (
                   <tr key={assistant.id} className={DS_tableRow}>
-                    <td className={DS_tableTd}>
+                    <td className={`${DS_tableTd} px-2 sm:px-4`}>
                       <div className="flex items-center gap-3">
                         <img src={assistant.image ? `/storage/${assistant.image}` : "/images/default-avatar.png"} alt="" className={DS_avatar} />
                         <div>
@@ -198,7 +198,7 @@ export default function AssistantsIndex({ auth, assistants, filters }: any) {
                         <span className="flex items-center gap-1.5 text-red-500 font-bold text-xs"><XCircle className="w-4 h-4" /> {isRTL ? "غير نشط" : "Inactive"}</span>
                       )}
                     </td>
-                    <td className={DS_tableTd}>
+                    <td className={`${DS_tableTd} px-2 sm:px-4`}>
                       <div className="flex gap-2">
                         <button onClick={() => { setSelectedAssistant(assistant); setShowDetailsModal(true); }} className={DS_btnEdit}><Eye size={16} /></button>
                       </div>
@@ -234,91 +234,98 @@ export default function AssistantsIndex({ auth, assistants, filters }: any) {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Dropdown>
-                                <Dropdown.Trigger>
-                                    <button className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all">
-                                        <MoreVertical className="w-5 h-5" />
-                                    </button>
-                                </Dropdown.Trigger>
-                                <Dropdown.Content align={isRTL ? "left" : "right"} width="32" contentClasses="py-2 bg-white dark:bg-[#1a2845] shadow-2xl rounded-[16px] border border-gray-100 dark:border-[#243460]">
-                                    <button onClick={() => { setShowDetailsModal(false); openEditModal(selectedAssistant); }} className="w-full px-4 py-2.5 text-sm font-bold text-[#0f2044] dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-start flex items-center gap-2">
-                                        <Edit2 className="w-4 h-4 text-blue-500" />
-                                        {isRTL ? "تعديل" : "Edit"}
-                                    </button>
-                                    <button 
-                                        onClick={() => { 
-                                            setShowDetailsModal(false);
-                                            setAssistantToDelete(selectedAssistant); 
-                                            setShowDeleteModal(true); 
-                                        }} 
-                                        className="w-full px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-start flex items-center gap-2"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                        {isRTL ? "حذف" : "Delete"}
-                                    </button>
-                                </Dropdown.Content>
-                            </Dropdown>
                             <button onClick={() => setShowDetailsModal(false)} className={DS_modalClose}><X className="w-5 h-5" /></button>
                         </div>
                     </div>
                     
-                    <div className="p-8 space-y-8 overflow-y-auto max-h-[80vh]">
-                        {/* Profile Card */}
-                        <div className="flex items-center gap-6 p-6 rounded-[22px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm">
-                            <div className="w-24 h-24 rounded-[22px] border-4 border-white dark:border-[#243460] overflow-hidden shadow-lg">
-                                <img src={selectedAssistant.image ? `/storage/${selectedAssistant.image}` : "/images/default-avatar.png"} className="w-full h-full object-cover" />
-                            </div>
-                            <div>
+                    <div className="flex flex-col lg:flex-row gap-6 p-6 overflow-y-auto max-h-[85vh] bg-gray-50/50 dark:bg-[#0b1428]">
+                        
+                        {/* Profile Sidebar */}
+                        <div className="w-full lg:w-1/3 flex-shrink-0">
+                            <div className="sticky top-0 bg-white dark:bg-[#152342] border border-gray-100 dark:border-[#243460] rounded-[24px] p-6 shadow-sm flex flex-col items-center text-center">
+                                <div className="relative w-32 h-32 mb-5">
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-rose-500 to-pink-500 rounded-[22px] blur-lg opacity-20 dark:opacity-40"></div>
+                                    <div className="relative w-full h-full rounded-[22px] border-4 border-white dark:border-[#152342] overflow-hidden shadow-xl bg-gray-100 dark:bg-gray-800">
+                                        <img src={selectedAssistant.image ? `/storage/${selectedAssistant.image}` : "/images/default-avatar.png"} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="absolute -bottom-2 -right-2">
+                                        <span className={DS_badge(selectedAssistant?.status === 'active')}>{selectedAssistant?.status === 'active' ? (isRTL ? "نشط" : "Active") : (isRTL ? "غير نشط" : "Inactive")}</span>
+                                    </div>
+                                </div>
                                 <h4 className="text-2xl font-black text-[#0f2044] dark:text-white mb-1">
                                     {!isRTL && selectedAssistant?.name_en ? selectedAssistant?.name_en : selectedAssistant?.name}
                                 </h4>
-                                <div className="flex items-center gap-3">
-                                    <span className={DS_badge(selectedAssistant?.status === 'active')}>{selectedAssistant?.status === 'active' ? (isRTL ? "نشط" : "Active") : (isRTL ? "غير نشط" : "Inactive")}</span>
+                                {selectedAssistant && (isRTL ? selectedAssistant.name_en : selectedAssistant.name) && (isRTL ? selectedAssistant.name_en : selectedAssistant.name) !== (!isRTL && selectedAssistant?.name_en ? selectedAssistant?.name_en : selectedAssistant?.name) && (
+                                    <p className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">
+                                        {isRTL ? selectedAssistant.name_en : selectedAssistant.name}
+                                    </p>
+                                )}
+                                
+                                {/* Quick Contact Info */}
+                                <div className="w-full space-y-3 mt-4 pt-6 border-t border-gray-100 dark:border-white/5">
+                                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl transition-colors hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-900/30 group">
+                                        <Phone className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
+                                        <span className="font-mono text-sm font-bold truncate text-gray-700 dark:text-gray-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors" dir="ltr">{selectedAssistant?.phone || "—"}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-xl transition-colors hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/30 group">
+                                        <Mail className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" />
+                                        <span className="text-sm font-bold truncate text-gray-600 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{selectedAssistant?.email || "—"}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Grid Info */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
-                                <div className="w-12 h-12 rounded-[14px] bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600"><CreditCard className="w-6 h-6" /></div>
-                                <div><p className={DS_labelCls}>{isRTL ? "الرقم المدني" : "Civil ID"}</p><p className="font-bold text-[#0f2044] dark:text-white">{selectedAssistant?.national_id || "—"}</p></div>
+                        {/* Main Content Area */}
+                        <div className="w-full lg:w-2/3 space-y-6">
+                            
+                            {/* Grid Info */}
+                            <div className="bg-white dark:bg-[#152342] border border-gray-100 dark:border-[#243460] rounded-[24px] p-6 shadow-sm">
+                                <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] mb-6 flex items-center gap-2">
+                                    <User className="text-[#f5b800]" size={16} />
+                                    {isRTL ? "المعلومات الأساسية" : "Basic Information"}
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/5 transition-all hover:border-blue-200 dark:hover:border-blue-800">
+                                        <div className="w-12 h-12 rounded-[14px] bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600"><CreditCard className="w-6 h-6" /></div>
+                                        <div><p className={DS_labelCls}>{isRTL ? "الرقم المدني" : "Civil ID"}</p><p className="font-bold text-[#0f2044] dark:text-white font-mono">{selectedAssistant?.national_id || "—"}</p></div>
+                                    </div>
+                                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/5 transition-all hover:border-purple-200 dark:hover:border-purple-800">
+                                        <div className="w-12 h-12 rounded-[14px] bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600"><MapPin className="w-6 h-6" /></div>
+                                        <div><p className={DS_labelCls}>{isRTL ? "العنوان" : "Address"}</p><p className="font-bold text-[#0f2044] dark:text-white truncate">{selectedAssistant?.address || "—"}</p></div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
-                                <div className="w-12 h-12 rounded-[14px] bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600"><Phone className="w-6 h-6" /></div>
-                                <div><p className={DS_labelCls}>{isRTL ? "الجوال" : "Phone"}</p><p className="font-bold text-[#0f2044] dark:text-white" dir="ltr">{selectedAssistant?.phone || "—"}</p></div>
-                            </div>
-                            <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
-                                <div className="w-12 h-12 rounded-[14px] bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600"><Mail className="w-6 h-6" /></div>
-                                <div><p className={DS_labelCls}>{isRTL ? "البريد" : "Email"}</p><p className="font-bold text-[#0f2044] dark:text-white truncate">{selectedAssistant?.email || "—"}</p></div>
-                            </div>
-                            <div className="flex items-center gap-4 p-4 rounded-[18px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
-                                <div className="w-12 h-12 rounded-[14px] bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600"><MapPin className="w-6 h-6" /></div>
-                                <div><p className={DS_labelCls}>{isRTL ? "العنوان" : "Address"}</p><p className="font-bold text-[#0f2044] dark:text-white truncate">{selectedAssistant?.address || "—"}</p></div>
-                            </div>
-                        </div>
 
-                        {/* Emergency Contact */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="flex items-center gap-4 p-4 rounded-[18px] bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/20">
-                                <div className="w-12 h-12 rounded-[14px] bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center text-rose-600"><PhoneCall className="w-6 h-6" /></div>
-                                <div><p className="text-[10px] font-bold text-rose-400 mb-1 uppercase tracking-widest">{isRTL ? "جهة طوارئ" : "Emergency Contact"}</p><p className="font-bold text-rose-700 dark:text-rose-400">{selectedAssistant?.emergency_contact_name || "—"}</p></div>
+                            {/* Emergency Contact */}
+                            <div className="bg-white dark:bg-[#152342] border border-gray-100 dark:border-[#243460] rounded-[24px] p-6 shadow-sm">
+                                <h4 className="text-[11px] font-black text-rose-400 uppercase tracking-[0.15em] mb-6 flex items-center gap-2">
+                                    <PhoneCall className="text-rose-500" size={16} />
+                                    {isRTL ? "تواصل الطوارئ" : "Emergency Contact"}
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50/50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/20 transition-all hover:border-rose-300 dark:hover:border-rose-700">
+                                        <div className="w-12 h-12 rounded-[14px] bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center text-rose-600"><User className="w-6 h-6" /></div>
+                                        <div><p className={DS_labelCls}>{isRTL ? "جهة طوارئ" : "Contact Name"}</p><p className="font-bold text-rose-700 dark:text-rose-400">{selectedAssistant?.emergency_contact_name || "—"}</p></div>
+                                    </div>
+                                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-rose-50/50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/20 transition-all hover:border-rose-300 dark:hover:border-rose-700">
+                                        <div className="w-12 h-12 rounded-[14px] bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center text-rose-600"><PhoneCall className="w-6 h-6" /></div>
+                                        <div><p className={DS_labelCls}>{isRTL ? "هاتف الطوارئ" : "Emergency Phone"}</p><p className="font-bold text-rose-700 dark:text-rose-400 font-mono" dir="ltr">{selectedAssistant?.emergency_contact_phone || "—"}</p></div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-4 p-4 rounded-[18px] bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/20">
-                                <div className="w-12 h-12 rounded-[14px] bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center text-rose-600"><PhoneCall className="w-6 h-6" /></div>
-                                <div><p className="text-[10px] font-bold text-rose-400 mb-1 uppercase tracking-widest">{isRTL ? "هاتف الطوارئ" : "Emergency Phone"}</p><p className="font-bold text-rose-700 dark:text-rose-400" dir="ltr">{selectedAssistant?.emergency_contact_phone || "—"}</p></div>
-                            </div>
-                        </div>
 
-                        {/* Media Assets */}
-                        <div className="mt-8 pt-8 border-t border-gray-100 dark:border-[#243460]">
-                            <h3 className="font-bold text-[#0f2044] dark:text-white flex items-center gap-2 mb-6">
-                                <FileText className="w-5 h-5 text-[#f5b800]" /> {isRTL ? "المستندات والصور" : "Documentary Evidence"}
-                            </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                <MediaCard label={isRTL ? "الهوية (أمام)" : "ID Card Front"} src={selectedAssistant.id_card_front_image || selectedAssistant.assistant?.id_card_front_image} isDark={isDark} isRTL={isRTL} />
-                                <MediaCard label={isRTL ? "الهوية (خلف)" : "ID Card Back"} src={selectedAssistant.id_card_back_image || selectedAssistant.assistant?.id_card_back_image} isDark={isDark} isRTL={isRTL} />
+                            {/* Media Assets */}
+                            <div className="bg-white dark:bg-[#152342] border border-gray-100 dark:border-[#243460] rounded-[24px] p-6 shadow-sm">
+                                <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] mb-6 flex items-center gap-2">
+                                    <FileText className="text-[#f5b800]" size={16} />
+                                    {isRTL ? "المستندات والصور المرفقة" : "Documentary Evidence"}
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <MediaCard label={isRTL ? "الهوية (أمام)" : "ID Card Front"} src={selectedAssistant.id_card_front_image || selectedAssistant.assistant?.id_card_front_image} isDark={isDark} isRTL={isRTL} />
+                                    <MediaCard label={isRTL ? "الهوية (خلف)" : "ID Card Back"} src={selectedAssistant.id_card_back_image || selectedAssistant.assistant?.id_card_back_image} isDark={isDark} isRTL={isRTL} />
+                                </div>
                             </div>
+
                         </div>
                     </div>
                 </Modal>
