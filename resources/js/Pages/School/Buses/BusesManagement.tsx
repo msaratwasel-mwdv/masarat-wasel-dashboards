@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Head, router } from "@inertiajs/react";
+import { Head, router, Link } from "@inertiajs/react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import useTranslation from "@/hooks/useTranslation";
 import Dropdown from "@/Components/Dropdown";
@@ -151,41 +151,47 @@ export default function BusesManagement({
       <Head title={t("Bus Management")} />
 
       <div className={DS_pageWrapper}>
-        {/* Stats Cards */}
-        <motion.div
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4"
-        >
-          {[
-            {
-              label: t("Total Buses"),
-              val: totalBuses,
-              icon: <BusIcon className="w-5 h-5" />,
-              accent: "navy" as const,
-            },
-            {
-              label: t("Active"),
-              val: activeBuses,
-              icon: <CheckCircle2 className="w-5 h-5" />,
-              accent: "gold" as const,
-            },
-            {
-              label: t("Under Maintenance"),
-              val: maintenanceBuses,
-              icon: <Wrench className="w-5 h-5" />,
-              accent: "red" as const,
-            },
-          ].map((s, idx) => (
-            <div key={idx} className={DS_statCard(s.accent)}>
-              <div className={DS_statIcon(s.accent)}>{s.icon}</div>
-              <div className={isRtl ? "text-right" : "text-left"}>
-                <p className={DS_statLabel}>{s.label}</p>
-                <p className={DS_statValue}>{s.val}</p>
-              </div>
-            </div>
-          ))}
-        </motion.div>
+        {/* Fleet Overview Section */}
+        <div className="mb-2 sm:mb-4">
+            <h3 className="font-black text-[#0f2044] dark:text-white text-lg sm:text-xl flex items-center gap-2 mb-4 px-1">
+                <BusIcon className="w-5 h-5 text-[#f5b800]" />
+                {isRtl ? "نظرة عامة على أسطول الحافلات" : "Buses Fleet Overview"}
+            </h3>
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4"
+            >
+              {[
+                {
+                  label: isRtl ? "إجمالي الحافلات" : "Total Buses",
+                  val: totalBuses,
+                  icon: <BusIcon className="w-4 h-4 sm:w-5 sm:h-5" />,
+                  accent: "navy" as const,
+                },
+                {
+                  label: isRtl ? "نشط" : "Active",
+                  val: activeBuses,
+                  icon: <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />,
+                  accent: "gold" as const,
+                },
+                {
+                  label: isRtl ? "تحت الصيانة" : "Under Maintenance",
+                  val: maintenanceBuses,
+                  icon: <Wrench className="w-4 h-4 sm:w-5 sm:h-5" />,
+                  accent: "red" as const,
+                },
+              ].map((s, idx) => (
+                <div key={idx} className={`${DS_statCard(s.accent)} !p-3 sm:!p-5 ${isRtl ? "flex-row-reverse" : ""}`}>
+                  <div className={`${DS_statIcon(s.accent)} !w-8 !h-8 sm:!w-12 sm:!h-12 flex items-center justify-center flex-shrink-0`}>{s.icon}</div>
+                  <div className={`${isRtl ? "text-right" : "text-left"} min-w-0`}>
+                    <p className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-gray-500 line-clamp-1 break-words leading-tight mb-1">{s.label}</p>
+                    <p className="text-lg sm:text-2xl font-black text-[#0f2044] dark:text-white leading-none">{s.val}</p>
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+        </div>
 
         {/* Main Content Area */}
         <motion.div
@@ -264,18 +270,18 @@ export default function BusesManagement({
 
           {/* Table */}
           {activeTab === "inventory" && (
-            <div className={DS_tableWrapper}>
+            <div className={`${DS_tableWrapper} !mx-0 px-2 sm:px-4`}>
               <table className={DS_tableBase}>
                 <thead className={DS_tableHead}>
                   <tr>
-                    <th className={DS_tableTh(isRtl)}>{t("Bus Number")}</th>
+                    <th className={`${DS_tableTh(isRtl)} px-2 sm:px-4`}>{t("Bus Number")}</th>
                     <th className={DS_tableTh(isRtl)}>{t("Plate Number")}</th>
                     <th className={DS_tableTh(isRtl) + " text-center"}>
                       {t("Capacity")}
                     </th>
                     <th className={DS_tableTh(isRtl)}>{t("Route")}</th>
                     <th className={DS_tableTh(isRtl)}>{t("Crew")}</th>
-                    <th className={DS_tableTh(isRtl) + " text-center"}>
+                    <th className={`${DS_tableTh(isRtl)} text-center px-2 sm:px-4`}>
                       {t("Actions")}
                     </th>
                   </tr>
@@ -286,11 +292,11 @@ export default function BusesManagement({
                       key={bus.id || `bus-${index}`}
                       className={DS_tableRow}
                     >
-                      <td className={DS_tableTd}>
-                        <div className="font-bold text-[#0f2044] dark:text-white text-base">
+                      <td className={`${DS_tableTd} px-2 sm:px-4`}>
+                        <div className="font-bold text-[#0f2044] dark:text-white text-base whitespace-nowrap">
                           {bus.bus_number}
                         </div>
-                        <div className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                        <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">
                           {bus.model} {bus.year}
                         </div>
                       </td>
@@ -364,16 +370,48 @@ export default function BusesManagement({
                           </div>
                         </div>
                       </td>
-                      <td className={DS_tableTd}>
-                        <div className={`flex items-center gap-2 ${isRtl ? "justify-start" : "justify-end"}`}>
+                      <td className={`${DS_tableTd} px-2 sm:px-4`}>
+                        <div className={`flex items-center gap-1.5 sm:gap-2 flex-nowrap ${isRtl ? "justify-start" : "justify-end"}`}>
                           {getStatusBadge(bus.status)}
-                          <button
-                            onClick={() => { setSelectedViewBus(bus); setShowViewModal(true); }}
-                            className="p-2 rounded-xl text-gray-500 hover:text-[#0f2044] dark:hover:text-white bg-gray-50 dark:bg-gray-800 hover:bg-[#0f2044]/10 dark:hover:bg-white/10 transition-all"
-                            title={t("View Details")}
-                          >
-                            <Eye size={16} />
-                          </button>
+                          
+                          <div className="relative group flex items-center justify-center">
+                            <button
+                              onClick={() => handleEditBus(bus)}
+                              className="p-2 rounded-xl text-blue-600 hover:text-white hover:bg-blue-600 dark:text-blue-400 dark:hover:text-white dark:hover:bg-blue-500 bg-blue-50 dark:bg-blue-900/20 transition-all shadow-sm"
+                            >
+                              <Map size={16} />
+                            </button>
+                            <div className="hidden sm:block absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 transition-all z-[60] whitespace-nowrap shadow-xl">
+                              {isRtl ? "تعيين المسار" : "Assign Route"}
+                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-white"></div>
+                            </div>
+                          </div>
+
+                          <div className="relative group flex items-center justify-center">
+                            <Link
+                              href={route("school.buses.students.assign", { bus_id: bus.id })}
+                              className="p-2 rounded-xl text-emerald-600 hover:text-white hover:bg-emerald-600 dark:text-emerald-400 dark:hover:text-white dark:hover:bg-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 transition-all shadow-sm flex items-center justify-center"
+                            >
+                              <Users size={16} />
+                            </Link>
+                            <div className="hidden sm:block absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 transition-all z-[60] whitespace-nowrap shadow-xl">
+                              {isRtl ? "تعيين الطلاب" : "Assign Students"}
+                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-white"></div>
+                            </div>
+                          </div>
+
+                          <div className="relative group flex items-center justify-center">
+                            <button
+                              onClick={() => { setSelectedViewBus(bus); setShowViewModal(true); }}
+                              className="p-2 rounded-xl text-gray-500 hover:text-[#0f2044] dark:hover:text-white bg-gray-50 dark:bg-gray-800 hover:bg-[#0f2044]/10 dark:hover:bg-white/10 transition-all shadow-sm"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            <div className="hidden sm:block absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 transition-all z-[60] whitespace-nowrap shadow-xl">
+                              {isRtl ? "عرض التفاصيل" : "View Details"}
+                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-white"></div>
+                            </div>
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -416,23 +454,14 @@ export default function BusesManagement({
                             <p className="text-[#7ba7e8] text-sm font-semibold">{selectedViewBus.plate_number}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Dropdown>
-                            <Dropdown.Trigger>
-                                <button className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all">
-                                    <MoreVertical className="w-5 h-5" />
-                                </button>
-                            </Dropdown.Trigger>
-                            <Dropdown.Content align={isRtl ? "left" : "right"} width="48" contentClasses="py-2 bg-white dark:bg-[#1a2845] shadow-2xl rounded-[16px] border border-gray-100 dark:border-[#243460]">
-                                <button 
-                                    onClick={() => { setShowViewModal(false); handleEditBus(selectedViewBus); }} 
-                                    className="w-full px-4 py-2.5 text-sm font-bold text-[#0f2044] dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-start flex items-center gap-3"
-                                >
-                                    <Map className="w-4 h-4 text-blue-500" />
-                                    {t("Assign Route")}
-                                </button>
-                            </Dropdown.Content>
-                        </Dropdown>
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => { setShowViewModal(false); handleEditBus(selectedViewBus); }} 
+                            className="px-4 py-2 rounded-xl text-sm font-bold text-[#0f2044] bg-[#f5b800] hover:bg-[#e0a900] flex items-center gap-2 transition-all shadow-sm"
+                        >
+                            <Map className="w-4 h-4" />
+                            {t("Assign Route")}
+                        </button>
                         <button onClick={() => setShowViewModal(false)} className={DS_modalClose}><X className="w-5 h-5" /></button>
                     </div>
                 </div>
