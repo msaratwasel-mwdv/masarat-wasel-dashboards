@@ -231,6 +231,7 @@ export default function SchoolAuthenticatedLayout({
   const { theme, language, toggleTheme, toggleLanguage, isRTL } = useTheme();
   const { notifyEvent } = useRealtimeToast();
   const { t } = useTranslation();
+  const isLiveTracking = route().current('school.live-tracking.*');
 
   useEffect(() => {
     if (flash?.success) {
@@ -780,12 +781,13 @@ export default function SchoolAuthenticatedLayout({
         </header>
 
         {/* Page Content */}
-        <div className="p-4 md:p-8 flex-1 bg-gray-50 dark:bg-gray-900">
-          <div className="max-w-7xl mx-auto">
+        <div className={`flex-1 bg-gray-50 dark:bg-gray-900 ${isLiveTracking ? 'p-0 overflow-hidden' : 'p-4 md:p-8'}`}>
+          <div className={isLiveTracking ? 'w-full h-[calc(100vh-80px)]' : 'max-w-7xl mx-auto'}>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
+              className={isLiveTracking ? 'w-full h-full' : ''}
             >
               {children}
             </motion.div>
