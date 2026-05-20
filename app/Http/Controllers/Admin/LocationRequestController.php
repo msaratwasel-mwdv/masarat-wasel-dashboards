@@ -43,15 +43,15 @@ class LocationRequestController extends Controller
     public function approve(Request $request, $id)
     {
         $request->validate([
-            'forth_bus_id' => 'required|exists:buses,id',
-            'back_bus_id'  => 'required|exists:buses,id',
+            'forth_bus_id' => 'nullable|exists:buses,id',
+            'back_bus_id'  => 'nullable|exists:buses,id',
         ]);
 
         $locationRequest = StudentLocationRequest::findOrFail($id);
         $student = $locationRequest->student;
         
-        // 1. تحديث بيانات الطالب - مزامنة كافة حقول الموقع والحافلات
-        $student->update([
+        // 1. تحديث بيانات الطالب - مزامنة كافة حقول الموقع
+        $updateData = [
             'latitude'        => $locationRequest->new_latitude,
             'longitude'       => $locationRequest->new_longitude,
             'forth_latitude'  => $locationRequest->new_latitude,
@@ -60,9 +60,17 @@ class LocationRequestController extends Controller
             'back_longitude'  => $locationRequest->new_longitude,
             'address'         => $locationRequest->new_address,
             'location_note'   => $locationRequest->note,
-            'forth_bus_id'    => $request->forth_bus_id,
-            'back_bus_id'     => $request->back_bus_id,
-        ]);
+        ];
+
+        // تحديث الحافلات فقط إذا تم اختيارها (اختياري)
+        if ($request->forth_bus_id) {
+            $updateData['forth_bus_id'] = $request->forth_bus_id;
+        }
+        if ($request->back_bus_id) {
+            $updateData['back_bus_id'] = $request->back_bus_id;
+        }
+
+        $student->update($updateData);
 
         // 2. تحديث حالة الطلب
         $locationRequest->update([
@@ -104,7 +112,7 @@ class LocationRequestController extends Controller
     public function reject(Request $request, $id)
     {
         $request->validate([
-            'rejection_reason' => 'required|string|max:500',
+            'rejection_reason' => 'nullable|string|max:500',
         ]);
 
         $locationRequest = StudentLocationRequest::findOrFail($id);

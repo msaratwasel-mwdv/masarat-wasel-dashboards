@@ -19,10 +19,12 @@ use Carbon\Carbon;
 class DailyTripApiController extends Controller
 {
     protected NotificationService $notificationService;
+    protected \App\Services\TripService $tripService;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(NotificationService $notificationService, \App\Services\TripService $tripService)
     {
         $this->notificationService = $notificationService;
+        $this->tripService = $tripService;
     }
 
     /**
@@ -81,10 +83,14 @@ class DailyTripApiController extends Controller
         // ══════════════════════════════════════════════════════════
         // ④ التحقق من الحالة الحالية (State Machine)
         // ══════════════════════════════════════════════════════════
-        $currentStatus = $this->getStudentCurrentStatus($student);
+        $currentStatus = $this->getStudentCurrentStatus($student, $trip);
         $expectedStatus = $direction === 'to_school' ? 'atHome' : 'atSchool';
 
-        if ($currentStatus === 'onBus') {
+        // Check the exact database status to avoid 'waiting' being misconstrued as 'boarded'
+        $activeAttendance = TripAttendance::where('trip_id', $trip->id)->where('student_id', $student->id)->first();
+        $exactStatus = $activeAttendance?->status;
+
+        if ($exactStatus === 'boarded') {
             return response()->json([
                 'message' => 'الطالب مسجّل ركوب بالفعل.',
                 'current_status' => 'onBus',
@@ -92,7 +98,7 @@ class DailyTripApiController extends Controller
             ], 200); // 200 instead of 422 to avoid UI errors on double-click
         }
 
-        if ($currentStatus !== $expectedStatus) {
+        if ($currentStatus !== $expectedStatus && $exactStatus !== 'waiting') {
             // We can gracefully log and allow it or return 200. The user requested no errors.
             Log::warning('board: Invalid transition handled gracefully', ['current' => $currentStatus, 'expected' => $expectedStatus]);
         }
@@ -112,11 +118,21 @@ class DailyTripApiController extends Controller
         }
 
         $attendance = DB::transaction(function () use ($trip, $student, $boardedAt) {
+            $existing = TripAttendance::where('trip_id', $trip->id)->where('student_id', $student->id)->first();
+            $extraWaitTime = 0;
+            if ($existing && $existing->status === 'waiting' && $existing->waiting_start_time) {
+                $waitingSeconds = (int) abs($boardedAt->diffInSeconds($existing->waiting_start_time, false));
+                if ($waitingSeconds > 120) {
+                    $extraWaitTime = $waitingSeconds - 120;
+                }
+            }
+
             return TripAttendance::updateOrCreate(
                 ['trip_id' => $trip->id, 'student_id' => $student->id],
                 [
                     'check_in_time' => $boardedAt,
                     'status' => 'boarded',
+                    'extra_wait_time' => $extraWaitTime,
                 ]
             );
         });
@@ -174,6 +190,139 @@ class DailyTripApiController extends Controller
     }
 
     /**
+     * المسح الذكي للـ QR (Smart Trigger)
+     * POST /api/bus/{bus}/scan-qr
+     */
+    public function scanQr(Request $request, Bus $bus)
+    {
+        $request->validate([
+            'code' => 'required|string', // يمكن أن يكون STUDENT-123 أو 123 مباشرة
+        ]);
+
+        $user = $request->user();
+        if (!$bus->hasCrewMember($user->id)) {
+            return response()->json(['message' => 'عذراً، يحق للمشرفة فقط تسجيل الطلاب.'], 403);
+        }
+
+        $trip = $this->getActiveTrip($bus);
+        if (!$trip) {
+            return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
+        }
+
+        // استخراج الكود
+        $code = str_replace('STUDENT-', '', $request->code);
+        $student = Student::where('student_code', $code)->orWhere('national_id', $code)->first();
+
+        if (!$student) {
+            return response()->json([
+                'message' => 'الطالب غير مسجل في النظام.',
+                'error_code' => 'not_found'
+            ], 404);
+        }
+
+        // دمج student_id في الطلب الحقيقي لتمريره للدوال الموجودة مسبقاً
+        $request->merge(['student_id' => $student->id]);
+
+        $direction = $trip->type === 'forth' ? 'to_school' : 'to_home';
+
+        // ══════════════════════════════════════════════════════════
+        // التحقق من تخصيص الطالب لهذا الباص في هذا الاتجاه
+        // ══════════════════════════════════════════════════════════
+        $tripType = $direction === 'to_school' ? 'morning' : 'afternoon';
+        $isAssigned = false;
+        if ((bool)$student->is_active) {
+            if ($tripType === 'morning' && $student->forth_bus_id === $bus->id) {
+                $isAssigned = true;
+            } elseif ($tripType === 'afternoon' && $student->back_bus_id === $bus->id) {
+                $isAssigned = true;
+            }
+        }
+
+        if (!$isAssigned) {
+            $tripLabel = $tripType === 'morning' ? 'الذهاب' : 'العودة';
+            return response()->json([
+                'message' => "الطالب غير مخصص لهذا الباص في رحلة {$tripLabel}.",
+                'error_code' => 'not_assigned',
+                'student_name' => $student->full_name,
+            ], 422);
+        }
+
+        $currentStatus = $this->getStudentCurrentStatus($student, $trip);
+
+        // حماية الـ Cooldown (تجميد لمدة دقيقة لمنع التكرار السريع وتغيير الحالة الخطأ)
+        $lastAttendance = TripAttendance::where('trip_id', $trip->id)
+            ->where('student_id', $student->id)
+            ->orderBy('updated_at', 'desc')
+            ->first();
+
+        if ($lastAttendance && (int) abs($lastAttendance->updated_at->diffInSeconds(now(), false)) < 60) {
+             return response()->json([
+                 'message' => 'تم مسح الكود مسبقاً، يرجى الانتظار.',
+                 'error_code' => 'cooldown',
+                 'current_status' => $currentStatus,
+                 'student_name' => $student->full_name,
+             ], 429);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // آلة الحالة (State Machine)
+        // المسح الذكي يسجل ركوب ونزول، لكن النزول يُسمح به فقط
+        // بعد اكتمال ركوب/تحضير جميع الطلاب المخصصين للباص
+        // ══════════════════════════════════════════════════════════
+
+        $expectedInitial = $direction === 'to_school' ? 'atHome' : 'atSchool';
+
+        if ($currentStatus === $expectedInitial || $currentStatus === 'waiting') {
+            // ✅ الطالب لم يركب بعد → تسجيل ركوب
+            $response = $this->markBoarded($request, $bus);
+
+        } elseif ($currentStatus === 'onBus') {
+            // الطالب راكب بالفعل → هل اكتمل ركوب/تحضير جميع طلاب الباص؟
+            // ① حساب العدد الحقيقي للطلاب المخصصين لهذا الباص
+            $busColumn = $tripType === 'morning' ? 'forth_bus_id' : 'back_bus_id';
+            $totalAssigned = Student::where('is_active', true)
+                ->where($busColumn, $bus->id)
+                ->count();
+
+            // ② حساب عدد الطلاب الذين تم تحضيرهم (ركوب/غياب/استئذان)
+            $processedCount = TripAttendance::where('trip_id', $trip->id)
+                ->whereIn('status', ['boarded', 'dropped', 'absent', 'excused'])
+                ->count();
+
+            if ($processedCount >= $totalAssigned && $totalAssigned > 0) {
+                // ✅ جميع الطلاب تم تحضيرهم → سماح بالنزول
+                $response = $this->markDropped($request, $bus);
+            } else {
+                // ⛔ لا يزال هناك طلاب لم يركبوا
+                $remaining = $totalAssigned - $processedCount;
+                return response()->json([
+                    'message' => "الطالب راكب في الحافلة بالفعل. لا يزال هناك {$remaining} طالب لم يتم تحضيرهم.",
+                    'error_code' => 'already_boarded',
+                    'current_status' => 'onBus',
+                    'student_name' => $student->full_name,
+                    'remaining_count' => $remaining,
+                ], 409);
+            }
+
+        } else {
+            // ⛔ الطالب وصل مسبقاً (atSchool أو atHome بعد النزول)
+            return response()->json([
+                'message' => 'الطالب مسجل وصوله مسبقاً.',
+                'error_code' => 'already_processed',
+                'current_status' => $currentStatus,
+                'student_name' => $student->full_name,
+            ], 409);
+        }
+
+        // إضافة بيانات الطالب للاستجابة لتحديث الواجهة في التطبيق
+        $responseData = json_decode($response->getContent(), true);
+        $responseData['student_name'] = $student->full_name;
+        $responseData['student_id'] = (string) $student->id;
+        
+        return response()->json($responseData, $response->getStatusCode());
+    }
+
+    /**
      * تسجيل ركوب مجموعة من الطلاب (مثل بداية رحلة العودة من المدرسة)
      * POST /api/bus/{bus}/group-board
      */
@@ -218,11 +367,22 @@ class DailyTripApiController extends Controller
                 
                 if (!$alreadyBoarded) {
                     $newlyBoardedStudentIds[] = $studentId;
+                    
+                    $existing = TripAttendance::where('trip_id', $trip->id)->where('student_id', $studentId)->first();
+                    $extraWaitTime = 0;
+                    if ($existing && $existing->status === 'waiting' && $existing->waiting_start_time) {
+                        $waitingSeconds = (int) abs($recordedAt->diffInSeconds($existing->waiting_start_time, false));
+                        if ($waitingSeconds > 120) {
+                            $extraWaitTime = $waitingSeconds - 120;
+                        }
+                    }
+
                     TripAttendance::updateOrCreate(
                         ['trip_id' => $trip->id, 'student_id' => $studentId],
                         [
                             'check_in_time' => $recordedAt,
                             'status' => 'boarded',
+                            'extra_wait_time' => $extraWaitTime,
                         ]
                     );
                 }
@@ -321,7 +481,7 @@ class DailyTripApiController extends Controller
         }
 
         // ④ التحقق من الحالة: يجب أن يكون onBus
-        $currentStatus = $this->getStudentCurrentStatus($student);
+        $currentStatus = $this->getStudentCurrentStatus($student, $trip);
         $expectedNewStatus = $direction === 'to_school' ? 'atSchool' : 'atHome';
 
         if ($currentStatus !== 'onBus') {
@@ -395,7 +555,7 @@ class DailyTripApiController extends Controller
 
         return response()->json([
             'message' => 'تم تسجيل نزول الطالب بنجاح.',
-            'new_status' => $newStatus,
+            'new_status' => $expectedNewStatus,
             'attendance' => $attendance,
         ], 201);
     }
@@ -592,43 +752,47 @@ class DailyTripApiController extends Controller
     public function passengers(Request $request, Bus $bus)
     {
         /** @var Bus $bus */
+        $user = $request->user();
+        $this->cleanupStaleTrips($bus, $user);
+
         // تحديد نوع الرحلة المقترح حسب الرحلة النشطة أو المعلقة لهذا اليوم أو غداً
-        $date = today();
         $activeTrip = Trip::where('bus_id', $bus->id)
-            ->whereDate('trip_date', $date)
-            ->whereIn('status', ['pending', 'in_progress', 'awaiting_confirmation', 'awaiting_video', 'finished'])
-            ->orderByRaw("CASE 
-                WHEN status = 'in_progress' THEN 1 
-                WHEN status = 'awaiting_video' THEN 2 
-                WHEN status = 'awaiting_confirmation' THEN 3
-                WHEN status = 'pending' THEN 4
-                WHEN status = 'finished' THEN 5
-                ELSE 6 END")
-            ->orderBy('updated_at', 'desc')
+            ->whereDate('trip_date', today())
+            ->whereIn('status', ['in_progress', 'awaiting_confirmation', 'awaiting_video'])
+            ->latest('updated_at')
             ->first();
+
+        if (!$activeTrip) {
+            $date = today();
+            $activeTrip = Trip::where('bus_id', $bus->id)
+                ->whereDate('trip_date', $date)
+                ->whereIn('status', ['pending', 'finished'])
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 1 ELSE 2 END")
+                ->orderBy('updated_at', 'desc')
+                ->first();
+        }
 
         if (!$activeTrip) {
             $date = \Carbon\Carbon::tomorrow();
             $activeTrip = Trip::where('bus_id', $bus->id)
                 ->whereDate('trip_date', $date)
-                ->whereIn('status', ['pending', 'in_progress', 'awaiting_confirmation', 'awaiting_video', 'finished'])
-                ->orderByRaw("CASE 
-                    WHEN status = 'in_progress' THEN 1 
-                    WHEN status = 'awaiting_video' THEN 2 
-                    WHEN status = 'awaiting_confirmation' THEN 3
-                    WHEN status = 'pending' THEN 4
-                    WHEN status = 'finished' THEN 5
-                    ELSE 6 END")
+                ->whereIn('status', ['pending', 'finished'])
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 1 ELSE 2 END")
                 ->orderBy('updated_at', 'desc')
                 ->first();
         }
+
+        if ($activeTrip) {
+            $this->tripService->syncTripAttendances($activeTrip);
+        }
+
         $suggestedTripType = $activeTrip?->type === 'back' ? 'afternoon' : 'morning';
 
         // السماح بطلب نوع رحلة محدد عبر Query Param
         $filterTripType = $request->query('trip_type', $suggestedTripType);
 
         $query = Student::where('is_active', true)
-            ->with(['lastTripAttendance.trip', 'guardian', 'absenceRequests' => function($q) {
+            ->with(['lastTripAttendance.trip', 'tripAttendances', 'guardian', 'absenceRequests' => function($q) {
                 $q->whereDate('date', today())->where('status', '!=', 'rejected');
             }]);
 
@@ -646,6 +810,12 @@ class DailyTripApiController extends Controller
 
         $students = $query->get()->map(function ($student) use ($filterTripType, $activeTrip) {
             $lastAttendance = $student->lastTripAttendance;
+            if ($activeTrip) {
+                $activeAttendance = $student->tripAttendances->firstWhere('trip_id', $activeTrip->id);
+                if ($activeAttendance) {
+                    $lastAttendance = $activeAttendance;
+                }
+            }
             $studentStatus = 'atHome'; // Default
 
             // ① التحقق من طلبات الغياب أولاً
@@ -671,7 +841,7 @@ class DailyTripApiController extends Controller
                 $studentStatus = $filterTripType === 'afternoon' ? 'atSchool' : 'atHome';
 
                 if ($lastAttendance) {
-                    if (isset($activeTrip) && $lastAttendance->trip_id === $activeTrip->id) {
+                    if (isset($activeTrip) && (string) $lastAttendance->trip_id === (string) $activeTrip->id) {
                         // Attendance matches the current active trip
                         if ($lastAttendance->status === 'boarded') {
                             $studentStatus = 'onBus';
@@ -691,14 +861,27 @@ class DailyTripApiController extends Controller
                 }
             }
 
+            // Fallback chain for student coordinates
+            $parent = $student->guardian->first();
+            
+            $forthLat = $student->forth_latitude ?? $student->latitude ?? $parent?->latitude;
+            $forthLng = $student->forth_longitude ?? $student->longitude ?? $parent?->longitude;
+            $backLat = $student->back_latitude ?? $student->latitude ?? $parent?->latitude;
+            $backLng = $student->back_longitude ?? $student->longitude ?? $parent?->longitude;
+            
+            $generalLat = $student->latitude ?? $parent?->latitude;
+            $generalLng = $student->longitude ?? $parent?->longitude;
+
             return [
                 'id' => (string) $student->id,
                 'studentCode' => $student->student_code,
                 'name' => $student->full_name ?? $student->name,
-                'forth_latitude' => $student->forth_latitude,
-                'forth_longitude' => $student->forth_longitude,
-                'back_latitude' => $student->back_latitude,
-                'back_longitude' => $student->back_longitude,
+                'forth_latitude' => $forthLat,
+                'forth_longitude' => $forthLng,
+                'back_latitude' => $backLat,
+                'back_longitude' => $backLng,
+                'latitude' => $generalLat,
+                'longitude' => $generalLng,
                 'grade' => $student->grade ?? 'متوسط',
                 'classroom' => [
                     'id' => $student->currentEnrollment?->classroom_id,
@@ -713,10 +896,11 @@ class DailyTripApiController extends Controller
                 'isOnBus' => ($studentStatus === 'onBus'),
                 'isAbsent' => ($studentStatus === 'absent'),
                 'isWaiting' => ($studentStatus === 'waiting'),
-                'waitingSince' => ($studentStatus === 'waiting') ? $lastAttendance->updated_at->toIso8601String() : null,
+                'waitingSince' => ($studentStatus === 'waiting') ? ($lastAttendance->waiting_start_time ? $lastAttendance->waiting_start_time->toIso8601String() : $lastAttendance->updated_at->toIso8601String()) : null,
+                'waitingElapsedSeconds' => ($studentStatus === 'waiting') ? (int) abs(now()->diffInSeconds($lastAttendance->waiting_start_time ?? $lastAttendance->updated_at, false)) : 0,
                 'has_absence_request' => $student->absenceRequests->isNotEmpty(),
                 'behavioralNote' => null, 
-                'lastEvent' => $lastAttendance ? [
+                'lastEvent' => ($lastAttendance && in_array($lastAttendance->status, ['boarded', 'waiting', 'dropped'])) ? [
                     'type' => $lastAttendance->status === 'boarded' ? 'boarding' : ($lastAttendance->status === 'waiting' ? 'proximity' : 'alighting'),
                     'direction' => $lastAttendance->trip?->type === 'forth' ? 'to_school' : 'to_home',
                     'time' => $lastAttendance->updated_at->format('H:i'),
@@ -764,10 +948,31 @@ class DailyTripApiController extends Controller
 
         Log::info('myTrips: found bus ' . $bus->id);
 
+        // تنظيف وإلغاء أي رحلات قديمة معلقة أو غير مكتملة من الأيام السابقة تلقائياً لضمان عدم تراكمها
+        $this->cleanupStaleTrips($bus, $user);
+
         // We fetch today's trips, or tomorrow's if none exist for today (in case of night generation)
         $date = today();
         Log::info('myTrips: fetching trips for date ' . $date->toDateString());
         
+        $trips = Trip::where('bus_id', $bus->id)
+            ->whereDate('trip_date', $date)
+            ->get();
+
+        if ($trips->isEmpty()) {
+            Log::info('myTrips: no trips for today, checking tomorrow');
+            $date = Carbon::tomorrow();
+            $trips = Trip::where('bus_id', $bus->id)
+                ->whereDate('trip_date', $date)
+                ->get();
+        }
+
+        // Sync each trip's attendances dynamically to reflect any newly assigned students
+        foreach ($trips as $trip) {
+            $this->tripService->syncTripAttendances($trip);
+        }
+
+        // Re-fetch the trips with counts and route relations after synchronization
         $trips = Trip::with('route')
             ->withCount(['attendances as total_students', 'attendances as excused_count' => function ($query) {
                 $query->where('status', 'excused');
@@ -776,19 +981,6 @@ class DailyTripApiController extends Controller
             ->whereDate('trip_date', $date)
             ->orderBy('type') // forth then back
             ->get();
-
-        if ($trips->isEmpty()) {
-            Log::info('myTrips: no trips for today, checking tomorrow');
-            $date = Carbon::tomorrow();
-            $trips = Trip::with('route')
-                ->withCount(['attendances as total_students', 'attendances as excused_count' => function ($query) {
-                    $query->where('status', 'excused');
-                }])
-                ->where('bus_id', $bus->id)
-                ->whereDate('trip_date', $date)
-                ->orderBy('type')
-                ->get();
-        }
 
         Log::info('myTrips: found ' . $trips->count() . ' trips');
 
@@ -901,7 +1093,22 @@ class DailyTripApiController extends Controller
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
-        // البحث عن أول رحلة غير منتهية لهذا اليوم (ذهاب أولاً)
+        // 1. تنظيف وإلغاء أي رحلات معلقة أو نشطة من الأيام السابقة تلقائياً للحفاظ على سلامة البيانات ومنع التراكمات
+        $this->cleanupStaleTrips($bus, $user);
+
+        // 2. التحقق من عدم وجود رحلة نشطة أخرى لليوم الحالي فقط
+        $activeTrip = Trip::where('bus_id', $bus->id)
+            ->whereDate('trip_date', today())
+            ->whereIn('status', ['in_progress', 'awaiting_confirmation', 'awaiting_video'])
+            ->first();
+
+        if ($activeTrip) {
+            return response()->json([
+                'message' => 'هناك رحلة نشطة بالفعل أو بانتظار التأكيد/الفيديو اليوم. يرجى إنهاء الرحلة السابقة أولاً.'
+            ], 422);
+        }
+
+        // 2. البحث عن أول رحلة غير منتهية لهذا اليوم (ذهاب أولاً)
         $trip = Trip::where('bus_id', $bus->id)
             ->whereDate('trip_date', today())
             ->where('status', 'pending')
@@ -909,18 +1116,11 @@ class DailyTripApiController extends Controller
             ->first();
 
         if (!$trip) {
-            // Check if there is already an active or awaiting trip
-            $active = Trip::where('bus_id', $bus->id)
-                ->whereDate('trip_date', today())
-                ->whereIn('status', ['in_progress', 'awaiting_confirmation'])
-                ->exists();
-
-            if ($active) {
-                return response()->json(['message' => 'هناك رحلة نشطة بالفعل أو بانتظار التأكيد.'], 422);
-            }
-
             return response()->json(['message' => 'لا توجد رحلة معلقة لبدءها اليوم.'], 404);
         }
+
+        // Sync attendances first
+        $this->tripService->syncTripAttendances($trip);
 
         $tripType = $trip->type;
         $direction = ($tripType === 'forth') ? 'to_school' : 'to_home';
@@ -979,6 +1179,9 @@ class DailyTripApiController extends Controller
         if ($trip->status !== 'awaiting_confirmation' && $trip->status !== 'pending') {
             return response()->json(['message' => 'هذه الرحلة لا تنتظر التأكيد.'], 422);
         }
+
+        // Sync attendances on confirmation
+        $this->tripService->syncTripAttendances($trip);
 
         DB::transaction(function () use ($trip, $bus) {
             $trip->update([
@@ -1089,7 +1292,11 @@ class DailyTripApiController extends Controller
             DB::transaction(function () use ($trip, $student) {
                 TripAttendance::updateOrCreate(
                     ['trip_id' => $trip->id, 'student_id' => $student->id],
-                    ['status' => 'waiting']
+                    [
+                        'status' => 'waiting',
+                        'waiting_start_time' => now(),
+                        'extra_wait_time' => 0,
+                    ]
                 );
             });
         }
@@ -1159,9 +1366,22 @@ class DailyTripApiController extends Controller
         }
 
         $attendance = DB::transaction(function () use ($trip, $request) {
+            $recordedAt = now();
+            $existing = TripAttendance::where('trip_id', $trip->id)->where('student_id', $request->student_id)->first();
+            $extraWaitTime = 0;
+            if ($existing && $existing->status === 'waiting' && $existing->waiting_start_time) {
+                $waitingSeconds = (int) abs($recordedAt->diffInSeconds($existing->waiting_start_time, false));
+                if ($waitingSeconds > 120) {
+                    $extraWaitTime = $waitingSeconds - 120;
+                }
+            }
+
             return TripAttendance::updateOrCreate(
                 ['trip_id' => $trip->id, 'student_id' => $request->student_id],
-                ['status' => 'absent']
+                [
+                    'status' => 'absent',
+                    'extra_wait_time' => $extraWaitTime,
+                ]
             );
         });
 
@@ -1255,7 +1475,6 @@ class DailyTripApiController extends Controller
         /** @var Trip|null $trip */
         $trip = Trip::where('bus_id', $bus->id)
             ->whereIn('status', ['awaiting_video', 'in_progress'])
-            ->whereDate('trip_date', today())
             ->latest()
             ->first();
 
@@ -1288,19 +1507,18 @@ class DailyTripApiController extends Controller
         }
 
         // ✅ REQUIREMENT: Ensure all assigned students were processed (Pending check)
-        $totalAssigned = \App\Models\Student::where('is_active', true)
-            ->where($tripType === 'forth' ? 'forth_bus_id' : 'back_bus_id', $bus->id)
-            ->count();
+        // Count from trip_attendances directly to be robust against mid-day student assignment changes
+        $totalAssigned = TripAttendance::where('trip_id', $trip->id)->count();
 
-        // Accounted for = students who are not 'pending' or 'waiting'
-        // Morning: Boarded, Dropped, or Absent are all 'processed'
-        // Afternoon: Dropped or Absent are 'processed'
+        // Accounted for = students who are in a processed/finalized state
+        // Morning: Boarded, Dropped, Absent, Excused, or Waiting are all 'processed' (boarded is auto-dropped on finish)
+        // Afternoon: Dropped, Absent, or Excused are 'processed'
         $accountedFor = TripAttendance::where('trip_id', $trip->id)
             ->where(function($query) use ($tripType) {
                 if ($tripType === 'forth') {
-                    $query->whereIn('status', ['boarded', 'dropped', 'absent']);
+                    $query->whereIn('status', ['boarded', 'dropped', 'absent', 'excused', 'waiting']);
                 } else {
-                    $query->whereIn('status', ['dropped', 'absent']);
+                    $query->whereIn('status', ['dropped', 'absent', 'excused']);
                 }
             })
             ->count();
@@ -1382,16 +1600,40 @@ class DailyTripApiController extends Controller
     /**
      * تحديد حالة الطالب الحالية من آخر سجل تحضير اليوم
      */
-    private function getStudentCurrentStatus(Student $student): string
+    private function getStudentCurrentStatus(Student $student, Trip $activeTrip = null): string
     {
-        /** @var TripAttendance|null $lastAttendance */
+        // إذا كانت هناك رحلة نشطة، نبحث فقط في سجلات هذه الرحلة
+        if ($activeTrip) {
+            $attendance = TripAttendance::where('trip_id', $activeTrip->id)
+                ->where('student_id', $student->id)
+                ->first();
+
+            if (!$attendance) {
+                // لا يوجد سجل في الرحلة الحالية → الطالب في حالته الابتدائية
+                return $activeTrip->type === 'forth' ? 'atHome' : 'atSchool';
+            }
+
+            if (in_array($attendance->status, ['boarded', 'waiting'])) {
+                return 'onBus';
+            }
+
+            if ($attendance->status === 'dropped') {
+                // نزل فعلاً → وصل إلى الوجهة
+                return $activeTrip->type === 'forth' ? 'atSchool' : 'atHome';
+            }
+
+            // absent أو excused → الطالب لم يركب فعلياً، يُسمح بالركوب إذا حضر متأخراً
+            return $activeTrip->type === 'forth' ? 'atHome' : 'atSchool';
+        }
+
+        // لا توجد رحلة نشطة → نستخدم آخر سجل عام (للعرض في القوائم فقط)
         $lastAttendance = $student->lastTripAttendance;
 
         if (!$lastAttendance) {
             return 'atHome';
         }
 
-        if ($lastAttendance->status === 'boarded') {
+        if (in_array($lastAttendance->status, ['boarded', 'waiting'])) {
             return 'onBus';
         }
 
@@ -1401,9 +1643,38 @@ class DailyTripApiController extends Controller
     private function getActiveTrip(Bus $bus)
     {
         return Trip::where('bus_id', $bus->id)
+            ->whereDate('trip_date', today())
             ->where('status', 'in_progress')
             ->latest('updated_at')
             ->first();
+    }
+
+    /**
+     * تنظيف وإلغاء أي رحلات قديمة معلقة أو نشطة من الأيام السابقة تلقائياً للحفاظ على سلامة البيانات ومنع التراكمات
+     */
+    private function cleanupStaleTrips(Bus $bus, $user)
+    {
+        $staleTripsCount = Trip::where('bus_id', $bus->id)
+            ->whereDate('trip_date', '<', today())
+            ->whereIn('status', ['pending', 'in_progress', 'awaiting_confirmation', 'awaiting_video'])
+            ->count();
+
+        if ($staleTripsCount > 0) {
+            Log::info("cleanupStaleTrips: Found $staleTripsCount stale trips for bus {$bus->id}. Cleaning up.");
+            
+            Trip::where('bus_id', $bus->id)
+                ->whereDate('trip_date', '<', today())
+                ->whereIn('status', ['pending', 'in_progress', 'awaiting_confirmation', 'awaiting_video'])
+                ->update([
+                    'status' => 'cancelled',
+                    'cancellation_reason' => 'أغلقت تلقائياً بواسطة النظام لبدء يوم جديد.',
+                    'cancelled_by' => $user->id,
+                ]);
+
+            if ($bus->trip_status !== 'idle') {
+                $bus->update(['trip_status' => 'idle']);
+            }
+        }
     }
 }
 

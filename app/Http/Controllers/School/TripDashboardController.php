@@ -14,12 +14,23 @@ use Carbon\Carbon;
 
 class TripDashboardController extends Controller
 {
+    public function __construct(protected \App\Services\TripService $tripService) {}
+
     public function index(Request $request)
     {
         $schoolId = Auth::user()->getSchoolId();
         $today = Carbon::today()->toDateString();
         $date = $request->input('date', $today);
         $routeId = $request->input('route_id');
+
+        // Fetch today's trips first to sync them
+        $rawTrips = Trip::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+            ->whereDate('trip_date', $date)
+            ->get();
+
+        foreach ($rawTrips as $t) {
+            $this->tripService->syncTripAttendances($t);
+        }
 
         // Fetch today's trips
         $query = Trip::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
@@ -78,6 +89,8 @@ class TripDashboardController extends Controller
         if (!$trip->bus || $trip->bus->school_id !== $schoolId) {
             abort(403);
         }
+
+        $this->tripService->syncTripAttendances($trip);
 
         $trip->load(['bus.driver.user', 'bus.assistant', 'route', 'attendances.student']);
 

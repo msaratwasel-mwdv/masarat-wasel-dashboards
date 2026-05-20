@@ -611,7 +611,7 @@ export default function LocationRequests({ auth, locationRequests, buses = [], s
                                 
                                 <button
                                     onClick={handleProcess}
-                                    disabled={isProcessing || (action === 'reject' && !rejectionReason.trim()) || (action === 'approve' && (!forthBusId || !backBusId))}
+                                    disabled={isProcessing}
                                     className={`px-10 py-3 rounded-2xl text-sm font-black uppercase tracking-wider transition-all shadow-xl active:scale-95 flex items-center gap-3 ${
                                         isProcessing ? 'bg-gray-400' : 
                                         action === 'approve' ? 'bg-[#f5b800] text-[#0f2044] hover:bg-[#e0a800] shadow-[#f5b800]/20' : 

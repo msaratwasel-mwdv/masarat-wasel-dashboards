@@ -30,6 +30,7 @@ interface Attendance {
     status: 'pending' | 'boarded' | 'dropped' | 'absent' | 'excused' | 'waiting';
     check_in_time?: string;
     check_out_time?: string;
+    extra_wait_time?: number;
 }
 
 interface Trip {
@@ -296,9 +297,17 @@ export default function TripDetails({ auth, trip }: Props) {
                                             })()}
 
                                             <td className="px-8 py-5 text-center">
-                                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                                                    {attendance.check_in_time ? attendance.check_in_time : '---'}
-                                                </span>
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                                                        {attendance.check_in_time ? attendance.check_in_time : '---'}
+                                                    </span>
+                                                    {attendance.extra_wait_time && attendance.extra_wait_time > 0 ? (
+                                                        <span className="text-[10px] font-black text-rose-500 mt-1.5 flex items-center gap-1 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded-full border border-rose-100 dark:border-rose-900/30" title={isRTL ? "وقت انتظار إضافي" : "Extra wait time"}>
+                                                            <Clock className="w-2.5 h-2.5" />
+                                                            {`+${Math.floor(attendance.extra_wait_time / 60).toString().padStart(2, '0')}:${(attendance.extra_wait_time % 60).toString().padStart(2, '0')}`}
+                                                        </span>
+                                                    ) : null}
+                                                </div>
                                             </td>
                                             <td className="px-8 py-5 text-end">
                                                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">

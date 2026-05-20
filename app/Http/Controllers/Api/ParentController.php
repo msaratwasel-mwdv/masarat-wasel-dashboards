@@ -604,18 +604,18 @@ class ParentController extends Controller
             ], 422);
         }
 
-        // نعتبره تحدياً أولاً إذا كانت الإحداثيات صفرية أو إذا لم يسبق لولي الأمر تحديد الموقع بنجاح (0 طلبات مقبولة)
-        $hasApprovedRequests = \App\Models\StudentLocationRequest::where('student_id', $student->id)
-            ->where('status', 'approved')
-            ->exists();
+        // ── التحقق: هل هذا إعداد أولي (أول مرة يحدد الموقع) أم تغيير لموقع قائم؟ ──
+        // الإعداد الأولي = الطالب ليس لديه إحداثيات سابقة فعلية ولا ولي الأمر لديه إحداثيات
+        $hasValidCoordinates = ($student->latitude && floatval($student->latitude) != 0)
+            || ($user->latitude && floatval($user->latitude) != 0);
 
-        $isInitialSetup = !($student->latitude && floatval($student->latitude) != 0) || !$hasApprovedRequests;
+        $isInitialSetup = !$hasValidCoordinates;
         
         if ($isInitialSetup) {
             Log::info("🆕 Initial Location Setup: Direct update for student ID {$student->id}");
             
             \Illuminate\Support\Facades\DB::transaction(function () use ($student, $request) {
-                // 1. Update student coordinates directly
+                // 1. Update student coordinates directly (أول مرة - بدون موافقة)
                 $student->update([
                     'latitude'  => $request->latitude,
                     'longitude' => $request->longitude,
@@ -706,8 +706,8 @@ class ParentController extends Controller
                     $notificationService->sendTranslatedToUser(
                         userId: $adminId,
                         type: 'location_request',
-                        titleKey: $isInitialSetup ? 'notifications.initial_location_setup_title' : 'notifications.location_request_title',
-                        messageKey: $isInitialSetup ? 'notifications.initial_location_setup_message' : 'notifications.location_request_message',
+                        titleKey: 'notifications.location_request_title',
+                        messageKey: 'notifications.location_request_message',
                         translationParams: [
                             'guardian' => $user->name,
                             'student' => $student->full_name,
@@ -735,9 +735,7 @@ class ParentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => $isInitialSetup 
-                ? 'تم إرسال موقع المنزل للمراجعة. سيظهر الموقع على الخريطة فور موافقة إدارة المدرسة.' 
-                : 'تم إرسال طلب تغيير الموقع للمدرسة للمراجعة والموافقة.',
+            'message' => 'تم إرسال طلب تغيير الموقع للمدرسة للمراجعة والموافقة.',
         ]);
     }
 }

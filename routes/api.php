@@ -64,7 +64,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/driver/my-trips', [DailyTripApiController::class, 'myTrips']);
         Route::get('/driver/trips-history', [DailyTripApiController::class, 'tripsHistory']);
         Route::post('/bus/{bus}/mark-boarded', [DailyTripApiController::class, 'markBoarded']);
-
+        Route::post('/bus/{bus}/scan-qr', [DailyTripApiController::class, 'scanQr']);
         Route::post('/bus/{bus}/group-board', [DailyTripApiController::class, 'groupBoard']);
         Route::post('/bus/{bus}/mark-dropped', [DailyTripApiController::class, 'markDropped']);
         Route::post('/bus/{bus}/group-alight', [DailyTripApiController::class, 'groupAlight']);
@@ -72,8 +72,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/bus/{bus}/start-trip', [DailyTripApiController::class, 'startTrip']);
         Route::post('/bus/{bus}/confirm-trip', [DailyTripApiController::class, 'confirmTrip']);
         Route::post('/bus/{bus}/arrive', [DailyTripApiController::class, 'arrive']);
-        // ✅ throttle:10,1 — أكثر تشدداً لأن الإشعارات قد تُستغل لـ spam
-        Route::post('/bus/{bus}/notify-near-house', [DailyTripApiController::class, 'notifyNearHouse'])->middleware('throttle:10,1');
+        // ✅ throttle:30,1 — يسمح بـ 30 طلب في الدقيقة (طالب واحد لكل ضغطة)
+        Route::post('/bus/{bus}/notify-near-house', [DailyTripApiController::class, 'notifyNearHouse'])->middleware('throttle:30,1');
         Route::post('/bus/{bus}/mark-absent', [DailyTripApiController::class, 'markAbsent']);
         Route::post('/bus/{bus}/end-trip', [DailyTripApiController::class, 'endTrip']);
         Route::post('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'store']);

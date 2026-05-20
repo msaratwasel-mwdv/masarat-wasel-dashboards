@@ -177,6 +177,7 @@ class DailyTripController extends Controller
      */
     public function show(Trip $trip)
     {
+        $this->tripService->syncTripAttendances($trip);
         $trip->load(['bus.school', 'bus.driver.user', 'driver', 'assistant', 'bus.route', 'attendances.student']);
 
         return Inertia::render('Admin/DailyTrips/Show', [

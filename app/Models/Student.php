@@ -212,8 +212,11 @@ class Student extends Model
     public function lastTripAttendance(): HasOne
     {
         return $this->hasOne(TripAttendance::class)
-            ->whereHas('trip', fn($q) => $q->whereDate('trip_date', today()))
-            ->latest();
+            ->ofMany([
+                'id' => 'max',
+            ], function ($relation) {
+                $relation->whereHas('trip', fn($q) => $q->whereDate('trip_date', today()));
+            });
     }
 
     /**

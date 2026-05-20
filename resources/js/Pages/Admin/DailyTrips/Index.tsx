@@ -129,6 +129,36 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
         date: autoCreateDate,
     });
 
+    // Handle overnight tab sessions by refreshing the date when the window gains focus
+    useEffect(() => {
+        const handleFocus = () => {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const today = `${year}-${month}-${day}`;
+            
+            // Only update if the user hasn't manually selected a different date
+            // (assuming autoCreateDate is either today or whatever they chose). 
+            // Actually, to be safe, we just set it to today if it's a new day.
+            // But let's just update the initial state if it's lagging.
+            setAutoCreateDate(prev => {
+                if (prev !== today) return today;
+                return prev;
+            });
+        };
+
+        window.addEventListener('focus', handleFocus);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') handleFocus();
+        });
+
+        return () => {
+            window.removeEventListener('focus', handleFocus);
+            document.removeEventListener('visibilitychange', handleFocus);
+        };
+    }, []);
+
     useEffect(() => {
         if (createData.bus_id) {
             const bus = buses.find(b => b.id === parseInt(createData.bus_id));
