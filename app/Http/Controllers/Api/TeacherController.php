@@ -81,6 +81,7 @@ class TeacherController extends Controller
                 'photoUrl' => $photoUrl,
                 'parentPhotoUrl' => $parentPhotoUrl,
                 'status' => $attendance ? $attendance->status : 'unknown',
+                'isLocked' => $attendance ? (bool) $attendance->is_notified : false,
             ];
         });
 
@@ -96,31 +97,76 @@ class TeacherController extends Controller
             'status' => 'required|in:present,absent,late,excused,unknown',
         ]);
 
+        // Clean the student ID from common prefixes (like STUDENT-) used in QR codes
+        if (is_string($studentId)) {
+            $studentId = str_ireplace('STUDENT-', '', $studentId);
+        }
+
+        \Log::info("TeacherController.markAttendance called for studentId: {$studentId}", [
+            'status' => $request->status,
+            'via_qr' => $request->input('via_qr'),
+            'via_qr_boolean' => $request->boolean('via_qr'),
+            'all' => $request->all(),
+        ]);
+
+        $isEn = ($request->header('Accept-Language') === 'en' 
+            || $request->input('lang') === 'en' 
+            || ($request->user() && $request->user()->preferred_language === 'en'));
+
+        $teacher = $request->user()->teacher;
+        if (!$teacher || !$teacher->grade_id) {
+            $msg = $isEn ? 'Unauthorized or teacher not assigned to a grade' : 'غير مصرح أو المعلم غير مسند لمرحلة دراسية';
+            return response()->json(['message' => $msg], 403);
+        }
+
         // Find student by ID, code, or national ID to support various QR/card formats
         $student = Student::with('enrollments')
             ->where(function($query) use ($studentId) {
                 if (is_numeric($studentId)) {
                     $query->where('id', $studentId);
                 }
+                $query->orWhere('student_code', $studentId)
+                      ->orWhere('national_id', $studentId);
             })
-            ->orWhere('student_code', $studentId)
-            ->orWhere('national_id', $studentId)
             ->firstOrFail();
+
         $enrollment = $student->currentEnrollment;
         if (!$enrollment) {
-            return response()->json(['message' => 'Student not enrolled in any active class'], 400);
+            $msg = $isEn ? 'Student not enrolled in any active class' : 'الطالب غير مسجل في أي فصل نشط حالياً';
+            return response()->json(['message' => $msg], 400);
         }
+
+        $classroom = $enrollment->classroom;
+        if (!$classroom || $classroom->grade_id !== $teacher->grade_id) {
+            $msg = $isEn ? 'Student does not belong to your assigned grade' : 'هذا الطالب غير مسجل في فصولك أو مرحلتك الدراسية';
+            return response()->json(['message' => $msg], 403);
+        }
+
+        // Enforce lock rule: If attendance is already marked and notified (confirmed), it cannot be modified
+        $existingAttendance = Attendance::where('student_id', $student->id)
+            ->where('classroom_id', $enrollment->classroom_id)
+            ->whereDate('date', today())
+            ->first();
+
+        if ($existingAttendance && $existingAttendance->is_notified && $existingAttendance->status !== 'unknown') {
+            $msg = $isEn 
+                ? 'Attendance is already confirmed and cannot be modified except by administration.' 
+                : 'تم تأكيد تحضير هذا الطالب مسبقاً ولا يمكن تعديله إلا من خلال الإدارة';
+            return response()->json(['message' => $msg], 403);
+        }
+
+        $viaQr = $request->boolean('via_qr', false);
 
         $attendance = Attendance::updateOrCreate(
             [
-                'student_id' => $student->id, // Use the ID from the student object found above
+                'student_id' => $student->id,
                 'classroom_id' => $enrollment->classroom_id,
                 'date' => today(),
             ],
             [
                 'status' => $request->status,
                 'recorded_by' => $request->user()->id,
-                'is_notified' => false, // Reset notification status if changed
+                'is_notified' => $viaQr, // Reset notification status, or mark as true immediately if via QR to prevent duplicate bulk notification
             ]
         );
 
@@ -128,9 +174,54 @@ class TeacherController extends Controller
         if ($student->guardians->isNotEmpty()) {
             \Log::info("Broadcasting internal event for Student: {$student->id}");
             event(new \App\Events\TeacherAttendanceMarked($student, $request->status, today()->toDateString()));
+
+            if ($viaQr) {
+                $statusAr = match ($request->status) {
+                    'present' => 'حاضراً',
+                    'absent'  => 'غائباً',
+                    'late'    => 'متأخراً',
+                    'excused' => 'معذوراً',
+                    default   => $request->status,
+                };
+
+                $statusEn = match ($request->status) {
+                    'present' => 'present',
+                    'absent'  => 'absent',
+                    'late'    => 'late',
+                    'excused' => 'excused',
+                    default   => $request->status,
+                };
+
+                foreach ($student->guardians as $guardian) {
+                    $this->notificationService->sendTranslatedToUser(
+                        userId: $guardian->id,
+                        type: 'school_attendance',
+                        titleKey: 'notifications.school_attendance_title',
+                        messageKey: 'notifications.school_attendance_message',
+                        translationParams: [
+                            'student' => $student->full_name,
+                            'status' => $statusAr,
+                        ],
+                        data: [
+                            'student_id'   => (string) $student->id,
+                            'student_name' => $student->full_name,
+                            'student_name_en' => $student->full_name_en,
+                            'status'       => $request->status,
+                            'date'         => today()->toDateString(),
+                            'category'     => 'attendance',
+                            'target_screen' => 'attendance_details',
+                        ],
+                        translationParamsEn: [
+                            'student' => $student->full_name_en ?: $student->full_name,
+                            'status' => $statusEn,
+                        ]
+                    );
+                }
+            }
         }
 
-        return response()->json(['message' => 'Attendance marked successfully', 'attendance' => $attendance]);
+        $msg = $isEn ? 'Attendance marked successfully' : 'تم تسجيل الحضور بنجاح';
+        return response()->json(['message' => $msg, 'attendance' => $attendance]);
     }
 
     /**
@@ -143,11 +234,12 @@ class TeacherController extends Controller
         $notifiedCount = 0;
 
         DB::transaction(function () use ($classId, &$notifiedCount) {
-            // 1. Lock and get records that haven't been notified yet
+            // 1. Lock and get records that haven't been notified yet and have a valid status
             $attendances = Attendance::with(['student.guardians'])
                 ->where('classroom_id', $classId)
                 ->whereDate('date', today())
                 ->where('is_notified', false)
+                ->where('status', '!=', 'unknown')
                 ->lockForUpdate()
                 ->get();
 

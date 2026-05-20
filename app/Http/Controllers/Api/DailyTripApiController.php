@@ -982,13 +982,22 @@ class DailyTripApiController extends Controller
             ->orderBy('type') // forth then back
             ->get();
 
-        Log::info('myTrips: found ' . $trips->count() . ' trips');
+        $acceptLanguage = $request->header('Accept-Language') ?? '';
+        $isEn = (str_starts_with($acceptLanguage, 'en') 
+            || $request->input('lang') === 'en' 
+            || app()->getLocale() === 'en'
+            || ($user && $user->preferred_language === 'en'));
 
-        $formattedTrips = $trips->map(function ($trip) {
+        $formattedTrips = $trips->map(function ($trip) use ($isEn) {
+            $routeName = $trip->route ? $trip->route->name : null;
+            if ($isEn && $routeName) {
+                $routeName = str_replace(['المسار رقم', 'مسار رقم', 'مسار'], ['Route No.', 'Route No.', 'Route'], $routeName);
+            }
+
             return [
                 'id' => $trip->id,
                 'type' => $trip->type,
-                'type_label' => $trip->type === 'forth' ? 'ذهاب' : 'عودة',
+                'type_label' => $isEn ? ($trip->type === 'forth' ? 'Go' : 'Return') : ($trip->type === 'forth' ? 'ذهاب' : 'عودة'),
                 'status' => $trip->status,
                 'total_students' => $trip->total_students,
                 'excused_count' => $trip->excused_count,
@@ -996,7 +1005,7 @@ class DailyTripApiController extends Controller
                 'arrival_time' => $trip->arrival_time,
                 'route' => $trip->route ? [
                     'id' => $trip->route->id,
-                    'name' => $trip->route->name,
+                    'name' => $routeName,
                 ] : null,
             ];
         });
@@ -1048,11 +1057,22 @@ class DailyTripApiController extends Controller
 
         $trips = $query->paginate(20);
         
-        $formattedTrips = $trips->getCollection()->map(function ($trip) {
+        $acceptLanguage = $request->header('Accept-Language') ?? '';
+        $isEn = (str_starts_with($acceptLanguage, 'en') 
+            || $request->input('lang') === 'en' 
+            || app()->getLocale() === 'en'
+            || ($user && $user->preferred_language === 'en'));
+
+        $formattedTrips = $trips->getCollection()->map(function ($trip) use ($isEn) {
+            $routeName = $trip->route ? $trip->route->name : null;
+            if ($isEn && $routeName) {
+                $routeName = str_replace(['المسار رقم', 'مسار رقم', 'مسار'], ['Route No.', 'Route No.', 'Route'], $routeName);
+            }
+
             return [
                 'id' => $trip->id,
                 'type' => $trip->type,
-                'type_label' => $trip->type === 'forth' ? 'ذهاب' : 'عودة',
+                'type_label' => $isEn ? ($trip->type === 'forth' ? 'Go' : 'Return') : ($trip->type === 'forth' ? 'ذهاب' : 'عودة'),
                 'status' => $trip->status,
                 'trip_date' => $trip->trip_date->toDateString(),
                 'total_students' => $trip->total_students,
@@ -1060,7 +1080,7 @@ class DailyTripApiController extends Controller
                 'arrival_time' => $trip->arrival_time,
                 'route' => $trip->route ? [
                     'id' => $trip->route->id,
-                    'name' => $trip->route->name,
+                    'name' => $routeName,
                 ] : null,
             ];
         });
@@ -1662,12 +1682,23 @@ class DailyTripApiController extends Controller
         if ($staleTripsCount > 0) {
             Log::info("cleanupStaleTrips: Found $staleTripsCount stale trips for bus {$bus->id}. Cleaning up.");
             
+            // 1. الرحلات التي بدأت ولكن لم يتم إنهاؤها أو تصويرها للتأكد من خلوها من الطلاب (in_progress, awaiting_video)
             Trip::where('bus_id', $bus->id)
                 ->whereDate('trip_date', '<', today())
-                ->whereIn('status', ['pending', 'in_progress', 'awaiting_confirmation', 'awaiting_video'])
+                ->whereIn('status', ['in_progress', 'awaiting_video'])
                 ->update([
                     'status' => 'cancelled',
-                    'cancellation_reason' => 'أغلقت تلقائياً بواسطة النظام لبدء يوم جديد.',
+                    'cancellation_reason' => 'لم يتم مسح الحافلة للتأكد من خلوها من الطلاب',
+                    'cancelled_by' => $user->id,
+                ]);
+
+            // 2. الرحلات التي لم تبدأ أصلاً ومازالت قيد الانتظار (pending, awaiting_confirmation)
+            Trip::where('bus_id', $bus->id)
+                ->whereDate('trip_date', '<', today())
+                ->whereIn('status', ['pending', 'awaiting_confirmation'])
+                ->update([
+                    'status' => 'cancelled',
+                    'cancellation_reason' => 'أغلقت تلقائياً لعدم بدء الرحلة',
                     'cancelled_by' => $user->id,
                 ]);
 

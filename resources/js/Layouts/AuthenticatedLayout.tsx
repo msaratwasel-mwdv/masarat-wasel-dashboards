@@ -1,5 +1,5 @@
 import { useState, PropsWithChildren, ReactNode, useEffect, useRef } from "react";
-import { Link, usePage } from "@inertiajs/react";
+import { Link, usePage, router } from "@inertiajs/react";
 import ApplicationLogo from "@/Components/ApplicationLogo";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { User } from "@/types";
@@ -257,6 +257,9 @@ export default function Authenticated({
     '.emergency.reported',
     (e: any) => {
       notifyEvent('emergency', isRTL ? 'تنبيه طوارئ جديد!' : 'New Emergency Alert!', e.description || e.type);
+      if (typeof window !== 'undefined' && !route().current('admin.emergencies.index')) {
+        router.reload({ only: ['active_emergencies_count'], preserveState: true });
+      }
     }
   );
 

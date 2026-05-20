@@ -46,6 +46,8 @@ class ChatController extends Controller
     private function resolveValidContacts(User $user): \Illuminate\Support\Collection
     {
         $contacts = collect();
+        $acceptLanguage = request()->header('Accept-Language') ?? '';
+        $isEn = str_starts_with($acceptLanguage, 'en') || request()->input('lang') === 'en';
 
         switch ($user->role) {
             case 'parent':
@@ -67,14 +69,18 @@ class ChatController extends Controller
                         $driverUser = $bus->driver?->user;
                         if ($driverUser) {
                             $driverContact = clone $driverUser;
-                            $driverContact->chat_description = "سائق الحافلة ({$bus->bus_number}) - الطالب: " . $studentsNames;
+                            $driverContact->chat_description = $isEn
+                                ? "Bus Driver ({$bus->bus_number}) - Student: " . $studentsNames
+                                : "سائق الحافلة ({$bus->bus_number}) - الطالب: " . $studentsNames;
                             $contacts->push($driverContact);
                         }
 
                         // 2. المساعدة (المشرفة سابقاً)
                         if ($bus->assistant) {
                             $assistant = clone $bus->assistant;
-                            $assistant->chat_description = "مشرفة الحافلة ({$bus->bus_number}) - الطالب: " . $studentsNames;
+                            $assistant->chat_description = $isEn
+                                ? "Bus Assistant ({$bus->bus_number}) - Student: " . $studentsNames
+                                : "مشرفة الحافلة ({$bus->bus_number}) - الطالب: " . $studentsNames;
                             $contacts->push($assistant);
                         }
 
@@ -134,7 +140,21 @@ class ChatController extends Controller
 
                 $allContacts = $query->get();
                 foreach($allContacts as $contact) {
-                    $contact->chat_description = "مستخدم النظام - دور: " . ($contact->role ?? 'غير محدد');
+                    if ($isEn) {
+                        $roleNames = [
+                            'driver' => 'Driver',
+                            'assistant' => 'Bus Assistant',
+                            'field_supervisor' => 'Field Supervisor',
+                            'teacher' => 'Teacher',
+                            'parent' => 'Guardian',
+                            'admin' => 'Administrator',
+                            'school_admin' => 'School Administrator',
+                        ];
+                        $roleDisp = $roleNames[$contact->role] ?? $contact->role ?? 'unspecified';
+                        $contact->chat_description = "System User - Role: " . $roleDisp;
+                    } else {
+                        $contact->chat_description = "مستخدم النظام - دور: " . ($contact->role ?? 'غير محدد');
+                    }
                     $contacts->push($contact);
                 }
                 break;
@@ -161,6 +181,8 @@ class ChatController extends Controller
     private function processStudentsToContacts(\Illuminate\Support\Collection $students): \Illuminate\Support\Collection
     {
         $usersMap = [];
+        $acceptLanguage = request()->header('Accept-Language') ?? '';
+        $isEn = str_starts_with($acceptLanguage, 'en') || request()->input('lang') === 'en';
 
         foreach ($students as $student) {
             $guardianUser = $student->guardian->first(); // استخراج ولي الأمر الأول من الحزمة 
@@ -173,7 +195,9 @@ class ChatController extends Controller
                 $names = $usersMap[$userId]->student_names;
                 $names[] = $student->full_name;
                 $usersMap[$userId]->student_names = $names;
-                $usersMap[$userId]->chat_description = "ولي أمر: " . implode('، ', array_unique($names));
+                $usersMap[$userId]->chat_description = $isEn
+                    ? "Guardian of: " . implode(', ', array_unique($names))
+                    : "ولي أمر: " . implode('، ', array_unique($names));
             }
         }
         return collect(array_values($usersMap));
