@@ -16,11 +16,14 @@ class TripAttendance extends Model
         'check_in_time',
         'check_out_time',
         'status',
+        'waiting_start_time',
+        'extra_wait_time',
     ];
 
     protected $casts = [
         'check_in_time' => 'datetime',
         'check_out_time' => 'datetime',
+        'waiting_start_time' => 'datetime',
     ];
 
     /**

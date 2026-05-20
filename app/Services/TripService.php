@@ -286,6 +286,84 @@ class TripService
     }
 
     /**
+     * Sync trip attendances with the students currently assigned to the bus.
+     */
+    public function syncTripAttendances(Trip $trip): void
+    {
+        // Do not sync completed or cancelled trips to preserve historical records
+        if (in_array($trip->status, ['completed', 'cancelled'])) {
+            return;
+        }
+
+        $busId = $trip->bus_id;
+        $type = $trip->type;
+        $date = $trip->trip_date;
+
+        $busField = $type === 'forth' ? 'forth_bus_id' : 'back_bus_id';
+
+        // Get currently assigned active students
+        $assignedStudentIds = Student::where($busField, $busId)
+            ->where('is_active', true)
+            ->pluck('id')
+            ->toArray();
+
+        // Get existing attendance student IDs
+        $existingAttendances = TripAttendance::where('trip_id', $trip->id)->get();
+        $existingStudentIds = $existingAttendances->pluck('student_id')->toArray();
+
+        $studentsToAdd = array_diff($assignedStudentIds, $existingStudentIds);
+        $studentsToRemove = array_diff($existingStudentIds, $assignedStudentIds);
+
+        // 1. Remove students who are no longer assigned and haven't active attendance states
+        if (!empty($studentsToRemove)) {
+            TripAttendance::where('trip_id', $trip->id)
+                ->whereIn('student_id', $studentsToRemove)
+                ->whereIn('status', ['absent', 'waiting', 'excused'])
+                ->delete();
+        }
+
+        // 2. Add newly assigned students
+        if (!empty($studentsToAdd)) {
+            $students = Student::whereIn('id', $studentsToAdd)->get();
+            $absences = AbsenceRequest::whereIn('student_id', $studentsToAdd)
+                ->whereDate('date', $date)
+                ->where('status', 'approved')
+                ->get()
+                ->groupBy('student_id');
+
+            $attendances = [];
+            $now = now();
+
+            foreach ($students as $student) {
+                $status = 'absent';
+
+                if ($absences->has($student->id)) {
+                    $studentAbsences = $absences->get($student->id);
+                    foreach ($studentAbsences as $absence) {
+                        if ($absence->type === 'full_day' || $absence->type === ($type === 'forth' ? 'morning' : 'afternoon')) {
+                            $status = 'excused';
+                            break;
+                        }
+                    }
+                }
+
+                $attendances[] = [
+                    'trip_id' => $trip->id,
+                    'student_id' => $student->id,
+                    'status' => $status,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+
+            if (!empty($attendances)) {
+                TripAttendance::insert($attendances);
+            }
+        }
+    }
+
+
+    /**
      * Initialize a field trip after admin approval.
      */
     public function initializeFieldTrip(\App\Models\FieldTrip $fieldTrip): void
