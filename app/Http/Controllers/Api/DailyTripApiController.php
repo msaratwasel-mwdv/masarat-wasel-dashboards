@@ -908,6 +908,15 @@ class DailyTripApiController extends Controller
             ];
         });
 
+        // Load driver info if available
+        $driver = $bus->driver;
+        $driverPhotoUrl = null;
+        if ($driver && $driver->image) {
+            $driverPhotoUrl = str_starts_with($driver->image, 'http')
+                ? $driver->image
+                : url(\Illuminate\Support\Facades\Storage::url($driver->image));
+        }
+
         return response()->json([
             'bus' => [
                 'id' => $bus->id,
@@ -919,6 +928,12 @@ class DailyTripApiController extends Controller
                 'trip_id' => $activeTrip?->id,
                 'school_lat' => $bus->school?->latitude,
                 'school_lng' => $bus->school?->longitude,
+            ],
+            'driver' => [
+                'id'    => $driver?->id,
+                'name'  => $driver?->full_name ?? $driver?->name ?? '-',
+                'phone' => $driver?->phone ?? '-',
+                'photo' => $driverPhotoUrl,
             ],
             'passengers' => $students,
             'on_bus_count' => $students->where('isOnBus', true)->count(),
