@@ -1,32 +1,26 @@
-import { useState, useMemo, useEffect } from 'react';
-import { 
-    APIProvider, 
-    Map, 
-    AdvancedMarker, 
-    useMap,
-    InfoWindow
-} from '@vis.gl/react-google-maps';
+import React, { useState, useMemo, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import useTranslation from '@/hooks/useTranslation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
-    Search, Filter, Map as MapIcon, Layers, 
-    Maximize2, Minimize2, X, Info, 
-    Navigation, School, Settings as SettingsIcon,
-    AlertTriangle, CheckCircle2, Clock, Users
+    Search, Filter, Layers, X, Clock, Users, ChevronDown, Check 
 } from 'lucide-react';
-
-const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+import { SlidersHorizontal } from 'lucide-react';
 
 interface Bus {
     id: number;
     bus_number: string;
     plate_number: string;
     capacity: number;
-    status: 'active' | 'maintenance' | 'inactive';
-    latitude?: number;
-    longitude?: number;
-    trip_status?: string;
-    driver?: { id: number; name: string };
+    status: 'active' | 'maintenance' | 'inactive' | string;
+    latitude?: number | string | null;
+    longitude?: number | string | null;
+    current_latitude?: number | string | null;
+    current_longitude?: number | string | null;
+    trip_status?: string | null;
+    driver?: { id: number; name?: string } | null;
     students_count?: number;
 }
 
@@ -36,432 +30,472 @@ interface Props {
     centerLng?: number;
 }
 
-// Map Controller for Google Maps
+// -------------------------------------------------------------
+// HELPER: Parse Coordinates Safely
+// -------------------------------------------------------------
+const parseCoord = (val: any) => {
+    if (val === null || val === undefined || val === '') return undefined;
+    const parsed = typeof val === 'string' ? parseFloat(val) : val;
+    return isNaN(parsed) ? undefined : parsed;
+};
+
+// -------------------------------------------------------------
+// HELPER: Create Custom Bus Leaflet Marker
+// -------------------------------------------------------------
+const createBusIcon = (status: string, isSelected: boolean) => {
+    const colors: Record<string, string> = {
+        active: '#10b981', // Emerald
+        maintenance: '#f59e0b', // Amber
+        inactive: '#94a3b8', // Slate
+    };
+    const color = colors[status] || colors.inactive;
+    const bg = isSelected ? '#4f46e5' : color; // Indigo if selected
+    const size = isSelected ? 48 : 36;
+    const fontSize = isSelected ? 24 : 18;
+    
+    return L.divIcon({
+        className: 'custom-bus-marker',
+        html: `<div style="
+            width: ${size}px; 
+            height: ${size}px; 
+            background-color: ${bg}; 
+            border: 3px solid white; 
+            border-radius: ${isSelected ? '16px' : '12px'}; 
+            box-shadow: ${isSelected ? '0 10px 25px -5px rgba(0,0,0,0.3)' : '0 4px 6px -1px rgba(0,0,0,0.1)'};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: ${fontSize}px;
+            transition: all 0.3s ease;
+        ">🚌</div>`,
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2],
+    });
+};
+
+// -------------------------------------------------------------
+// COMPONENT: Leaflet Map Controller
+// -------------------------------------------------------------
 function MapController({ center, buses }: { center?: { lat: number, lng: number }, buses?: Bus[] }) {
     const map = useMap();
 
-    // Fit bounds on first load or when buses change significantly
     useEffect(() => {
-        if (map && buses && buses.length > 0 && !center) {
-            const bounds = new window.google.maps.LatLngBounds();
-            buses.forEach(bus => {
-                const lat = typeof bus.latitude === 'string' ? parseFloat(bus.latitude) : bus.latitude;
-                const lng = typeof bus.longitude === 'string' ? parseFloat(bus.longitude) : bus.longitude;
-                if (lat && lng) bounds.extend({ lat, lng });
-            });
-            map.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100 });
+        try {
+            if (map && buses && buses.length > 0 && !center) {
+                const bounds = L.latLngBounds([]);
+                let hasValidBounds = false;
+                buses.forEach(bus => {
+                    const lat = parseCoord(bus.current_latitude ?? bus.latitude);
+                    const lng = parseCoord(bus.current_longitude ?? bus.longitude);
+                    if (lat !== undefined && lng !== undefined) {
+                        bounds.extend([lat, lng]);
+                        hasValidBounds = true;
+                    }
+                });
+                if (hasValidBounds) {
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+            }
+        } catch (e) {
+            console.error("Map bounds error:", e);
         }
     }, [map, buses]);
 
     useEffect(() => {
-        if (map && center) {
-            map.panTo(center);
-            map.setZoom(15);
+        try {
+            if (map && center) {
+                map.flyTo([center.lat, center.lng], 16, { duration: 1.5 });
+            }
+        } catch (e) {
+            console.error("Map flyTo error:", e);
         }
     }, [map, center]);
+    
     return null;
 }
 
-export default function LiveTrackingMap({ buses, centerLat = 23.5859, centerLng = 58.4059 }: Props) {
+// -------------------------------------------------------------
+// MAIN COMPONENT
+// -------------------------------------------------------------
+export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, centerLng = 35.2332 }: Props) {
     const { t, isRtl } = useTranslation();
     const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
-    const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'hybrid'>('roadmap');
-    const [isFullscreen, setIsFullscreen] = useState(false);
+    
+    // Main State applied to map
+    const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'maintenance' | 'inactive'>('all');
-    const [searchQuery, setSearchQuery] = useState('');
+    
+    // Local State for the Panel
+    const [isPanelOpen, setIsPanelOpen] = useState(false);
+    const [localMapType, setLocalMapType] = useState(mapType);
+    const [localStatusFilter, setLocalStatusFilter] = useState(statusFilter);
+    
+    // Select Search state
+    const [isSelectOpen, setIsSelectOpen] = useState(false);
+    const [selectSearch, setSelectSearch] = useState('');
 
-    if (!API_KEY) {
-        return (
-            <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 text-sm font-bold">
-                Google Maps API Key is missing in .env (VITE_GOOGLE_MAPS_API_KEY)
-            </div>
-        );
-    }
-
-    // Filter buses
-    const busesWithLocation = useMemo(() => buses.filter(bus => {
-        const lat = typeof bus.latitude === 'string' ? parseFloat(bus.latitude) : bus.latitude;
-        const lng = typeof bus.longitude === 'string' ? parseFloat(bus.longitude) : bus.longitude;
-        
-        if (!lat || !lng) return false;
-        
-        const matchesStatus = statusFilter === 'all' || bus.status === statusFilter;
-        const matchesSearch = bus.bus_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            bus.plate_number.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesStatus && matchesSearch;
-    }), [buses, statusFilter, searchQuery]);
-
-    // Calculate dynamic initial center based on buses
-    const initialCenter = useMemo(() => {
-        if (busesWithLocation.length > 0) {
-            let totalLat = 0;
-            let totalLng = 0;
-            busesWithLocation.forEach(bus => {
-                totalLat += typeof bus.latitude === 'string' ? parseFloat(bus.latitude) : bus.latitude!;
-                totalLng += typeof bus.longitude === 'string' ? parseFloat(bus.longitude) : bus.longitude!;
-            });
-            return {
-                lat: totalLat / busesWithLocation.length,
-                lng: totalLng / busesWithLocation.length
-            };
-        }
-        return { lat: centerLat, lng: centerLng };
-    }, [busesWithLocation, centerLat, centerLng]);
-
-    // Stats
-    const stats = useMemo(() => ({
-        total: busesWithLocation.length,
-        active: busesWithLocation.filter(b => b.status === 'active').length,
-        onRoute: busesWithLocation.filter(b => b.trip_status === 'on_route').length,
-        atSchool: busesWithLocation.filter(b => b.trip_status === 'at_school').length,
-        maintenance: busesWithLocation.filter(b => b.status === 'maintenance').length,
-    }), [busesWithLocation]);
-
-    const toggleFullscreen = () => {
-        setIsFullscreen(!isFullscreen);
+    const openControlPanel = () => {
+        setLocalMapType(mapType);
+        setLocalStatusFilter(statusFilter);
+        setIsPanelOpen(true);
+        setIsSelectOpen(false); // Reset internal dropdown
     };
 
-    // Only update map center when a bus is selected
+    const applyFilters = () => {
+        setMapType(localMapType);
+        setStatusFilter(localStatusFilter);
+        setIsPanelOpen(false);
+    };
+
+    // Robust Fallback: Prevent any possible 'undefined' array crashes
+    const safeBuses = Array.isArray(buses) ? buses : [];
+
+    // Filter buses (using applied main state)
+    const busesWithLocation = useMemo(() => {
+        return safeBuses.filter(bus => {
+            if (!bus) return false;
+            const lat = parseCoord(bus.current_latitude ?? bus.latitude);
+            const lng = parseCoord(bus.current_longitude ?? bus.longitude);
+            if (lat === undefined || lng === undefined) return false;
+            const matchesStatus = statusFilter === 'all' || bus.status === statusFilter;
+            return matchesStatus;
+        });
+    }, [safeBuses, statusFilter]);
+
+    // Target for map flyTo
     const mapTarget = useMemo(() => {
         if (!selectedBus) return undefined;
-        const lat = typeof selectedBus.latitude === 'string' ? parseFloat(selectedBus.latitude) : selectedBus.latitude!;
-        const lng = typeof selectedBus.longitude === 'string' ? parseFloat(selectedBus.longitude) : selectedBus.longitude!;
+        const lat = parseCoord(selectedBus.current_latitude ?? selectedBus.latitude);
+        const lng = parseCoord(selectedBus.current_longitude ?? selectedBus.longitude);
+        if (lat === undefined || lng === undefined) return undefined;
         return { lat, lng };
     }, [selectedBus]);
 
+    // Navigation between buses
     const navigateBus = (direction: 'next' | 'prev') => {
-        if (busesWithLocation.length === 0) return;
-        const currentIndex = selectedBus ? busesWithLocation.findIndex(b => b.id === selectedBus.id) : -1;
-        let nextIndex;
-        if (direction === 'next') {
-            nextIndex = (currentIndex + 1) % busesWithLocation.length;
-        } else {
-            nextIndex = (currentIndex - 1 + busesWithLocation.length) % busesWithLocation.length;
+        if (!busesWithLocation || busesWithLocation.length <= 1) return;
+        
+        try {
+            const currentIndex = selectedBus ? busesWithLocation.findIndex(b => b.id === selectedBus.id) : -1;
+            let nextIndex = 0;
+            
+            if (currentIndex !== -1) {
+                if (direction === 'next') {
+                    nextIndex = (currentIndex + 1) % busesWithLocation.length;
+                } else {
+                    nextIndex = (currentIndex - 1 + busesWithLocation.length) % busesWithLocation.length;
+                }
+            }
+            
+            const nextBus = busesWithLocation[nextIndex];
+            if (nextBus) setSelectedBus(nextBus);
+        } catch (e) {
+            console.error("Navigation error:", e);
         }
-        setSelectedBus(busesWithLocation[nextIndex]);
+    };
+
+    // Filtered list for the Select dropdown
+    const filteredSelectBuses = useMemo(() => {
+        return safeBuses.filter(bus => {
+            if (!bus) return false;
+            const bNum = bus.bus_number || '';
+            const pNum = bus.plate_number || '';
+            const sQuery = selectSearch || '';
+            return `${bNum} ${pNum}`.toLowerCase().includes(sQuery.toLowerCase());
+        });
+    }, [safeBuses, selectSearch]);
+
+    const isNavDisabled = busesWithLocation.length <= 1;
+    const initialCenter: [number, number] = [centerLat, centerLng];
+
+    // Leaflet Tile URLs
+    const tiles = {
+        roadmap: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+        satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
     };
 
     return (
-        <APIProvider apiKey={API_KEY}>
-            <div className={`flex flex-col gap-6 ${isFullscreen ? 'fixed inset-0 z-[100] bg-gray-50 dark:bg-[#0f172a] p-6' : ''}`}>
+        <div className="relative w-full h-full bg-[#f8fafc] overflow-hidden rounded-[30px] border-4 border-white shadow-inner mx-4 my-4" style={{ height: 'calc(100vh - 120px)', width: 'calc(100% - 32px)' }}>
+            
+            {/* --- OPENSTREETMAP LEAFLET MAP --- */}
+            <MapContainer 
+                center={initialCenter} 
+                zoom={13} 
+                zoomControl={false}
+                style={{ width: '100%', height: '100%', zIndex: 0 }}
+            >
+                <TileLayer
+                    url={tiles[mapType]}
+                    attribution='&copy; OpenStreetMap contributors & CARTO / Esri'
+                />
                 
-                {/* Control Panel: 2026 Command Style */}
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                <MapController center={mapTarget} buses={busesWithLocation} />
+
+                {busesWithLocation.map(bus => {
+                    const busLat = parseCoord(bus.current_latitude ?? bus.latitude);
+                    const busLng = parseCoord(bus.current_longitude ?? bus.longitude);
+                    if (busLat === undefined || busLng === undefined) return null;
                     
-                    {/* Search & Stats: Left/Top Panel */}
-                    <div className="xl:col-span-4 space-y-6">
-                        <div className="bg-white dark:bg-[#1a2845] p-6 rounded-[28px] shadow-sm border border-gray-100 dark:border-[#243460]">
-                            <div className="flex flex-col gap-4">
-                                <div className="relative group">
-                                    <Search className={`absolute ${isRtl ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#f5b800] transition-colors`} />
-                                    <input
-                                        type="text"
-                                        placeholder={t('Search by bus number or plate...')}
-                                        value={searchQuery}
-                                        onChange={e => setSearchQuery(e.target.value)}
-                                        className={`w-full ${isRtl ? 'pr-12' : 'pl-12'} py-4 rounded-2xl bg-gray-50 dark:bg-[#0f172a]/50 border border-transparent focus:border-[#f5b800]/50 focus:ring-4 focus:ring-[#f5b800]/5 transition-all text-sm font-bold text-gray-700 dark:text-white`}
-                                    />
-                                </div>
+                    const isSelected = selectedBus?.id === bus.id;
+                    return (
+                        <Marker 
+                            key={`bus-${bus.id}`}
+                            position={[busLat, busLng]}
+                            icon={createBusIcon(bus.status || 'inactive', isSelected)}
+                            eventHandlers={{
+                                click: () => setSelectedBus(bus)
+                            }}
+                        />
+                    );
+                })}
+            </MapContainer>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">{t('Status')}</label>
-                                        <div className="relative">
-                                            <select
-                                                value={statusFilter}
-                                                onChange={e => setStatusFilter(e.target.value as any)}
-                                                className="w-full px-4 py-3 rounded-2xl bg-gray-50 dark:bg-[#0f172a]/50 border border-transparent text-xs font-bold appearance-none cursor-pointer text-gray-700 dark:text-white"
-                                            >
-                                                <option value="all">{t('All Status')}</option>
-                                                <option value="active">{t('Active Only')}</option>
-                                                <option value="maintenance">{t('Maintenance')}</option>
-                                                <option value="inactive">{t('Inactive')}</option>
-                                            </select>
-                                            <Filter className={`absolute ${isRtl ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none`} />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">{t('Map')}</label>
-                                        <div className="flex bg-gray-50 dark:bg-[#0f172a]/50 rounded-2xl p-1">
-                                            <button 
-                                                onClick={() => setMapType('roadmap')}
-                                                className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${mapType === 'roadmap' ? 'bg-white dark:bg-[#1a2845] text-[#0f2044] dark:text-[#f5b800] shadow-sm' : 'text-gray-400'}`}
-                                            >
-                                                {t('Standard')}
-                                            </button>
-                                            <button 
-                                                onClick={() => setMapType('satellite')}
-                                                className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${mapType === 'satellite' ? 'bg-white dark:bg-[#1a2845] text-[#0f2044] dark:text-[#f5b800] shadow-sm' : 'text-gray-400'}`}
-                                            >
-                                                {t('Satellite')}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+            {/* --- 1. SMART CONTROL BUTTON --- */}
+            <div className={`absolute top-6 ${isRtl ? 'right-6' : 'left-6'} z-[50]`}>
+                <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={openControlPanel}
+                    className="flex items-center gap-3 px-5 py-3.5 bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl text-slate-800 dark:text-white rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/20 group transition-all"
+                >
+                    <div className="w-8 h-8 rounded-[12px] bg-slate-100 dark:bg-white/10 flex items-center justify-center text-indigo-500 dark:text-[#f5b800]">
+                        <SlidersHorizontal className="w-4 h-4 group-hover:rotate-180 transition-transform duration-700" />
+                    </div>
+                    <span className="font-black text-sm tracking-wide pr-2">{isRtl ? 'أدوات التحكم' : 'Controls'}</span>
+                </motion.button>
+            </div>
+
+            {/* --- LEGEND --- */}
+            <div className={`absolute bottom-6 ${isRtl ? 'right-6' : 'left-6'} z-[40]`}>
+                <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl px-5 py-3.5 rounded-[20px] border border-white/20 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+                    <div className="flex items-center gap-4">
+                        <LegendItem dotColor="bg-emerald-500" label={t('active') || 'Active'} />
+                        <LegendItem dotColor="bg-amber-500" label={t('maintenance') || 'Maintenance'} />
+                        <LegendItem dotColor="bg-slate-400" label={t('inactive') || 'Inactive'} />
+                    </div>
+                </div>
+            </div>
+
+            {/* --- 2. COMPACT FLOATING CONTROL PANEL (No AnimatePresence for extreme stability) --- */}
+            {isPanelOpen && (
+                <motion.div
+                    initial={{ y: -10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    className={`absolute top-24 ${isRtl ? 'right-6' : 'left-6'} w-[320px] bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] rounded-[28px] border border-white/20 dark:border-white/10 z-[101] flex flex-col`}
+                >
+                    <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 dark:border-white/5">
+                        <span className="font-black text-sm text-slate-800 dark:text-white">
+                            {isRtl ? 'الإعدادات والبحث' : 'Settings & Search'}
+                        </span>
+                        <button 
+                            onClick={() => setIsPanelOpen(false)}
+                            className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-rose-500 transition-colors"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    <div className="p-5 space-y-5">
+                        {/* Map Type */}
+                        <div className="bg-slate-100 dark:bg-white/5 rounded-[16px] p-1 flex">
+                            <button 
+                                onClick={() => setLocalMapType('roadmap')}
+                                className={`flex-1 py-2 rounded-[12px] text-[11px] font-black transition-all ${localMapType === 'roadmap' ? 'bg-white dark:bg-[#1e293b] text-indigo-600 dark:text-[#f5b800] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                {t('Standard') || 'Standard'}
+                            </button>
+                            <button 
+                                onClick={() => setLocalMapType('satellite')}
+                                className={`flex-1 py-2 rounded-[12px] text-[11px] font-black transition-all ${localMapType === 'satellite' ? 'bg-white dark:bg-[#1e293b] text-indigo-600 dark:text-[#f5b800] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                {t('Satellite') || 'Satellite'}
+                            </button>
                         </div>
 
-                        {/* Compact Stats Grid */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <StatBox label={t('Active')} value={stats.active} icon={CheckCircle2} color="text-emerald-500" bg="bg-emerald-500/10" />
-                            <StatBox label={t('On Route')} value={stats.onRoute} icon={Navigation} color="text-[#f5b800]" bg="bg-[#f5b800]/10" />
+                        {/* Status Filter */}
+                        <div className="relative">
+                            <select
+                                value={localStatusFilter}
+                                onChange={e => setLocalStatusFilter(e.target.value as any)}
+                                className="w-full px-4 py-3 rounded-[16px] bg-slate-50 dark:bg-white/5 border border-transparent text-xs font-bold appearance-none cursor-pointer text-slate-700 dark:text-white focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                            >
+                                <option value="all">{t('All Status') || 'All Status'}</option>
+                                <option value="active">{t('Active Only') || 'Active Only'}</option>
+                                <option value="maintenance">{t('Maintenance') || 'Maintenance'}</option>
+                                <option value="inactive">{t('Inactive') || 'Inactive'}</option>
+                            </select>
+                            <ChevronDown className={`absolute ${isRtl ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none`} />
                         </div>
 
-                        {/* Quick Navigation List */}
-                        <div className="bg-white dark:bg-[#1a2845] p-6 rounded-[28px] shadow-sm border border-gray-100 dark:border-[#243460] flex flex-col gap-4">
-                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
-                                <Navigation className="w-3.5 h-3.5" /> {t('Buses List')}
-                            </h4>
-                            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                {busesWithLocation.map(bus => (
-                                    <button
-                                        key={bus.id}
-                                        onClick={() => setSelectedBus(bus)}
-                                        className={`w-full p-4 rounded-2xl flex items-center gap-4 transition-all border-2 ${
-                                            selectedBus?.id === bus.id 
-                                            ? 'bg-[#0f2044] border-[#f5b800] text-white shadow-lg' 
-                                            : 'bg-gray-50 dark:bg-[#0f172a]/50 border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#0f172a]'
-                                        }`}
-                                    >
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${
-                                            selectedBus?.id === bus.id ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] shadow-sm'
-                                        }`}>
-                                            🚌
-                                        </div>
-                                        <div className="flex-1 text-start">
-                                            <p className="text-xs font-black leading-tight mb-0.5">{bus.bus_number}</p>
-                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${selectedBus?.id === bus.id ? 'text-gray-400' : 'text-gray-400'}`}>
-                                                {bus.plate_number}
-                                            </p>
-                                        </div>
-                                        <div className={`w-2 h-2 rounded-full ${
-                                            bus.status === 'active' ? 'bg-emerald-500' : 
-                                            bus.status === 'maintenance' ? 'bg-rose-500' : 'bg-gray-400'
-                                        }`} />
-                                    </button>
-                                ))}
-                                {busesWithLocation.length === 0 && (
-                                    <p className="text-[11px] text-gray-400 text-center py-8 font-bold">
-                                        {t('No buses found')}
-                                    </p>
-                                )}
-                            </div>
+                        {/* Select Bus Search */}
+                        <div className="relative z-50">
+                            <button 
+                                onClick={() => setIsSelectOpen(!isSelectOpen)}
+                                className="w-full px-4 py-3 rounded-[16px] bg-slate-50 dark:bg-white/5 border border-transparent flex justify-between items-center text-slate-700 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20 hover:bg-slate-100"
+                            >
+                                <span className="text-xs font-bold truncate">
+                                    {selectedBus ? `${selectedBus.bus_number || ''} - ${selectedBus.plate_number || ''}` : isRtl ? 'اختر حافلة للتركيز عليها...' : 'Select bus...'}
+                                </span>
+                                <Search className="w-3.5 h-3.5 text-slate-400" />
+                            </button>
+
+                            {/* Dropdown Overlay (Simple conditional, ultra-safe) */}
+                            {isSelectOpen && (
+                                <div className="absolute top-[110%] left-0 right-0 bg-white dark:bg-[#1e293b] rounded-[20px] shadow-[0_10px_40px_rgba(0,0,0,0.2)] border border-slate-100 dark:border-white/10 z-[100] overflow-hidden flex flex-col max-h-[260px] animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="p-2 border-b border-slate-50 dark:border-white/5">
+                                        <input
+                                            type="text"
+                                            placeholder={isRtl ? 'بحث...' : 'Search...'}
+                                            value={selectSearch}
+                                            onChange={e => setSelectSearch(e.target.value)}
+                                            className="w-full px-3 py-2 rounded-[12px] bg-slate-50 dark:bg-white/5 border-none text-xs font-bold text-slate-700 dark:text-white outline-none focus:ring-1 focus:ring-indigo-500/30"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-1 custom-scrollbar">
+                                        {filteredSelectBuses.map(bus => (
+                                            <button
+                                                key={`dropdown-bus-${bus.id}`}
+                                                onClick={() => {
+                                                    setSelectedBus(bus);
+                                                    setIsSelectOpen(false);
+                                                    setSelectSearch('');
+                                                }}
+                                                className="w-full p-2.5 rounded-[12px] flex items-center gap-3 transition-all hover:bg-slate-50 dark:hover:bg-white/5 text-start"
+                                            >
+                                                <div className="w-6 h-6 flex-shrink-0 rounded-md bg-indigo-50 dark:bg-white/10 flex items-center justify-center text-[10px]">
+                                                    🚌
+                                                </div>
+                                                <div className="flex-1 overflow-hidden">
+                                                    <p className="text-xs font-black truncate text-slate-700 dark:text-slate-200">{bus.bus_number || 'N/A'}</p>
+                                                </div>
+                                                {selectedBus?.id === bus.id && (
+                                                    <Check className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                                                )}
+                                            </button>
+                                        ))}
+                                        {filteredSelectBuses.length === 0 && (
+                                            <p className="text-[10px] text-slate-400 text-center py-4 font-bold">{t('No buses found') || 'Not found'}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Map Container: 2026 Command Style */}
-                    <div className="xl:col-span-8 relative rounded-[32px] overflow-hidden shadow-2xl border border-gray-200 dark:border-[#243460] bg-gray-100 group/map">
-                        <Map
-                            defaultCenter={initialCenter}
-                            defaultZoom={13}
-                            mapId="bf5047303847291a" // Using the verified working Map ID from your project
-                            mapTypeId={mapType}
-                            style={{ height: isFullscreen ? 'calc(100vh - 48px)' : '700px', width: '100%' }}
-                            disableDefaultUI={true}
-                            gestureHandling={'greedy'}
+                    <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-[#0f172a]/50 backdrop-blur-xl rounded-b-[28px]">
+                        <button 
+                            onClick={applyFilters}
+                            className="w-full py-3 rounded-[14px] bg-indigo-600 dark:bg-[#f5b800] text-white dark:text-slate-900 font-black text-xs shadow-md hover:scale-[1.02] active:scale-95 transition-transform flex items-center justify-center gap-2"
                         >
-                            <MapController center={mapTarget} buses={busesWithLocation} />
+                            <Filter className="w-3.5 h-3.5" />
+                            {isRtl ? 'تطبيق الفلاتر' : 'Apply Filters'}
+                        </button>
+                    </div>
+                </motion.div>
+            )}
 
-                            {busesWithLocation.map(bus => {
-                                const busLat = typeof bus.latitude === 'string' ? parseFloat(bus.latitude) : bus.latitude!;
-                                const busLng = typeof bus.longitude === 'string' ? parseFloat(bus.longitude) : bus.longitude!;
-                                
-                                return (
-                                    <AdvancedMarker
-                                        key={bus.id}
-                                        position={{ lat: busLat, lng: busLng }}
-                                        onClick={() => setSelectedBus(bus)}
-                                    >
-                                        <BusMarker status={bus.status} selected={selectedBus?.id === bus.id} />
-                                    </AdvancedMarker>
-                                );
-                            })}
-                        </Map>
-
-                        {/* Floating Controls */}
-                        <div className="absolute top-6 right-6 flex flex-col gap-3 z-[1000]">
-                            <button
-                                onClick={toggleFullscreen}
-                                className="w-12 h-12 bg-white/90 backdrop-blur-md dark:bg-[#1a2845]/90 text-[#0f2044] dark:text-white rounded-2xl shadow-xl border border-gray-100 dark:border-[#243460] flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
-                                title={isFullscreen ? t('Exit') : t('Fullscreen')}
-                            >
-                                {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-                            </button>
-                            <button
-                                onClick={() => setSelectedBus(null)}
-                                className="w-12 h-12 bg-white/90 backdrop-blur-md dark:bg-[#1a2845]/90 text-[#0f2044] dark:text-white rounded-2xl shadow-xl border border-gray-100 dark:border-[#243460] flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
-                                title={t('Reset')}
-                            >
-                                <MapIcon className="w-5 h-5" />
-                            </button>
+            {/* --- 3. ULTRA COMPACT SELECTED BUS CARD --- */}
+            {selectedBus && (
+                <motion.div 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    className={`absolute top-6 ${isRtl ? 'left-6' : 'right-6'} w-[280px] bg-white/95 backdrop-blur-3xl dark:bg-[#0f172a]/95 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 dark:border-white/10 z-[60] flex flex-col`}
+                >
+                    {/* Horizontal Compact Header */}
+                    <div className="p-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 relative">
+                        <div className="w-12 h-12 flex-shrink-0 rounded-[14px] bg-indigo-50 dark:bg-[#1e293b] text-xl flex items-center justify-center shadow-sm">
+                            🚌
                         </div>
-
-                        {/* Enhanced Legend: Minimalist 2026 */}
-                        <div className={`absolute bottom-8 ${isRtl ? 'right-8' : 'left-8'} z-[1000]`}>
-                            <div className="bg-[#0f2044]/90 backdrop-blur-xl p-6 rounded-[30px] border border-white/10 shadow-2xl min-w-[180px]">
-                                <h4 className="text-[10px] font-black text-[#f5b800] uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                                    <Layers className="w-3.5 h-3.5" /> {t('Legend')}
-                                </h4>
-                                <div className="space-y-3">
-                                    <LegendItem dotColor="bg-[#f5b800]" label={t('active')} />
-                                    <LegendItem dotColor="bg-rose-500" label={t('maintenance')} />
-                                    <LegendItem dotColor="bg-slate-400" label={t('inactive')} />
-                                </div>
-                            </div>
+                        <div className="flex-1 pr-6">
+                            <h3 className="text-sm font-black text-slate-800 dark:text-white leading-tight mb-0.5 truncate">{selectedBus.bus_number || 'No Number'}</h3>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">{selectedBus.plate_number || '-'}</p>
                         </div>
+                        <button 
+                            onClick={() => setSelectedBus(null)}
+                            className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} p-1.5 rounded-full bg-slate-50 text-slate-400 hover:bg-rose-100 hover:text-rose-500 transition-colors`}
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
 
-                        {/* Selected Info Slide-over (2026 Modern) */}
-                        <AnimatePresence>
-                            {selectedBus && (
-                                <motion.div 
-                                    initial={{ x: isRtl ? -400 : 400, opacity: 0 }}
-                                    animate={{ x: 0, opacity: 1 }}
-                                    exit={{ x: isRtl ? -400 : 400, opacity: 0 }}
-                                    className={`absolute top-8 ${isRtl ? 'left-8' : 'right-8'} bottom-8 w-80 bg-white/95 backdrop-blur-xl dark:bg-[#1a2845]/95 rounded-[35px] shadow-2xl border border-gray-100 dark:border-[#243460] z-[1001] overflow-hidden flex flex-col`}
-                                >
-                                    <div className="p-8 border-b border-gray-50 dark:border-white/5 relative">
-                                        <div className="flex gap-2 absolute top-6 right-6">
-                                            <button 
-                                                onClick={() => setSelectedBus(null)}
-                                                className="p-2 rounded-full bg-gray-100 dark:bg-white/5 text-gray-400 hover:text-rose-500 transition-colors"
-                                                title={t('Close')}
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                        <div className="w-16 h-16 rounded-[22px] bg-[#0f2044] text-3xl flex items-center justify-center mb-6 shadow-xl shadow-[#0f2044]/20">
-                                            🚌
-                                        </div>
-                                        <h3 className="text-2xl font-black text-[#0f2044] dark:text-white mb-1">{selectedBus.bus_number}</h3>
-                                        <p className="text-xs font-bold text-gray-400 tracking-widest uppercase">{selectedBus.plate_number}</p>
-                                    </div>
-
-                                    <div className="flex-1 overflow-y-auto p-8 space-y-8">
-                                        <DetailRow icon={Navigation} label={t('Status')} value={t(selectedBus.status)} color={selectedBus.status === 'active' ? 'text-emerald-500' : 'text-rose-500'} />
-                                        <DetailRow icon={Clock} label={t('Trip Status')} value={selectedBus.trip_status ? t(selectedBus.trip_status) : t('idle')} />
-                                        <DetailRow icon={Users} label={t('Students')} value={`${selectedBus.students_count || 0} / ${selectedBus.capacity}`} />
-                                        
-                                        {selectedBus.driver && (
-                                            <div className="p-5 rounded-3xl bg-[#f5b800]/5 border border-dashed border-[#f5b800]/30">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-[#f5b800] text-[#0f2044] flex items-center justify-center font-black text-xl shadow-lg">
-                                                        {selectedBus.driver.name.charAt(0)}
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('Driver')}</p>
-                                                        <p className="text-sm font-black text-[#0f2044] dark:text-white">{selectedBus.driver.name}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="p-6 border-t border-gray-50 dark:border-white/5 grid grid-cols-2 gap-4">
-                                        <button 
-                                            onClick={() => navigateBus('prev')}
-                                            className="py-4 rounded-2xl bg-gray-100 dark:bg-white/5 text-[#0f2044] dark:text-white font-black text-sm hover:bg-gray-200 dark:hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-                                        >
-                                            {isRtl ? 'السابق' : 'Previous'}
-                                        </button>
-                                        <button 
-                                            onClick={() => navigateBus('next')}
-                                            className="py-4 rounded-2xl bg-[#0f2044] text-white font-black text-sm hover:bg-[#1a2d5a] transition-all shadow-xl shadow-[#0f2044]/20 flex items-center justify-center gap-2"
-                                        >
-                                            {isRtl ? 'التالي' : 'Next'}
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                    {/* Compact Details */}
+                    <div className="p-4 space-y-2 bg-slate-50/50 dark:bg-transparent">
+                        <CompactInfo 
+                            icon={Layers} 
+                            label={isRtl ? 'الحالة' : 'Status'} 
+                            value={t(selectedBus.status || 'inactive') || 'Inactive'} 
+                            color={selectedBus.status === 'active' ? 'text-emerald-500' : 'text-slate-500'} 
+                        />
+                        <CompactInfo 
+                            icon={Clock} 
+                            label={isRtl ? 'الرحلة' : 'Trip'} 
+                            value={selectedBus.trip_status ? t(selectedBus.trip_status) : (t('idle') || 'Idle')} 
+                            color="text-indigo-600 dark:text-indigo-400"
+                        />
+                        <CompactInfo 
+                            icon={Users} 
+                            label={isRtl ? 'الطلاب' : 'Students'} 
+                            value={`${selectedBus.students_count || 0} / ${selectedBus.capacity || 0}`} 
+                            color="text-slate-700 dark:text-slate-300"
+                        />
                         
-                        {/* Empty State Overlay */}
-                        {busesWithLocation.length === 0 && (
-                            <div className="absolute inset-0 z-[1000] flex flex-col items-center justify-center bg-white/80 dark:bg-[#0f172a]/90 backdrop-blur-sm rounded-[32px] border border-gray-200 dark:border-[#243460] transition-all">
-                                <div className="w-24 h-24 rounded-[30px] bg-gray-50 dark:bg-[#1a2845] flex items-center justify-center text-5xl mx-auto mb-8 grayscale opacity-60 shadow-inner">
-                                    📍
+                        {selectedBus.driver && selectedBus.driver.name && (
+                            <div className="mt-3 p-2.5 rounded-[14px] bg-white dark:bg-[#1e293b] border border-slate-100 dark:border-white/5 flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-black text-[10px]">
+                                    {selectedBus.driver.name.charAt(0) || 'D'}
                                 </div>
-                                <h3 className="text-2xl font-black text-[#0f2044] dark:text-white mb-3">
-                                    {t('No buses with location data')}
-                                </h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto leading-relaxed">
-                                    {searchQuery || statusFilter !== 'all'
-                                        ? t('Try adjusting your filters')
-                                        : t('Waiting for GPS data from buses...')}
-                                </p>
+                                <div className="flex-1 overflow-hidden">
+                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{isRtl ? 'السائق' : 'Driver'}</p>
+                                    <p className="text-[11px] font-black text-slate-800 dark:text-white truncate">{selectedBus.driver.name}</p>
+                                </div>
                             </div>
                         )}
                     </div>
-                </div>
 
-            </div>
-        </APIProvider>
-    );
-}
+                    {/* Navigation */}
+                    <div className="p-3 border-t border-slate-100 dark:border-white/5 bg-white dark:bg-[#0f172a] grid grid-cols-2 gap-2 rounded-b-[24px]">
+                        <button 
+                            onClick={() => navigateBus('prev')}
+                            disabled={isNavDisabled}
+                            className={`py-2 rounded-[12px] font-black text-[11px] flex items-center justify-center transition-all ${isNavDisabled ? 'bg-slate-50 text-slate-300 cursor-not-allowed' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                        >
+                            {isRtl ? 'السابق' : 'Prev'}
+                        </button>
+                        <button 
+                            onClick={() => navigateBus('next')}
+                            disabled={isNavDisabled}
+                            className={`py-2 rounded-[12px] font-black text-[11px] flex items-center justify-center transition-all ${isNavDisabled ? 'bg-slate-50 text-slate-300 cursor-not-allowed' : 'bg-indigo-600 text-white hover:scale-[1.02] active:scale-95 shadow-sm'}`}
+                        >
+                            {isRtl ? 'التالي' : 'Next'}
+                        </button>
+                    </div>
+                </motion.div>
+            )}
 
-function BusMarker({ status, selected }: { status: string, selected: boolean }) {
-    const colors = {
-        active: '#f5b800', // Gold
-        maintenance: '#ef4444', // Red
-        inactive: '#94a3b8', // Gray
-    };
-
-    const color = colors[status as keyof typeof colors] || colors.inactive;
-
-    return (
-        <div 
-            className={`flex items-center justify-center transition-all duration-300 ${selected ? 'z-50' : 'z-10'}`}
-            style={{
-                width: selected ? '52px' : '44px',
-                height: selected ? '52px' : '44px',
-                backgroundColor: selected ? '#0f2044' : color,
-                border: `3px solid ${selected ? '#f5b800' : 'white'}`,
-                borderRadius: '14px',
-                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
-                cursor: 'pointer',
-                fontSize: selected ? '24px' : '20px',
-                transform: selected ? 'scale(1.1) translateY(-10px)' : 'scale(1)',
-            }}
-        >
-            <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>🚌</span>
         </div>
     );
 }
 
-function StatBox({ label, value, icon: Icon, color, bg }: any) {
+function CompactInfo({ icon: Icon, label, value, color }: any) {
     return (
-        <div className="bg-white dark:bg-[#1a2845] p-5 rounded-3xl border border-gray-50 dark:border-[#243460] shadow-sm group hover:scale-105 transition-all">
-            <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 ${bg} ${color} rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-12`}>
-                    <Icon className="w-6 h-6" />
+        <div className="flex items-center justify-between p-3.5 rounded-[16px] bg-white dark:bg-[#1e293b] border border-slate-100 dark:border-white/5 shadow-sm">
+            <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-[10px] bg-slate-50 dark:bg-white/5 flex items-center justify-center">
+                    <Icon className="w-4 h-4 text-slate-400" />
                 </div>
-                <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">{label}</p>
-                    <p className={`text-2xl font-black ${color}`}>{value}</p>
-                </div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
             </div>
+            <p className={`text-xs font-black ${color} truncate max-w-[120px] text-end`}>{value}</p>
         </div>
     );
 }
 
 function LegendItem({ dotColor, label }: { dotColor: string, label: string }) {
     return (
-        <div className="flex items-center gap-3">
-            <div className={`w-2.5 h-2.5 rounded-full ${dotColor} shadow-[0_0_10px_rgba(255,255,255,0.2)]`} />
-            <span className="text-[11px] font-bold text-gray-300 capitalize">{label}</span>
-        </div>
-    );
-}
-
-function DetailRow({ icon: Icon, label, value, color = "text-[#0f2044] dark:text-white" }: any) {
-    return (
-        <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400">
-                <Icon className="w-5 h-5" />
-            </div>
-            <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{label}</p>
-                <p className={`text-sm font-black ${color}`}>{value}</p>
-            </div>
+        <div className="flex items-center gap-2">
+            <div className={`w-2.5 h-2.5 rounded-full ${dotColor} shadow-sm`} />
+            <span className="text-[10px] font-black tracking-widest text-slate-600 dark:text-slate-300 uppercase">{label}</span>
         </div>
     );
 }

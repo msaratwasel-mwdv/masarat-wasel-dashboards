@@ -1,8 +1,3 @@
-/**
- * Dashboard Version: 2026.04.25.02
- * Design System: Navy & Gold (Masarat Wasel)
- * Localization: 100% Bilingual Support (Arabic/English)
- */
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import { Head, Link } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
@@ -15,23 +10,16 @@ import {
   Activity, TrendingUp, Calendar, Rocket,
   UserSquare2, ArrowUpRight, CheckCircle2, BookOpen,
   ClipboardList, MapPin, Zap, Clock, ShieldCheck,
-  ChevronRight, ArrowRight, Bell
+    ChevronRight, ArrowRight, Bell, CheckCheck,
+    AlertTriangle, Users2, TrendingDown, LayoutDashboard
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
+    PieChart, Pie, Cell, BarChart, Bar, Legend
 } from "recharts";
 import {
-  DS_card,
-  DS_pageTitle,
-  DS_statLabel,
-  DS_statValue2,
-  DS_statIcon,
-  DS_statCard,
-  DS_pageWrapper,
-  DS_gridCols,
-  DS_grid12,
+    DS_pageWrapper,
 } from "@/lib/DS";
 
 interface DashboardProps {
@@ -42,25 +30,26 @@ interface DashboardProps {
     buses: number;
     active_buses: number;
     routes: number;
-    teachers: number;
-    supervisors: number;
+      teachers: number;
     attendance_percentage: number;
     attendance_today_count: number;
-    daily_trips_today: number;
+    };
+    transport: {
+        completed_trips_today: number;
+        total_trips_today: number;
+        students_transported_today: number;
+        trip_success_rate: number;
+        active_buses: number;
+        total_buses: number;
+        delays_this_month: number;
+        completed_field_trips: number;
+        active_trips_now: number;
+        delayed_buses_now: number;
+        distance_today: number;
+        zero_incident_days: number;
   };
   attendanceTrend: Array<{ date: string; present: number; absent: number; total: number }>;
-  classDistribution: Array<{ name: string; value: number; color: string }>;
-  recent_students: Array<{
-    id: number;
-    first_name_ar?: string;
-    last_name_ar?: string;
-    first_name_en?: string;
-    last_name_en?: string;
-    name?: string;
-    full_name?: string;
-    image?: string;
-    created_at: string;
-  }>;
+    studentsByBus: Array<{ name: string; value: number }>;
   recentActivities: Array<{
     id: number;
     type: string;
@@ -84,12 +73,11 @@ interface DashboardProps {
 export default function SchoolDashboard({
   auth,
   stats,
+    transport,
   attendanceTrend = [],
-  classDistribution = [],
-  recent_students = [],
+    studentsByBus = [],
   recentActivities = [],
-  upcomingHolidays = [],
-  system_status,
+    upcomingHolidays = [],
 }: DashboardProps) {
   const { isRTL: isRtl } = useTheme();
 
@@ -99,60 +87,19 @@ export default function SchoolDashboard({
     `App.Models.User.${auth.user.id}`,
     '.notification.pushed',
     (e: any) => {
-      // Reload stats and recent data when a new notification arrives
-      router.reload({ only: ['stats', 'recentActivities', 'recent_students'], preserveState: true, preserveScroll: true });
+        router.reload({ only: ['stats', 'transport', 'recentActivities'] });
     }
   );
   
   const containerVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5, staggerChildren: 0.08 } },
-  };
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { duration: 0.6, staggerChildren: 0.1 } },
+    };
 
-  const statCards = [
-    {
-      title: isRtl ? "إجمالي الطلاب" : "Total Students",
-      value: stats.students,
-      icon: GraduationCap,
-      accent: "blue" as const,
-      link: route("school.students.index"),
-    },
-    {
-      title: isRtl ? "الفصول الدراسية" : "Classrooms",
-      value: stats.classes,
-      icon: BookOpen,
-      accent: "gold" as const,
-      link: route("school.classrooms.index"),
-    },
-    {
-      title: isRtl ? "أسطول الحافلات" : "Bus Fleet",
-      value: stats.buses,
-      icon: Bus,
-      accent: "navy" as const,
-      link: route("school.buses.index"),
-    },
-    {
-      title: isRtl ? "المسارات المعتمدة" : "Active Routes",
-      value: stats.routes,
-      icon: RouteIcon,
-      accent: "green" as const,
-      link: route("school.routes.index"),
-    },
-    {
-      title: isRtl ? "الهيئة التعليمية" : "Teaching Staff",
-      value: stats.teachers,
-      icon: UserSquare2,
-      accent: "red" as const,
-      link: route("school.teachers.index"),
-    },
-    {
-      title: isRtl ? "رحلات اليوم" : "Today's Trips",
-      value: stats.daily_trips_today,
-      icon: Rocket,
-      accent: "blue" as const,
-      link: route("school.trips.dashboard"),
-    },
-  ];
+    const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+      visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+  };
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -161,7 +108,6 @@ export default function SchoolDashboard({
     return () => clearInterval(timer);
   }, []);
 
-  // Dynamic Greeting
   const hour = currentTime.getHours();
   const greeting = hour < 12 
     ? (isRtl ? 'صباح الخير' : 'Good Morning') 
@@ -172,8 +118,10 @@ export default function SchoolDashboard({
         user={auth.user}
         header={
             <div className="flex items-center gap-3">
-                <Activity className="w-6 h-6 text-[#f5b800]" />
-                <h2 className={DS_pageTitle}>
+                <div className="p-2.5 bg-[#0f2044] dark:bg-[#f5b800]/10 rounded-xl">
+                    <LayoutDashboard className="w-5 h-5 text-white dark:text-[#f5b800]" />
+                </div>
+                <h2 className="text-2xl font-black text-[#0f2044] dark:text-white tracking-tight">
                     {(isRtl ? 'اللوحة الرئيسية' : 'Command Center')}
                 </h2>
             </div>
@@ -185,374 +133,309 @@ export default function SchoolDashboard({
         initial="hidden"
         animate="visible"
         variants={containerVariants}
-        className={DS_pageWrapper}
+              className="space-y-8"
       >
-        {/* Welcome Hero Section */}
-        <div className="relative p-4 md:p-5 rounded-[32px] bg-gradient-to-br from-[#0f2044] via-[#162d60] to-[#0f2044] overflow-hidden shadow-2xl">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[#f5b800]/10 rounded-full blur-[100px] -mr-32 -mt-32" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -ml-32 -mb-32" />
+              {/* World-Class Hero Section */}
+              <motion.div variants={itemVariants} className="relative p-6 md:p-10 rounded-[32px] bg-[#0f2044] overflow-hidden shadow-2xl border border-white/10">
+                  {/* Animated Glow Effects */}
+                  <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[150%] bg-gradient-to-b from-[#f5b800]/20 to-transparent rounded-full blur-[120px] pointer-events-none" />
+                  <div className="absolute bottom-[-20%] left-[-10%] w-[40%] h-[120%] bg-gradient-to-t from-sky-500/20 to-transparent rounded-full blur-[100px] pointer-events-none" />
             
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
                 <div className={isRtl ? "text-right" : "text-left"}>
-                    <h1 className="text-xl md:text-2xl font-black text-white leading-tight">
-                        {greeting}، <span className="text-[#f5b800]">
+
+                          <h1 className="text-3xl md:text-5xl font-black text-white leading-tight mb-3 tracking-tight">
+                              {greeting}، <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#f5b800] to-yellow-200">
                             {isRtl 
-                                ? `${auth.user.first_name_ar || auth.user.name} ${auth.user.last_name_ar || ''}`.trim()
-                                : `${auth.user.first_name_en || auth.user.name} ${auth.user.last_name_en || ''}`.trim()
+                                      ? `${auth.user.first_name_ar || auth.user.name}`.trim()
+                                      : `${auth.user.first_name_en || auth.user.name}`.trim()
                             }
                         </span>
                     </h1>
+                          <p className="text-blue-100/70 text-base font-medium max-w-xl leading-relaxed">
+                              {isRtl ? 'إليك نظرة شاملة وفورية لجميع عمليات النقل المدرسي ومؤشرات الأداء لهذا اليوم.' : 'Here is a comprehensive, real-time overview of all school transport operations and KPIs for today.'}
+                          </p>
                 </div>
                 
-                <div className="flex flex-col items-center justify-center p-3 md:p-4 rounded-[20px] bg-white/5 border border-white/10 backdrop-blur-xl min-w-[200px]">
-                    <div className="flex items-center gap-3 mb-2">
-                        <Calendar className="w-3 h-3 text-[#f5b800]" />
-                        <span className="text-white text-xs font-bold">{currentTime.toLocaleDateString(isRtl ? 'ar-SA' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                      <div className="flex flex-col items-center justify-center p-6 rounded-[24px] bg-white/5 border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] min-w-[260px]">
+                          <div className="flex items-center gap-3 mb-3">
+                              <Calendar className="w-5 h-5 text-[#f5b800]" />
+                              <span className="text-white text-sm font-bold tracking-wide">{currentTime.toLocaleDateString(isRtl ? 'ar-SA' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                     </div>
                     <div className="text-center">
-                        <div className="text-2xl md:text-3xl font-black text-white">
+                              <div className="text-4xl font-black text-white tracking-widest tabular-nums">
                             {currentTime.toLocaleTimeString(isRtl ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                        </div>
-                        <p className="text-[8px] text-blue-200/50 uppercase tracking-[0.2em] font-bold">
-                            {isRtl ? 'التوقيت المحلي الحالي' : 'Current Local Time'}
-                        </p>
+                              </div>
                     </div>
                 </div>
             </div>
-        </div>
+              </motion.div>
 
-        {/* Stats Grid */}
-        <div className={DS_gridCols}>
-          {statCards.map((card, idx) => (
-            <StatCard key={idx} {...card} isRtl={isRtl} />
-          ))}
-        </div>
+              {/* Stakeholder Priority Metrics */}
+              <motion.div variants={itemVariants}>
+                  <div className="flex items-center gap-3 mb-5">
+                      <div className="p-2.5 bg-gradient-to-br from-[#f5b800] to-yellow-600 rounded-xl shadow-lg shadow-[#f5b800]/20">
+                          <Rocket className="w-5 h-5 text-white" />
+                      </div>
+                      <h3 className="font-black text-xl text-[#0f2044] dark:text-white tracking-tight">
+                          {isRtl ? 'مؤشرات الأداء الرئيسية' : 'Key Performance Indicators'}
+                      </h3>
+                  </div>
 
-        {/* Highlights & Attendance Section */}
-        <div className={DS_grid12 + " items-stretch"}>
-            <div className="lg:col-span-8 group relative overflow-hidden p-6 md:p-8 rounded-[28px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm hover:shadow-xl transition-all duration-500">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[80px] -mr-32 -mt-32 transition-all group-hover:scale-150" />
-                
-                <div className={`relative z-10 flex flex-col md:flex-row items-center gap-8 ${isRtl ? "flex-row-reverse" : ""}`}>
-                    <div className="flex-1 space-y-6">
-                        <div className={`flex items-center gap-4 ${isRtl ? "flex-row-reverse" : ""}`}>
-                            <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-500">
-                                <ClipboardList className="w-8 h-8" />
-                            </div>
-                            <div className={isRtl ? "text-right" : "text-left"}>
-                                <h3 className="text-xl font-black text-[#0f2044] dark:text-white">
-                                    {isRtl ? "مؤشر الحضور اليومي" : "Today's Attendance"}
-                                </h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                    {stats.attendance_today_count} {isRtl ? "عملية تسجيل تمت اليوم" : "records processed today"}
-                                </p>
-                            </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Distance Card */}
+                      <div className="group relative p-8 rounded-[32px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 overflow-hidden">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-[#0f2044]/5 dark:bg-[#f5b800]/10 rounded-bl-full transition-transform duration-700 group-hover:scale-110" />
+                          <div className="relative z-10">
+                              <div className="w-14 h-14 rounded-2xl bg-[#0f2044]/5 dark:bg-white/5 flex items-center justify-center mb-6 group-hover:bg-[#0f2044] group-hover:text-white dark:group-hover:bg-[#f5b800] dark:group-hover:text-[#0f2044] transition-colors duration-500 text-[#0f2044] dark:text-[#f5b800]">
+                                  <RouteIcon className="w-7 h-7" />
+                              </div>
+                              <p className="text-[13px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">
+                                  {isRtl ? 'المسافات المقطوعة' : 'Distance Covered'}
+                              </p>
+                              <h4 className="text-5xl font-black text-[#0f2044] dark:text-white flex items-baseline gap-2">
+                                  {Number(transport.distance_today).toFixed(1).replace(/\.0$/, '')} <span className="text-lg font-bold text-gray-400">{isRtl ? 'كم' : 'KM'}</span>
+                              </h4>
+                          </div>
+                      </div>
+
+                      {/* Trips Card */}
+                      <div className="group relative p-8 rounded-[32px] bg-gradient-to-br from-[#0f2044] to-[#162d60] border border-white/10 shadow-xl shadow-[#0f2044]/20 hover:-translate-y-1 transition-all duration-500 overflow-hidden">
+                          <div className="absolute -right-10 -top-10 w-40 h-40 bg-[#f5b800]/20 rounded-full blur-3xl" />
+                          <div className="relative z-10">
+                              <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mb-6 text-[#f5b800]">
+                                  <CheckCheck className="w-7 h-7" />
+                              </div>
+                              <p className="text-[13px] font-bold text-blue-200/70 uppercase tracking-widest mb-2">
+                                  {isRtl ? 'الرحلات المنجزة اليوم' : 'Trips Completed Today'}
+                              </p>
+                              <div className="flex items-baseline gap-3">
+                                  <h4 className="text-5xl font-black text-white">
+                                      {transport.completed_trips_today}
+                                  </h4>
+                                  <span className="text-xl font-bold text-blue-200/50">/ {transport.total_trips_today}</span>
+                              </div>
+                              <div className="mt-4 w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                                  <motion.div
+                                      initial={{ width: 0 }}
+                                      animate={{ width: transport.total_trips_today > 0 ? `${(transport.completed_trips_today / transport.total_trips_today) * 100}%` : '0%' }}
+                                      transition={{ duration: 1.5, ease: "easeOut" }}
+                                      className="h-full bg-[#f5b800] rounded-full"
+                                  />
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* Safety Card */}
+                      <div className="group relative p-8 rounded-[32px] bg-emerald-500 text-white border border-emerald-400 shadow-xl shadow-emerald-500/20 hover:-translate-y-1 transition-all duration-500 overflow-hidden">
+                          <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-3xl" />
+                          <div className="relative z-10">
+                              <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-6 text-white">
+                                  <ShieldCheck className="w-7 h-7" />
+                              </div>
+                              <p className="text-[13px] font-bold text-emerald-100 uppercase tracking-widest mb-2">
+                                  {isRtl ? 'أيام عمل بدون حوادث' : 'Zero-Incident Days'}
+                              </p>
+                              <h4 className="text-5xl font-black text-white flex items-baseline gap-2">
+                                  {transport.zero_incident_days} <span className="text-lg font-bold text-emerald-200">{isRtl ? 'يوم' : 'Days'}</span>
+                              </h4>
+                          </div>
+                      </div>
+                  </div>
+              </motion.div>
+
+              {/* Live Operations Row */}
+              <motion.div variants={itemVariants}>
+                  <div className="flex items-center gap-3 mb-5 mt-4">
+                      <div className="p-2.5 bg-rose-500/10 rounded-xl shadow-sm">
+                          <Activity className="w-5 h-5 text-rose-500 animate-pulse" />
+                      </div>
+                      <h3 className="font-black text-xl text-[#0f2044] dark:text-white tracking-tight">
+                          {isRtl ? 'العمليات المباشرة' : 'Live Operations'}
+                      </h3>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+                      <LiveKpiCard
+                          title={isRtl ? "رحلات نشطة" : "Active Trips"}
+                          value={transport.active_trips_now}
+                          sub={isRtl ? "في الطريق الآن" : "on the road now"}
+                          icon={RouteIcon}
+                          accent="blue"
+                      />
+                      <LiveKpiCard
+                          title={isRtl ? "حافلات متأخرة" : "Delayed Buses"}
+                          value={transport.delayed_buses_now}
+                          sub={isRtl ? "تتطلب انتباه" : "requires attention"}
+                          icon={AlertTriangle}
+                          accent={transport.delayed_buses_now > 0 ? "rose" : "green"}
+                      />
+                      <LiveKpiCard
+                          title={isRtl ? "طلاب منقولون" : "Transported"}
+                          value={transport.students_transported_today}
+                          sub={isRtl ? "طالب اليوم" : "students today"}
+                          icon={Users}
+                          accent="navy"
+                      />
+                      <LiveKpiCard
+                          title={isRtl ? "كفاءة الأسطول" : "Fleet Efficiency"}
+                          value={`${transport.active_buses}/${transport.total_buses}`}
+                          sub={isRtl ? "حافلة نشطة" : "active buses"}
+                          icon={Bus}
+                          accent="gold"
+                      />
+                  </div>
+              </motion.div>
+
+              {/* Analytics Section: Students by Bus & Attendance */}
+              <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                  {/* Students by Bus Distribution Chart */}
+                  <div className="p-8 rounded-[32px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-white/5 shadow-sm">
+                      <div className="flex items-center justify-between mb-8">
+                          <div className="flex items-center gap-3">
+                              <div className="p-2.5 bg-sky-500/10 rounded-xl text-sky-500">
+                                  <Users2 className="w-5 h-5" />
                         </div>
-
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#243460]/50 border border-gray-100 dark:border-white/5 text-center">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{isRtl ? 'حاضر' : 'Present'}</p>
-                                <p className="text-xl font-black text-emerald-500">{Number(stats.attendance_percentage).toFixed(1).replace(/\.0$/, '')}%</p>
-                            </div>
-                            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#243460]/50 border border-gray-100 dark:border-white/5 text-center">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{isRtl ? 'غائب' : 'Absent'}</p>
-                                <p className="text-xl font-black text-rose-500">{Math.max(0, 100 - Number(stats.attendance_percentage)).toFixed(1).replace(/\.0$/, '')}%</p>
-                            </div>
-                            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#243460]/50 border border-gray-100 dark:border-white/5 text-center">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{isRtl ? 'الكل' : 'Total'}</p>
-                                <p className="text-xl font-black text-[#0f2044] dark:text-white">{stats.students}</p>
-                            </div>
+                              <h3 className="font-black text-lg text-[#0f2044] dark:text-white">
+                                  {isRtl ? 'توزيع الطلاب حسب الحافلات' : 'Students Distribution by Bus'}
+                              </h3>
+                          </div>
+                      </div>
+                      <div className="h-[320px] w-full">
+                          {studentsByBus && studentsByBus.length > 0 ? (
+                              <ResponsiveContainer width="100%" height="100%">
+                                  <BarChart data={studentsByBus} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#0f204410" />
+                                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 'bold' }} dy={10} />
+                                      <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 'bold' }} />
+                                      <RechartsTooltip
+                                          cursor={{ fill: 'rgba(15, 32, 68, 0.05)' }}
+                                          contentStyle={{ backgroundColor: "#0f2044", borderRadius: "16px", border: "none", color: "#fff", fontWeight: "bold", padding: "12px", boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)", direction: isRtl ? "rtl" : "ltr" }}
+                                          itemStyle={{ color: "#f5b800" }}
+                                      />
+                                      <Bar
+                                          dataKey="value"
+                                          name={isRtl ? "عدد الطلاب" : "Students"}
+                                          fill="#0f2044"
+                                          radius={[8, 8, 0, 0]}
+                                          barSize={40}
+                                      >
+                                          {studentsByBus.map((entry, index) => (
+                                              <Cell key={`cell-${index}`} fill={index % 2 === 0 ? "#0f2044" : "#f5b800"} />
+                                          ))}
+                                      </Bar>
+                                  </BarChart>
+                              </ResponsiveContainer>
+                          ) : (
+                              <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                                  <Bus className="w-12 h-12 mb-3 opacity-20" />
+                                  <p className="font-bold text-sm">{isRtl ? "لا توجد بيانات توزيع متاحة" : "No distribution data available"}</p>
                         </div>
-                    </div>
+                          )}
+                      </div>
+                  </div>
 
-                    <div className="w-px h-32 bg-gray-100 dark:bg-[#243460] hidden md:block" />
-
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="relative w-32 h-32">
-                            <svg className="w-full h-full" viewBox="0 0 100 100">
-                                <circle className="text-gray-100 dark:text-[#243460] stroke-current" strokeWidth="10" cx="50" cy="50" r="40" fill="transparent"></circle>
-                                <circle 
-                                    className="text-emerald-500 stroke-current transition-all duration-1000" 
-                                    strokeWidth="10" 
-                                    strokeLinecap="round" 
-                                    cx="50" cy="50" r="40" 
-                                    fill="transparent" 
-                                    strokeDasharray="251.2" 
-                                    strokeDashoffset={251.2 - (251.2 * stats.attendance_percentage) / 100}
-                                    transform="rotate(-90 50 50)"
-                                ></circle>
-                            </svg>
-                            <div className="absolute inset-0 flex items-center justify-center font-black text-2xl text-[#0f2044] dark:text-white">
-                                {Number(stats.attendance_percentage).toFixed(1).replace(/\.0$/, '')}%
-                            </div>
-                        </div>
-                        <Link
-                            href={route("school.attendance.index")}
-                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#0f2044] dark:bg-[#f5b800] text-white dark:text-[#0f2044] rounded-2xl font-bold text-sm shadow-xl transition-all hover:scale-105 active:scale-95"
-                        >
-                            {isRtl ? "إدارة الحضور" : "Manage Attendance"}
-                            <ArrowRight className={`w-4 h-4 ${isRtl ? 'rotate-180' : ''}`} />
-                        </Link>
-                    </div>
+                  {/* Attendance Trend Chart */}
+                  <div className="p-8 rounded-[32px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-white/5 shadow-sm">
+                      <div className="flex items-center justify-between mb-8">
+                          <div className="flex items-center gap-3">
+                              <div className="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-500">
+                                  <TrendingUp className="w-5 h-5" />
+                              </div>
+                              <h3 className="font-black text-lg text-[#0f2044] dark:text-white">
+                                  {isRtl ? "مؤشر الحضور الأسبوعي" : "Weekly Attendance Trend"}
+                              </h3>
+                          </div>
+                      </div>
+                      <div className="h-[320px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={attendanceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                  <defs>
+                                      <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                      </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#0f204410" />
+                                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 'bold' }} dy={10} />
+                                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 'bold' }} />
+                                  <RechartsTooltip 
+                                      contentStyle={{ backgroundColor: "#0f2044", borderRadius: "16px", border: "none", color: "#fff", fontWeight: "bold", padding: "12px", boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)", direction: isRtl ? "rtl" : "ltr" }}
+                                  />
+                                  <Area type="monotone" dataKey="present" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorPresent)" name={isRtl ? "حاضر" : "Present"} activeDot={{ r: 6, fill: "#10b981", stroke: "#fff", strokeWidth: 3 }} />
+                                  <Area type="monotone" dataKey="absent" stroke="#ef4444" strokeWidth={3} fillOpacity={0.02} fill="#ef4444" name={isRtl ? "غائب" : "Absent"} />
+                              </AreaChart>
+                          </ResponsiveContainer>
                 </div>
             </div>
 
-            <div className="lg:col-span-4 p-8 rounded-[28px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm flex flex-col justify-between overflow-hidden relative">
-                <div className="relative z-10">
-                    <h3 className="font-black text-lg text-[#0f2044] dark:text-white mb-6">
-                        {isRtl ? 'أداء النظام' : 'System Performance'}
-                    </h3>
-                    
-                    <div className="space-y-6">
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-400">
-                                <span>{isRtl ? 'كفاءة النقل' : 'Transport Efficiency'}</span>
-                                <span className="text-emerald-500">98%</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-gray-100 dark:bg-[#243460] rounded-full overflow-hidden">
-                                <motion.div initial={{ width: 0 }} animate={{ width: '98%' }} className="h-full bg-emerald-500" />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-400">
-                                <span>{isRtl ? 'التزام المعلمين' : 'Teacher Adherence'}</span>
-                                <span className="text-[#f5b800]">85%</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-gray-100 dark:bg-[#243460] rounded-full overflow-hidden">
-                                <motion.div initial={{ width: 0 }} animate={{ width: '85%' }} className="h-full bg-[#f5b800]" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+              </motion.div>
 
-                <div className="mt-8 p-4 rounded-2xl bg-[#0f2044]/5 dark:bg-[#f5b800]/5 border border-dashed border-[#0f2044]/20 dark:border-[#f5b800]/20 flex items-center gap-4">
-                    <ShieldCheck className="w-10 h-10 text-[#f5b800]" />
-                    <div>
-                        <p className="text-xs font-bold text-[#0f2044] dark:text-white">{isRtl ? 'حماية البيانات مفعلة' : 'Data Protection Active'}</p>
-                        <p className="text-[10px] text-gray-500 mt-0.5">{isRtl ? 'يتم تشفير كافة البيانات بشكل لحظي' : 'All data encrypted in real-time'}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div className={DS_grid12}>
-          <div className="lg:col-span-8 space-y-6 md:space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                <div className={DS_card}>
-                    <div className="p-6 border-b border-gray-50 dark:border-[#243460] flex items-center justify-between">
-                        <h3 className={`text-sm font-black flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""} text-[#0f2044] dark:text-white`}>
-                            <TrendingUp className="w-5 h-5 text-emerald-500" />
-                            {isRtl ? "إحصائيات الحضور الأسبوعية" : "Weekly Attendance Trend"}
-                        </h3>
-                    </div>
-                    <div className="p-6 h-[280px] min-h-[280px] w-full min-w-0">
-                        <ResponsiveContainer width="100%" height={230}>
-                            <AreaChart data={attendanceTrend}>
-                                <defs>
-                                    <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#0f204410" />
-                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10 }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10 }} />
-                                <RechartsTooltip 
-                                    contentStyle={{ 
-                                        backgroundColor: "#0f2044", 
-                                        borderRadius: "16px", 
-                                        border: "none", 
-                                        color: "#fff",
-                                        boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)" 
-                                    }} 
-                                />
-                                <Area type="monotone" dataKey="present" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorPresent)" name={isRtl ? "حاضر" : "Present"} />
-                                <Area type="monotone" dataKey="absent" stroke="#ef4444" strokeWidth={2} fillOpacity={0.05} fill="#ef4444" name={isRtl ? "غائب" : "Absent"} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                <div className={DS_card}>
-                    <div className="p-6 border-b border-gray-50 dark:border-[#243460] flex items-center justify-between">
-                        <h3 className={`text-sm font-black flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""} text-[#0f2044] dark:text-white`}>
-                            <Activity className="w-5 h-5 text-[#f5b800]" />
-                            {isRtl ? "توزيع الطلاب حسب الفصول" : "Class Distribution"}
-                        </h3>
-                    </div>
-                    <div className="p-6 h-[280px] min-h-[280px] w-full min-w-0 flex items-center justify-center relative">
-                        {classDistribution.length > 0 ? (
-                            <>
-                                <ResponsiveContainer width="100%" height={230}>
-                                    <PieChart>
-                                        <Pie 
-                                            data={classDistribution} 
-                                            innerRadius={70} 
-                                            outerRadius={100} 
-                                            paddingAngle={8} 
-                                            dataKey="value"
-                                            stroke="none"
-                                        >
-                                            {classDistribution.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                        </Pie>
-                                        <RechartsTooltip />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <div className="absolute flex flex-col items-center justify-center inset-0 pointer-events-none">
-                                    <span className="text-3xl font-black text-[#0f2044] dark:text-white">{stats.students}</span>
-                                    <span className="text-[9px] uppercase font-black text-gray-400 tracking-widest">{isRtl ? "طالب" : "Students"}</span>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center opacity-40">
-                                <BookOpen className="w-12 h-12 mb-2 text-gray-300" />
-                                <p className="text-xs font-bold text-gray-400">{isRtl ? "لا توجد بيانات فصول" : "No class data"}</p>
-                            </div>
-                        )}
-                    </div>
+              {/* Quick Actions & Live Feed */}
+              <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
+                  <div className="lg:col-span-8 space-y-6">
+                      <div className="p-8 rounded-[32px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-white/5 shadow-sm h-full">
+                          <div className="flex items-center gap-3 mb-8">
+                              <div className="p-2.5 bg-[#f5b800]/10 rounded-xl text-[#f5b800]">
+                                  <Zap className="w-5 h-5" />
+                              </div>
+                              <h3 className="font-black text-lg text-[#0f2044] dark:text-white">
+                                  {isRtl ? "إجراءات سريعة" : "Quick Actions"}
+                              </h3>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                              <QuickAction icon={GraduationCap} label={isRtl ? "الطلاب" : "Students"} link={route("school.students.index")} accent="navy" />
+                              <QuickAction icon={ClipboardList} label={isRtl ? "الحضور" : "Attendance"} link={route("school.attendance.index")} accent="gold" />
+                              <QuickAction icon={Bus} label={isRtl ? "الحافلات" : "Fleet"} link={route("school.buses.index")} accent="navy" />
+                              <QuickAction icon={Bell} label={isRtl ? "الإشعارات" : "Alerts"} link={route("school.notifications.sent")} accent="gold" />
+                          </div>
                 </div>
             </div>
 
-            <div className={DS_card}>
-                <div className="p-6 border-b border-gray-50 dark:border-[#243460] flex items-center justify-between">
-                    <h3 className="font-black text-sm text-[#0f2044] dark:text-white">
-                        {isRtl ? "الطلاب المضافون حديثاً" : "Recently Enrolled Students"}
-                    </h3>
-                    <Link href={route("school.students.index")} className="px-4 py-1.5 bg-[#0f2044]/5 dark:bg-white/5 rounded-full text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] hover:bg-[#f5b800] hover:text-[#0f2044] transition-all">
-                        {isRtl ? "عرض السجل الكامل" : "View Full Records"}
-                    </Link>
-                </div>
-                <div className="p-6">
-                    {recent_students.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                            {recent_students.map((student) => {
-                                const displayName = student.full_name || (student.first_name_ar && student.last_name_ar ? `${student.first_name_ar} ${student.last_name_ar}` : student.name) || "—";
-                                return (
-                                    <div key={student.id} className="flex flex-col items-center p-4 rounded-2xl bg-gray-50 dark:bg-[#243460]/30 border border-transparent hover:border-[#f5b800]/50 transition-all text-center">
-                                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#0f2044] to-[#243460] flex items-center justify-center text-white font-black text-xl mb-3 shadow-lg border-2 border-white dark:border-[#1a2845]">
-                                            {displayName.charAt(0).toUpperCase()}
-                                        </div>
-                                        <h5 className="text-xs font-black text-[#0f2044] dark:text-white line-clamp-1">{displayName}</h5>
-                                        <p className="text-[10px] text-gray-400 mt-1">
-                                            {new Date(student.created_at).toLocaleDateString(isRtl ? 'ar-SA' : 'en-US')}
-                                        </p>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <p className="text-center text-gray-400 py-4 text-xs font-bold">{isRtl ? "لا يوجد طلاب مضافين حديثاً" : "No recent enrollments"}</p>
-                    )}
-                </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-4 space-y-8">
-            <div className={DS_card}>
-                <div className="p-6 border-b border-gray-50 dark:border-[#243460]">
-                    <h3 className="font-black text-sm text-[#0f2044] dark:text-white flex items-center gap-2">
-                        <Zap className="w-5 h-5 text-[#f5b800]" />
-                        {isRtl ? "إجراءات سريعة" : "Operational Actions"}
-                    </h3>
-                </div>
-                <div className="p-6 grid grid-cols-2 gap-4">
-                    <QuickAction icon={GraduationCap} label={isRtl ? "تسجيل طالب" : "Enroll Student"} link={route("school.students.create")} accent="navy" />
-                    <QuickAction icon={ClipboardList} label={isRtl ? "رصد حضور" : "Record Attendance"} link={route("school.attendance.index")} accent="gold" />
-                    <QuickAction icon={Bus} label={isRtl ? "إدارة باصات" : "Fleet Control"} link={route("school.buses.index")} accent="navy" />
-                    <QuickAction icon={Bell} label={isRtl ? "الإشعارات" : "Notifications"} link={route("school.notifications.sent")} accent="gold" />
-                </div>
-            </div>
-
-            {/* Upcoming Holidays Section */}
-            <div className={DS_card}>
-                <div className="p-6 border-b border-gray-50 dark:border-[#243460] flex items-center justify-between">
-                    <h3 className="font-black text-sm text-[#0f2044] dark:text-white flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-[#f5b800]" />
-                        {isRtl ? "العطل والإجازات القادمة" : "Upcoming Holidays"}
-                    </h3>
-                </div>
-                <div className="p-6">
-                    {upcomingHolidays.length > 0 ? (
-                        <div className="space-y-4">
-                            {upcomingHolidays.map((holiday) => (
-                                <div key={holiday.id} className="p-4 rounded-2xl bg-gray-50 dark:bg-[#243460]/30 border border-transparent hover:border-[#f5b800]/30 transition-all">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <h4 className="text-xs font-black text-[#0f2044] dark:text-white">{holiday.name}</h4>
-                                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest ${
-                                            holiday.type === 'official' ? 'bg-emerald-500/10 text-emerald-500' : 
-                                            holiday.type === 'emergency' ? 'bg-rose-500/10 text-rose-500' : 
-                                            'bg-blue-500/10 text-blue-500'
-                                        }`}>
-                                            {isRtl ? 
-                                                (holiday.type === 'official' ? 'رسمية' : holiday.type === 'emergency' ? 'طارئة' : 'مدرسية') : 
-                                                holiday.type
-                                            }
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
-                                        <Clock className="w-3 h-3" />
-                                        <span>{holiday.start_date}</span>
-                                        <span>←</span>
-                                        <span>{holiday.end_date}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-6 opacity-40">
-                            <Calendar className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-                            <p className="text-xs font-bold text-gray-400">{isRtl ? "لا توجد عطل قادمة" : "No upcoming holidays"}</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className={DS_card}>
-                <div className="p-6 border-b border-gray-50 dark:border-[#243460]">
-                    <h3 className="font-black text-sm text-[#0f2044] dark:text-white">
-                        {isRtl ? "النشاطات الحية" : "Live Activity Feed"}
-                    </h3>
-                </div>
-                <div className="p-6">
-                    <div className="space-y-6">
+                  <div className="lg:col-span-4">
+                      <div className="p-8 rounded-[32px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-white/5 shadow-sm h-full flex flex-col">
+                          <div className="flex items-center gap-3 mb-6">
+                              <div className="p-2.5 bg-[#0f2044]/5 dark:bg-white/5 rounded-xl text-[#0f2044] dark:text-white">
+                                  <Activity className="w-5 h-5" />
+                              </div>
+                              <h3 className="font-black text-lg text-[#0f2044] dark:text-white">
+                                  {isRtl ? "النشاطات الحية" : "Live Activity Feed"}
+                              </h3>
+                          </div>
+                          <div className="flex-1 space-y-6">
                         {recentActivities.length > 0 ? (
-                            recentActivities.slice(0, 5).map((act, idx) => (
-                                <div key={idx} className={`relative flex gap-4 ${isRtl ? "flex-row-reverse" : ""}`}>
-                                    {idx !== Math.min(recentActivities.length, 5) - 1 && (
-                                        <div className={`absolute top-10 ${isRtl ? "right-[19px]" : "left-[19px]"} bottom-0 w-px bg-gray-100 dark:bg-[#243460]`} />
+                                  recentActivities.slice(0, 4).map((act, idx) => (
+                                      <div key={idx} className="relative flex items-start gap-4">
+                                          {idx !== Math.min(recentActivities.length, 4) - 1 && (
+                                              <div className="absolute top-10 rtl:right-[19px] ltr:left-[19px] bottom-[-24px] w-px bg-gray-100 dark:bg-white/5" />
                                     )}
                                     <div className={`relative z-10 w-10 h-10 flex-shrink-0 rounded-xl flex items-center justify-center shadow-sm ${
                                         act.type === "student" ? "bg-sky-500/10 text-sky-500" : "bg-emerald-500/10 text-emerald-500"
                                     }`}>
                                         {act.type === "student" ? <GraduationCap className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className={`flex justify-between items-start gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                                            <h5 className="text-[11px] font-black text-[#0f2044] dark:text-white truncate">{act.title}</h5>
-                                            <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap pt-1">{act.time}</span>
+                                    <div className="flex-1 min-w-0 pt-1">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <h5 className="text-[12px] font-black text-[#0f2044] dark:text-white truncate">{act.title}</h5>
+                                            <span className="text-[10px] font-bold text-gray-400 whitespace-nowrap">{act.time}</span>
                                         </div>
-                                        <p className={`text-[10px] text-gray-500 mt-1 line-clamp-1 ${isRtl ? 'text-right' : 'text-left'}`}>
+                                        <p className="text-[11px] font-medium text-gray-500 mt-1 line-clamp-1">
                                             {isRtl ? act.description_ar : act.description_en}
                                         </p>
                                     </div>
                                 </div>
                             ))
                         ) : (
-                            <div className="flex flex-col items-center justify-center py-8 opacity-40">
-                                <CheckCircle2 className="w-12 h-12 text-emerald-500 mb-2" />
-                                <p className="text-xs font-bold text-gray-400">{isRtl ? "لا توجد نشاطات حالياً" : "System idling"}</p>
+                                      <div className="flex flex-col items-center justify-center py-8 opacity-50">
+                                          <CheckCircle2 className="w-12 h-12 text-emerald-500 mb-3" />
+                                          <p className="text-sm font-bold text-gray-400">{isRtl ? "لا توجد نشاطات حالياً" : "System idling"}</p>
                             </div>
                         )}
-                    </div>
-                    <button className="w-full mt-6 py-3 rounded-2xl bg-gray-50 dark:bg-white/5 text-[10px] font-black text-[#0f2044] dark:text-[#f5b800] uppercase tracking-widest hover:bg-[#0f2044] hover:text-white transition-all">
-                        {isRtl ? 'مشاهدة كافة النشاطات' : 'View Full Audit Log'}
-                    </button>
+                          </div>
                 </div>
             </div>
-          </div>
-        </div>
+              </motion.div>
+
       </motion.div>
     </SchoolDashboardLayout>
   );
@@ -561,30 +444,39 @@ export default function SchoolDashboard({
 function SchoolDashboardLayout({ children, user, header }: any) {
     return (
         <SchoolAuthenticatedLayout user={user} header={header}>
-            <div className="max-w-[1600px] mx-auto pb-12">
+            <div className="max-w-[1600px] mx-auto pb-16 px-4 md:px-8 pt-6">
                 {children}
             </div>
         </SchoolAuthenticatedLayout>
     );
 }
 
-function StatCard({ title, value, sub, icon: Icon, accent, isRtl }: any) {
-  return (
-    <Link href={route("school.dashboard")}>
+function LiveKpiCard({ title, value, sub, icon: Icon, accent }: any) {
+    const accentMap: Record<string, { bg: string; text: string; iconBg: string }> = {
+        green: { bg: 'bg-white dark:bg-[#1a2845]', text: 'text-emerald-500', iconBg: 'bg-emerald-500/10' },
+        blue: { bg: 'bg-white dark:bg-[#1a2845]', text: 'text-sky-500', iconBg: 'bg-sky-500/10' },
+        gold: { bg: 'bg-white dark:bg-[#1a2845]', text: 'text-[#f5b800]', iconBg: 'bg-[#f5b800]/10' },
+        navy: { bg: 'bg-white dark:bg-[#1a2845]', text: 'text-[#0f2044] dark:text-white', iconBg: 'bg-[#0f2044]/5 dark:bg-white/5 text-[#0f2044] dark:text-white' },
+        rose: { bg: 'bg-rose-500/5', text: 'text-rose-600 dark:text-rose-400', iconBg: 'bg-rose-500/20 text-rose-600' },
+    };
+    const style = accentMap[accent] ?? accentMap.navy;
+
+    return (
       <motion.div
-        whileHover={{ y: -8, scale: 1.02 }}
-        className={DS_statCard(accent)}
+          whileHover={{ y: -4, scale: 1.01 }}
+          className={`relative p-6 rounded-[24px] ${style.bg} border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-lg transition-all duration-300`}
       >
-        <div className={`flex flex-col gap-2 ${isRtl ? "items-end text-right" : "items-start text-left"}`}>
-          <div className={DS_statIcon(accent)}>
-            <Icon className="w-6 h-6" />
+          <div className="flex items-center gap-4 mb-4">
+              <div className={`p-3 rounded-xl ${style.iconBg}`}>
+                  <Icon className={`w-5 h-5 ${accent === 'rose' ? '' : style.text}`} />
+              </div>
+              <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{title}</p>
           </div>
-          <p className={DS_statLabel}>{title}</p>
-          <h4 className={DS_statValue2(accent)}>{value}</h4>
-          {sub && <p className="text-[10px] font-medium text-gray-400 mt-1">{sub}</p>}
-        </div>
+          <div>
+              <h4 className={`text-3xl font-black ${style.text}`}>{value}</h4>
+              {sub && <p className="text-[11px] font-semibold text-gray-400 mt-2">{sub}</p>}
+          </div>
       </motion.div>
-    </Link>
   );
 }
 
@@ -592,21 +484,19 @@ function QuickAction({ icon: Icon, label, link, accent }: any) {
   return (
     <Link
       href={link}
-      className={`group relative flex flex-col items-center justify-center p-6 rounded-[22px] transition-all duration-300 hover:-translate-y-2 active:scale-95 border border-gray-100 dark:border-[#243460] overflow-hidden ${
+          className={`group relative flex flex-col items-center justify-center p-6 rounded-[24px] transition-all duration-300 hover:-translate-y-1 active:scale-95 border overflow-hidden ${
           accent === 'navy' 
-            ? 'bg-[#0f2044] text-white shadow-xl shadow-[#0f2044]/20' 
-            : 'bg-white dark:bg-[#1a2845] text-[#0f2044] dark:text-white hover:border-[#f5b800]/40'
+          ? 'bg-[#0f2044] border-transparent text-white shadow-lg shadow-[#0f2044]/20'
+          : 'bg-gray-50 dark:bg-[#243460] border-gray-100 dark:border-white/5 text-[#0f2044] dark:text-white hover:border-[#f5b800]/40'
       }`}
     >
-      <div className={`mb-3 p-3 rounded-2xl transition-all duration-500 group-hover:scale-125 ${
-          accent === 'navy' ? 'bg-white/10 text-[#f5b800]' : 'bg-[#0f2044]/5 dark:bg-[#f5b800]/10 text-[#0f2044] dark:text-[#f5b800]'
+          <div className={`mb-3 p-3.5 rounded-2xl transition-all duration-500 group-hover:scale-110 ${accent === 'navy' ? 'bg-white/10 text-[#f5b800]' : 'bg-white dark:bg-white/5 text-[#0f2044] dark:text-[#f5b800] shadow-sm'
       }`}>
         <Icon className="w-6 h-6" />
       </div>
-      <span className="text-[11px] font-black text-center leading-tight uppercase tracking-wide group-hover:text-[#f5b800] transition-colors">
+          <span className="text-[13px] font-black text-center leading-tight tracking-wide group-hover:text-[#f5b800] transition-colors">
           {label}
-      </span>
-      <div className="absolute top-0 right-0 w-16 h-16 bg-white/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
+          </span>
     </Link>
   );
 }

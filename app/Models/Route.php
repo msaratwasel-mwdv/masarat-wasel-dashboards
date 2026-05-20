@@ -17,6 +17,7 @@ class Route extends Model
         'code',
         'description',
         'school_id',
+        'estimated_distance_km',
     ];
 
     /**
