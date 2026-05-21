@@ -11,6 +11,7 @@ class NotificationController extends Controller
 {
     /**
      * Get notification IDs for the current user (direct + via recipients table).
+     * Excludes transient student/trip/attendance notifications older than 24 hours.
      */
     private function getUserNotificationQuery()
     {
@@ -21,7 +22,7 @@ class NotificationController extends Controller
             ->pluck('notification_id');
 
         // Query notifications where user_id matches OR notification is in recipients table
-        return Notification::where(function ($query) use ($userId, $recipientNotificationIds) {
+        return Notification::activeOnly()->where(function ($query) use ($userId, $recipientNotificationIds) {
             $query->where('user_id', $userId)
                   ->orWhereIn('id', $recipientNotificationIds);
         });

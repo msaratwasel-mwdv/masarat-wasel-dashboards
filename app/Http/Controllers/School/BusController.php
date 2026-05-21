@@ -221,6 +221,32 @@ class BusController extends Controller
         $forthIds = collect($validated['forth_student_ids'] ?? [])->unique()->values()->all();
         $backIds  = collect($validated['back_student_ids']  ?? [])->unique()->values()->all();
 
+        // Identify newly assigned forth students before updating
+        $newlyAssignedForthIds = [];
+        if (!empty($forthIds)) {
+            $newlyAssignedForthIds = \App\Models\Student::inSchool($schoolId)
+                ->whereIn('id', $forthIds)
+                ->where(function ($q) use ($busId) {
+                    $q->whereNull('forth_bus_id')
+                      ->orWhere('forth_bus_id', '!=', $busId);
+                })
+                ->pluck('id')
+                ->toArray();
+        }
+
+        // Identify newly assigned back students before updating
+        $newlyAssignedBackIds = [];
+        if (!empty($backIds)) {
+            $newlyAssignedBackIds = \App\Models\Student::inSchool($schoolId)
+                ->whereIn('id', $backIds)
+                ->where(function ($q) use ($busId) {
+                    $q->whereNull('back_bus_id')
+                      ->orWhere('back_bus_id', '!=', $busId);
+                })
+                ->pluck('id')
+                ->toArray();
+        }
+
         \Illuminate\Support\Facades\DB::transaction(function () use ($schoolId, $busId, $forthIds, $backIds) {
             // Clear removed forth students
             \App\Models\Student::inSchool($schoolId)
@@ -248,6 +274,57 @@ class BusController extends Controller
                     ->update(['back_bus_id' => $busId]);
             }
         });
+
+        // Send notifications for newly assigned students to the bus crew
+        try {
+            $notificationService = app(\App\Services\NotificationService::class);
+
+            if (!empty($newlyAssignedForthIds)) {
+                $students = \App\Models\Student::whereIn('id', $newlyAssignedForthIds)->get();
+                foreach ($students as $student) {
+                    $studentName = $student->full_name;
+                    $studentNameEn = $student->full_name_en ?: $student->student_code;
+
+                    $notificationService->notifyBusCrew(
+                        busId: $busId,
+                        type: 'student_added_to_route',
+                        title: '👤 إضافة طالب جديد',
+                        message: "تم إضافة طالب جديد للمسار الصباحي: {$studentName}",
+                        data: [
+                            'student_id' => (string) $student->id,
+                            'category' => 'students',
+                            'target_screen' => 'student_details'
+                        ],
+                        titleEn: '👤 New Student Added',
+                        messageEn: "A new student has been added to the morning route: {$studentNameEn}"
+                    );
+                }
+            }
+
+            if (!empty($newlyAssignedBackIds)) {
+                $students = \App\Models\Student::whereIn('id', $newlyAssignedBackIds)->get();
+                foreach ($students as $student) {
+                    $studentName = $student->full_name;
+                    $studentNameEn = $student->full_name_en ?: $student->student_code;
+
+                    $notificationService->notifyBusCrew(
+                        busId: $busId,
+                        type: 'student_added_to_route',
+                        title: '👤 إضافة طالب جديد',
+                        message: "تم إضافة طالب جديد لمسار العودة: {$studentName}",
+                        data: [
+                            'student_id' => (string) $student->id,
+                            'category' => 'students',
+                            'target_screen' => 'student_details'
+                        ],
+                        titleEn: '👤 New Student Added',
+                        messageEn: "A new student has been added to the return route: {$studentNameEn}"
+                    );
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Bulk student assignment notification failed: ' . $e->getMessage());
+        }
 
         return redirect()->back()->with('success', 'تم حفظ تعيينات الطلاب بنجاح');
     }

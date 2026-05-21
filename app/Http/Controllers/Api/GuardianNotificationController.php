@@ -17,14 +17,14 @@ class GuardianNotificationController extends Controller
         $userId = $request->user()->id;
 
         // جلب الإشعارات المباشرة (user_id) + إشعارات المدرسة (عبر notification_recipients)
-        $notifications = Notification::where(function ($query) use ($userId) {
+        $notifications = Notification::activeOnly()->where(function ($query) use ($userId) {
                 $query->where('user_id', $userId)
                       ->orWhereHas('recipients', function ($q) use ($userId) {
                           $q->where('user_id', $userId);
                       });
             })
             ->latest()
-            ->paginate(20);
+            ->paginate(100);
 
         // نحوّل كل إشعار إلى الشكل الذي يتوقعه Flutter
         $items = $notifications->map(function ($n) use ($userId) {
@@ -61,11 +61,13 @@ class GuardianNotificationController extends Controller
                 'total'        => $notifications->total(),
                 'per_page'     => $notifications->perPage(),
             ],
-            'unread_count' => Notification::where(function ($query) use ($userId) {
-                    $query->where('user_id', $userId)->where('status', 'unread');
-                })
-                ->orWhereHas('recipients', function ($q) use ($userId) {
-                    $q->where('user_id', $userId)->whereNull('read_at');
+            'unread_count' => Notification::activeOnly()->where(function ($query) use ($userId) {
+                    $query->where(function ($q) use ($userId) {
+                        $q->where('user_id', $userId)->where('status', 'unread');
+                    })
+                    ->orWhereHas('recipients', function ($q) use ($userId) {
+                        $q->where('user_id', $userId)->whereNull('read_at');
+                    });
                 })
                 ->count(),
         ]);
@@ -79,7 +81,7 @@ class GuardianNotificationController extends Controller
     {
         $userId = $request->user()->id;
         
-        $notification = Notification::where(function ($query) use ($userId) {
+        $notification = Notification::activeOnly()->where(function ($query) use ($userId) {
                 $query->where('user_id', $userId)
                       ->orWhereHas('recipients', function ($q) use ($userId) {
                           $q->where('user_id', $userId);

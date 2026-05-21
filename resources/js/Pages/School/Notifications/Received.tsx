@@ -24,7 +24,8 @@ import {
     DS_tableTd,
     DS_sectionHeader,
     DS_filterBtn,
-    DS_badge
+    DS_badge,
+    DS_btnGold
 } from '@/lib/DS';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -59,6 +60,7 @@ export default function Received({ notifications, stats, auth }: Props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState('all');
     const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+    const [isResending, setIsResending] = useState(false);
 
     const getTypeDetails = (type: string) => {
         const details: Record<string, { color: string; bg: string; icon: any; label: string }> = {
@@ -329,7 +331,31 @@ export default function Received({ notifications, stats, auth }: Props) {
 
                                         {selectedNotification.incident.students_list && selectedNotification.incident.students_list.length > 0 && (
                                             <div className="mb-8">
-                                                <h4 className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-4">{isRtl ? 'الطلاب المرتبطين بالحادث' : 'Involved Students'}</h4>
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-red-500">{isRtl ? 'الطلاب المرتبطين بالحادث' : 'Involved Students'}</h4>
+                                                    <button
+                                                        onClick={() => {
+                                                            router.post(route('school.notifications.incidents.resend', { incident: selectedNotification.incident.id }), {}, {
+                                                                onStart: () => setIsResending(true),
+                                                                onFinish: () => setIsResending(false)
+                                                            });
+                                                        }}
+                                                        disabled={isResending}
+                                                        className={`${DS_btnGold} text-xs py-1.5 px-3 rounded-[10px]`}
+                                                    >
+                                                        {isResending ? (
+                                                            <span className="flex items-center gap-1">
+                                                                <span className="w-3.5 h-3.5 border-2 border-[#0f2044] border-t-transparent rounded-full animate-spin"></span>
+                                                                {isRtl ? 'جاري الإرسال...' : 'Sending...'}
+                                                            </span>
+                                                        ) : (
+                                                            <>
+                                                                <AlertTriangle className="w-3.5 h-3.5" />
+                                                                {isRtl ? 'إعادة الإرسال لولي الأمر' : 'Resend to Guardian'}
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {selectedNotification.incident.students_list.map((student: any) => (
                                                         <div key={student.id} className="inline-flex items-center gap-2 bg-white dark:bg-[#0f2044]/30 px-3 py-1.5 rounded-[10px] border border-gray-100 dark:border-[#243460]">

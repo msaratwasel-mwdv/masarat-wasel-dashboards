@@ -14,6 +14,76 @@ class StudentObserver
     public function saved(Student $student): void
     {
         Cache::forget('admin_dashboard_stats');
+        $this->notifyBusCrewOnAssignment($student);
+    }
+
+    /**
+     * Send notifications to the bus crew when a student is assigned to the bus.
+     */
+    protected function notifyBusCrewOnAssignment(Student $student): void
+    {
+        $forthBusAssigned = false;
+        $backBusAssigned = false;
+
+        if ($student->wasRecentlyCreated) {
+            if ($student->forth_bus_id) {
+                $forthBusAssigned = true;
+            }
+            if ($student->back_bus_id) {
+                $backBusAssigned = true;
+            }
+        } else {
+            if ($student->wasChanged('forth_bus_id') && $student->forth_bus_id) {
+                $forthBusAssigned = true;
+            }
+            if ($student->wasChanged('back_bus_id') && $student->back_bus_id) {
+                $backBusAssigned = true;
+            }
+        }
+
+        if (!$forthBusAssigned && !$backBusAssigned) {
+            return;
+        }
+
+        try {
+            $notificationService = app(\App\Services\NotificationService::class);
+            $studentName = $student->full_name;
+            $studentNameEn = $student->full_name_en ?: $student->student_code;
+
+            if ($forthBusAssigned) {
+                $notificationService->notifyBusCrew(
+                    busId: $student->forth_bus_id,
+                    type: 'student_added_to_route',
+                    title: '👤 إضافة طالب جديد',
+                    message: "تم إضافة طالب جديد للمسار الصباحي: {$studentName}",
+                    data: [
+                        'student_id' => (string) $student->id,
+                        'category' => 'students',
+                        'target_screen' => 'student_details'
+                    ],
+                    titleEn: '👤 New Student Added',
+                    messageEn: "A new student has been added to the morning route: {$studentNameEn}"
+                );
+            }
+
+            if ($backBusAssigned) {
+                $notificationService->notifyBusCrew(
+                    busId: $student->back_bus_id,
+                    type: 'student_added_to_route',
+                    title: '👤 إضافة طالب جديد',
+                    message: "تم إضافة طالب جديد لمسار العودة: {$studentName}",
+                    data: [
+                        'student_id' => (string) $student->id,
+                        'category' => 'students',
+                        'target_screen' => 'student_details'
+                    ],
+                    titleEn: '👤 New Student Added',
+                    messageEn: "A new student has been added to the return route: {$studentNameEn}"
+                );
+            }
+        } catch (\Exception $e) {
+            Log::error('StudentObserver notification failed: ' . $e->getMessage());
+        }
     }
 
     public function deleted(Student $student): void

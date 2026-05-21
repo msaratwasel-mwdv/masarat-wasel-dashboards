@@ -43,13 +43,15 @@ class NotificationPushed implements ShouldBroadcast
     {
         $unreadCount = 0;
         if ($this->targetUserId) {
-            $unreadCount = Notification::where(function($q) {
-                    $q->where('user_id', $this->targetUserId)
-                      ->where('status', 'unread');
-                })
-                ->orWhereHas('recipients', function($q) {
-                    $q->where('user_id', $this->targetUserId)
-                      ->whereNull('read_at');
+            $unreadCount = Notification::activeOnly()->where(function($q) {
+                    $q->where(function($sub) {
+                        $sub->where('user_id', $this->targetUserId)
+                            ->where('status', 'unread');
+                    })
+                    ->orWhereHas('recipients', function($sub) {
+                        $sub->where('user_id', $this->targetUserId)
+                            ->whereNull('read_at');
+                    });
                 })
                 ->count();
         }

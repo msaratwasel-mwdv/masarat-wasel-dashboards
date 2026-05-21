@@ -519,10 +519,21 @@ class NotificationService
 
             $report = $messaging->sendMulticast($fcmMessage, $fcmTokens);
             
+            Log::info('[FCM] sendMulticast RESULT', [
+                'successes' => $report->successes()->count(),
+                'failures' => $report->failures()->count(),
+                'title' => $title,
+                'tokens_sent' => count($fcmTokens),
+            ]);
+
             // Clean up invalid tokens
             if ($report->failures()->count() > 0) {
                 foreach ($report->failures()->getItems() as $failure) {
                     $errorMessage = $failure->error()->getMessage();
+                    Log::warning('[FCM] Token failure', [
+                        'token' => substr($failure->target()->value(), 0, 20) . '...',
+                        'error' => $errorMessage,
+                    ]);
                     if (str_contains($errorMessage, 'Registration token is invalid') || 
                         str_contains($errorMessage, 'Unregistered') ||
                         str_contains($errorMessage, 'Requested entity was not found')) {
@@ -737,13 +748,15 @@ class NotificationService
      */
     public function getUnreadCount(int $userId): int
     {
-        return Notification::where(function($q) use ($userId) {
-                $q->where('user_id', $userId)
-                  ->where('status', 'unread');
-            })
-            ->orWhereHas('recipients', function($q) use ($userId) {
-                $q->where('user_id', $userId)
-                  ->whereNull('read_at');
+        return Notification::activeOnly()->where(function($q) use ($userId) {
+                $q->where(function($sub) use ($userId) {
+                    $sub->where('user_id', $userId)
+                        ->where('status', 'unread');
+                })
+                ->orWhereHas('recipients', function($sub) use ($userId) {
+                    $sub->where('user_id', $userId)
+                        ->whereNull('read_at');
+                });
             })
             ->count();
     }
