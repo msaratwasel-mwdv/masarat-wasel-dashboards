@@ -908,6 +908,16 @@ class DailyTripApiController extends Controller
             ];
         });
 
+        // Load driver info with user relation to get real name/phone/photo
+        $driver     = $bus->driver()->with('user')->first();
+        $driverUser = $driver?->user;
+        $driverPhotoUrl = null;
+        if ($driverUser && $driverUser->image) {
+            $driverPhotoUrl = str_starts_with($driverUser->image, 'http')
+                ? $driverUser->image
+                : url(\Illuminate\Support\Facades\Storage::url($driverUser->image));
+        }
+
         return response()->json([
             'bus' => [
                 'id' => $bus->id,
@@ -919,6 +929,14 @@ class DailyTripApiController extends Controller
                 'trip_id' => $activeTrip?->id,
                 'school_lat' => $bus->school?->latitude,
                 'school_lng' => $bus->school?->longitude,
+            ],
+            'driver' => [
+                'id'    => $driverUser?->id,
+                'name'  => $driverUser?->first_name_ar
+                            ? trim(($driverUser->first_name_ar ?? '') . ' ' . ($driverUser->last_name_ar ?? ''))
+                            : ($driverUser?->name ?? '-'),
+                'phone' => $driverUser?->phone ?? '-',
+                'photo' => $driverPhotoUrl,
             ],
             'passengers' => $students,
             'on_bus_count' => $students->where('isOnBus', true)->count(),
