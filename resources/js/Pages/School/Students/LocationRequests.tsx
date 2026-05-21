@@ -110,7 +110,7 @@ export default function LocationRequests({ auth, locationRequests, buses = [], s
                     only: ['locationRequests', 'stats'],
                     preserveScroll: true,
                     preserveState: true
-                });
+                } as any);
             }
         }
     );

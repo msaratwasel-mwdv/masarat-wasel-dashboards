@@ -23,10 +23,12 @@ const dictionary = {
   Add: { ar: "إضافة", en: "Add" },
   "School settings updated successfully.": { ar: "تم تحديث إعدادات المدرسة بنجاح.", en: "School settings updated successfully." },
   Actions: { ar: "الإجراءات", en: "Actions" },
+  Statistics: { ar: "الإحصائيات", en: "Statistics" },
   Status: { ar: "الحالة", en: "Status" },
   View: { ar: "عرض", en: "View" },
   "Loading...": { ar: "جار التحميل...", en: "Loading..." },
   "No Data": { ar: "لا توجد بيانات", en: "No Data Available" },
+"No Trips Found": { ar: "لم يتم العثور على رحلات", en: "No Trips Found" },
   Total: { ar: "الإجمالي", en: "Total" },
   "Approved Price": { ar: "التسعيرة المعتمدة", en: "Approved Price" },
   "Morning Bus Assignment": { ar: "رحلة ذهاب", en: "Morning Bus Assignment" },
@@ -339,6 +341,15 @@ const dictionary = {
   "rejected": { ar: "مرفوض", en: "Rejected" },
   "pending": { ar: "قيد الانتظار", en: "Pending" },
   "cancelled": { ar: "ملغي", en: "Cancelled" },
+  "in_progress": { ar: "قيد التنفيذ", en: "In Progress" },
+  "completed": { ar: "مكتمل", en: "Completed" },
+  "Field Trips": { ar: "الرحلات الميدانية", en: "Field Trips" },
+  "Registered Field Trips": { ar: "الرحلات الميدانية المسجلة", en: "Registered Field Trips" },
+  "Trip & Description": { ar: "الرحلة والوصف", en: "Trip & Description" },
+  "Showing": { ar: "عرض", en: "Showing" },
+  "trips": { ar: "رحلات", en: "trips" },
+  "In Progress": { ar: "قيد التنفيذ", en: "In Progress" },
+  "Completed": { ar: "مكتمل", en: "Completed" },
   "Synchronizing Assets...": { ar: "جاري مزامنة الأصول...", en: "Synchronizing Assets..." },
   "OMR": { ar: "ر.ع", en: "OMR" },
   "EXT": { ar: "خارجي", en: "EXT" },
@@ -1305,6 +1316,7 @@ const dictionary = {
 
 
   "No trips found": { ar: "لم يتم العثور على رحلات", en: "No trips found" },
+"No Trips Found": { ar: "لم يتم العثور على رحلات", en: "No Trips Found" },
 
   // Common Actions
   Back: { ar: "رجوع", en: "Back" },

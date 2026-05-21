@@ -298,8 +298,8 @@ export default function Welcome({
                             variants={itemVariants}
                             className={`text-lg lg:text-xl font-medium leading-relaxed mb-12 max-w-xl ${theme === 'dark' ? 'text-slate-300' : 'text-slate-500'}`}
                         >
-                            {isAr 
-                              ? "نقدم حلول نقل ذكية وآمنة وحديثة بخدمات رقمية متكاملة لربط المدارس وأولياء الأمور. وفر وقتك، واضمن سلامة أبنائك باحترافية." 
+                            {isAr
+                              ? "نقدم حلول نقل ذكية وآمنة وحديثة بخدمات رقمية متكاملة لربط المدارس وأولياء الأمور. وفر وقتك، واضمن سلامة أبنائك باحترافية."
                               : "We offer smart, safe, and modern transport solutions with integrated digital services connecting schools and parents. Save time and ensure safety professionally."}
                         </motion.p>
                         <motion.div
@@ -333,7 +333,7 @@ export default function Welcome({
                     >
                         <div className="absolute inset-0 bg-gradient-to-tr from-brand-yellow/20 to-transparent rounded-[3rem] blur-3xl rotate-12 -z-10" />
                         <div className={`relative rounded-[3rem] p-4 shadow-3xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 shadow-black/50' : 'bg-white border-white shadow-slate-200/50'}`}>
-                            <div 
+                            <div
                                 className="rounded-[2.5rem] overflow-hidden aspect-[4/3] bg-slate-100 flex items-center justify-center cursor-pointer group/video relative"
                                 onClick={togglePlay}
                             >
@@ -346,10 +346,10 @@ export default function Welcome({
                                     onPlay={() => setIsPlaying(true)}
                                     onPause={() => setIsPlaying(false)}
                                 />
-                                
+
                                 {!isPlaying && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover/video:bg-black/20 transition-all duration-500">
-                                        <motion.div 
+                                        <motion.div
                                             initial={{ scale: 0.8, opacity: 0 }}
                                             animate={{ scale: 1, opacity: 1 }}
                                             className="w-20 h-20 bg-brand-yellow text-brand-navy rounded-full flex items-center justify-center shadow-2xl transform group-hover/video:scale-110 transition-transform duration-500"
@@ -726,7 +726,7 @@ export default function Welcome({
                             </h4>
                             <ul className="space-y-4">
                                 <li>
-                                    <a href="https://wa.me/96879967769" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 font-bold transition-colors dir-ltr ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`} dir="ltr">
+                                    <a href="https://wa.me/96879967769" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`} >
                                         <MessageCircle className="w-5 h-5 text-brand-yellow" />
                                         <span>+968 7996 7769</span>
                                     </a>
@@ -750,8 +750,8 @@ export default function Welcome({
             </footer>
 
             {/* --- Enhanced Floating Support Button --- */}
-            <a 
-               href="https://wa.me/96879967769" 
+            <a
+               href="https://wa.me/96879967769"
                target="_blank"
                rel="noreferrer"
                className={`fixed bottom-8 ${dir === 'rtl' ? 'left-8' : 'right-8'} z-50 group flex items-center gap-4`}
@@ -768,7 +768,7 @@ export default function Welcome({
                     {/* Pulsing Outer Ring */}
                     <div className="absolute inset-0 rounded-full bg-brand-yellow/40 animate-ping scale-150" />
                     <div className="absolute inset-0 rounded-full bg-brand-yellow/20 animate-pulse scale-125" />
-                    
+
                     {/* Main Avatar Container */}
                     <div className={`relative w-20 h-20 rounded-full border-4 border-brand-yellow shadow-[0_0_40px_rgba(255,191,0,0.4)] overflow-hidden hover:scale-110 transition-transform duration-500 hover:rotate-6 ${
                         theme === 'dark' ? 'bg-slate-800' : 'bg-white'

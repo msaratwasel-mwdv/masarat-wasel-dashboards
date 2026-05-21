@@ -83,7 +83,7 @@ export default function AbsenceRequests({ auth, absenceRequests }: Props) {
                     only: ['absenceRequests'],
                     preserveScroll: true,
                     preserveState: true
-                });
+                } as any);
             }
         }
     );

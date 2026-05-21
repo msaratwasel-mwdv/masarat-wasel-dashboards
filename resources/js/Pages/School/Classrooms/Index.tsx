@@ -57,7 +57,7 @@ interface Props {
 
 export default function ClassroomIndex({ auth, classrooms = [], grades = [], teachers = [], filters }: Props) {
   const { t, isRtl } = useTranslation();
-  const [activeTab, setActiveTab] = useState<"classrooms" | "grades">("classrooms");
+  const [activeTab, setActiveTab] = useState<"classrooms" | "grades">("grades");
   const [search, setSearch] = useState(filters.search || "");
   
   // Modal states
@@ -165,55 +165,33 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
     >
       <Head title={t("Classes & Grades")} />
 
-      <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-8`}>
-        
-        {/* Simple Analytics Row */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
-          <div className="flex items-center gap-3 p-3 md:p-4 rounded-[18px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm">
-            <div className="w-10 h-10 rounded-[12px] bg-[#0f2044]/10 dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-[#7ba7e8] flex items-center justify-center flex-shrink-0">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[9px] md:text-[10px] font-bold uppercase text-gray-400 dark:text-gray-500 leading-none mb-1 truncate">{t("Total Classrooms")}</p>
-              <h4 className="text-lg md:text-xl font-black text-[#0f2044] dark:text-white leading-none">{classrooms.length}</h4>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 md:p-4 rounded-[18px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-[#243460] shadow-sm">
-            <div className="w-10 h-10 rounded-[12px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
-              <GraduationCap className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[9px] md:text-[10px] font-bold uppercase text-gray-400 dark:text-gray-500 leading-none mb-1 truncate">{t("Total Grades")}</p>
-              <h4 className="text-lg md:text-xl font-black text-[#0f2044] dark:text-white leading-none">{grades.length}</h4>
-            </div>
-          </div>
-        </motion.div>
+      <div className={`${DS_pageWrapper} px-4 sm:px-6 lg:px-8 py-4`}>
 
         {/* Top Header & Tabs */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-          {/* Tab Switcher */}
+          {/* Tab Switcher — Grades first */}
           <div className={`flex p-1.5 bg-white dark:bg-[#1a2845] rounded-[20px] shadow-sm border border-[#0f2044]/5 dark:border-[#243460] w-fit ${isRtl ? "md:mr-auto" : "md:ml-auto"}`}>
-            <button
-              onClick={() => setActiveTab("classrooms")}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-[16px] text-sm font-bold transition-all ${
-                activeTab === "classrooms" 
-                  ? "bg-[#0f2044] text-white shadow-md" 
-                  : "text-gray-500 hover:text-[#0f2044] hover:bg-[#0f2044]/5 dark:text-gray-400 dark:hover:text-white dark:hover:bg-[#243460]"
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              {t("Classrooms")}
-            </button>
             <button
               onClick={() => setActiveTab("grades")}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-[16px] text-sm font-bold transition-all ${
-                activeTab === "grades" 
-                  ? "bg-[#0f2044] text-white shadow-md" 
+                activeTab === "grades"
+                  ? "bg-[#0f2044] text-white shadow-md"
                   : "text-gray-500 hover:text-[#0f2044] hover:bg-[#0f2044]/5 dark:text-gray-400 dark:hover:text-white dark:hover:bg-[#243460]"
               }`}
             >
               <GraduationCap className="w-4 h-4" />
               {t("Grades")}
+            </button>
+            <button
+              onClick={() => setActiveTab("classrooms")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-[16px] text-sm font-bold transition-all ${
+                activeTab === "classrooms"
+                  ? "bg-[#0f2044] text-white shadow-md"
+                  : "text-gray-500 hover:text-[#0f2044] hover:bg-[#0f2044]/5 dark:text-gray-400 dark:hover:text-white dark:hover:bg-[#243460]"
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              {t("Classrooms")}
             </button>
           </div>
         </div>
@@ -357,9 +335,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
         <div className={DS_modalContainer}>
           <div className={DS_modalHeader(isRtl)}>
             <div className={`flex items-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
-              <div className="w-10 h-10 rounded-xl bg-[#f5b800] flex items-center justify-center">
-                <Plus className="w-5 h-5 text-[#0f2044]" />
-              </div>
+              <div className={DS_modalHeaderAccent} />
               <h2 className={DS_modalHeaderTitle}>
                 {activeTab === "classrooms" ? t("Add New Class") : t("Add New Grade")}
               </h2>
@@ -389,7 +365,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                         <span className="block truncate">{getGradeName(classForm.data.grade_id)}</span>
                         <ChevronDown className="w-4 h-4 text-gray-400" />
                       </ListboxButton>
-                      <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[16px] bg-white dark:bg-[#1a2845] py-2 shadow-xl border border-[#0f2044]/10 dark:border-[#243460] focus:outline-none">
+                      <ListboxOptions anchor="bottom start" className="z-[9999] [--anchor-gap:4px] w-[var(--button-width)] max-h-60 overflow-auto rounded-[16px] bg-white dark:bg-[#1a2845] py-2 shadow-xl border border-[#0f2044]/10 dark:border-[#243460] focus:outline-none">
                         {grades.map((g) => (
                           <ListboxOption key={g.id} value={g.id.toString()} className={({ active }) => `cursor-pointer py-2.5 px-4 text-sm font-semibold transition-colors ${active ? "bg-[#0f2044]/5 dark:bg-[#243460] text-[#0f2044] dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
                             {g.name}
@@ -421,7 +397,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                         <span className="block truncate">{getTeacherName(gradeForm.data.teacher_id)}</span>
                         <ChevronDown className="w-4 h-4 text-gray-400" />
                       </ListboxButton>
-                      <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[16px] bg-white dark:bg-[#1a2845] py-2 shadow-xl border border-[#0f2044]/10 dark:border-[#243460] focus:outline-none">
+                      <ListboxOptions anchor="bottom start" className="z-[9999] [--anchor-gap:4px] w-[var(--button-width)] max-h-60 overflow-auto rounded-[16px] bg-white dark:bg-[#1a2845] py-2 shadow-xl border border-[#0f2044]/10 dark:border-[#243460] focus:outline-none">
                         <ListboxOption value="" className="py-2.5 px-4 text-sm font-semibold text-gray-400 italic cursor-pointer hover:bg-gray-50 dark:hover:bg-[#243460]">{t("None")}</ListboxOption>
                         {teachers.map((tItem) => (
                           <ListboxOption key={tItem.id} value={tItem.id.toString()} className={({ active }) => `cursor-pointer py-2.5 px-4 text-sm font-semibold transition-colors ${active ? "bg-[#0f2044]/5 dark:bg-[#243460] text-[#0f2044] dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
@@ -481,7 +457,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                         <span className="block truncate">{getGradeName(classForm.data.grade_id)}</span>
                         <ChevronDown className="w-4 h-4 text-gray-400" />
                       </ListboxButton>
-                      <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[16px] bg-white dark:bg-[#1a2845] py-2 shadow-xl border border-[#0f2044]/10 dark:border-[#243460] focus:outline-none">
+                      <ListboxOptions anchor="bottom start" className="z-[9999] [--anchor-gap:4px] w-[var(--button-width)] max-h-60 overflow-auto rounded-[16px] bg-white dark:bg-[#1a2845] py-2 shadow-xl border border-[#0f2044]/10 dark:border-[#243460] focus:outline-none">
                         {grades.map((g) => (
                           <ListboxOption key={g.id} value={g.id.toString()} className={({ active }) => `cursor-pointer py-2.5 px-4 text-sm font-semibold transition-colors ${active ? "bg-[#0f2044]/5 dark:bg-[#243460] text-[#0f2044] dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
                             {g.name}
@@ -513,7 +489,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                         <span className="block truncate">{getTeacherName(gradeForm.data.teacher_id)}</span>
                         <ChevronDown className="w-4 h-4 text-gray-400" />
                       </ListboxButton>
-                      <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[16px] bg-white dark:bg-[#1a2845] py-2 shadow-xl border border-[#0f2044]/10 dark:border-[#243460] focus:outline-none">
+                      <ListboxOptions anchor="bottom start" className="z-[9999] [--anchor-gap:4px] w-[var(--button-width)] max-h-60 overflow-auto rounded-[16px] bg-white dark:bg-[#1a2845] py-2 shadow-xl border border-[#0f2044]/10 dark:border-[#243460] focus:outline-none">
                         <ListboxOption value="" className="py-2.5 px-4 text-sm font-semibold text-gray-400 italic cursor-pointer hover:bg-gray-50 dark:hover:bg-[#243460]">{t("None")}</ListboxOption>
                         {teachers.map((tItem) => (
                           <ListboxOption key={tItem.id} value={tItem.id.toString()} className={({ active }) => `cursor-pointer py-2.5 px-4 text-sm font-semibold transition-colors ${active ? "bg-[#0f2044]/5 dark:bg-[#243460] text-[#0f2044] dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>

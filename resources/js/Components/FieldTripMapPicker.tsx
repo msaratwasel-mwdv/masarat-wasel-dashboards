@@ -163,7 +163,7 @@ function GoogleMapInner({
     };
 
     return (
-        <div className="space-y-3 flex flex-col h-full">
+        <div className="space-y-3 flex flex-col" style={{ minHeight: '420px' }}>
             {/* Search Bar - High Z-Index */}
             <div className="relative z-[50]">
                 <div className="flex items-center gap-2 bg-white dark:bg-[#1a2845] border border-gray-200 dark:border-[#243460] rounded-[14px] px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-[#f5b800] transition-all">
@@ -227,8 +227,8 @@ function GoogleMapInner({
                 </AnimatePresence>
             </div>
 
-            {/* Map Container - Lower Z-Index sibling */}
-            <div className="relative flex-1 rounded-[20px] overflow-hidden border border-gray-200 dark:border-[#243460] shadow-lg min-h-[280px] z-[10]">
+            {/* Map Container - explicit height so Google Maps always renders */}
+            <div className="relative rounded-[20px] overflow-hidden border border-gray-200 dark:border-[#243460] shadow-lg z-[10]" style={{ height: '300px', flexShrink: 0 }}>
                 <Map
                     defaultCenter={center}
                     defaultZoom={lat && lng ? 15 : 10}

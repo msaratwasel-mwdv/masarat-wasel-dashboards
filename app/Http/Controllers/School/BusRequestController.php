@@ -18,7 +18,7 @@ class BusRequestController extends Controller
         $schoolId = Auth::user()->getSchoolId();
 
         $requests = BusRequest::where('school_id', $schoolId)
-            ->with(['bus'])
+            ->with(['school', 'bus.driver.user', 'bus.assistant'])
             ->latest()
             ->get();
 

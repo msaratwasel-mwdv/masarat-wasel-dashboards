@@ -21,7 +21,7 @@ class BusRequestController extends Controller
      */
     public function index(Request $request)
     {
-        $query = BusRequest::with(['school', 'bus.driver', 'bus.assistant', 'bus.fieldSupervisor']);
+        $query = BusRequest::with(['school', 'bus.driver.user', 'bus.assistant']);
 
         // Status filter
         $status = $request->input('status');
@@ -71,7 +71,7 @@ class BusRequestController extends Controller
         // Get available buses (not assigned to a school)
         $availableBuses = Bus::whereNull('school_id')
             ->where('status', 'active')
-            ->with(['driver', 'assistant', 'fieldSupervisor'])
+            ->with(['driver.user', 'assistant'])
             ->get();
 
         return Inertia::render('Admin/BusRequests/Index', [

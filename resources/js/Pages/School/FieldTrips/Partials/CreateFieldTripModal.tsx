@@ -1,4 +1,5 @@
 import { useState, FormEventHandler, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useForm } from '@inertiajs/react';
 import useTranslation from '@/hooks/useTranslation';
 import FieldTripMapPicker from '@/Components/FieldTripMapPicker';
@@ -50,10 +51,13 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
     const [showMemberModal, setShowMemberModal] = useState(false);
     const [memberForm, setMemberForm] = useState<TripMember>({ name: '' });
 
+    // Today's date as default
+    const todayStr = new Date().toISOString().split('T')[0];
+
     const { data, setData, post, processing, reset, errors } = useForm({
         name: '',
         description: '',
-        date: '',
+        date: todayStr,
         departure_time: '08:00',
         arrival_time: '',
         destination_address: '',
@@ -77,7 +81,7 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
 
     const filteredStudents = useMemo(() => {
         let students: (Student & { classroomName: string })[] = [];
-        
+
         classrooms.forEach(cls => {
             if (selectedClassroomId === 'all' || selectedClassroomId === cls.id) {
                 cls.students.forEach(s => {
@@ -88,8 +92,8 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
 
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
-            students = students.filter(s => 
-                s.first_name_ar.toLowerCase().includes(term) || 
+            students = students.filter(s =>
+                s.first_name_ar.toLowerCase().includes(term) ||
                 s.last_name_ar.toLowerCase().includes(term) ||
                 s.student_code.toLowerCase().includes(term)
             );
@@ -111,15 +115,15 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
     const toggleStudent = (id: number) => {
-        setData('student_ids', data.student_ids.includes(id) 
-            ? data.student_ids.filter(sid => sid !== id) 
+        setData('student_ids', data.student_ids.includes(id)
+            ? data.student_ids.filter(sid => sid !== id)
             : [...data.student_ids, id]
         );
     };
 
     const toggleTeacher = (id: number) => {
-        setData('teacher_ids', data.teacher_ids.includes(id) 
-            ? data.teacher_ids.filter(tid => tid !== id) 
+        setData('teacher_ids', data.teacher_ids.includes(id)
+            ? data.teacher_ids.filter(tid => tid !== id)
             : [...data.teacher_ids, id]
         );
     };
@@ -136,12 +140,20 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
         setData('student_ids', newIds);
     };
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#0f2044]/80 backdrop-blur-sm" onClick={onClose}>
-            <div className={`bg-white dark:bg-[#1a2845] rounded-[24px] shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-gray-100 dark:border-[#243460] ${isRTL ? 'rtl' : 'ltr'}`} onClick={e => e.stopPropagation()}>
-                
+    return createPortal(
+        <div
+            className="fixed z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            style={{ top: 0, left: 0, right: 0, bottom: 0, padding: '1rem' }}
+            onClick={onClose}
+        >
+            <div
+                className={`bg-white dark:bg-[#1a2845] rounded-[16px] shadow-2xl max-w-3xl w-full flex flex-col border  border-gray-100 dark:border-[#243460] ${isRTL ? 'rtl' : 'ltr'}`}
+                style={{ maxHeight: 'calc(100vh - 2rem)' }}
+                onClick={e => e.stopPropagation()}
+            >
+
                 {/* Header */}
-                <div className="px-6 py-5 bg-[#0f2044] flex items-center justify-between flex-shrink-0">
+                <div className="px-6 py-5 bg-[#0f2044] flex items-center rounded-t-2xl justify-between flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-2 h-6 bg-[#f5b800] rounded-full" />
                         <div className="w-10 h-10 bg-white/10 rounded-[14px] flex items-center justify-center text-xl border border-white/10">
@@ -173,7 +185,7 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                     ))}
                 </div>
 
-                <div className="p-6 overflow-y-auto flex-1">
+                <div className="overflow-y-auto flex-1 p-6">
                     {/* Step 1: Details */}
                     {currentStep === 1 && (
                         <div className="space-y-5">
@@ -204,47 +216,51 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                         </div>
                     )}
 
-                    {/* Step 2: Location */}
-                    {currentStep === 2 && (
-                        <div className="space-y-6 animate-fadeIn">
+                    {/* Step 2: Location - Keep mounted but hidden to prevent map destroy/recreate */}
+                    <div className={currentStep === 2 ? 'block' : 'hidden'}>
+                        <div className="space-y-4">
                             <FieldTripMapPicker
                                 lat={data.destination_latitude}
                                 lng={data.destination_longitude}
                                 isDark={isDark}
                                 isRtl={isRTL}
                                 onChange={(lat, lng, address) => {
-                                    setData(prev => ({ 
-                                        ...prev, 
-                                        destination_latitude: lat, 
+                                    setData(prev => ({
+                                        ...prev,
+                                        destination_latitude: lat,
                                         destination_longitude: lng,
+                                        // Always update address automatically from map/search
                                         destination_address: address || prev.destination_address
                                     }));
                                 }}
                             />
-                            <div>
-                                <label className={DS_labelCls}>{t('Destination Name')}</label>
-                                <input type="text" value={data.destination_address} onChange={e => setData('destination_address', e.target.value)} className={DS_inputCls} placeholder={t('Search or enter destination...')} />
-                                {errors.destination_latitude && <p className="text-red-500 text-[10px] mt-3 text-center font-black">⚠️ {t('Geolocation required on map')}</p>}
-                            </div>
+                            {/* Address captured automatically - show read-only hint if set */}
+                            {data.destination_address && (
+                                <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-800/30 text-xs">
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-black flex-shrink-0">📍</span>
+                                    <span className="font-semibold text-emerald-700 dark:text-emerald-300 truncate">{data.destination_address}</span>
+                                </div>
+                            )}
+                            {errors.destination_latitude && <p className="text-red-500 text-[10px] mt-2 text-center font-black">⚠️ {t('Geolocation required on map')}</p>}
                         </div>
-                    )}
+                    </div>
 
                     {/* Step 3: Student Selection */}
                     {currentStep === 3 && (
                         <div className="space-y-6 animate-fadeIn h-full flex flex-col">
                             <div className="flex flex-col md:flex-row gap-4 mb-2">
                                 <div className="flex-1 relative">
-                                    <input 
-                                        type="text" 
-                                        value={searchTerm} 
+                                    <input
+                                        type="text"
+                                        value={searchTerm}
                                         onChange={e => setSearchTerm(e.target.value)}
                                         placeholder={t('Search by student name or code...')}
                                         className={`${DS_inputCls} ${isRTL ? 'pr-10' : 'pl-10'}`}
                                     />
                                     <svg className={`w-4 h-4 absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                 </div>
-                                <select 
-                                    value={selectedClassroomId} 
+                                <select
+                                    value={selectedClassroomId}
                                     onChange={e => setSelectedClassroomId(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
                                     className={DS_inputCls}
                                 >
@@ -273,12 +289,12 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                 {filteredStudents.map(student => {
                                     const isSelected = data.student_ids.includes(student.id);
                                     return (
-                                        <div 
-                                            key={student.id} 
+                                        <div
+                                            key={student.id}
                                             onClick={() => toggleStudent(student.id)}
                                             className={`p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 flex items-center justify-between group ${
-                                                isSelected 
-                                                ? 'border-brand-navy bg-brand-navy/5 shadow-md scale-[1.02]' 
+                                                isSelected
+                                                ? 'border-brand-navy bg-brand-navy/5 shadow-md scale-[1.02]'
                                                 : 'border-gray-50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700'
                                             }`}
                                         >
@@ -322,12 +338,12 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                     </label>
                                     <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                                         {teachers.map(teacher => (
-                                            <div 
-                                                key={teacher.id} 
+                                            <div
+                                                key={teacher.id}
                                                 onClick={() => toggleTeacher(teacher.id)}
                                                 className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                                                    data.teacher_ids.includes(teacher.id) 
-                                                    ? 'border-brand-navy bg-brand-navy/5 shadow-sm' 
+                                                    data.teacher_ids.includes(teacher.id)
+                                                    ? 'border-brand-navy bg-brand-navy/5 shadow-sm'
                                                     : 'border-gray-50 dark:border-gray-800'
                                                 }`}
                                             >
@@ -349,7 +365,7 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                     <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                                         {data.external_members.map((member, idx) => (
                                             <div key={idx} className="p-3 bg-purple-50/50 dark:bg-purple-900/10 border-2 border-purple-100/50 dark:border-purple-800/30 rounded-xl relative group">
-                                                <button 
+                                                <button
                                                     onClick={() => setData('external_members', data.external_members.filter((_, i) => i !== idx))}
                                                     className="absolute top-2 right-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
                                                 >
@@ -394,8 +410,8 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                     )}
                 </div>
 
-                {/* Footer */}
-                <div className="px-6 py-4 border-t border-gray-100 dark:border-[#243460] bg-gray-50/50 dark:bg-[#0f2044]/10 flex justify-between items-center">
+                {/* Footer - flex-shrink-0 ensures it always stays inside modal */}
+                <div className="px-6 py-4 border-t border-gray-100 dark:border-[#243460] bg-gray-50/50 dark:bg-[#0f2044]/10 flex justify-between items-center flex-shrink-0 rounded-b-2xl">
                     <button onClick={onClose} className={DS_cancelBtn}>{t('Cancel')}</button>
                     <div className="flex gap-3">
                         {currentStep > 1 && (
@@ -443,7 +459,7 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                     <input type="text" value={memberForm.national_id || ''} onChange={e => setMemberForm({...memberForm, national_id: e.target.value})} className={DS_inputCls} placeholder={t('ID number...')} />
                                 </div>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => {
                                     if(memberForm.name && memberForm.phone) {
                                         setData('external_members', [...data.external_members, memberForm]);
@@ -459,6 +475,7 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                     </div>
                 )}
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
