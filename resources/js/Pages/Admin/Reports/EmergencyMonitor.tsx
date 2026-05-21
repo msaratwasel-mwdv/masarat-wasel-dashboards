@@ -76,7 +76,7 @@ export default function EmergencyMonitor({ activeIncidents, resolvedIncidents, a
     'admin.emergencies',
     '.emergency.reported',
     (e: any) => {
-      router.reload({ only: ['activeIncidents', 'resolvedIncidents'], preserveState: true } as any);
+      router.reload({ only: ['activeIncidents', 'resolvedIncidents', 'active_emergencies_count'], preserveState: true } as any);
     }
   );
 

@@ -15,7 +15,8 @@ import {
     ArrowLeft,
     CheckCircle2,
     XCircle,
-    Clock3
+    Clock3,
+    AlertCircle
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Modal from '@/Components/Modal';
@@ -51,6 +52,7 @@ interface Trip {
     arrival_time: string | null;
     video_check: boolean;
     video_path: string | null;
+    cancellation_reason?: string | null;
     bus: {
         id: number;
         bus_number: string;
@@ -70,8 +72,10 @@ interface Props {
 
 const statusConfig: Record<string, { label: string; labelAr: string; class: string; icon: any }> = {
     pending: { label: 'Pending', labelAr: 'في الانتظار', class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300', icon: Clock3 },
+    awaiting_confirmation: { label: 'Awaiting Confirmation', labelAr: 'بانتظار التأكيد', class: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300', icon: Clock3 },
     in_progress: { label: 'In Progress', labelAr: 'جارية', class: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300', icon: Play },
     finished: { label: 'Finished', labelAr: 'مكتملة', class: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300', icon: CheckCircle2 },
+    awaiting_video: { label: 'Awaiting Video Verification', labelAr: 'بانتظار فيديو التوثيق', class: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300', icon: Video },
     cancelled: { label: 'Cancelled', labelAr: 'ملغاة', class: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300', icon: XCircle },
 };
 
@@ -86,7 +90,68 @@ export default function Show({ auth, trip }: Props) {
         icon: Clock3
     };
 
-    const st = getStatus(trip.status);
+    const getSmartStatus = (trip: Trip) => {
+        const status = trip.status;
+        
+        if (status === 'cancelled') {
+            if (trip.cancellation_reason?.includes('لم يتم مسح الحافلة')) {
+                return {
+                    label: 'Unscanned Empty Bus',
+                    labelAr: 'لم يتم مسح الحافلة من خلوها من طلاب',
+                    class: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+                    icon: XCircle
+                };
+            }
+            if (trip.cancellation_reason?.includes('لعدم بدء الرحلة')) {
+                return {
+                    label: 'Cancelled (Not Started)',
+                    labelAr: 'ملغاة لعدم بدء الرحلة',
+                    class: 'bg-gray-100 text-gray-600 dark:bg-gray-700/60 dark:text-gray-400',
+                    icon: AlertCircle
+                };
+            }
+            const isAutoClosed = trip.cancellation_reason?.includes('أغلقت تلقائياً');
+            if (isAutoClosed) {
+                if (!trip.departure_time) {
+                    return {
+                        label: 'Not Executed',
+                        labelAr: 'غير منفذة',
+                        class: 'bg-gray-100 text-gray-600 dark:bg-gray-700/60 dark:text-gray-400',
+                        icon: AlertCircle
+                    };
+                } else {
+                    return {
+                        label: 'Uncompleted',
+                        labelAr: 'غير مكتملة',
+                        class: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+                        icon: AlertCircle
+                    };
+                }
+            }
+            return {
+                label: 'Cancelled',
+                labelAr: 'ملغاة',
+                class: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+                icon: XCircle
+            };
+        }
+        
+        const config = statusConfig[status] || { 
+            label: status, 
+            labelAr: status, 
+            class: 'bg-gray-100 text-gray-700',
+            icon: Clock3
+        };
+
+        return {
+            label: config.label,
+            labelAr: config.labelAr,
+            class: config.class,
+            icon: config.icon
+        };
+    };
+
+    const st = getSmartStatus(trip);
 
     return (
         <AuthenticatedLayout user={auth.user}>

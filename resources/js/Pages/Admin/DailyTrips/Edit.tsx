@@ -78,8 +78,10 @@ export default function Edit({ auth, trip, routes, buses }: Props) {
 
     const statusOptions = [
         { value: 'pending', label: 'Pending', labelAr: 'في الانتظار' },
-        { value: 'ongoing', label: 'Ongoing', labelAr: 'جارية' },
-        { value: 'completed', label: 'Completed', labelAr: 'مكتملة' },
+        { value: 'awaiting_confirmation', label: 'Awaiting Confirmation', labelAr: 'بانتظار التأكيد' },
+        { value: 'in_progress', label: 'In Progress', labelAr: 'جارية' },
+        { value: 'awaiting_video', label: 'Awaiting Video', labelAr: 'بانتظار فيديو التوثيق' },
+        { value: 'finished', label: 'Completed', labelAr: 'مكتملة' },
         { value: 'cancelled', label: 'Cancelled', labelAr: 'ملغاة' },
     ];
 

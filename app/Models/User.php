@@ -130,8 +130,10 @@ class User extends Authenticatable
      */
     public function getNameAttribute(): string
     {
-        $isEn = (request()->header('Accept-Language') === 'en' 
+        $acceptLanguage = request()->header('Accept-Language') ?? '';
+        $isEn = (str_starts_with($acceptLanguage, 'en') 
             || request()->input('lang') === 'en' 
+            || (empty($acceptLanguage) && app()->getLocale() === 'en')
             || (auth()->check() && auth()->user()->preferred_language === 'en'));
 
         if ($isEn) {

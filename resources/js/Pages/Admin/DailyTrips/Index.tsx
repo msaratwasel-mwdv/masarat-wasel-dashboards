@@ -75,6 +75,7 @@ interface Trip {
     };
     video_check: boolean;
     video_path: string | null;
+    cancellation_reason?: string | null;
 }
 
 interface PaginatedTrips {
@@ -100,7 +101,9 @@ const statusConfig: Record<string, { label: string; labelAr: string; class: stri
     pending: { label: 'Pending', labelAr: 'في الانتظار', class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300' },
     awaiting_confirmation: { label: 'Awaiting Confirmation', labelAr: 'بانتظار التأكيد', class: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300' },
     in_progress: { label: 'In Progress', labelAr: 'جارية', class: 'bg-blue-100   text-blue-800   dark:bg-blue-900/40   dark:text-blue-300' },
+    finished: { label: 'Completed', labelAr: 'مكتملة', class: 'bg-green-100  text-green-800  dark:bg-green-900/40  dark:text-green-300' },
     completed: { label: 'Completed', labelAr: 'مكتملة', class: 'bg-green-100  text-green-800  dark:bg-green-900/40  dark:text-green-300' },
+    awaiting_video: { label: 'Awaiting Video', labelAr: 'بانتظار فيديو التوثيق', class: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300' },
     cancelled: { label: 'Cancelled', labelAr: 'ملغاة', class: 'bg-red-100    text-red-800    dark:bg-red-900/40    dark:text-red-300' },
 };
 
@@ -246,6 +249,88 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
         icon: Clock3
     };
 
+    const getSmartStatus = (trip: Trip) => {
+        const status = trip.status;
+        
+        if (status === 'cancelled') {
+            if (trip.cancellation_reason?.includes('لم يتم مسح الحافلة')) {
+                return {
+                    label: 'Unscanned Empty Bus',
+                    labelAr: 'لم يتم مسح الحافلة من خلوها من طلاب',
+                    variant: 'red' as const
+                };
+            }
+            if (trip.cancellation_reason?.includes('لعدم بدء الرحلة')) {
+                return {
+                    label: 'Cancelled (Not Started)',
+                    labelAr: 'ملغاة لعدم بدء الرحلة',
+                    variant: 'gray' as const
+                };
+            }
+            const isAutoClosed = trip.cancellation_reason?.includes('أغلقت تلقائياً');
+            if (isAutoClosed) {
+                if (!trip.departure_time) {
+                    return {
+                        label: 'Not Executed',
+                        labelAr: 'غير منفذة',
+                        variant: 'gray' as const
+                    };
+                } else {
+                    return {
+                        label: 'Uncompleted',
+                        labelAr: 'غير مكتملة',
+                        variant: 'orange' as const
+                    };
+                }
+            }
+            return {
+                label: 'Cancelled',
+                labelAr: 'ملغاة',
+                variant: 'red' as const
+            };
+        }
+        
+        switch (status) {
+            case 'pending':
+                return {
+                    label: 'Pending',
+                    labelAr: 'في الانتظار',
+                    variant: 'yellow' as const
+                };
+            case 'awaiting_confirmation':
+                return {
+                    label: 'Awaiting Confirmation',
+                    labelAr: 'بانتظار التأكيد',
+                    variant: 'orange' as const
+                };
+            case 'in_progress':
+                return {
+                    label: 'In Progress',
+                    labelAr: 'جارية',
+                    variant: 'blue' as const
+                };
+            case 'awaiting_video':
+                return {
+                    label: 'Awaiting Video',
+                    labelAr: 'بانتظار فيديو التوثيق',
+                    variant: 'orange' as const
+                };
+            case 'finished':
+            case 'completed':
+                return {
+                    label: 'Completed',
+                    labelAr: 'مكتملة',
+                    variant: 'green' as const
+                };
+            default:
+                return {
+                    label: status,
+                    labelAr: status,
+                    variant: 'gray' as const
+                };
+        }
+    };
+
     const pagination: PaginationMeta = {
         links: (trips as any).links || [],
         current_page: trips.current_page,
@@ -303,8 +388,9 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
         columnHelper.accessor('status', {
             header: isRTL ? 'الحالة' : 'Status',
             cell: (info) => {
-                const cfg = getStatus(info.getValue());
-                return <StatusBadge label={isRTL ? cfg.labelAr : cfg.label} variant={info.getValue() === 'completed' ? 'green' : info.getValue() === 'pending' ? 'yellow' : 'blue'} />;
+                const trip = info.row.original;
+                const smartStatus = getSmartStatus(trip);
+                return <StatusBadge label={isRTL ? smartStatus.labelAr : smartStatus.label} variant={smartStatus.variant} />;
             }
         }),
         columnHelper.accessor('video_path', {
@@ -367,7 +453,7 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                                     <td className="border border-gray-300 p-2 text-center">{trip.type === 'forth' ? (isRTL ? 'ذهاب' : 'Forth') : (isRTL ? 'إياب' : 'Back')}</td>
                                     <td className="border border-gray-300 p-2 text-center">{trip.bus?.bus_number}</td>
                                     <td className="border border-gray-300 p-2">{trip.driver?.name || '—'}</td>
-                                    <td className="border border-gray-300 p-2 text-center">{isRTL ? getStatus(trip.status).labelAr : getStatus(trip.status).label}</td>
+                                    <td className="border border-gray-300 p-2 text-center">{isRTL ? getSmartStatus(trip).labelAr : getSmartStatus(trip).label}</td>
                                 </tr>
                             ))}
                         </tbody>

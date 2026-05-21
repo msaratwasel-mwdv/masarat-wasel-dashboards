@@ -152,7 +152,7 @@ class DailyTripController extends Controller
             'route_id'     => 'required|exists:routes,id',
             'driver_id'    => 'nullable|exists:users,id',
             'assistant_id' => 'nullable|exists:users,id',
-            'status'       => 'required|in:pending,in_progress,completed,cancelled,awaiting_confirmation',
+            'status'       => 'required|in:pending,in_progress,finished,cancelled,awaiting_confirmation,awaiting_video',
             'departure_time' => 'required|date',
             'arrival_time'   => 'nullable|date',
         ]);

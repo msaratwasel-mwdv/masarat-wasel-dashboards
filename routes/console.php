@@ -18,3 +18,7 @@ Schedule::command('trips:create-daily')->dailyAt('01:00');
 
 // Cleanup trip verification videos older than 30 days
 Schedule::command('trips:cleanup-videos')->dailyAt('03:00');
+
+// Auto-close trips in awaiting_video status that exceed 30 minutes, and alert admins
+Schedule::command('trips:auto-close-awaiting-video')->everyMinute();
+

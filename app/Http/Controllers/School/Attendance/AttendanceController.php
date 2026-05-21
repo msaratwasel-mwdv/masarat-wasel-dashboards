@@ -6,11 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Student;
 use App\Models\Classroom; // Enforce Classroom Model
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AttendanceController extends Controller
 {
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
     /**
      * Display a listing of the resource.
      */
@@ -109,6 +116,7 @@ class AttendanceController extends Controller
                 'status' => $request->status,
                 'classroom_id' => $request->classroom_id,
             ]);
+            $this->sendAttendanceNotification($request->student_id, $request->status);
             return response()->json($existing->load(['student', 'classroom']), 200);
         }
 
@@ -118,6 +126,8 @@ class AttendanceController extends Controller
             'date' => $request->date,
             'status' => $request->status,
         ]);
+
+        $this->sendAttendanceNotification($request->student_id, $request->status);
 
         return response()->json($attendance->load(['student', 'classroom']), 201);
     }
@@ -144,6 +154,10 @@ class AttendanceController extends Controller
         ]);
 
         $attendance->update($request->only(['status', 'date']));
+
+        if ($request->has('status')) {
+            $this->sendAttendanceNotification($attendance->student_id, $request->status);
+        }
 
         return response()->json($attendance->load(['student', 'classroom']));
     }
@@ -203,10 +217,73 @@ class AttendanceController extends Controller
                     'status' => $item['status'],
                 ]);
             }
+
+            // إرسال إشعار لولي الأمر
+            $this->sendAttendanceNotification($item['student_id'], $item['status']);
         }
 
         return response()->json($results, 201);
     }
+
+    /**
+     * إرسال إشعار لولي أمر الطالب عند تسجيل الحضور/الغياب
+     */
+    protected function sendAttendanceNotification(int $studentId, string $status): void
+    {
+        try {
+            $student = Student::with('guardians')->find($studentId);
+            if (!$student || $student->guardians->isEmpty()) {
+                return;
+            }
+
+            $statusAr = match ($status) {
+                'present' => 'حاضراً',
+                'absent'  => 'غائباً',
+                'late'    => 'متأخراً',
+                'excused' => 'معذوراً',
+                default   => $status,
+            };
+
+            $statusEn = match ($status) {
+                'present' => 'present',
+                'absent'  => 'absent',
+                'late'    => 'late',
+                'excused' => 'excused',
+                default   => $status,
+            };
+
+            // بث حدث WebSocket لتحديث واجهة ولي الأمر فوراً
+            event(new \App\Events\TeacherAttendanceMarked($student, $status, today()->toDateString()));
+
+            foreach ($student->guardians as $guardian) {
+                $this->notificationService->sendTranslatedToUser(
+                    userId: $guardian->id,
+                    type: 'school_attendance',
+                    titleKey: 'notifications.school_attendance_title',
+                    messageKey: 'notifications.school_attendance_message',
+                    translationParams: [
+                        'student' => $student->full_name,
+                        'status' => $statusAr,
+                    ],
+                    data: [
+                        'student_id'      => (string) $student->id,
+                        'student_name'    => $student->full_name,
+                        'student_name_en' => $student->full_name_en,
+                        'status'          => $status,
+                        'date'            => today()->toDateString(),
+                        'category'        => 'attendance',
+                        'target_screen'   => 'attendance_details',
+                    ],
+                    translationParamsEn: [
+                        'student' => $student->full_name_en ?: $student->full_name,
+                        'status' => $statusEn,
+                    ]
+                );
+            }
+
+            \Log::info("[SchoolAttendance] Notification sent to guardians of Student: {$student->id} ({$student->full_name}) - Status: {$status}");
+        } catch (\Throwable $e) {
+            \Log::error("[SchoolAttendance] Failed to send notification for Student {$studentId}: " . $e->getMessage());
+        }
+    }
 }
-
-
