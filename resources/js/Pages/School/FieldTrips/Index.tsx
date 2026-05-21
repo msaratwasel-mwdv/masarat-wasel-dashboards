@@ -200,7 +200,7 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                                             <td className={DS_tableTd}>
                                                 <div className="flex flex-col gap-1">
                                                     <span className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300">
-                                                        <Calendar className="w-3.5 h-3.5 text-[#0f2044]/40" /> {trip.date}
+                                                        <Calendar className="w-3.5 h-3.5 text-[#0f2044]/40" /> {trip.date ? trip.date.split('T')[0] : ''}
                                                     </span>
                                                     <span className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
                                                         <Clock className="w-3 h-3" /> {trip.departure_time}

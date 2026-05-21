@@ -1,23 +1,25 @@
 import { useState } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import SchoolAuthenticatedLayout from '@/Layouts/SchoolAuthenticatedLayout';
 import useTranslation from '@/hooks/useTranslation';
 import Modal from '@/Components/Modal';
 import { motion } from 'framer-motion';
-import { 
-    Bus as BusIcon, 
-    Calendar, 
-    Users, 
-    FileText, 
-    Info, 
-    ArrowLeft, 
+import {
+    Bus as BusIcon,
+    Calendar,
+    Users,
+    FileText,
+    Info,
+    ArrowLeft,
     ArrowRight,
     Plus,
     XCircle,
     CheckCircle2,
-    Clock
+    Clock,
+    Printer
 } from 'lucide-react';
 import OmaniRial from '@/Components/OmaniRial';
+import BusRequestInvoice from '@/Components/Reports/BusRequestInvoice';
 import {
     DS_pageWrapper,
     DS_pageTitle,
@@ -27,6 +29,7 @@ import {
     DS_modalHeader,
     DS_submitBtn,
     DS_cancelBtn,
+    DS_card,
 } from '@/lib/DS';
 import { useEchoEvent } from '@/hooks/useEcho';
 import { useRealtimeToast } from '@/hooks/useRealtimeToast';
@@ -39,6 +42,28 @@ interface BusRequestsProps {
 export default function BusRequestsList({ auth, requests: serverRequests }: BusRequestsProps) {
     const { t, isRtl } = useTranslation();
     const { notifyEvent } = useRealtimeToast();
+    const [selectedInvoiceRequest, setSelectedInvoiceRequest] = useState<any | null>(null);
+
+    const getCrewName = (person?: any) => {
+        if (!person) return isRtl ? "غير معين" : "Not Assigned";
+        const actualPerson = person.user || person;
+
+        const nameAr = actualPerson.first_name_ar || actualPerson.last_name_ar
+            ? `${actualPerson.first_name_ar || ""} ${actualPerson.last_name_ar || ""}`.trim()
+            : actualPerson.name;
+
+        const nameEn = actualPerson.first_name_en || actualPerson.last_name_en
+            ? `${actualPerson.first_name_en || ""} ${actualPerson.last_name_en || ""}`.trim()
+            : actualPerson.name_en;
+
+        const email = actualPerson.email || "";
+
+        if (isRtl) {
+            return nameAr || nameEn || email || "غير معين";
+        } else {
+            return nameEn || nameAr || email || "Not Assigned";
+        }
+    };
 
     // Listen for real-time status updates on bus requests
     useEchoEvent(
@@ -47,7 +72,7 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
         '.bus-request.status-changed',
         (e: any) => {
             // Toast is now handled globally in SchoolAuthenticatedLayout
-            router.reload({ only: ['requests'], preserveState: true, preserveScroll: true });
+            router.reload({ only: ['requests'], preserveState: true, preserveScroll: true } as any);
         }
     );
 
@@ -85,7 +110,7 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
             case 'pending':
                 return <span className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-[8px] bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50"><Clock className="w-3.5 h-3.5" />{t('Pending')}</span>;
             case 'approved':
-                return <span className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-[8px] bg-[#f5b800]/20 text-[#7a5c00] dark:bg-[#f5b800]/10 dark:text-[#f5b800] border border-[#f5b800]/30"><CheckCircle2 className="w-3.5 h-3.5" />{t('Approved')}</span>;
+                return <span className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-[8px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50"><CheckCircle2 className="w-3.5 h-3.5" />{t('Approved')}</span>;
             case 'rejected':
                 return <span className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-[8px] bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50"><XCircle className="w-3.5 h-3.5" />{t('Rejected')}</span>;
             default:
@@ -146,32 +171,32 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredRequests.length > 0 ? (
                         filteredRequests.map((request, idx) => (
-                            <motion.div 
-                                initial={{ opacity: 0, y: 10 }} 
-                                animate={{ opacity: 1, y: 0 }} 
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: idx * 0.05 }}
-                                key={request.id} 
-                                className="bg-white dark:bg-[#1a2845] rounded-[24px] shadow-sm border border-gray-100 dark:border-[#243460] overflow-hidden hover:shadow-md transition-all flex flex-col"
+                                key={request.id}
+                                className={`${DS_card} hover:shadow-md flex flex-col`}
                             >
                                 {/* Top Color Indicator */}
-                                <div className={`h-1.5 w-full ${
+                                <div className={`h-1 w-full ${
                                     request.status === 'pending' ? 'bg-yellow-400' :
                                     request.status === 'approved' ? 'bg-[#0f2044]' :
                                     'bg-red-500'
                                 }`} />
 
-                                <div className="p-5 flex flex-col flex-1">
+                                <div className="p-4 flex flex-col flex-1 gap-3.5">
                                     {/* Header */}
-                                    <div className="flex items-start justify-between mb-5">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 bg-[#0f2044]/5 dark:bg-[#0f2044]/30 rounded-[14px] flex items-center justify-center text-[#0f2044] dark:text-[#7ba7e8]">
-                                                <BusIcon className="w-6 h-6" />
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-9 h-9 bg-[#0f2044]/5 dark:bg-[#0f2044]/30 rounded-[10px] flex items-center justify-center text-[#0f2044] dark:text-[#7ba7e8]">
+                                                <BusIcon className="w-4.5 h-4.5" />
                                             </div>
                                             <div>
-                                                <h3 className="text-lg font-bold text-[#0f2044] dark:text-white">
+                                                <h3 className="text-sm font-black text-[#0f2044] dark:text-white leading-tight">
                                                     {getTypeText(request.request_type)}
                                                 </h3>
-                                                <p className="text-xs font-semibold text-gray-500">
+                                                <p className="text-[10px] font-bold text-gray-400 leading-none mt-0.5">
                                                     {t('Submitted')}: {new Date(request.created_at).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric' })}
                                                 </p>
                                             </div>
@@ -179,60 +204,77 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
                                         {getStatusBadge(request.status)}
                                     </div>
 
-                                    {/* Quick Stats Grid */}
-                                    <div className="grid grid-cols-2 gap-3 mb-5">
-                                        <div className="bg-gray-50 dark:bg-[#0f2044]/20 p-3 rounded-[16px]">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Users className="w-4 h-4 text-gray-400" />
-                                                <span className="text-[10px] font-bold text-gray-500 uppercase">{t('Required Seats')}</span>
-                                            </div>
-                                            <p className="text-xl font-black text-[#0f2044] dark:text-white">{request.seats}</p>
+                                    {/* Stats Grid */}
+                                    <div className="grid grid-cols-2 gap-2.5 text-xs">
+                                        <div className="bg-gray-50 dark:bg-gray-800/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800 flex flex-col">
+                                            <span className="text-[9px] font-bold text-gray-400 uppercase leading-none mb-1">{t('Required Seats')}</span>
+                                            <span className="text-base font-black text-[#0f2044] dark:text-white leading-tight">{request.seats}</span>
                                         </div>
-                                        <div className="bg-gray-50 dark:bg-[#0f2044]/20 p-3 rounded-[16px]">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Calendar className="w-4 h-4 text-gray-400" />
-                                                <span className="text-[10px] font-bold text-gray-500 uppercase">{t('Start Date')}</span>
-                                            </div>
-                                            <p className="text-sm font-bold text-[#0f2044] dark:text-white mt-1">
+                                        <div className="bg-gray-50 dark:bg-gray-800/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800 flex flex-col">
+                                            <span className="text-[9px] font-bold text-gray-400 uppercase leading-none mb-1">{t('Start Date')}</span>
+                                            <span className="text-xs font-extrabold text-[#0f2044] dark:text-white leading-normal mt-0.5">
                                                 {new Date(request.start_date).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric' })}
-                                            </p>
+                                            </span>
                                         </div>
                                     </div>
 
                                     {/* Approved Cost */}
                                     {request.status === 'approved' && request.cost && (
-                                        <div className="mb-5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 p-4 rounded-[16px] flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-800/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                                                    <OmaniRial size="1.2em" />
-                                                </div>
-                                                <span className="text-sm font-bold text-[#0f2044] dark:text-white">{t('Approved Price')}</span>
+                                        <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-800/20 p-2.5 rounded-xl flex items-center justify-between text-xs">
+                                            <span className="font-bold text-[#0f2044] dark:text-gray-300">{t('Approved Price')}</span>
+                                            <span className="font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                                {request.cost} <OmaniRial size="1em" />
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Assigned Bus & Crew Details */}
+                                    {request.bus && (
+                                        <div className="bg-[#0f2044]/5 dark:bg-[#0f2044]/15 border border-[#0f2044]/10 dark:border-[#243460] p-3 rounded-xl flex flex-col gap-2 text-xs">
+                                            <div className="flex justify-between items-center pb-1.5 border-b border-gray-200/50 dark:border-gray-700">
+                                                <span className="font-black text-[#0f2044] dark:text-white flex items-center gap-1.5">
+                                                    <BusIcon className="w-3.5 h-3.5 text-[#f5b800]" />
+                                                    #{request.bus.bus_number}
+                                                </span>
+                                                <span className="text-[9px] font-black bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-300">
+                                                    {request.bus.plate_number}
+                                                </span>
                                             </div>
-                                            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                                                {request.cost}
-                                            </p>
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-bold opacity-60 dark:text-slate-50  text-[10px]">{isRtl ? 'السائق:' : 'Driver:'}</span>
+                                                    <span className="font-extrabold text-slate-800 dark:text-slate-100 text-xs">{getCrewName(request.bus.driver)}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-bold opacity-60  dark:text-slate-50 text-[10px]">{isRtl ? 'المشرفة:' : 'Supervisor:'}</span>
+                                                    <span className="font-extrabold text-slate-800 dark:text-slate-100 text-xs">{getCrewName(request.bus.assistant)}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
 
                                     {/* Text Info */}
-                                    <div className="flex-1 space-y-3">
-                                        <div>
-                                            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-400 mb-1">
-                                                <FileText className="w-3.5 h-3.5" />
-                                                {t('Purpose')}
-                                            </div>
-                                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 line-clamp-2">
-                                                {request.purpose}
-                                            </p>
-                                        </div>
-                                        
+                                    <div className="bg-gray-50 dark:bg-gray-800/20 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800 text-xs">
+                                        <span className="text-[9px] font-bold text-gray-400 block mb-1">{t('Purpose')}</span>
+                                        <p className="font-bold text-[#0f2044] dark:text-gray-300 line-clamp-1">
+                                            {request.purpose}
+                                        </p>
                                         {request.rejection_reason && (
-                                            <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-[12px]">
-                                                <p className="text-[11px] font-bold text-red-600 dark:text-red-400 mb-0.5">{t('Rejection Reason')}:</p>
-                                                <p className="text-xs font-semibold text-red-800 dark:text-red-300">{request.rejection_reason}</p>
+                                            <div className="mt-1.5 pt-1.5 border-t border-red-100 dark:border-red-900/20">
+                                                <span className="text-[9px] font-bold text-red-600 block">{t('Rejection Reason')}</span>
+                                                <p className="text-red-700 dark:text-red-400 font-semibold">{request.rejection_reason}</p>
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Print Button */}
+                                    <button
+                                        onClick={() => setSelectedInvoiceRequest(request)}
+                                        className="w-full mt-auto py-2 px-3 rounded-xl bg-[#0f2044]/5 hover:bg-[#f5b800] hover:text-[#0f2044] text-[#0f2044] dark:text-white text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                                    >
+                                        <Printer className="w-3.5 h-3.5" />
+                                        {isRtl ? 'التقرير الرسمي / الفاتورة' : 'Official Report / Invoice'}
+                                    </button>
                                 </div>
                             </motion.div>
                         ))
@@ -406,6 +448,15 @@ export default function BusRequestsList({ auth, requests: serverRequests }: BusR
                         </div>
                     </form>
                 </Modal>
+
+                {/* Print/Invoice Preview Modal */}
+                <BusRequestInvoice
+                    show={!!selectedInvoiceRequest}
+                    onClose={() => setSelectedInvoiceRequest(null)}
+                    request={selectedInvoiceRequest}
+                    isRtl={isRtl}
+                    schoolName={auth.user?.school?.name || auth.user?.name}
+                />
             </div>
         </SchoolAuthenticatedLayout>
     );
