@@ -59,92 +59,95 @@ export default function StudentAnalyticsOverview({ stats }: AnalyticsProps) {
     visible: { opacity: 1, y: 0 }
   };
 
+  {/* تم تكبير الـ Padding الداخلي وحجم الخط والأيقونة هنا لتبدو الكروت فخمة وضخمة */}
   const StatWidget = ({ icon: Icon, label, value, colorClass, bgColorClass }: any) => (
-    <motion.div variants={itemVariants} className={`p-4 md:p-5 rounded-[20px] flex items-center gap-4 border border-gray-100 dark:border-[#243460] bg-white dark:bg-[#1a2845] shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group`}>
-      <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0 ${bgColorClass} ${colorClass} group-hover:scale-110 transition-transform duration-300`}>
+    <motion.div variants={itemVariants} className={`p-4 py-3.5 rounded-2xl flex items-center gap-4 border border-gray-100 dark:border-white/5 bg-white dark:bg-[#1a2845] shadow-sm hover:shadow-md transition-all relative overflow-hidden group`}>
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${bgColorClass} ${colorClass} group-hover:scale-105 transition-transform duration-300`}>
         <Icon className="w-6 h-6" />
       </div>
       <div>
-        <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">{label}</p>
-        <h4 className="text-xl md:text-2xl font-black text-[#0f2044] dark:text-white leading-none">{value}</h4>
+        <p className="text-[11px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1">{label}</p>
+        <h4 className="text-2xl sm:text-3xl font-black text-[#0f2044] dark:text-white leading-none">{value}</h4>
       </div>
       {/* Decorative background element */}
-      <div className={`absolute -right-4 -bottom-4 w-16 h-16 rounded-full opacity-5 ${bgColorClass}`} />
+      <div className={`absolute -right-3 -bottom-3 w-16 h-16 rounded-full opacity-[0.04] ${bgColorClass}`} />
     </motion.div>
   );
 
   return (
-    <motion.div 
-      variants={containerVariants} 
-      initial="hidden" 
-      animate="visible" 
-      className="grid grid-cols-1 xl:grid-cols-12 gap-4 md:gap-6 mb-8"
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="grid grid-cols-1 xl:grid-cols-12 gap-3.5 mb-6 h-fit max-h-none xl:max-h-[160px]"
     >
-      {/* Overview Widgets */}
-      <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-4">
-        <StatWidget 
-          icon={Users} 
-          label={t("Total Students")} 
-          value={stats.all} 
-          colorClass="text-[#0f2044] dark:text-[#7ba7e8]" 
-          bgColorClass="bg-[#0f2044]/10 dark:bg-[#0f2044]/30" 
+      {/* Overview Widgets - تم رفع المساحة من col-span-4 إلى col-span-5 لتكبير الكروت الإحصائية */}
+      <div className="xl:col-span-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <StatWidget
+          icon={Users}
+          label={t("Total Students")}
+          value={stats.all}
+          colorClass="text-[#0f2044] dark:text-[#7ba7e8]"
+          bgColorClass="bg-[#0f2044]/10 dark:bg-[#0f2044]/30"
         />
-        <StatWidget 
-          icon={UserCheck} 
-          label={t("Active")} 
-          value={stats.active} 
-          colorClass="text-emerald-600 dark:text-emerald-400" 
-          bgColorClass="bg-emerald-50 dark:bg-emerald-900/20" 
+        <StatWidget
+          icon={UserCheck}
+          label={t("Active")}
+          value={stats.active}
+          colorClass="text-emerald-600 dark:text-emerald-400"
+          bgColorClass="bg-emerald-50 dark:bg-emerald-900/20"
         />
-        <StatWidget 
-          icon={UserX} 
-          label={t("Inactive")} 
-          value={stats.inactive} 
-          colorClass="text-rose-600 dark:text-rose-400" 
-          bgColorClass="bg-rose-50 dark:bg-rose-900/20" 
+        <StatWidget
+          icon={UserX}
+          label={t("Inactive")}
+          value={stats.inactive}
+          colorClass="text-rose-600 dark:text-rose-400"
+          bgColorClass="bg-rose-50 dark:bg-rose-900/20"
         />
       </div>
 
-      {/* Analytics Charts */}
-      <div className="xl:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        
-        {/* Gender Distribution */}
-        <motion.div variants={itemVariants} className={`${DS_card} p-5 flex flex-col h-full`}>
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-[#f5b800]" /> {t("Demographics")}
+      {/* Analytics Charts - تم خفض المساحة إلى col-span-7 لتصغير الرسوم البيانية */}
+      <div className="xl:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+
+        {/* Gender Distribution - تم تصغير الدونات شارت وأقطارها لتبدو ناعمة وملمومة */}
+        <motion.div variants={itemVariants} className={`${DS_card} p-3.5 py-2.5 flex flex-col h-full border-gray-100 dark:border-white/5 transition-all`}>
+          <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+            <Activity className="w-3.5 h-3.5 text-[#f5b800]" /> {t("Demographics")}
           </h3>
-          <div className="flex-1 flex items-center justify-center min-h-[140px] relative">
+          <div className="flex-1 flex items-center justify-center min-h-[75px] relative">
             {stats.all > 0 ? (
               <>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={genderData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={65}
-                      paddingAngle={5}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {genderData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip 
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', backgroundColor: isDark ? '#1a2845' : '#fff', color: isDark ? '#fff' : '#0f2044' }}
-                      itemStyle={{ fontWeight: 'bold' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="w-full h-[75px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={genderData}
+                        cx="45%"
+                        cy="50%"
+                        innerRadius={24}  
+                        outerRadius={34}
+                        paddingAngle={4}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {genderData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip
+                        contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', backgroundColor: isDark ? '#1a2845' : '#fff', fontSize: '10px' }}
+                        itemStyle={{ fontWeight: 'bold', padding: '2px 0' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
                 {/* Custom Legend */}
-                <div className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'left-2' : 'right-2'} flex flex-col gap-3`}>
+                <div className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'left-1' : 'right-1'} flex flex-col gap-1`}>
                   {genderData.map(d => (
-                    <div key={d.name} className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
+                    <div key={d.name} className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
                       <div>
-                        <p className="text-[10px] font-bold text-gray-500 leading-none mb-0.5">{d.name}</p>
+                        <p className="text-[9px] font-bold text-gray-400 leading-none mb-0.5">{d.name}</p>
                         <p className="text-xs font-black text-[#0f2044] dark:text-white leading-none">{d.value}</p>
                       </div>
                     </div>
@@ -152,44 +155,44 @@ export default function StudentAnalyticsOverview({ stats }: AnalyticsProps) {
                 </div>
               </>
             ) : (
-              <div className="text-xs font-bold text-gray-400 italic">{t("No Data")}</div>
+              <div className="text-[10px] font-bold text-gray-400 italic">{t("No Data")}</div>
             )}
           </div>
         </motion.div>
 
         {/* Bus Utilization Progress */}
-        <motion.div variants={itemVariants} className={`${DS_card} p-5 flex flex-col h-full justify-between relative overflow-hidden`}>
-          <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-            <Bus className="w-32 h-32 text-[#0f2044] dark:text-white" />
+        <motion.div variants={itemVariants} className={`${DS_card} p-3.5 py-2.5 flex flex-col h-full justify-between relative overflow-hidden border-gray-100 dark:border-white/5 transition-all`}>
+          <div className="absolute top-0 right-0 p-2 opacity-[0.02] pointer-events-none">
+            <Bus className="w-16 h-16 text-[#0f2044] dark:text-white" />
           </div>
-          
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2 relative z-10">
-            <Bus className="w-4 h-4 text-[#f5b800]" /> {t("Transport Utilization")}
+
+          <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5 flex items-center gap-2 relative z-10">
+            <Bus className="w-3.5 h-3.5 text-[#f5b800]" /> {t("Transport")}
           </h3>
-          
+
           <div className="relative z-10 flex-1 flex flex-col justify-center">
-            <div className="flex items-end gap-2 mb-2">
-              <h2 className="text-4xl md:text-5xl font-black text-[#0f2044] dark:text-white">{busUtilization}%</h2>
-              <span className="text-xs font-bold text-gray-500 mb-1.5">{t("using buses")}</span>
+            <div className="flex items-end gap-1.5 mb-1">
+              <h2 className="text-xl font-black text-[#0f2044] dark:text-white">{busUtilization}%</h2>
+              <span className="text-[9px] font-bold text-gray-500 mb-0.5">{t("using buses")}</span>
             </div>
-            
-            <div className="w-full h-3 bg-gray-100 dark:bg-[#243460] rounded-full overflow-hidden mb-4">
-              <motion.div 
+
+            <div className="w-full h-1.5 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden mb-1.5">
+              <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${busUtilization}%` }}
                 transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
                 className="h-full bg-gradient-to-r from-[#0f2044] to-[#f5b800] rounded-full"
               />
             </div>
-            
-            <div className="flex justify-between items-center text-[10px] md:text-xs font-bold px-1">
-              <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+
+            <div className="flex justify-between items-center text-[9px] font-bold px-0.5">
+              <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 <span>{stats.with_bus} {t("Subscribed")}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-gray-400">
-                <div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600" />
-                <span>{stats.no_bus} {t("Not Subscribed")}</span>
+              <div className="flex items-center gap-1 text-gray-400">
+                <div className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-white/10" />
+                <span>{stats.no_bus} {t("Not")}</span>
               </div>
             </div>
           </div>

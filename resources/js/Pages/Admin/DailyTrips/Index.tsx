@@ -140,9 +140,9 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const day = String(now.getDate()).padStart(2, '0');
             const today = `${year}-${month}-${day}`;
-            
+
             // Only update if the user hasn't manually selected a different date
-            // (assuming autoCreateDate is either today or whatever they chose). 
+            // (assuming autoCreateDate is either today or whatever they chose).
             // Actually, to be safe, we just set it to today if it's a new day.
             // But let's just update the initial state if it's lagging.
             setAutoCreateDate(prev => {
@@ -251,7 +251,7 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
 
     const getSmartStatus = (trip: Trip) => {
         const status = trip.status;
-        
+
         if (status === 'cancelled') {
             if (trip.cancellation_reason?.includes('لم يتم مسح الحافلة')) {
                 return {
@@ -289,7 +289,7 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                 variant: 'red' as const
             };
         }
-        
+
         switch (status) {
             case 'pending':
                 return {
@@ -686,128 +686,134 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                 </div>
             </Modal>
             {/* Manual Create Modal */}
-            <Modal show={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} maxWidth="2xl">
-                <div className={`bg-white dark:bg-[#1a2845] w-full ${DS_modalContainer}`}>
-                    <div className={DS_modalHeader(isRTL)}>
-                        <div className="flex items-center gap-3">
-                            <div className={DS_modalHeaderAccent} />
-                            <div className="flex items-center gap-2">
-                                <Zap className="w-5 h-5 text-[#f5b800]" fill="currentColor" />
-                                <h2 className={DS_modalHeaderTitle}>
-                                    {isRTL ? 'إضافة رحلة جديدة' : 'Add New Trip'}
-                                </h2>
-                            </div>
-                        </div>
-                        <button onClick={() => setIsCreateModalOpen(false)} className={DS_modalClose}>
-                            <X size={20} />
-                        </button>
+{/* Manual Create Modal */}
+<Modal show={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} maxWidth="2xl">
+    {/* 1. أضفنا !overflow-visible هنا لمنع الحاوية الرئيسية  من قص أي قوائم منسدلة */}
+    <div className={`bg-white dark:bg-[#1a2845] w-full rounded-3xl
+        !overflow-visible ${DS_modalContainer}`}>
+        <div className={DS_modalHeader(isRTL)}>
+            <div className="flex items-center gap-3">
+                <div className={DS_modalHeaderAccent} />
+                <div className="flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-[#f5b800]" fill="currentColor" />
+                    <h2 className={DS_modalHeaderTitle}>
+                        {isRTL ? 'إضافة رحلة جديدة' : 'Add New Trip'}
+                    </h2>
+                </div>
+            </div>
+            <button onClick={() => setIsCreateModalOpen(false)} className={DS_modalClose}>
+                <X size={20} />
+            </button>
+        </div>
+
+        {/* 2. جعل الفورم يمرر القوائم أيضاً */}
+        <form onSubmit={handleCreateSubmit} className="!overflow-visible">
+            {/* 3. أضفنا !overflow-visible و min-h-[320px] لإعطاء مساحة طولية مريحة لخيارات الحافلات والمسارات */}
+            <div className={`${DS_modalBody} !overflow-visible  pb-12`}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 !overflow-visible">
+
+                    {/* Bus Selection */}
+                    <div className="relative !overflow-visible">
+                        <SearchableSelect
+                            label={isRTL ? 'الحافلة' : 'Bus'}
+                            options={busOptions}
+                            value={createData.bus_id}
+                            onChange={val => setCreateData('bus_id', val.toString())}
+                            placeholder={isRTL ? 'اختر الحافلة' : 'Select Bus'}
+                        />
+                        {createErrors.bus_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.bus_id}</p>}
                     </div>
 
-                    <form onSubmit={handleCreateSubmit}>
-                        <div className={DS_modalBody}>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Bus Selection */}
-                                <div>
-                                    <SearchableSelect
-                                        label={isRTL ? 'الحافلة' : 'Bus'}
-                                        options={busOptions}
-                                        value={createData.bus_id}
-                                        onChange={val => setCreateData('bus_id', val.toString())}
-                                        placeholder={isRTL ? 'اختر الحافلة' : 'Select Bus'}
-                                    />
-                                    {createErrors.bus_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.bus_id}</p>}
-                                </div>
+                    {/* Route Selection */}
+                    <div className="relative !overflow-visible">
+                        <SearchableSelect
+                            label={isRTL ? 'المسار' : 'Route'}
+                            options={routeOptions}
+                            value={createData.route_id}
+                            onChange={val => setCreateData('route_id', val.toString())}
+                            placeholder={isRTL ? 'اختر المسار' : 'Select Route'}
+                        />
+                        {createErrors.route_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.route_id}</p>}
+                    </div>
 
-                                {/* Route Selection */}
-                                <div>
-                                    <SearchableSelect
-                                        label={isRTL ? 'المسار' : 'Route'}
-                                        options={routeOptions}
-                                        value={createData.route_id}
-                                        onChange={val => setCreateData('route_id', val.toString())}
-                                        placeholder={isRTL ? 'اختر المسار' : 'Select Route'}
-                                    />
-                                    {createErrors.route_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.route_id}</p>}
-                                </div>
+                    {/* Date */}
+                    <div>
+                        <label className={DS_labelCls}>
+                            <Calendar className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
+                            {isRTL ? 'التاريخ' : 'Date'}
+                        </label>
+                        <input
+                            type="date"
+                            value={createData.date}
+                            onChange={e => setCreateData('date', e.target.value)}
+                            className={DS_inputCls}
+                            required
+                        />
+                        {createErrors.date && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.date}</p>}
+                    </div>
 
-                                {/* Date */}
-                                <div>
-                                    <label className={DS_labelCls}>
-                                        <Calendar className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
-                                        {isRTL ? 'التاريخ' : 'Date'}
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={createData.date}
-                                        onChange={e => setCreateData('date', e.target.value)}
-                                        className={DS_inputCls}
-                                        required
-                                    />
-                                    {createErrors.date && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.date}</p>}
-                                </div>
-
-                                {/* Trip Type */}
-                                <div>
-                                    <label className={DS_labelCls}>
-                                        <Zap className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
-                                        {isRTL ? 'نوع الرحلة' : 'Trip Type'}
-                                    </label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setCreateData('type', 'forth')}
-                                            className={`px-3 py-2.5 rounded-xl text-[10px] font-black transition-all border-2 ${createData.type === 'forth'
-                                                ? 'bg-[#0f2044] border-[#0f2044] text-white shadow-lg'
-                                                : 'bg-gray-50 dark:bg-[#243460] border-transparent text-gray-500 dark:text-[#7ba7e8]/60 hover:bg-gray-100'
-                                                }`}
-                                        >
-                                            ↗ {isRTL ? 'ذهاب' : 'Forth'}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setCreateData('type', 'back')}
-                                            className={`px-3 py-2.5 rounded-xl text-[10px] font-black transition-all border-2 ${createData.type === 'back'
-                                                ? 'bg-[#f5b800] border-[#f5b800] text-[#0f2044] shadow-lg'
-                                                : 'bg-gray-50 dark:bg-[#243460] border-transparent text-gray-500 dark:text-[#7ba7e8]/60 hover:bg-gray-100'
-                                                }`}
-                                        >
-                                            ↙ {isRTL ? 'إياب' : 'Back'}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setCreateData('type', 'both')}
-                                            className={`px-3 py-2.5 rounded-xl text-[10px] font-black transition-all border-2 ${createData.type === 'both'
-                                                ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg'
-                                                : 'bg-gray-50 dark:bg-[#243460] border-transparent text-gray-500 dark:text-[#7ba7e8]/60 hover:bg-gray-100'
-                                                }`}
-                                        >
-                                            🔁 {isRTL ? 'ذهاب وإياب' : 'Both'}
-                                        </button>
-                                    </div>
-                                    {createErrors.type && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.type}</p>}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-6 border-t border-gray-100 dark:border-[#243460] flex justify-end gap-3">
+                    {/* Trip Type */}
+                    <div>
+                        <label className={DS_labelCls}>
+                            <Zap className="w-3.5 h-3.5 inline-block mr-1 mb-0.5" />
+                            {isRTL ? 'نوع الرحلة' : 'Trip Type'}
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
                             <button
                                 type="button"
-                                onClick={() => setIsCreateModalOpen(false)}
-                                className="px-6 py-2.5 text-xs font-black text-gray-400 dark:text-[#7ba7e8]/40 hover:text-gray-600 transition-colors uppercase tracking-widest"
+                                onClick={() => setCreateData('type', 'forth')}
+                                className={`px-3 py-2.5 rounded-xl text-[10px] font-black transition-all border-2 ${createData.type === 'forth'
+                                    ? 'bg-[#0f2044] border-[#0f2044] text-white shadow-lg'
+                                    : 'bg-gray-50 dark:bg-[#243460] border-transparent text-gray-500 dark:text-[#7ba7e8]/60 hover:bg-gray-100'
+                                    }`}
                             >
-                                {isRTL ? 'إلغاء' : 'Cancel'}
+                                ↗ {isRTL ? 'ذهاب' : 'Forth'}
                             </button>
                             <button
-                                type="submit"
-                                disabled={processingCreate}
-                                className="px-10 py-2.5 bg-[#f5b800] hover:bg-[#e5ac00] text-[#0f2044] rounded-xl text-xs font-black shadow-lg shadow-[#f5b800]/20 transition-all disabled:opacity-50 active:scale-95"
+                                type="button"
+                                onClick={() => setCreateData('type', 'back')}
+                                className={`px-3 py-2.5 rounded-xl text-[10px] font-black transition-all border-2 ${createData.type === 'back'
+                                    ? 'bg-[#f5b800] border-[#f5b800] text-[#0f2044] shadow-lg'
+                                    : 'bg-gray-50 dark:bg-[#243460] border-transparent text-gray-500 dark:text-[#7ba7e8]/60 hover:bg-gray-100'
+                                    }`}
                             >
-                                {processingCreate ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'إضافة الرحلة' : 'Add Trip')}
+                                ↙ {isRTL ? 'إياب' : 'Back'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setCreateData('type', 'both')}
+                                className={`px-3 py-2.5 rounded-xl text-[10px] font-black transition-all border-2 ${createData.type === 'both'
+                                    ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg'
+                                    : 'bg-gray-50 dark:bg-[#243460] border-transparent text-gray-500 dark:text-[#7ba7e8]/60 hover:bg-gray-100'
+                                    }`}
+                            >
+                                🔁 {isRTL ? 'ذهاب وإياب' : 'Both'}
                             </button>
                         </div>
-                    </form>
+                        {createErrors.type && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.type}</p>}
+                    </div>
                 </div>
-            </Modal>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 dark:border-[#243460] flex justify-end gap-3 relative z-10">
+                <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="px-6 py-2.5 text-xs font-black text-gray-400 dark:text-[#7ba7e8]/40 hover:text-gray-600 transition-colors uppercase tracking-widest"
+                >
+                    {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                    type="submit"
+                    disabled={processingCreate}
+                    className="px-10 py-2.5 bg-[#f5b800] hover:bg-[#e5ac00] text-[#0f2044] rounded-xl text-xs font-black shadow-lg shadow-[#f5b800]/20 transition-all disabled:opacity-50 active:scale-95"
+                >
+                    {processingCreate ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'إضافة الرحلة' : 'Add Trip')}
+                </button>
+            </div>
+        </form>
+    </div>
+</Modal>
         </AuthenticatedLayout>
     );
 }

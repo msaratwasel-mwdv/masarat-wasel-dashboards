@@ -296,7 +296,7 @@ class NotificationController extends Controller
             'title_en' => 'nullable|string|max:255',
             'message' => 'required|string',
             'message_en' => 'nullable|string',
-            'type' => 'required|string', 
+            'type' => 'required|string',
             'recipient_type' => 'required|string',
             'recipient_filter' => 'nullable|array',
             'template_id' => 'nullable|exists:notification_templates,id',
@@ -334,7 +334,7 @@ class NotificationController extends Controller
                         $busNumber = $bus->bus_number;
                     }
                 }
-                
+
                 $finalTitle = str_replace('{bus_number}', $busNumber, $finalTitle);
                 $finalMessage = str_replace('{bus_number}', $busNumber, $finalMessage);
                 $finalTitleEn = str_replace('{bus_number}', $busNumber, $finalTitleEn);
@@ -378,7 +378,7 @@ class NotificationController extends Controller
                 $tokenRecords = $parentUser->fcmTokens()
                     ->select(['token', 'preferred_language'])
                     ->get();
-                
+
                 foreach ($tokenRecords as $record) {
                     if ($record->preferred_language === 'en') {
                         $tokensEn[] = $record->token;
@@ -425,12 +425,12 @@ class NotificationController extends Controller
                     if (!empty($tokensEn)) {
                         $notificationService->sendMulticast(
                             $tokensEn,
-                            $finalTitleEn, 
+                            $finalTitleEn,
                             $finalMessageEn,
                             array_merge($basePayload, ['language' => 'en'])
                         );
                     }
-                    
+
                     $notification->update(['status' => 'sent', 'sent_count' => $allTokenCount]);
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::error('Firebase Notification Error: ' . $e->getMessage());
@@ -447,7 +447,7 @@ class NotificationController extends Controller
                 event(new \App\Events\NotificationPushed($notification, $recipient->id, $correlationId));
             }
 
-            return redirect()->route('school.notifications.index')
+            return redirect()->back()
                 ->with('success', 'تم حفظ الإشعار بنجاح لـ ' . $allTokenCount . ' مستخدم');
         } catch (\Exception $e) {
             DB::rollBack();
