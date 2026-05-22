@@ -744,7 +744,6 @@ const dictionary = {
   Time: { ar: "الوقت", en: "Time" },
   Scheduled: { ar: "مجدولة", en: "Scheduled" },
   Ongoing: { ar: "جارية", en: "Ongoing" },
-  Completed: { ar: "مكتملة", en: "Completed" },
   Cancelled: { ar: "ملغاة", en: "Cancelled" },
   Morning: { ar: "صباحي", en: "Morning" },
   Evening: { ar: "مسائي", en: "Evening" },
@@ -856,7 +855,6 @@ const dictionary = {
     en: "This action cannot be undone.",
   },
   records: { ar: "سجلات", en: "records" },
-  Showing: { ar: "عرض", en: "Showing" },
   "Add Record": { ar: "إضافة سجل", en: "Add Record" },
   "Select Status": { ar: "اختر الحالة", en: "Select Status" },
   "No students found in this class": {
@@ -1264,7 +1262,6 @@ const dictionary = {
   },
 
   // Field Trips - US-SCH-004
-  "Field Trips": { ar: "الرحلات الميدانية", en: "Field Trips" },
   "New Field Trip": { ar: "رحلة جديدة", en: "New Field Trip" },
 
   "Trip Date": { ar: "تاريخ الرحلة", en: "Trip Date" },
@@ -1284,7 +1281,6 @@ const dictionary = {
   "School Approval": { ar: "موافقة المدرسة", en: "School Approval" },
   "Company Approval": { ar: "موافقة الشركة", en: "Company Approval" },
   Planned: { ar: "مخطط", en: "Planned" },
-  "In Progress": { ar: "جاري", en: "In Progress" },
   "Create Trip": { ar: "إنشاء رحلة", en: "Create Trip" },
 
   "Review & Submit": { ar: "مراجعة وإرسال", en: "Review & Submit" },
@@ -1316,7 +1312,7 @@ const dictionary = {
 
 
   "No trips found": { ar: "لم يتم العثور على رحلات", en: "No trips found" },
-"No Trips Found": { ar: "لم يتم العثور على رحلات", en: "No Trips Found" },
+  "No Trips Found": { ar: "لم يتم العثور على رحلات", en: "No Trips Found" },
 
   // Common Actions
   Back: { ar: "رجوع", en: "Back" },
