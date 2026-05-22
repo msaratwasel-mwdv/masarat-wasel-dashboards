@@ -296,20 +296,24 @@ export default function BaseDataTable<T extends { id?: number | string }>({
           )}
 
           {/* Actions: export + primary CTA */}
-          <div className={`flex flex-col sm:flex-row items-stretch md:items-center gap-2 ${isRTL ? "sm:flex-row-reverse" : ""}`}>
+          <div className={`flex flex-row items-stretch md:items-center gap-2 w-full md:w-auto ${isRTL ? "flex-row-reverse md:flex-row" : "flex-row"}`}>
             {exportEnabled && (
-              <a href={getExportUrl("csv")} className={`${DS_btnSecondary} justify-center`}>
+              <a href={getExportUrl("csv")} className={`${DS_btnSecondary} flex-1 justify-center md:flex-none`}>
                 <FileDown className="w-4 h-4" />
                 {isRTL ? "تصدير" : "Export"}
               </a>
             )}
-            {headerAction}
+            {headerAction && (
+              <div className="flex-1 md:flex-none flex items-stretch [&>*]:w-full [&>*]:justify-center md:[&>*]:w-auto">
+                {headerAction}
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* ── Table Wrapper ── */}
-      <div className={DS_tableWrapper}>
+      <div className={`${DS_tableWrapper} !mx-0 px-2 sm:px-4`}>
           <table className={DS_tableBase}>
             {/* Sticky Header */}
             <thead className={DS_tableHead}>
@@ -460,24 +464,24 @@ interface ActionButtonProps {
 
 const colorMap = {
   blue: {
-    light: "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-100",
-    dark: "bg-blue-900/20 text-blue-400 hover:bg-blue-900/40 border-blue-900/30",
+    base: "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20",
+    hover: "hover:text-white hover:bg-blue-600 dark:hover:text-white dark:hover:bg-blue-500",
   },
   indigo: {
-    light: "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-100",
-    dark: "bg-indigo-900/20 text-indigo-400 hover:bg-indigo-900/40 border-indigo-900/30",
+    base: "text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/20",
+    hover: "hover:text-white hover:bg-indigo-600 dark:hover:text-white dark:hover:bg-indigo-500",
   },
   red: {
-    light: "bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-100",
-    dark: "bg-rose-900/20 text-rose-400 hover:bg-rose-900/40 border-rose-900/30",
+    base: "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20",
+    hover: "hover:text-white hover:bg-red-600 dark:hover:text-white dark:hover:bg-red-500",
   },
   green: {
-    light: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-100",
-    dark: "bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40 border-emerald-900/30",
+    base: "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20",
+    hover: "hover:text-white hover:bg-emerald-600 dark:hover:text-white dark:hover:bg-emerald-500",
   },
   yellow: {
-    light: "bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-100",
-    dark: "bg-amber-900/20 text-amber-400 hover:bg-amber-900/40 border-amber-900/30",
+    base: "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20",
+    hover: "hover:text-white hover:bg-amber-600 dark:hover:text-white dark:hover:bg-amber-500",
   },
 };
 
@@ -487,20 +491,21 @@ export function ActionButton({
   color = "indigo",
   icon,
 }: ActionButtonProps) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
   const scheme = colorMap[color] || colorMap.indigo;
 
   return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all duration-200 active:scale-95 ${
-        isDark ? scheme.dark : scheme.light
-      }`}
-    >
-      {icon && <span className="w-3.5 h-3.5">{icon}</span>}
-      {label}
-    </button>
+    <div className="relative group flex items-center justify-center">
+      <button
+        onClick={onClick}
+        className={`p-2 rounded-xl transition-all shadow-sm flex items-center justify-center ${scheme.base} ${scheme.hover}`}
+      >
+        {icon || <span className="text-xs font-bold px-1">{label}</span>}
+      </button>
+      <div className="hidden sm:block absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 transition-all z-[60] whitespace-nowrap shadow-xl">
+        {label}
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-white"></div>
+      </div>
+    </div>
   );
 }
 

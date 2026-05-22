@@ -30,7 +30,8 @@ import {
   UserCheck,
   UserX,
   CreditCard,
-  X
+  X,
+  XCircle
 } from "lucide-react";
 import {
   DS_pageWrapper,
@@ -333,36 +334,27 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
         cell: (info) => {
           const req = info.row.original;
           return (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setSelectedInvoiceRequest(req)}
-                className="p-2 bg-[#f5b800]/10 hover:bg-[#f5b800] text-[#7a5c00] dark:text-[#f5b800] dark:hover:text-[#0f2044] rounded-lg hover:shadow-sm transition-all"
-                title={isRTL ? "التقرير الرسمي / الفاتورة" : "Official Report / Invoice"}
-              >
-                <Printer className="w-4.5 h-4.5" />
-              </button>
+            <div className={`flex items-center gap-2 ${isRTL ? 'justify-start' : 'justify-end'}`}>
+              <ActionButton 
+                label={isRTL ? "التقرير الرسمي / الفاتورة" : "Official Report / Invoice"} 
+                icon={<Printer size={16} />} 
+                onClick={() => setSelectedInvoiceRequest(req)} 
+                color="yellow" 
+              />
               {req.status === "pending" && (
                 <>
-                  <button
-                    onClick={() => {
-                        setSelectedRequest(req);
-                        setShowApproveModal(true);
-                    }}
-                    className="p-2 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
-                    title={isRTL ? "قبول" : "Approve"}
-                  >
-                    <CheckCircle className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedRequest(req);
-                      setShowRejectModal(true);
-                    }}
-                    className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                    title={isRTL ? "رفض" : "Reject"}
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  <ActionButton 
+                    label={isRTL ? "قبول" : "Approve"} 
+                    icon={<CheckCircle size={16} />} 
+                    onClick={() => { setSelectedRequest(req); setShowApproveModal(true); }} 
+                    color="green" 
+                  />
+                  <ActionButton 
+                    label={isRTL ? "رفض" : "Reject"} 
+                    icon={<XCircle size={16} />} 
+                    onClick={() => { setSelectedRequest(req); setShowRejectModal(true); }} 
+                    color="red" 
+                  />
                 </>
               )}
             </div>
@@ -508,7 +500,7 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
           </p>
         </div>
         {/* Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6">
           <div className={DS_statCard("blue")}>
             <div className={DS_statIcon("blue")}>
               <FileText size={24} />
@@ -591,7 +583,7 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
         maxWidth="2xl"
       >
         <div
-          className={`bg-white dark:bg-[#1a2845] w-full ${DS_modalContainer}`}
+          className={`bg-white dark:bg-[#1a2845] w-full rounded-[22px] ${DS_modalContainer}`}
         >
           {/* Header */}
           <div className={DS_modalHeader(isRTL)}>
@@ -622,7 +614,7 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
 
             <div className="mb-4 flex justify-between items-center bg-[#f5b800]/10 p-4 rounded-[20px] border border-[#f5b800]/30">
               <div className={isRTL ? "text-right" : "text-left"}>
-                <p className="text-[10px] font-bold text-[#0f2044]/60 dark:text-[#7ba7e8]/60 uppercase">
+                <p className="text-[10px] font-bold text-[#0f2044]/60 dark:text-[#7ba7e8]/60 uppercase tracking-widest mb-1">
                   {isRTL
                     ? "سعة الحافلة المختارة / المطلوبة"
                     : "Bus Capacity / Requested Seats"}
@@ -631,130 +623,144 @@ export default function Index({ auth, requests, counts, filters, availableBuses 
                   <span
                     className={
                       selectedBusCapacity >= (selectedRequest?.seats || 0)
-                        ? "text-emerald-500"
-                        : "text-rose-500"
+                        ? "text-emerald-500 drop-shadow-sm"
+                        : "text-rose-500 drop-shadow-sm"
                     }
                   >
                     {selectedBusCapacity}
                   </span>
-                  <span className="text-lg text-gray-400 dark:text-gray-600 mx-1">
+                  <span className="text-lg text-[#0f2044]/30 dark:text-gray-600 mx-2 font-light">
                     /
                   </span>
                   {selectedRequest?.seats || 0}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-bold text-[#0f2044]/60 dark:text-[#7ba7e8]/60 uppercase">
+                <p className="text-[10px] font-bold text-[#0f2044]/60 dark:text-[#7ba7e8]/60 uppercase tracking-widest mb-1">
                   {isRTL ? "حالة الاختيار" : "Selection Status"}
                 </p>
-                <p className="text-xl font-black text-[#0f2044] dark:text-white mt-1">
-                  {selectedBusId
-                    ? isRTL
-                      ? "محددة"
-                      : "Selected"
-                    : isRTL
-                    ? "غير محددة"
-                    : "None"}
-                </p>
+                <div className="mt-1">
+                  {selectedBusId ? (
+                    <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-sm font-black flex items-center gap-1.5">
+                      <CheckCircle className="w-4 h-4" />
+                      {isRTL ? "محددة بنجاح" : "Selected"}
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-sm font-black flex items-center gap-1.5 border border-gray-200 dark:border-gray-700">
+                      <BusIcon className="w-4 h-4 opacity-50" />
+                      {isRTL ? "غير محددة" : "None"}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
               {availableBuses.length === 0 ? (
-                <div className="text-center py-10 opacity-50">
-                  <AlertTriangle className="w-12 h-12 mx-auto mb-2 text-[#0f2044] dark:text-[#7ba7e8]" />
-                  <p className="font-bold text-[#0f2044] dark:text-[#7ba7e8]">
+                <div className="flex flex-col items-center justify-center p-12 bg-gray-50 dark:bg-black/20 rounded-[20px] border border-dashed border-gray-200 dark:border-gray-700">
+                  <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 rounded-2xl flex items-center justify-center mb-4 text-rose-500">
+                    <AlertTriangle className="w-8 h-8" />
+                  </div>
+                  <p className="font-black text-lg text-[#0f2044] dark:text-white mb-1">
+                    {isRTL ? "المستودع فارغ" : "Empty Inventory"}
+                  </p>
+                  <p className="text-sm font-bold text-gray-500 dark:text-gray-400 text-center">
                     {isRTL
-                      ? "لا توجد حافلات متاحة في المستودع حالياً"
-                      : "No available buses in inventory"}
+                      ? "عذراً، لا توجد حافلات متاحة في المستودع تلبي الشروط حالياً."
+                      : "Sorry, no available buses in the inventory currently meet the requirements."}
                   </p>
                 </div>
               ) : (
                 availableBuses.map((bus) => {
-                  const hasCrew = bus.driver_id && bus.assistant_id;
+                  const hasDriver = !!bus.driver_id;
 
                   return (
                     <div
                       key={bus.id}
                       onClick={() => setSelectedBusId(bus.id)}
-                      className={`p-4 rounded-[16px] border-2 transition-all cursor-pointer ${
+                      className={`relative overflow-hidden p-4 rounded-[18px] border-2 transition-all duration-300 cursor-pointer group ${
                         selectedBusId === bus.id
-                          ? "border-[#f5b800] bg-[#f5b800]/5"
-                          : "border-[#0f2044]/10 dark:border-[#243460] bg-white dark:bg-[#1a2845] hover:border-[#f5b800]/50"
+                          ? "border-[#f5b800] bg-[#f5b800]/5 shadow-md shadow-[#f5b800]/10 transform scale-[1.01]"
+                          : "border-gray-100 dark:border-[#243460] bg-white dark:bg-[#1a2845] hover:border-[#f5b800]/50 hover:shadow-lg"
                       }`}
                     >
-                      <div
-                        className="flex items-center gap-4"
-                      >
+                      {/* Decorative Strip */}
+                      <div className={`absolute top-0 bottom-0 ${isRTL ? 'right-0' : 'left-0'} w-1.5 transition-colors duration-500 ${selectedBusId === bus.id ? 'bg-[#f5b800]' : hasDriver ? 'bg-emerald-400/50 group-hover:bg-emerald-400' : 'bg-rose-400/50 group-hover:bg-rose-400'}`} />
+                      
+                      <div className="flex items-start sm:items-center gap-4 pl-3 rtl:pr-3 rtl:pl-0">
                         <div
-                          className={`w-6 h-6 rounded-[8px] border-2 flex items-center justify-center transition-colors ${
+                          className={`w-6 h-6 mt-1 sm:mt-0 rounded-full border-2 flex items-center justify-center transition-all duration-300 shadow-sm ${
                             selectedBusId === bus.id
-                              ? "bg-[#f5b800] border-[#f5b800]"
-                              : "border-gray-300 dark:border-gray-600"
+                              ? "bg-[#f5b800] border-[#f5b800] scale-110"
+                              : "bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600 group-hover:border-[#f5b800]/50"
                           }`}
                         >
                           {selectedBusId === bus.id && (
-                            <CheckCheck className="w-4 h-4 text-[#0f2044]" />
+                            <CheckCheck className="w-3.5 h-3.5 text-[#0f2044]" />
                           )}
                         </div>
 
-                        <div className="flex-1">
-                          <div
-                            className="flex justify-between items-center mb-1"
-                          >
-                            <span className="font-bold text-sm text-[#0f2044] dark:text-white">
-                              #{bus.bus_number} - {bus.plate_number}
-                            </span>
-                            <span className="text-xs font-black bg-[#0f2044]/10 dark:bg-[#0f2044]/40 text-[#0f2044] dark:text-white px-2.5 py-1 rounded-[10px]">
+                        <div className="flex-1 w-full">
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-3 gap-2">
+                            <div>
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="font-black text-lg text-[#0f2044] dark:text-white group-hover:text-[#f5b800] transition-colors leading-none">
+                                  #{bus.bus_number}
+                                </span>
+                                <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px] font-mono font-bold text-gray-500 dark:text-gray-400 leading-none">
+                                  {bus.plate_number}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-xs font-black bg-[#0f2044]/5 dark:bg-white/5 text-[#0f2044] dark:text-white px-3 py-1.5 rounded-xl border border-[#0f2044]/10 dark:border-white/10 flex items-center gap-1.5 w-max">
+                              <Users className="w-3.5 h-3.5 text-[#f5b800]" />
                               {bus.capacity} {isRTL ? "مقعد" : "Seats"}
                             </span>
                           </div>
 
-                          <div
-                            className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10px] font-bold uppercase tracking-tight mt-2 text-start"
-                          >
+                          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[10px] font-bold uppercase tracking-wide p-2.5 rounded-xl bg-gray-50 dark:bg-black/20 border border-gray-100 dark:border-gray-800">
                             <div
-                              className={`flex items-center gap-1 ${
+                              className={`flex items-center gap-1.5 ${
                                 bus.driver_id
-                                  ? "text-emerald-500"
+                                  ? "text-emerald-600 dark:text-emerald-400"
                                   : "text-rose-500"
                               }`}
                             >
                               {bus.driver_id ? (
-                                <UserCheck className="w-3 h-3 flex-shrink-0" />
+                                <UserCheck className="w-3.5 h-3.5 flex-shrink-0" />
                               ) : (
-                                <UserX className="w-3 h-3 flex-shrink-0" />
+                                <UserX className="w-3.5 h-3.5 flex-shrink-0" />
                               )}
                               <span>
-                                {isRTL ? "السائق:" : "Driver:"}{" "}
-                                <span className="font-semibold text-gray-700 dark:text-gray-300">
+                                <span className="opacity-70">{isRTL ? "السائق:" : "Driver:"}</span>{" "}
+                                <span className="font-black text-[#0f2044] dark:text-gray-200">
                                   {getCrewName(bus.driver)}
                                 </span>
                               </span>
                             </div>
                             <div
-                              className={`flex items-center gap-1 ${
+                              className={`flex items-center gap-1.5 ${
                                 bus.assistant_id
-                                  ? "text-emerald-500"
-                                  : "text-rose-500"
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-gray-400 dark:text-gray-500"
                               }`}
                             >
                               {bus.assistant_id ? (
-                                <UserCheck className="w-3 h-3 flex-shrink-0" />
+                                <UserCheck className="w-3.5 h-3.5 flex-shrink-0" />
                               ) : (
-                                <UserX className="w-3 h-3 flex-shrink-0" />
+                                <Users className="w-3.5 h-3.5 flex-shrink-0 opacity-50" />
                               )}
                               <span>
-                                {isRTL ? "المشرفة:" : "Supervisor:"}{" "}
-                                <span className="font-semibold text-gray-700 dark:text-gray-300">
-                                  {getCrewName(bus.assistant)}
+                                <span className="opacity-70">{isRTL ? "المشرفة:" : "Supervisor:"}</span>{" "}
+                                <span className={bus.assistant_id ? "font-black text-[#0f2044] dark:text-gray-200" : "font-bold text-gray-400 dark:text-gray-500"}>
+                                  {getCrewName(bus.assistant) === (isRTL ? "غير مسند" : "Unassigned") ? (isRTL ? "اختياري" : "Optional") : getCrewName(bus.assistant)}
                                 </span>
                               </span>
                             </div>
-                            {!hasCrew && (
-                              <div className="px-1.5 py-0.5 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-[8px] text-[9px] flex items-center gap-1">
-                                <AlertTriangle className="w-2.5 h-2.5" />
-                                {isRTL ? "طاقم غير مكتمل" : "Missing Crew"}
+                            {!hasDriver && (
+                              <div className="px-2 py-1 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg text-[9px] flex items-center gap-1 ml-auto rtl:mr-auto rtl:ml-0 font-black">
+                                <AlertTriangle className="w-3 h-3" />
+                                {isRTL ? "بدون سائق" : "No Driver"}
                               </div>
                             )}
                           </div>

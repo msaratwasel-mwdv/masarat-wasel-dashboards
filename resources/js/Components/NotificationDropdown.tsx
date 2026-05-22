@@ -258,28 +258,47 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
                                             const type = notification.type || data.type;
                                             const category = data.category || notification.category; // Fallback to category if exists
                                             const targetScreen = data.target_screen;
+                                            const isAdmin = window.location.pathname.startsWith('/admin') || user?.role === 'admin';
 
-                                            // 1. Bus Requests
-                                            if (data.bus_request_id || type === 'bus_request' || category === 'bus_request') {
-                                                router.visit('/school/bus-requests');
-                                                setIsOpen(false);
-                                            } 
-                                            // 2. Absence Requests (Priority check to avoid generic request_id overlap)
-                                            else if (category === 'absence' || targetScreen === 'absence_history' || type === 'student_absence' || type === 'absence_request_processed') {
-                                                router.visit('/school/absence-requests');
-                                                setIsOpen(false);
+                                            if (isAdmin) {
+                                                // Admin Routing
+                                                if (data.bus_request_id || type === 'bus_request' || category === 'bus_request') {
+                                                    router.visit('/admin/bus-requests');
+                                                } else if (data.field_trip_id || type === 'field_trip' || category === 'field_trip' || type === 'field_trip_request') {
+                                                    router.visit('/admin/field-trips');
+                                                } else if (data.trip_id || type === 'daily_trip' || type === 'trip_issue' || category === 'daily_trips') {
+                                                    router.visit('/admin/daily-trips');
+                                                } else if (data.emergency_id || type === 'emergency' || category === 'emergencies') {
+                                                    router.visit('/admin/emergencies');
+                                                } else if (type === 'bus' || category === 'buses') {
+                                                    router.visit('/admin/buses');
+                                                } else {
+                                                    router.visit('/admin/notifications/all');
+                                                }
+                                            } else {
+                                                // School Routing
+                                                if (data.bus_request_id || type === 'bus_request' || category === 'bus_request') {
+                                                    router.visit('/school/bus-requests');
+                                                } 
+                                                else if (category === 'absence' || targetScreen === 'absence_history' || type === 'student_absence' || type === 'absence_request_processed') {
+                                                    router.visit('/school/absence-requests');
+                                                }
+                                                else if (data.location_request_id || category === 'location_requests' || targetScreen === 'location_request_details' || type === 'location_request') {
+                                                    router.visit('/school/location-requests');
+                                                }
+                                                else if (data.field_trip_id || type === 'field_trip' || category === 'field_trip' || type === 'field_trip_request') {
+                                                    router.visit('/school/field-trips');
+                                                } 
+                                                else if (data.trip_id || type === 'daily_trip' || type === 'trip_issue' || category === 'daily_trips') {
+                                                    router.visit('/school/trips-dashboard');
+                                                }
+                                                else if (data.request_id) {
+                                                    router.visit('/school/absence-requests');
+                                                } else {
+                                                    router.visit('/school/notifications/received');
+                                                }
                                             }
-                                            // 3. Location Requests
-                                            else if (data.location_request_id || category === 'location_requests' || targetScreen === 'location_request_details' || type === 'location_request') {
-                                                router.visit('/school/location-requests');
-                                                setIsOpen(false);
-                                            }
-                                            // 4. Generic request_id fallback (if any)
-                                            else if (data.request_id) {
-                                                // Default to absence if no other info, or keep generic
-                                                router.visit('/school/absence-requests');
-                                                setIsOpen(false);
-                                            }
+                                            setIsOpen(false);
                                         }}
                                     >
                                         <div className="flex gap-4">

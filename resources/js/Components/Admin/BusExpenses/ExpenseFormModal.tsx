@@ -114,7 +114,7 @@ export default function ExpenseFormModal({ isOpen, onClose, buses, isRTL, expens
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 20 }}
-          className={`relative max-w-lg w-full bg-white dark:bg-[#1a2845] ${DS_modalContainer}`}
+          className={`relative max-w-lg w-full rounded-[22px] bg-white dark:bg-[#1a2845] ${DS_modalContainer}`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

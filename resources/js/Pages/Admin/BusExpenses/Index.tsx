@@ -219,18 +219,17 @@ export default function BusExpensesIndex({ expenses, buses, filters, stats }: Pr
         return (
           <div className={`flex items-center gap-2 ${isRTL ? "justify-start" : "justify-end"}`}>
             {expense.photo_url ? (
-              <button 
-                onClick={() => setSelectedImage(expense.photo_url)}
-                className="p-1.5 rounded-lg bg-brand-yellow/10 text-brand-yellow hover:bg-brand-yellow hover:text-brand-dark transition-all"
-                title={isRTL ? "معاينة المرفق" : "Preview Attachment"}
-              >
-                <ImageIcon size={14} />
-              </button>
+              <ActionButton 
+                label={isRTL ? "معاينة المرفق" : "Preview Attachment"} 
+                icon={<ImageIcon size={16} />} 
+                onClick={() => setSelectedImage(expense.photo_url!)} 
+                color="yellow" 
+              />
             ) : (
-              <div className="p-1.5 w-[26px] h-[26px]" />
+              <div className="p-2 w-[32px] h-[32px]" />
             )}
-            <ActionButton label={isRTL ? "تعديل" : "Edit"} icon={<Pencil size={14} />} onClick={() => handleEditRecord(expense)} color="blue" />
-            <ActionButton label={isRTL ? "حذف" : "Delete"} icon={<Trash2 size={14} />} onClick={() => handleDeleteRecord(expense)} color="red" />
+            <ActionButton label={isRTL ? "تعديل" : "Edit"} icon={<Pencil size={16} />} onClick={() => handleEditRecord(expense)} color="blue" />
+            <ActionButton label={isRTL ? "حذف" : "Delete"} icon={<Trash2 size={16} />} onClick={() => handleDeleteRecord(expense)} color="red" />
           </div>
         );
       }

@@ -1,7 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import useTranslation from '@/hooks/useTranslation';
 import { motion } from 'framer-motion';
 import { 
@@ -40,9 +38,9 @@ const parseCoord = (val: any) => {
 };
 
 // -------------------------------------------------------------
-// HELPER: Create Custom Bus Leaflet Marker
+// HELPER: Create Custom Bus Google Marker Icon
 // -------------------------------------------------------------
-const createBusIcon = (status: string, isSelected: boolean) => {
+const createBusIconSvg = (status: string, isSelected: boolean) => {
     const colors: Record<string, string> = {
         active: '#10b981', // Emerald
         maintenance: '#f59e0b', // Amber
@@ -53,66 +51,20 @@ const createBusIcon = (status: string, isSelected: boolean) => {
     const size = isSelected ? 48 : 36;
     const fontSize = isSelected ? 24 : 18;
     
-    return L.divIcon({
-        className: 'custom-bus-marker',
-        html: `<div style="
-            width: ${size}px; 
-            height: ${size}px; 
-            background-color: ${bg}; 
-            border: 3px solid white; 
-            border-radius: ${isSelected ? '16px' : '12px'}; 
-            box-shadow: ${isSelected ? '0 10px 25px -5px rgba(0,0,0,0.3)' : '0 4px 6px -1px rgba(0,0,0,0.1)'};
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: ${fontSize}px;
-            transition: all 0.3s ease;
-        ">🚌</div>`,
-        iconSize: [size, size],
-        iconAnchor: [size/2, size/2],
-    });
-};
-
-// -------------------------------------------------------------
-// COMPONENT: Leaflet Map Controller
-// -------------------------------------------------------------
-function MapController({ center, buses }: { center?: { lat: number, lng: number }, buses?: Bus[] }) {
-    const map = useMap();
-
-    useEffect(() => {
-        try {
-            if (map && buses && buses.length > 0 && !center) {
-                const bounds = L.latLngBounds([]);
-                let hasValidBounds = false;
-                buses.forEach(bus => {
-                    const lat = parseCoord(bus.current_latitude ?? bus.latitude);
-                    const lng = parseCoord(bus.current_longitude ?? bus.longitude);
-                    if (lat !== undefined && lng !== undefined) {
-                        bounds.extend([lat, lng]);
-                        hasValidBounds = true;
-                    }
-                });
-                if (hasValidBounds) {
-                    map.fitBounds(bounds, { padding: [50, 50] });
-                }
-            }
-        } catch (e) {
-            console.error("Map bounds error:", e);
-        }
-    }, [map, buses]);
-
-    useEffect(() => {
-        try {
-            if (map && center) {
-                map.flyTo([center.lat, center.lng], 16, { duration: 1.5 });
-            }
-        } catch (e) {
-            console.error("Map flyTo error:", e);
-        }
-    }, [map, center]);
+    // SVG equivalent of the previous div icon
+    const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+            <rect width="${size}" height="${size}" rx="${isSelected ? 16 : 12}" fill="${bg}" stroke="white" stroke-width="3" />
+            <text x="50%" y="50%" font-size="${fontSize}" fill="white" font-family="sans-serif" text-anchor="middle" dominant-baseline="central">🚌</text>
+        </svg>
+    `;
     
-    return null;
-}
+    return {
+        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+        scaledSize: typeof window !== 'undefined' && window.google ? new window.google.maps.Size(size, size) : { width: size, height: size } as any,
+        anchor: typeof window !== 'undefined' && window.google ? new window.google.maps.Point(size / 2, size / 2) : { x: size / 2, y: size / 2 } as any,
+    };
+};
 
 // -------------------------------------------------------------
 // MAIN COMPONENT
@@ -120,6 +72,22 @@ function MapController({ center, buses }: { center?: { lat: number, lng: number 
 export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, centerLng = 35.2332 }: Props) {
     const { t, isRtl } = useTranslation();
     const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
+
+    // Google Maps Initialization
+    const { isLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
+    });
+
+    const [map, setMap] = useState<google.maps.Map | null>(null);
+
+    const onLoad = useCallback(function callback(mapInstance: google.maps.Map) {
+        setMap(mapInstance);
+    }, []);
+
+    const onUnmount = useCallback(function callback(mapInstance: google.maps.Map) {
+        setMap(null);
+    }, []);
     
     // Main State applied to map
     const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
@@ -171,6 +139,33 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
         return { lat, lng };
     }, [selectedBus]);
 
+    // Google Maps Bounds Management
+    useEffect(() => {
+        if (map && busesWithLocation && busesWithLocation.length > 0 && !selectedBus) {
+            const bounds = new window.google.maps.LatLngBounds();
+            let hasValidBounds = false;
+            busesWithLocation.forEach(bus => {
+                const lat = parseCoord(bus.current_latitude ?? bus.latitude);
+                const lng = parseCoord(bus.current_longitude ?? bus.longitude);
+                if (lat !== undefined && lng !== undefined) {
+                    bounds.extend(new window.google.maps.LatLng(lat, lng));
+                    hasValidBounds = true;
+                }
+            });
+            if (hasValidBounds) {
+                map.fitBounds(bounds);
+            }
+        }
+    }, [map, busesWithLocation, selectedBus]);
+
+    // Google Maps Pan Management
+    useEffect(() => {
+        if (map && mapTarget) {
+            map.panTo({ lat: mapTarget.lat, lng: mapTarget.lng });
+            map.setZoom(16);
+        }
+    }, [map, mapTarget]);
+
     // Navigation between buses
     const navigateBus = (direction: 'next' | 'prev') => {
         if (!busesWithLocation || busesWithLocation.length <= 1) return;
@@ -206,49 +201,46 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
     }, [safeBuses, selectSearch]);
 
     const isNavDisabled = busesWithLocation.length <= 1;
-    const initialCenter: [number, number] = [centerLat, centerLng];
-
-    // Leaflet Tile URLs
-    const tiles = {
-        roadmap: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-        satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-    };
+    const initialCenter = { lat: centerLat, lng: centerLng };
 
     return (
         <div className="relative w-full h-full bg-[#f8fafc] overflow-hidden rounded-[30px] border-4 border-white shadow-inner mx-4 my-4" style={{ height: 'calc(100vh - 120px)', width: 'calc(100% - 32px)' }}>
             
-            {/* --- OPENSTREETMAP LEAFLET MAP --- */}
-            <MapContainer 
-                center={initialCenter} 
-                zoom={13} 
-                zoomControl={false}
-                style={{ width: '100%', height: '100%', zIndex: 0 }}
-            >
-                <TileLayer
-                    url={tiles[mapType]}
-                    attribution='&copy; OpenStreetMap contributors & CARTO / Esri'
-                />
-                
-                <MapController center={mapTarget} buses={busesWithLocation} />
-
-                {busesWithLocation.map(bus => {
-                    const busLat = parseCoord(bus.current_latitude ?? bus.latitude);
-                    const busLng = parseCoord(bus.current_longitude ?? bus.longitude);
-                    if (busLat === undefined || busLng === undefined) return null;
-                    
-                    const isSelected = selectedBus?.id === bus.id;
-                    return (
-                        <Marker 
-                            key={`bus-${bus.id}`}
-                            position={[busLat, busLng]}
-                            icon={createBusIcon(bus.status || 'inactive', isSelected)}
-                            eventHandlers={{
-                                click: () => setSelectedBus(bus)
-                            }}
-                        />
-                    );
-                })}
-            </MapContainer>
+            {/* --- GOOGLE MAPS --- */}
+            {isLoaded ? (
+                <GoogleMap
+                    mapContainerStyle={{ width: '100%', height: '100%', zIndex: 0 }}
+                    center={initialCenter}
+                    zoom={13}
+                    options={{
+                        mapTypeId: mapType,
+                        disableDefaultUI: true, // We use custom overlays
+                        zoomControl: true, // Optional default control
+                    }}
+                    onLoad={onLoad}
+                    onUnmount={onUnmount}
+                >
+                    {busesWithLocation.map(bus => {
+                        const busLat = parseCoord(bus.current_latitude ?? bus.latitude);
+                        const busLng = parseCoord(bus.current_longitude ?? bus.longitude);
+                        if (busLat === undefined || busLng === undefined) return null;
+                        
+                        const isSelected = selectedBus?.id === bus.id;
+                        return (
+                            <Marker 
+                                key={`bus-${bus.id}`}
+                                position={{ lat: busLat, lng: busLng }}
+                                icon={createBusIconSvg(bus.status || 'inactive', isSelected)}
+                                onClick={() => setSelectedBus(bus)}
+                            />
+                        );
+                    })}
+                </GoogleMap>
+            ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+                </div>
+            )}
 
             {/* --- 1. SMART CONTROL BUTTON --- */}
             <div className={`absolute top-6 ${isRtl ? 'right-6' : 'left-6'} z-[50]`}>

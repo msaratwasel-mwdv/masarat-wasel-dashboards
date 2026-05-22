@@ -113,7 +113,7 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
 
             <div className={DS_pageWrapper}>
                 {/* Stats Cards */}
-                <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                     {statsCards.map((s, idx) => (
                         <div key={idx} className={`${DS_statCard(s.accent)} ${isRtl ? "flex-row-reverse" : ""}`}>
                             <div className={DS_statIcon(s.accent)}>{s.icon}</div>
@@ -144,21 +144,22 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                             </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-center gap-3">
-                            <div className="relative w-full sm:w-60">
-                                <Search className={`absolute ${isRtl ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none`} />
+                        <div className="flex flex-row items-center gap-2 sm:gap-3 w-full lg:w-auto mt-4 lg:mt-0">
+                            <div className="relative flex-1 sm:w-60">
+                                <Search className={`absolute ${isRtl ? "right-3 sm:right-4" : "left-3 sm:left-4"} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none`} />
                                 <input
                                     type="text"
                                     placeholder={t('Search trips...')}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className={`${DS_searchInput} ${isRtl ? "pr-10 pl-4" : "pl-10 pr-4"}`}
+                                    className={`${DS_searchInput} w-full h-10 sm:h-11 ${isRtl ? "pr-9 sm:pr-10 pl-3 sm:pl-4" : "pl-9 sm:pl-10 pr-3 sm:pr-4"}`}
                                     dir={isRtl ? "rtl" : "ltr"}
                                 />
                             </div>
-                            <button onClick={() => setShowCreateModal(true)} className={DS_btnGold}>
+                            <button onClick={() => setShowCreateModal(true)} className={`${DS_btnGold} flex-shrink-0 h-10 sm:h-11 flex items-center justify-center gap-2 !px-4 sm:!px-6`}>
                                 <Plus className="w-4 h-4" />
-                                {t('Request New Trip')}
+                                <span className="hidden sm:inline">{t('Request New Trip')}</span>
+                                <span className="sm:hidden">{t('Request')}</span>
                             </button>
                         </div>
                     </div>
@@ -173,7 +174,7 @@ export default function Index({ auth, fieldTrips = [], classrooms = [], teachers
                     </div>
 
                     {/* Table */}
-                    <div className={DS_tableWrapper}>
+                    <div className={`${DS_tableWrapper} !mx-0 px-2 sm:px-4`}>
                         <table className={DS_tableBase}>
                             <thead className={DS_tableHead}>
                                 <tr>

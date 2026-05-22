@@ -474,39 +474,35 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
         cell: (info) => {
           const driver = info.row.original;
           return (
-            <div className="flex items-center gap-2">
-              <button 
+            <div className="flex items-center gap-1.5">
+              <ActionButton
+                label={isRTL ? "عرض" : "View"}
                 onClick={() => openDetailsModal(driver)}
-                className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                title={isRTL ? "عرض" : "View"}
-              >
-                <Eye size={16} />
-              </button>
-              <button 
+                color="blue"
+                icon={<Eye size={15} />}
+              />
+              <ActionButton
+                label={isRTL ? "تعديل" : "Edit"}
                 onClick={() => openEditModal(driver)}
-                className={DS_btnEdit}
-                title={isRTL ? "تعديل" : "Edit"}
-              >
-                <Edit2 size={14} />
-              </button>
-              <button 
+                color="indigo"
+                icon={<Edit2 size={15} />}
+              />
+              <ActionButton
+                label={isRTL ? "حذف" : "Delete"}
                 onClick={() => deleteDriver(driver.id)}
-                className={DS_btnDanger}
-                title={isRTL ? "حذف" : "Delete"}
-              >
-                <Trash2 size={14} />
-              </button>
-              <button 
+                color="red"
+                icon={<Trash2 size={15} />}
+              />
+              <ActionButton
+                label={isRTL ? "طباعة البطاقة" : "Print Card"}
                 onClick={() => {
                   toast.info(isRTL ? "جاري تحضير بطاقة السائق..." : "Preparing driver card for print...");
                   const url = route("admin.drivers.print", driver.id);
                   window.open(url, "PrintDriverCard", "width=1000,height=800,scrollbars=yes,status=yes,resizable=yes");
                 }}
-                className="p-2 bg-gray-100 dark:bg-[#0f2044] text-gray-600 dark:text-gray-300 rounded-lg hover:bg-[#0f2044] hover:text-[#f5b800] transition-all shadow-sm"
-                title={isRTL ? "طباعة" : "Print"}
-              >
-                <Printer size={16} />
-              </button>
+                color="yellow"
+                icon={<Printer size={15} />}
+              />
             </div>
           );
         },
@@ -591,7 +587,7 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
         </div>
 
         {/* Intelligence Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-8">
             <div className={DS_statCard('blue')}>
                 <div className={DS_statIcon('blue')}><Users size={20} /></div>
                 <div>

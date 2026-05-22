@@ -66,7 +66,7 @@ export default function AdminFieldTripDetailsModal({ show, onClose, tripId }: Pr
     return (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn" onClick={onClose}>
             <div 
-                className={`bg-white dark:bg-[#1a2845] w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden ${DS_modalContainer} animate-slideUp`} 
+                className={`w-full max-w-5xl max-h-[90vh] ${DS_modalContainer} animate-slideUp`} 
                 onClick={e => e.stopPropagation()}
                 dir={isRTL ? 'rtl' : 'ltr'}
             >

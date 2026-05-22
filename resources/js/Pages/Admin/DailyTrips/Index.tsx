@@ -5,6 +5,8 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import { toast } from 'react-toastify';
 import Modal from '@/Components/Modal';
 import BaseDataTable, { ActionButton, StatusBadge, type FilterTab, type PaginationMeta } from '@/Components/BaseDataTable';
+import AdminDailyTripDetailsModal from './Partials/AdminDailyTripDetailsModal';
+import AdminDailyTripEditModal from './Partials/AdminDailyTripEditModal';
 import PrintReportHeader from "@/Components/PrintReportHeader";
 import {
     DS_pageWrapper,
@@ -115,6 +117,12 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
     const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    
+    // View and Edit Modals state
+    const [viewTripId, setViewTripId] = useState<number | null>(null);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [editTrip, setEditTrip] = useState<Trip | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [autoCreateDate, setAutoCreateDate] = useState(() => {
         const now = new Date();
         const year = now.getFullYear();
@@ -407,13 +415,13 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
             cell: (info) => {
                 const trip = info.row.original;
                 return (
-                    <div className="flex justify-center gap-1">
+                    <div className="flex justify-center gap-1.5">
                         {trip.status === 'awaiting_confirmation' && (
-                            <ActionButton label={isRTL ? 'تأكيد' : 'Confirm'} onClick={() => { if (confirm(isRTL ? 'تأكيد بدء هذه الرحلة؟' : 'Confirm starting this trip?')) router.post(route('admin.daily-trips.confirm', trip.id)); }} color="indigo" icon={<CheckCircle2 size={14} />} />
+                            <ActionButton label={isRTL ? 'تأكيد' : 'Confirm'} onClick={() => { if (confirm(isRTL ? 'تأكيد بدء هذه الرحلة؟' : 'Confirm starting this trip?')) router.post(route('admin.daily-trips.confirm', trip.id)); }} color="indigo" icon={<CheckCircle2 size={15} />} />
                         )}
-                        <ActionButton label={isRTL ? 'عرض' : 'View'} onClick={() => router.get(route('admin.daily-trips.show', trip.id))} color="green" icon={<Eye size={14} />} />
-                        <ActionButton label={isRTL ? 'تعديل' : 'Edit'} onClick={() => router.get(route('admin.daily-trips.edit', trip.id))} color="blue" icon={<Edit2 size={14} />} />
-                        <ActionButton label={isRTL ? 'حذف' : 'Delete'} onClick={() => { if (confirm(isRTL ? 'هل أنت متأكد من الحذف؟' : 'Are you sure you want to delete?')) router.delete(route('admin.daily-trips.destroy', trip.id)); }} color="red" icon={<Trash2 size={14} />} />
+                        <ActionButton label={isRTL ? 'عرض' : 'View'} onClick={() => { setViewTripId(trip.id); setIsViewModalOpen(true); }} color="green" icon={<Eye size={15} />} />
+                        <ActionButton label={isRTL ? 'تعديل' : 'Edit'} onClick={() => { setEditTrip(trip); setIsEditModalOpen(true); }} color="blue" icon={<Edit2 size={15} />} />
+                        <ActionButton label={isRTL ? 'حذف' : 'Delete'} onClick={() => { if (confirm(isRTL ? 'هل أنت متأكد من الحذف؟' : 'Are you sure you want to delete?')) router.delete(route('admin.daily-trips.destroy', trip.id)); }} color="red" icon={<Trash2 size={15} />} />
                     </div>
                 );
             }
@@ -481,7 +489,7 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                 {/* Premium Statistics Grid */}
                 <div className="relative group/stats">
                     <div className="absolute -inset-1 bg-gradient-to-r from-[#0f2044]/5 to-[#f5b800]/5 rounded-[32px] blur-xl opacity-50 group-hover/stats:opacity-100 transition-duration-500" />
-                    <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="relative grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                         <div className={`${DS_statCard("blue")} hover:shadow-2xl hover:shadow-[#0f2044]/10 transition-all duration-300 group/card border-b-4 border-b-[#0f2044]/20`}>
                             <div className={`${DS_statIcon("blue")} group-hover/card:scale-110 transition-transform`}><Zap size={24} /></div>
                             <div>
@@ -622,6 +630,20 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                     />
                 </div>
             </div>
+            
+            <AdminDailyTripDetailsModal 
+                show={isViewModalOpen}
+                onClose={() => setIsViewModalOpen(false)}
+                tripId={viewTripId}
+            />
+
+            <AdminDailyTripEditModal 
+                show={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                trip={editTrip}
+                buses={buses as any}
+                routes={routes as any}
+            />
 
             {/* Video Verification Modal */}
             <Modal show={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} maxWidth="2xl">

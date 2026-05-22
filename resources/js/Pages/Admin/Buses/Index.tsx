@@ -33,6 +33,9 @@ import {
   Smartphone,
   Plus,
   Printer,
+  RefreshCw,
+  Eye,
+  Edit3
 } from "lucide-react";
 import {
   DS_pageTitle,
@@ -43,6 +46,16 @@ import {
   DS_statIcon,
   DS_statLabel,
   DS_statValue2,
+  DS_modalContainer,
+  DS_modalHeader,
+  DS_modalHeaderTitle,
+  DS_modalHeaderAccent,
+  DS_modalClose,
+  DS_modalBody,
+  DS_inputCls,
+  DS_labelCls,
+  DS_submitBtn,
+  DS_cancelBtn,
 } from "@/lib/DS";
 import PrintReportHeader from "@/Components/PrintReportHeader";
 
@@ -466,6 +479,7 @@ export default function Index({
                   label={isRTL ? "استعادة" : "Restore"}
                   onClick={() => router.post(route("admin.buses.restore", bus.id), {}, { preserveScroll: true })}
                   color="green"
+                  icon={<RefreshCw size={16} />}
                 />
               ) : (
                 <>
@@ -473,16 +487,19 @@ export default function Index({
                     label={isRTL ? "عرض" : "View"}
                     onClick={() => openModal("view", bus)}
                     color="blue"
+                    icon={<Eye size={16} />}
                   />
                   <ActionButton
                     label={isRTL ? "تعديل" : "Edit"}
                     onClick={() => openModal("edit", bus)}
                     color="indigo"
+                    icon={<Edit3 size={16} />}
                   />
                   <ActionButton
                     label={isRTL ? "أرشفة" : "Archive"}
                     onClick={() => openModal("archive", bus)}
                     color="red"
+                    icon={<Archive size={16} />}
                   />
                 </>
               )}
@@ -822,74 +839,80 @@ export default function Index({
 
           {/* Add/Edit Modal — Premium Professional Layout */}
           <Modal show={modalState.type === "add" || modalState.type === "edit"} onClose={closeModal} maxWidth="5xl">
-            <div className={`flex flex-col h-[90vh] ${isDark ? "bg-[#111827]" : "bg-white"} overflow-hidden shadow-2xl rounded-2xl`}>
+            <div className={`flex flex-col max-h-[90vh] w-full bg-white dark:bg-[#1a2845] rounded-[22px] overflow-hidden ${DS_modalContainer}`}>
 
               {/* ── Header ── */}
-              <div className={`px-8 py-6 bg-[#0f2044] flex items-center justify-between flex-shrink-0 text-white ${isRTL ? "flex-row-reverse" : ""}`}>
-                <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/10 text-brand-yellow">
-                    <BusIcon className="w-6 h-6" />
-                  </div>
-                  <div className={isRTL ? "text-right" : ""}>
-                    <h2 className="text-2xl font-bold text-white">
-                      {modalState.type === "edit" ? (isRTL ? "تحديث بيانات الأسطول" : "Update Fleet Asset") : (isRTL ? "تسجيل أصل جديد" : "Register New Asset")}
-                    </h2>
-                    <p className="mt-1 text-sm text-blue-100">
-                      {modalState.type === "edit" ? (isRTL ? "تعديل مواصفات الحافلة وتعيينات الطاقم" : "Modify vehicle specs and crew assignments") : (isRTL ? "إضافة حافلة جديدة لمنظومة النقل" : "Introduce a new vehicle to the transport system")}
-                    </p>
+              <div className={DS_modalHeader(isRTL)}>
+                <div className="flex items-center gap-3">
+                  <div className={DS_modalHeaderAccent} />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#0f2044]/5 dark:bg-white/5 text-[#f5b800]">
+                      <BusIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className={DS_modalHeaderTitle}>
+                        {modalState.type === "edit" ? (isRTL ? "تحديث بيانات الأسطول" : "Update Fleet Asset") : (isRTL ? "تسجيل حافلة جديدة" : "Register New Asset")}
+                      </h2>
+                      <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 font-bold">
+                        {modalState.type === "edit" ? (isRTL ? "تعديل مواصفات الحافلة وتعيينات الطاقم" : "Modify vehicle specs and crew assignments") : (isRTL ? "إضافة حافلة جديدة لمنظومة النقل" : "Introduce a new vehicle to the transport system")}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <button type="button" onClick={closeModal} className="p-2 transition-colors rounded-lg text-white/80 hover:text-white hover:bg-white/10">
-                  <LucideX className="w-6 h-6" />
+                <button type="button" onClick={closeModal} className={DS_modalClose}>
+                  <LucideX className="w-5 h-5" />
                 </button>
               </div>
 
               {/* ── Body ── */}
               <div className="overflow-y-auto flex-1 custom-scrollbar">
-                <form id="bus-form" onSubmit={submitBusForm} className="p-8 space-y-12">
+                <form id="bus-form" onSubmit={submitBusForm} className="p-6 md:p-8 space-y-10">
                   
                   {/* Grid Container */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-10">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-10">
                     
                     {/* Column 1: Core Specs */}
-                    <div className="space-y-8">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-2 mb-4 border-b border-gray-100 dark:border-gray-800 pb-2">
                         <span className="w-1.5 h-6 bg-brand-yellow rounded-full"></span>
-                        <h3 className={`text-xs font-black uppercase tracking-widest ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                        <h3 className={`text-sm font-black uppercase tracking-widest text-[#0f2044] dark:text-white`}>
                           {isRTL ? "المواصفات الجوهرية" : "Core Specifications"}
                         </h3>
                       </div>
 
                       <div className="grid grid-cols-2 gap-5">
-                         <div className={isRTL ? "text-right" : ""}>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "رقم الحافلة" : "Bus ID"}</label>
-                          <input type="text" value={busForm.data.bus_number} disabled className={`w-full px-4 py-3 rounded-xl border text-sm font-bold ${isDark ? "bg-gray-800 border-gray-700 text-gray-500" : "bg-gray-50 border-gray-100 text-gray-400"}`} />
+                         <div className={isRTL ? "text-right" : "text-left"}>
+                          <label className={DS_labelCls}>{isRTL ? "رقم الحافلة" : "Bus ID"}</label>
+                          <input type="text" value={busForm.data.bus_number} disabled className={`${DS_inputCls} opacity-70 bg-gray-100 dark:bg-gray-800 cursor-not-allowed font-mono`} />
+                          <InputError message={busForm.errors.bus_number} className="mt-1" />
                         </div>
-                        <div className={isRTL ? "text-right" : ""}>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "رقم اللوحة" : "License Plate"}</label>
-                          <input type="text" value={busForm.data.plate_number} onChange={(e) => busForm.setData("plate_number", e.target.value.toUpperCase())} className={`w-full px-4 py-3 rounded-xl border text-sm font-mono font-black tracking-widest outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`} />
-                          {busForm.errors.plate_number && <p className="text-red-500 text-[10px] mt-1.5 font-bold uppercase">{busForm.errors.plate_number}</p>}
+                        <div className={isRTL ? "text-right" : "text-left"}>
+                          <label className={DS_labelCls}>{isRTL ? "رقم اللوحة" : "License Plate"}</label>
+                          <input type="text" value={busForm.data.plate_number} onChange={(e) => busForm.setData("plate_number", e.target.value.toUpperCase())} className={`${DS_inputCls} font-mono font-black tracking-widest`} placeholder="AAA 1234" />
+                          <InputError message={busForm.errors.plate_number} className="mt-1" />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-5">
-                        <div className={isRTL ? "text-right" : ""}>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "الموديل" : "Manufacturer / Model"}</label>
-                          <input type="text" value={busForm.data.model} onChange={(e) => busForm.setData("model", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`} />
+                        <div className={isRTL ? "text-right" : "text-left"}>
+                          <label className={DS_labelCls}>{isRTL ? "الموديل" : "Manufacturer / Model"}</label>
+                          <input type="text" value={busForm.data.model} onChange={(e) => busForm.setData("model", e.target.value)} className={DS_inputCls} placeholder="Mercedes-Benz 2024" />
+                          <InputError message={busForm.errors.model} className="mt-1" />
                         </div>
-                        <div className={isRTL ? "text-right" : ""}>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المقاعد" : "Capacity (Seats)"}</label>
-                          <input type="number" value={busForm.data.capacity} onChange={(e) => busForm.setData("capacity", Number(e.target.value))} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`} />
+                        <div className={isRTL ? "text-right" : "text-left"}>
+                          <label className={DS_labelCls}>{isRTL ? "المقاعد" : "Capacity (Seats)"}</label>
+                          <input type="number" min="1" value={busForm.data.capacity} onChange={(e) => busForm.setData("capacity", Number(e.target.value))} className={DS_inputCls} />
+                          <InputError message={busForm.errors.capacity} className="mt-1" />
                         </div>
-                        <div className={isRTL ? "text-right" : ""}>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "لون الحافلة" : "Bus Color"}</label>
+                        <div className={isRTL ? "text-right" : "text-left"}>
+                          <label className={DS_labelCls}>{isRTL ? "لون الحافلة" : "Bus Color"}</label>
                           <div className="relative">
                             <input 
                               type="text" 
                               value={busForm.data.color} 
                               onChange={(e) => busForm.setData("color", e.target.value)} 
-                              placeholder={isRTL ? "أصفر، أبيض، #FFD700..." : "Yellow, White, #FFD700..."}
-                              className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`} 
+                              placeholder={isRTL ? "أصفر، أبيض..." : "Yellow, White..."}
+                              className={DS_inputCls} 
                             />
                             {busForm.data.color && (
                                 <div 
@@ -898,82 +921,93 @@ export default function Index({
                                 />
                             )}
                           </div>
+                          <InputError message={busForm.errors.color} className="mt-1" />
+                        </div>
+                        <div className={isRTL ? "text-right" : "text-left"}>
+                          <label className={DS_labelCls}>{isRTL ? "سنة الصنع" : "Year"}</label>
+                          <input type="number" value={busForm.data.year || ""} onChange={(e) => busForm.setData("year", Number(e.target.value))} className={DS_inputCls} placeholder="2024" />
+                          <InputError message={busForm.errors.year as string} className="mt-1" />
                         </div>
                       </div>
 
-                      <div className={isRTL ? "text-right" : ""}>
-                        <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "الحالة التشغيلية" : "Operational Status"}</label>
-                        <div className={`grid grid-cols-2 gap-3 ${isRTL ? "rtl" : ""}`}>
+                      <div className={isRTL ? "text-right" : "text-left"}>
+                        <label className={DS_labelCls}>{isRTL ? "الحالة التشغيلية" : "Operational Status"}</label>
+                        <div className={`grid grid-cols-2 gap-3 ${isRTL ? "rtl" : "ltr"}`}>
                           {[
-                            { val: "active", label: isRTL ? "نشط" : "Active", color: "bg-green-500" },
-                            { val: "maintenance", label: isRTL ? "صيانة" : "Service", color: "bg-amber-500" },
-                            { val: "inactive", label: isRTL ? "غير نشط" : "Idle", color: "bg-gray-400" },
-                            { val: "out_of_service", label: isRTL ? "خارج الخدمة" : "Decommissioned", color: "bg-red-500" },
+                            { val: "active", label: isRTL ? "نشط" : "Active", color: "bg-green-500", text: "text-green-600 dark:text-green-400", border: "border-green-500", bg: "bg-green-500/10" },
+                            { val: "maintenance", label: isRTL ? "صيانة" : "Service", color: "bg-amber-500", text: "text-amber-600 dark:text-amber-400", border: "border-amber-500", bg: "bg-amber-500/10" },
+                            { val: "inactive", label: isRTL ? "غير نشط" : "Idle", color: "bg-gray-400", text: "text-gray-600 dark:text-gray-400", border: "border-gray-400", bg: "bg-gray-400/10" },
+                            { val: "out_of_service", label: isRTL ? "خارج الخدمة" : "Decommissioned", color: "bg-red-500", text: "text-red-600 dark:text-red-400", border: "border-red-500", bg: "bg-red-500/10" },
                           ].map(opt => (
-                            <button key={opt.val} type="button" onClick={() => busForm.setData("status", opt.val as any)} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${busForm.data.status === opt.val ? "border-brand-yellow bg-brand-yellow/5" : "border-transparent bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                            <button key={opt.val} type="button" onClick={() => busForm.setData("status", opt.val as any)} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all duration-300 ${busForm.data.status === opt.val ? `${opt.border} ${opt.bg}` : "border-gray-200 dark:border-[#243460] bg-white dark:bg-[#1a2845] hover:border-gray-300 dark:hover:border-gray-600"}`}>
                               <span className={`w-2.5 h-2.5 rounded-full ${opt.color}`}></span>
-                              <span className={`text-[11px] font-black uppercase ${busForm.data.status === opt.val ? "text-brand-yellow" : "text-gray-500 dark:text-gray-400"}`}>{opt.label}</span>
+                              <span className={`text-xs font-black uppercase tracking-wider ${busForm.data.status === opt.val ? opt.text : "text-gray-500 dark:text-gray-400"}`}>{opt.label}</span>
                             </button>
                           ))}
                         </div>
+                        <InputError message={busForm.errors.status} className="mt-1" />
                       </div>
                     </div>
 
                     {/* Column 2: Assignment & Operations */}
-                    <div className="space-y-8">
-                       <div className="flex items-center gap-2 mb-2">
-                        <span className="w-1.5 h-6 bg-brand-navy rounded-full"></span>
-                        <h3 className={`text-xs font-black uppercase tracking-widest ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                    <div className="space-y-6">
+                       <div className="flex items-center gap-2 mb-4 border-b border-gray-100 dark:border-gray-800 pb-2">
+                        <span className="w-1.5 h-6 bg-[#0f2044] dark:bg-[#7ba7e8] rounded-full"></span>
+                        <h3 className={`text-sm font-black uppercase tracking-widest text-[#0f2044] dark:text-white`}>
                           {isRTL ? "تعيينات التشغيل" : "Operational Assignments"}
                         </h3>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className={isRTL ? "text-right" : ""}>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المدرسة" : "Educational Institution"}</label>
-                          <select value={busForm.data.school_id} onChange={(e) => busForm.setData("school_id", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
+                        <div className={isRTL ? "text-right" : "text-left"}>
+                          <label className={DS_labelCls}>{isRTL ? "المدرسة" : "Educational Institution"}</label>
+                          <select value={busForm.data.school_id} onChange={(e) => busForm.setData("school_id", e.target.value)} className={DS_inputCls}>
                             <option value="">{isRTL ? "— بدون مدرسة —" : "— Unassigned —"}</option>
                             {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
+                          <InputError message={busForm.errors.school_id} className="mt-1" />
                         </div>
-                        <div className={isRTL ? "text-right" : ""}>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "المسار" : "Strategic Route"}</label>
-                          <select value={busForm.data.route_id || ""} onChange={(e) => busForm.setData("route_id", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
-                            <option value="">{isRTL ? "— بدون مسار —" : "— Tactical Reserve —"}</option>
+                        <div className={isRTL ? "text-right" : "text-left"}>
+                          <label className={DS_labelCls}>{isRTL ? "المسار" : "Strategic Route"}</label>
+                          <select value={busForm.data.route_id || ""} onChange={(e) => busForm.setData("route_id", e.target.value)} className={DS_inputCls}>
+                            <option value="">{isRTL ? "— بدون مسار —" : "— Unassigned —"}</option>
                             {routes.map(r => <option key={r.id} value={r.id}>{r.name} ({r.code})</option>)}
                           </select>
+                          <InputError message={busForm.errors.route_id as string} className="mt-1" />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className={isRTL ? "text-right" : ""}>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "السائق المعتمد" : "Certified Pilot (Driver)"}</label>
-                          <select value={busForm.data.driver_id || ""} onChange={(e) => busForm.setData("driver_id", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
-                            <option value="">{isRTL ? "— بدون سائق —" : "— Standby Mode —"}</option>
+                        <div className={isRTL ? "text-right" : "text-left"}>
+                          <label className={DS_labelCls}>{isRTL ? "السائق المعتمد" : "Certified Driver"}</label>
+                          <select value={busForm.data.driver_id || ""} onChange={(e) => busForm.setData("driver_id", e.target.value)} className={DS_inputCls}>
+                            <option value="">{isRTL ? "— بدون سائق —" : "— Unassigned —"}</option>
                             {(modalState.type === "edit" ? editDriverOptions : availableDrivers).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                           </select>
+                          <InputError message={busForm.errors.driver_id as string} className="mt-1" />
                         </div>
-                        <div className={isRTL ? "text-right" : ""}>
-                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "مشرفة الحافلة" : "Bus Supervisor"}</label>
-                           <select value={busForm.data.assistant_id || ""} onChange={(e) => busForm.setData("assistant_id", e.target.value)} className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none focus:ring-4 transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white focus:ring-brand-yellow/10 focus:border-brand-yellow" : "bg-white border-gray-200 focus:ring-brand-dark/5 focus:border-brand-dark"}`}>
-                            <option value="">{isRTL ? "— بدون مشرفة —" : "— No Supervisor —"}</option>
+                        <div className={isRTL ? "text-right" : "text-left"}>
+                          <label className={DS_labelCls}>{isRTL ? "مشرفة الحافلة" : "Bus Supervisor"}</label>
+                           <select value={busForm.data.assistant_id || ""} onChange={(e) => busForm.setData("assistant_id", e.target.value)} className={DS_inputCls}>
+                            <option value="">{isRTL ? "— بدون مشرفة —" : "— Unassigned —"}</option>
                             {(modalState.type === "edit" ? editAssistantOptions : availableAssistants).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
+                          <InputError message={busForm.errors.assistant_id as string} className="mt-1" />
                         </div>
                       </div>
 
-                      <div className="pt-6">
-                        <InputLabel value={isRTL ? "المستندات والصور المرفقة" : "Documentation & Visual Assets"} />
-                        <div className="mt-4 grid grid-cols-2 gap-4">
-                          <label className={`flex flex-col items-center justify-center gap-2 p-6 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${isDark ? "border-gray-700 bg-gray-800/20 hover:bg-gray-800/50" : "border-gray-200 bg-gray-50/50 hover:bg-gray-100"}`}>
+                      <div className="pt-4">
+                        <InputLabel value={isRTL ? "المستندات والصور المرفقة" : "Documentation & Visual Assets"} className="mb-2 block" />
+                        <div className="grid grid-cols-2 gap-4">
+                          <label className="flex flex-col items-center justify-center gap-2 p-5 rounded-[16px] border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
                             <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => handlePhotoSelect(e.target.files)} />
-                            <PhotoIcon className={`w-6 h-6 ${isDark ? "text-gray-600" : "text-gray-300"}`} />
-                            <span className="text-[10px] font-black uppercase tracking-tighter text-gray-500">{isRTL ? "صور الحافلة" : "Vehicle Photos"}</span>
+                            <PhotoIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{isRTL ? "صور الحافلة" : "Vehicle Photos"}</span>
                           </label>
-                           <label className={`flex flex-col items-center justify-center gap-2 p-6 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${isDark ? "border-gray-700 bg-gray-800/20 hover:bg-gray-800/50" : "border-gray-200 bg-gray-50/50 hover:bg-gray-100"}`}>
+                           <label className="flex flex-col items-center justify-center gap-2 p-5 rounded-[16px] border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
                             <input type="file" accept=".pdf,image/*" className="hidden" onChange={(e) => handleRegFileSelect(e.target.files?.[0] || null)} />
-                            <FolderUp className={`w-6 h-6 ${isDark ? "text-gray-600" : "text-gray-300"}`} />
-                            <span className="text-[10px] font-black uppercase tracking-tighter text-gray-500">{isRTL ? "الاستمارة / PDF" : "Registry / PDF"}</span>
+                            <FolderUp className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{isRTL ? "الاستمارة / PDF" : "Registry / PDF"}</span>
                           </label>
                         </div>
                       </div>
@@ -983,20 +1017,20 @@ export default function Index({
 
                   {/* Attachment Preview Section */}
                   {(photoPreviews.length > 0 || regPreview) && (
-                    <div className={`mt-8 p-6 rounded-3xl ${isDark ? "bg-gray-800/30" : "bg-gray-50/50"} border border-transparent`}>
-                       <h4 className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{isRTL ? "معاينة الملفات المختارة" : "Attachment Inventory"}</h4>
+                    <div className="mt-6 p-6 rounded-[20px] bg-gray-50 dark:bg-[#0f172a] border border-gray-100 dark:border-gray-800">
+                       <h4 className="text-xs font-black uppercase tracking-widest mb-4 text-[#0f2044] dark:text-gray-300">{isRTL ? "معاينة الملفات المرفقة" : "Attachment Preview"}</h4>
                        <div className="flex flex-wrap gap-4">
                           {regPreview && (
-                            <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-brand-yellow shadow-lg group">
-                              {regPreview.url ? <img src={regPreview.url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-[10px] font-bold">PDF</div>}
-                              <button type="button" onClick={() => handleRegFileSelect(null)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><LucideX className="w-3 h-3" /></button>
-                              <div className="absolute bottom-0 left-0 right-0 py-1 bg-brand-yellow text-brand-dark text-[8px] font-black text-center uppercase">Registry</div>
+                            <div className="relative w-20 h-20 rounded-[14px] overflow-hidden border-2 border-[#f5b800] shadow-sm group">
+                              {regPreview.url ? <img src={regPreview.url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs font-bold">PDF</div>}
+                              <button type="button" onClick={() => handleRegFileSelect(null)} className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><LucideX className="w-3 h-3" /></button>
+                              <div className="absolute bottom-0 left-0 right-0 py-0.5 bg-[#f5b800] text-[#0f2044] text-[8px] font-black text-center uppercase">Registry</div>
                             </div>
                           )}
                           {photoPreviews.map((p, idx) => (
-                            <div key={idx} className="relative w-24 h-24 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 group">
+                            <div key={idx} className="relative w-20 h-20 rounded-[14px] overflow-hidden border border-gray-200 dark:border-gray-700 group">
                               <img src={p.url} className="w-full h-full object-cover" alt="" />
-                              <button type="button" onClick={() => removePhotoPreview(idx)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><LucideX className="w-3 h-3" /></button>
+                              <button type="button" onClick={() => removePhotoPreview(idx)} className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><LucideX className="w-3 h-3" /></button>
                             </div>
                           ))}
                        </div>
@@ -1007,19 +1041,19 @@ export default function Index({
               </div>
 
               {/* ── Footer ── */}
-              <div className={`px-8 py-6 border-t flex items-center justify-between flex-shrink-0 ${isDark ? "border-gray-800 bg-[#0f172a]" : "border-gray-100 bg-gray-50"} ${isRTL ? "flex-row-reverse" : ""}`}>
+              <div className={`px-6 py-5 border-t border-gray-100 dark:border-[#243460] flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-[#1a2845] ${isRTL ? "flex-row-reverse" : ""}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`w-2.5 h-2.5 rounded-full ${busForm.processing ? "bg-brand-yellow animate-pulse" : "bg-green-500"}`}></div>
-                  <span className={`text-[11px] font-black uppercase tracking-[0.1em] ${isDark ? "text-gray-500" : "text-gray-400"}`}>
-                    {busForm.processing ? (isRTL ? "جارِ مزامنة البيانات..." : "Syncing with Command Center") : (isRTL ? "جميع الأنظمة جاهزة" : "All Systems Nominal")}
+                  <div className={`w-2 h-2 rounded-full ${busForm.processing ? "bg-[#f5b800] animate-pulse" : "bg-green-500"}`}></div>
+                  <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                    {busForm.processing ? (isRTL ? "جاري الحفظ..." : "Processing...") : (isRTL ? "جاهز للإرسال" : "Ready to submit")}
                   </span>
                 </div>
-                <div className={`flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
-                  <button type="button" onClick={closeModal} className={`px-6 py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all ${isDark ? "text-gray-500 hover:text-white" : "text-gray-400 hover:text-gray-900"}`}>
-                    {isRTL ? "تجاهل" : "Dismiss"}
+                <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
+                  <button type="button" onClick={closeModal} className={DS_cancelBtn}>
+                    {isRTL ? "إلغاء" : "Cancel"}
                   </button>
-                  <button type="submit" form="bus-form" disabled={busForm.processing} className={`px-10 py-3 rounded-xl text-sm font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 disabled:opacity-50 ${isDark ? "bg-brand-yellow text-brand-dark hover:shadow-yellow-500/10" : "bg-brand-dark text-white hover:bg-brand-navy shadow-brand-dark/20"}`}>
-                    {busForm.processing ? (isRTL ? "جارِ الحفظ..." : "Processing...") : (modalState.type === "edit" ? (isRTL ? "تحديث السجل" : "Commit Records") : (isRTL ? "تشغيل الحافلة" : "Deploy Asset"))}
+                  <button type="submit" form="bus-form" disabled={busForm.processing} className={DS_submitBtn(busForm.processing)}>
+                    {busForm.processing ? (isRTL ? "جاري الحفظ..." : "Saving...") : (modalState.type === "edit" ? (isRTL ? "تحديث البيانات" : "Save Changes") : (isRTL ? "إضافة الحافلة" : "Add Bus"))}
                   </button>
                 </div>
               </div>
@@ -1030,44 +1064,62 @@ export default function Index({
 
 
           {/* Archive Modal */}
-          <Modal show={modalState.type === "archive"} onClose={closeModal}>
-            <div className={`p-6 ${isDark ? "bg-gray-800" : "bg-white"}`}>
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
-                  <AlertTriangle className="w-8 h-8" />
+          {/* Archive Modal */}
+          <Modal show={modalState.type === "archive"} onClose={closeModal} maxWidth="md">
+            <div className={`bg-white dark:bg-[#1a2845] w-full rounded-[22px] ${DS_modalContainer}`}>
+              {/* Header */}
+              <div className={DS_modalHeader(isRTL)}>
+                <div className="flex items-center gap-3">
+                  <div className="w-1.5 h-6 bg-red-500 rounded-full" />
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-red-500" />
+                    <h2 className={DS_modalHeaderTitle}>
+                      {isRTL ? "أرشفة المركبة" : "Archive Vehicle"}
+                    </h2>
+                  </div>
                 </div>
-                <h2 className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
-                  {isRTL ? "أرشفة المركبة" : "Archive Vehicle"}
-                </h2>
-                <p className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                  {isRTL ? "هذا الإجراء سيزيل الحافلة من الخدمة." : "This will remove the bus from active duty."}
-                </p>
+                <button type="button" onClick={closeModal} className={DS_modalClose}>
+                  <LucideX size={20} />
+                </button>
               </div>
-              <form onSubmit={submitArchiveForm} className="space-y-4">
-                <div className={isRTL ? "text-right" : ""}>
-                  <InputLabel value={isRTL ? "سبب الإلغاء" : "Reason for Deactivation"} />
-                  <select
-                    className={`w-full rounded-lg mt-1 ${isDark ? "bg-gray-700 border-gray-600 text-white" : "border-gray-300"}`}
-                    value={archiveForm.data.deactivation_reason}
-                    onChange={(e) => archiveForm.setData("deactivation_reason", e.target.value)}
-                    required
-                  >
-                    <option value="">{isRTL ? "-- اختر السبب --" : "-- Select Reason --"}</option>
-                    <option value="Maintenance">{isRTL ? "صيانة" : "Maintenance"}</option>
-                    <option value="Accident">{isRTL ? "حادث" : "Accident"}</option>
-                    <option value="Sold">{isRTL ? "تم البيع" : "Sold"}</option>
-                    <option value="Other">{isRTL ? "أخرى" : "Other"}</option>
-                  </select>
+
+              <div className={DS_modalBody}>
+                <div className="text-center mb-6">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 font-bold leading-relaxed">
+                    {isRTL
+                      ? `هل أنت متأكد من أرشفة الحافلة رقم (${modalState.bus?.bus_number}) وإخراجها من الخدمة؟`
+                      : `Are you sure you want to archive bus (${modalState.bus?.bus_number}) and take it out of service?`}
+                  </p>
                 </div>
-                <div className={`flex gap-3 mt-6 ${isRTL ? "flex-row-reverse" : "justify-end"}`}>
-                  <SecondaryButton onClick={closeModal}>
-                    {isRTL ? "إلغاء" : "Cancel"}
-                  </SecondaryButton>
-                  <PrimaryButton className="bg-red-600 hover:bg-red-700 border-none" disabled={archiveForm.processing}>
-                    {isRTL ? "أرشفة نهائية" : "Archive Permanently"}
-                  </PrimaryButton>
-                </div>
-              </form>
+
+                <form id="archive-form" onSubmit={submitArchiveForm} className="space-y-4">
+                  <div className={isRTL ? "text-right" : "text-left"}>
+                    <label className={DS_labelCls}>{isRTL ? "سبب الأرشفة" : "Reason for Deactivation"}</label>
+                    <select
+                      className={DS_inputCls}
+                      value={archiveForm.data.deactivation_reason}
+                      onChange={(e) => archiveForm.setData("deactivation_reason", e.target.value)}
+                      required
+                    >
+                      <option value="">{isRTL ? "-- اختر السبب --" : "-- Select Reason --"}</option>
+                      <option value="Maintenance">{isRTL ? "صيانة دورية / طارئة" : "Maintenance"}</option>
+                      <option value="Accident">{isRTL ? "حادث مروري" : "Accident"}</option>
+                      <option value="Sold">{isRTL ? "تم البيع / الاستغناء" : "Sold"}</option>
+                      <option value="Other">{isRTL ? "أسباب أخرى" : "Other"}</option>
+                    </select>
+                    <InputError message={archiveForm.errors.deactivation_reason} className="mt-1" />
+                  </div>
+                </form>
+              </div>
+
+              <div className={`px-6 py-5 border-t border-gray-100 dark:border-[#243460] flex gap-3 ${isRTL ? "flex-row-reverse" : "justify-end"} bg-gray-50 dark:bg-[#1a2845]`}>
+                <button type="button" onClick={closeModal} className={DS_cancelBtn} disabled={archiveForm.processing}>
+                  {isRTL ? "إلغاء" : "Cancel"}
+                </button>
+                <button type="submit" form="archive-form" disabled={archiveForm.processing} className="px-6 py-2.5 rounded-[14px] bg-red-500 hover:bg-red-600 text-white text-sm font-bold shadow-md transition-all disabled:opacity-50">
+                  {isRTL ? "أرشفة نهائية" : "Archive Permanently"}
+                </button>
+              </div>
             </div>
           </Modal>
         </motion.div>

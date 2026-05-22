@@ -5,7 +5,8 @@ import { useTheme } from '@/Contexts/ThemeContext';
 import useTranslation from '@/hooks/useTranslation';
 import AdminFieldTripDetailsModal from './Partials/AdminFieldTripDetailsModal';
 import PrintReportHeader from "@/Components/PrintReportHeader";
-import BaseDataTable from '@/Components/BaseDataTable';
+import BaseDataTable, { ActionButton } from '@/Components/BaseDataTable';
+import SearchableSelect from '@/Components/SearchableSelect';
 import OmaniRial from '@/Components/OmaniRial';
 import Modal from '@/Components/Modal';
 import { 
@@ -272,30 +273,27 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
             id: 'actions',
             header: t('Ops'),
             cell: info => (
-                <div className="flex items-center justify-center gap-2">
-                    <button
+                <div className="flex items-center justify-center gap-1.5">
+                    <ActionButton
+                        label={t('Inspect')}
                         onClick={() => openDetails(info.row.original.id)}
-                        className="p-2.5 bg-gray-50 dark:bg-[#0f2044]/40 text-gray-500 hover:bg-[#0f2044] hover:text-white rounded-xl transition-all shadow-sm"
-                        title={t('Inspect')}
-                    >
-                        <Eye size={16} />
-                    </button>
+                        color="blue"
+                        icon={<Eye size={15} />}
+                    />
                     {info.row.original.status === 'pending' && (
                         <>
-                            <button
+                            <ActionButton
+                                label={t('Approve')}
                                 onClick={() => openApproveModal(info.row.original)}
-                                className="p-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-xl transition-all shadow-sm"
-                                title={t('Approve')}
-                            >
-                                <Check size={16} />
-                            </button>
-                            <button
+                                color="green"
+                                icon={<Check size={15} />}
+                            />
+                            <ActionButton
+                                label={t('Reject')}
                                 onClick={() => openRejectModal(info.row.original)}
-                                className="p-2.5 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm"
-                                title={t('Reject')}
-                            >
-                                <Ban size={16} />
-                            </button>
+                                color="red"
+                                icon={<Ban size={15} />}
+                            />
                         </>
                     )}
                 </div>
@@ -338,7 +336,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
                 {/* Premium Statistics Grid */}
                 <div className="relative group/stats">
                     <div className="absolute -inset-1 bg-gradient-to-r from-[#0f2044]/5 to-[#f5b800]/5 rounded-[32px] blur-xl opacity-50 group-hover/stats:opacity-100 transition-duration-500" />
-                    <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="relative grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                         {stats.map((s, i) => (
                             <div key={i} className={`${DS_statCard(s.color as any)} hover:shadow-2xl hover:shadow-[#0f2044]/10 transition-all duration-300 group/card border-b-4 border-b-[#0f2044]/20`}>
                                 <div className={`${DS_statIcon(s.color as any)} group-hover/card:scale-110 transition-transform`}>{s.icon}</div>
@@ -380,7 +378,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
 
             {/* Standardized Approval Modal */}
             <Modal show={isApproveModalOpen} onClose={() => setIsApproveModalOpen(false)} maxWidth="lg">
-                <div className={`bg-white dark:bg-[#1a2845] w-full ${DS_modalContainer}`} dir={isRTL ? 'rtl' : 'ltr'}>
+                <div className={DS_modalContainer} dir={isRTL ? 'rtl' : 'ltr'}>
                     <div className={DS_modalHeader(isRTL)}>
                         <div className="flex items-center gap-3">
                             <div className={DS_modalHeaderAccent} />
@@ -424,24 +422,18 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
 
                                 <div>
                                     <label className={DS_label}>{t('Asset Deployment')}</label>
-                                    <div className="relative">
-                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                                            <BusIcon size={18} />
-                                        </div>
-                                        <select
-                                            required
+                                        <SearchableSelect
+                                            options={buses.map(bus => ({
+                                                id: bus.id,
+                                                label: `${bus.bus_number} | ${bus.plate_number} (${bus.capacity} ${t('seats')})`
+                                            }))}
                                             value={selectedBus}
-                                            onChange={(e) => setSelectedBus(e.target.value)}
-                                            className={`${DS_select} pl-12`}
-                                        >
-                                            <option value="" disabled>{t('--- Select Heavy Asset ---')}</option>
-                                            {buses.map(bus => (
-                                                <option key={bus.id} value={bus.id}>
-                                                    {bus.bus_number} | {bus.plate_number} ({bus.capacity} {t('seats')})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                            onChange={setSelectedBus}
+                                            placeholder={t('--- Select Heavy Asset ---')}
+                                            icon={<BusIcon size={16} />}
+                                            className="w-full"
+                                            dropdownPosition="bottom"
+                                        />
                                     <p className="mt-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2 px-1">
                                         <Users size={12} className="text-amber-500" />
                                         {t('Required Seats:')} {selectedTrip?.students_count}
@@ -479,7 +471,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
 
             {/* Standardized Rejection Modal */}
             <Modal show={isRejectModalOpen} onClose={() => setIsRejectModalOpen(false)} maxWidth="md">
-                <div className={`bg-white dark:bg-[#1a2845] w-full ${DS_modalContainer}`} dir={isRTL ? 'rtl' : 'ltr'}>
+                <div className={DS_modalContainer} dir={isRTL ? 'rtl' : 'ltr'}>
                     <div className={DS_modalHeader(isRTL)}>
                         <div className="flex items-center gap-3">
                             <div className="w-1.5 h-8 bg-rose-500 rounded-full" />

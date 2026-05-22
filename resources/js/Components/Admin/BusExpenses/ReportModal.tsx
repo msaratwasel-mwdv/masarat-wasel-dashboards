@@ -84,7 +84,7 @@ export default function ReportModal({ isOpen, onClose, buses, isRTL }: ReportMod
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 20 }}
-          className={`relative max-w-3xl w-full bg-white dark:bg-[#1a2845] ${DS_modalContainer}`}
+          className={`relative max-w-3xl w-full rounded-[22px] bg-white dark:bg-[#1a2845] ${DS_modalContainer}`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

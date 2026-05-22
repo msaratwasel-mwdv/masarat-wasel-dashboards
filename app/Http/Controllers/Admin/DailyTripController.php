@@ -175,10 +175,14 @@ class DailyTripController extends Controller
     /**
      * Show the detailed view of a specific daily trip.
      */
-    public function show(Trip $trip)
+    public function show(Request $request, Trip $trip)
     {
         $this->tripService->syncTripAttendances($trip);
         $trip->load(['bus.school', 'bus.driver.user', 'driver', 'assistant', 'bus.route', 'attendances.student']);
+
+        if ($request->wantsJson()) {
+            return response()->json(['trip' => $trip]);
+        }
 
         return Inertia::render('Admin/DailyTrips/Show', [
             'trip' => $trip,
