@@ -47,8 +47,8 @@ Route::post('/broadcasting/auth', function (Request $request) {
 })->middleware('auth:sanctum');
 
 // ========== الروابط المحمية بـ Sanctum ==========
-// ✅ Rate Limiting: 60 طلب كل دقيقة لكل المستخدمين المسجلين — يمنع DDoS
-Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+// ✅ Rate Limiting: 300 طلب كل دقيقة في التطوير المحلي لتسهيل الاختبار و 60 في الإنتاج — يمنع DDoS
+Route::middleware(['auth:sanctum', app()->environment('local') ? 'throttle:300,1' : 'throttle:60,1'])->group(function () {
 
     // --- المصادقة ---
     Route::post('/auth/logout', [AuthController::class, 'logout']);

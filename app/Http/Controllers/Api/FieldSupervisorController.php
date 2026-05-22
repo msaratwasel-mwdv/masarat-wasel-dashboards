@@ -105,6 +105,30 @@ class FieldSupervisorController extends Controller
             ->where('status', 'active')
             ->get()
             ->map(function ($bus) {
+                $lat = (double) $bus->current_latitude;
+                $lng = (double) $bus->current_longitude;
+                $isFallback = false;
+
+                if ($lat == 0.0 || $lng == 0.0) {
+                    $isFallback = true;
+                    if ($bus->latitude && $bus->longitude && (double)$bus->latitude != 0.0 && (double)$bus->longitude != 0.0) {
+                        $lat = (double) $bus->latitude;
+                        $lng = (double) $bus->longitude;
+                    } else {
+                        $lat = (double) ($bus->school && $bus->school->latitude ? $bus->school->latitude : 23.5880);
+                        $lng = (double) ($bus->school && $bus->school->longitude ? $bus->school->longitude : 58.3829);
+                    }
+                }
+
+                // If using fallback, apply deterministic jittering to avoid stacking markers perfectly on top of each other
+                if ($isFallback) {
+                    $busIdInt = (int) $bus->id;
+                    $offsetAngle = ($busIdInt * 137.5) * (pi() / 180.0);
+                    $offsetDistance = 0.00015 + (($busIdInt % 5) * 0.00005); // approx 15-40 meters
+                    $lat += $offsetDistance * cos($offsetAngle);
+                    $lng += $offsetDistance * sin($offsetAngle);
+                }
+
                 return [
                     'id'              => $bus->id,
                     'bus_number'      => $bus->bus_number,
@@ -113,8 +137,8 @@ class FieldSupervisorController extends Controller
                     'driver'          => $bus->driver?->name ?? 'N/A',
                     'assistant'       => $bus->assistant?->name ?? 'N/A',
                     'field_supervisor'=> $bus->fieldSupervisor?->name ?? 'N/A',
-                    'location_lat'    => (float) $bus->current_latitude,
-                    'location_lng'    => (float) $bus->current_longitude,
+                    'location_lat'    => $lat,
+                    'location_lng'    => $lng,
                     'status'          => $bus->status,
                     'trip_status'     => $bus->trip_status,
                     'speed_kmh'       => 0,
