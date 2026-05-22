@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Services\NotificationService;
+use App\Models\Incident;
+use App\Models\Student;
 
 class NotificationController extends Controller
 {
@@ -511,5 +513,61 @@ class NotificationController extends Controller
             default:
                 return collect();
         }
+    }
+
+    /**
+     * Resend incident/behavioral report to guardian.
+     */
+    public function resendIncidentToParent(Incident $incident, NotificationService $notificationService)
+    {
+        $schoolId = Auth::user()->school_id;
+        $incident->load('bus');
+
+        if ($incident->bus && $incident->bus->school_id !== $schoolId) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (empty($incident->student_ids) || !is_array($incident->student_ids)) {
+            return redirect()->back()->with('error', 'لا يوجد طلاب مرتبطين بهذا البلاغ.');
+        }
+
+        $sentCount = 0;
+        foreach ($incident->student_ids as $studentId) {
+            $student = Student::with('guardians')->find($studentId);
+            if (!$student) {
+                continue;
+            }
+
+            // Check student belongs to the school
+            if ($student->school_id !== $schoolId) {
+                continue;
+            }
+
+            foreach ($student->guardians as $guardian) {
+                $notificationService->sendToUser(
+                    userId: $guardian->id,
+                    type: 'schoolAlert',
+                    title: 'تنبيه سلوكي - ' . $student->full_name,
+                    message: 'تنبيه سلوكي من المدرسة بخصوص الطالب: ' . $incident->description,
+                    data: [
+                        'incident_id' => (string) $incident->id,
+                        'student_id' => (string) $student->id,
+                        'category' => 'incidents',
+                        'target_screen' => 'incident_details',
+                    ],
+                    titleEn: 'Behavioral Alert - ' . ($student->full_name_en ?: $student->full_name),
+                    messageEn: 'School behavioral report regarding student: ' . $incident->description,
+                    fromUserName: 'إدارة المدرسة',
+                    fromUserNameEn: 'School Administration'
+                );
+                $sentCount++;
+            }
+        }
+
+        if ($sentCount === 0) {
+            return redirect()->back()->with('error', 'لم يتم العثور على أولياء أمور مسجلين لهؤلاء الطلاب.');
+        }
+
+        return redirect()->back()->with('success', 'تم إعادة إرسال البلاغ بنجاح إلى أولياء الأمور (' . $sentCount . ').');
     }
 }

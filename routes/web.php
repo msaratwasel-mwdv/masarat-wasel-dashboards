@@ -301,6 +301,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
             Route::get('notifications/received', [\App\Http\Controllers\School\NotificationController::class, 'received'])->name('notifications.received');
             Route::resource('notifications', \App\Http\Controllers\School\NotificationController::class);
             Route::post('notifications/preview', [\App\Http\Controllers\School\NotificationController::class, 'preview'])->name('notifications.preview');
+            Route::post('notifications/incidents/{incident}/resend', [\App\Http\Controllers\School\NotificationController::class, 'resendIncidentToParent'])->name('notifications.incidents.resend');
 
 
             Route::resource('routes', \App\Http\Controllers\School\RouteController::class);

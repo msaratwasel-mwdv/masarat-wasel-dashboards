@@ -106,6 +106,14 @@ class Notification extends Model
     {
         return $query->latest()->limit($limit);
     }
+
+    /**
+     * Scope to exclude all notifications older than 24 hours.
+     */
+    public function scopeActiveOnly($query)
+    {
+        return $query->where('created_at', '>=', now()->subHours(24));
+    }
 }
 
 

@@ -107,7 +107,7 @@ class ParentController extends Controller
             ->where('is_active', true)
             ->withCount('trips')
             ->with([
-                'tripAttendances',
+                'todayTripAttendances.trip',
                 'forthBus.route', 
                 'backBus.route',
                 'forthBus.driver.user',
@@ -149,15 +149,49 @@ class ParentController extends Controller
                 ? round(($presentCount / $totalAttendances) * 100) 
                 : 0;
 
-            // تحديد الحالة الحالية للطالب
-            $lastLog = $student->lastTripAttendance;
+            // تحديد سجل الحضور اليومي النشط والمناسب للطالب بناءً على أولويات الرحلة والحالة
+            $lastLog = null;
+            if ($student->todayTripAttendances->isNotEmpty()) {
+                // 1. إذا كانت هناك رحلة قيد التشغيل حالياً (in_progress)، نعتمد سجل الحضور الخاص بها كأولوية قصوى.
+                $lastLog = $student->todayTripAttendances->first(function ($att) {
+                    return $att->trip && $att->trip->status === 'in_progress';
+                });
+
+                // 2. إذا لم توجد رحلة نشطة، نأخذ السجل الأخير الذي تغيرت فيه حالة الطالب بالفعل (أي ليست غائب وليست معذور)
+                if (!$lastLog) {
+                    $lastLog = $student->todayTripAttendances
+                        ->filter(function ($att) {
+                            return $att->status && !in_array($att->status, ['absent', 'excused']);
+                        })
+                        ->sortByDesc('id')
+                        ->first();
+                }
+
+                // 3. إذا لم يوجد، نأخذ آخر رحلة منتهية (finished أو completed أو awaiting_video)
+                if (!$lastLog) {
+                    $lastLog = $student->todayTripAttendances
+                        ->filter(function ($att) {
+                            return $att->trip && in_array($att->trip->status, ['finished', 'completed', 'awaiting_video']);
+                        })
+                        ->sortByDesc('id')
+                        ->first();
+                }
+
+                // 4. كخيار أخير، نعتمد الرحلة الأولى لليوم
+                if (!$lastLog) {
+                    $lastLog = $student->todayTripAttendances->sortBy('id')->first();
+                }
+            }
+
             $studentStatus = 'atHome';
             if ($lastLog) {
                 if ($lastLog->status === 'boarded' || $lastLog->status === 'present') {
                     $studentStatus = 'onBus';
-                } elseif ($lastLog->status === 'alighted' || $lastLog->status === 'dropped_off') {
+                } elseif ($lastLog->status === 'alighted' || $lastLog->status === 'dropped_off' || $lastLog->status === 'dropped') {
                     $tripType = $lastLog->trip?->type ?? 'morning';
-                    $studentStatus = ($tripType === 'morning') ? 'atSchool' : 'atHome';
+                    $studentStatus = ($tripType === 'morning' || $tripType === 'forth') ? 'atSchool' : 'atHome';
+                } elseif ($lastLog->status === 'waiting') {
+                    $studentStatus = 'waiting';
                 } elseif ($lastLog->status === 'absent') {
                     $studentStatus = 'atHome';
                 }
@@ -169,6 +203,50 @@ class ParentController extends Controller
             // اقتراح اتجاه الرحلة بناءً على حالة الباص
             $suggestedDirection = ($activeBus && in_array($activeBus->trip_status, ['to_home'])) ? 'to_home' : 'to_school';
 
+            // حساب الأوقات المرحلية الخمسة من سجلات اليوم بناءً على الرحلات
+            $waitingAtHomeTime = null;
+            $onBusToSchoolTime = null;
+            $atSchoolTime = null;
+            $onBusToHomeTime = null;
+            $arrivedHomeTime = null;
+
+            foreach ($student->todayTripAttendances as $att) {
+                $tripType = $att->trip?->type ?? 'forth';
+                $isMorning = in_array($tripType, ['forth', 'morning']);
+
+                if ($isMorning) {
+                    if ($att->waiting_start_time) {
+                        $waitingAtHomeTime = $att->waiting_start_time->toIso8601String();
+                    } elseif ($att->status === 'waiting') {
+                        $waitingAtHomeTime = $att->updated_at->toIso8601String();
+                    }
+
+                    if ($att->check_in_time) {
+                        $onBusToSchoolTime = $att->check_in_time->toIso8601String();
+                    } elseif (in_array($att->status, ['boarded', 'present'])) {
+                        $onBusToSchoolTime = $att->updated_at->toIso8601String();
+                    }
+
+                    if ($att->check_out_time) {
+                        $atSchoolTime = $att->check_out_time->toIso8601String();
+                    } elseif (in_array($att->status, ['dropped', 'alighted', 'dropped_off'])) {
+                        $atSchoolTime = $att->updated_at->toIso8601String();
+                    }
+                } else {
+                    if ($att->check_in_time) {
+                        $onBusToHomeTime = $att->check_in_time->toIso8601String();
+                    } elseif (in_array($att->status, ['boarded', 'present'])) {
+                        $onBusToHomeTime = $att->updated_at->toIso8601String();
+                    }
+
+                    if ($att->check_out_time) {
+                        $arrivedHomeTime = $att->check_out_time->toIso8601String();
+                    } elseif (in_array($att->status, ['dropped', 'alighted', 'dropped_off'])) {
+                        $arrivedHomeTime = $att->updated_at->toIso8601String();
+                    }
+                }
+            }
+
             return [
                 'id'           => $student->id,
                 'name'         => $student->full_name,
@@ -178,6 +256,11 @@ class ParentController extends Controller
                 'student_code' => $student->student_code,
                 'status'       => $studentStatus,
                 'suggested_direction' => $suggestedDirection,
+                'waiting_at_home_time' => $waitingAtHomeTime,
+                'on_bus_to_school_time' => $onBusToSchoolTime,
+                'at_school_time' => $atSchoolTime,
+                'on_bus_to_home_time' => $onBusToHomeTime,
+                'arrived_home_time' => $arrivedHomeTime,
                 'grade'                  => (function() use ($student) {
                     $classroom = $student->currentEnrollment?->classroom;
                     $gradeNameAr = $classroom?->grade ? ($classroom->grade->getAttributes()['name'] ?? null) : null;

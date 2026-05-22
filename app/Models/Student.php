@@ -196,6 +196,14 @@ class Student extends Model
         return $this->hasMany(TripAttendance::class);
     }
 
+    public function todayTripAttendances(): HasMany
+    {
+        return $this->hasMany(TripAttendance::class)
+            ->whereHas('trip', function ($q) {
+                $q->whereDate('trip_date', today());
+            });
+    }
+
     public function trips(): BelongsToMany
     {
         return $this->belongsToMany(Trip::class, 'trip_attendances', 'student_id', 'trip_id')->withTimestamps();
@@ -207,12 +215,13 @@ class Student extends Model
     }
 
     /**
-     * آخر سجل تحضير في رحلات اليوم
+     * آخر سجل تحضير في رحلات اليوم (المرتب حسب تاريخ التحديث أولاً ثم المعرف)
      */
     public function lastTripAttendance(): HasOne
     {
         return $this->hasOne(TripAttendance::class)
             ->ofMany([
+                'updated_at' => 'max',
                 'id' => 'max',
             ], function ($relation) {
                 $relation->whereHas('trip', fn($q) => $q->whereDate('trip_date', today()));

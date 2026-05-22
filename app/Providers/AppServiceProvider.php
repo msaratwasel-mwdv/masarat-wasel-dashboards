@@ -52,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Notification::observe(\App\Observers\NotificationObserver::class);
         \App\Models\NotificationRecipient::observe(\App\Observers\NotificationRecipientObserver::class);
         \App\Models\Incident::observe(\App\Observers\IncidentObserver::class);
+        \App\Models\FieldTrip::observe(\App\Observers\FieldTripObserver::class);
         
         // Analytics models cache invalidation
         $analyticsObserver = \App\Observers\AnalyticsCacheObserver::class;
