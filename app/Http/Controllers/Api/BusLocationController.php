@@ -157,7 +157,11 @@ class BusLocationController extends Controller
         }
 
         if (!$isCrew && !$isGuardian && !$isSchoolStaff) {
-            return response()->json(['message' => 'غير مصرح لك بمتابعة هذا الباص.'], 403);
+            if ($user->hasRole('admin') || $user->hasRole('field_supervisor')) {
+                $isSchoolStaff = true;
+            } else {
+                return response()->json(['message' => 'غير مصرح لك بمتابعة هذا الباص.'], 403);
+            }
         }
 
         // Fetch Driver Info
