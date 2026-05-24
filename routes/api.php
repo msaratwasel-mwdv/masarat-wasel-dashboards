@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DailyTripApiController;
 use App\Http\Controllers\Api\BusLocationController;
 use App\Http\Controllers\Api\GuardianNotificationController;
+use App\Http\Controllers\Api\WhatsAppWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\User;
@@ -17,6 +18,9 @@ use Illuminate\Support\Facades\Hash;
 | واجهات برمجة التطبيقات للتطبيقات المحمولة (Flutter)
 |
 */
+
+// ═══ WhatsApp Webhook ═══
+Route::match(['get', 'post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
 
 // ✅ Rate Limiting: 5 محاولات دخول فقط كل دقيقة — يمنع Brute Force attacks
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
