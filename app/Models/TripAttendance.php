@@ -26,6 +26,69 @@ class TripAttendance extends Model
         'waiting_start_time' => 'datetime',
     ];
 
+    protected static function booted()
+    {
+        static::saved(function ($tripAttendance) {
+            if (in_array($tripAttendance->status, ['boarded', 'dropped', 'absent', 'excused'])) {
+                $trip = $tripAttendance->trip;
+                if ($trip && $trip->bus_id) {
+                    $bus = $trip->bus;
+                    if ($bus) {
+                        // Set memory attributes to null to force dynamic calculation
+                        $bus->setAttribute('target_latitude', null);
+                        $bus->setAttribute('target_longitude', null);
+
+                        $targetLat = $bus->target_latitude;
+                        $targetLng = $bus->target_longitude;
+
+                        $bus->update([
+                            'target_latitude' => $targetLat,
+                            'target_longitude' => $targetLng,
+                        ]);
+
+                        // Broadcast new location to trigger target updates in parent/supervisor maps!
+                        try {
+                            $heading = (double) cache()->get('bus_heading_'.$bus->id, 0);
+
+                            // Refresh bus to get latest coordinates from DB
+                            $bus->refresh();
+                            $lat = ($bus->latitude && (double)$bus->latitude != 0.0) ? (double) $bus->latitude : null;
+                            $lng = ($bus->longitude && (double)$bus->longitude != 0.0) ? (double) $bus->longitude : null;
+
+                            // Only broadcast if we have valid bus coordinates, to avoid corrupting the parent app map
+                            if ($lat !== null && $lng !== null) {
+                                // Broadcast old & new event classes for compatibility
+                                broadcast(new \App\Events\BusLocationUpdated(
+                                    $bus,
+                                    $lat,
+                                    $lng,
+                                    $heading,
+                                    0,
+                                    $targetLat,
+                                    $targetLng
+                                ));
+                                
+                                broadcast(new \App\Events\DriverLocationUpdated(
+                                    $bus,
+                                    $lat,
+                                    $lng,
+                                    $heading,
+                                    null,
+                                    $targetLat,
+                                    $targetLng
+                                ));
+                            } else {
+                                \Illuminate\Support\Facades\Log::warning("Bus {$bus->id} has no valid coordinates, skipping location broadcast on attendance change.");
+                            }
+                        } catch (\Exception $e) {
+                            \Illuminate\Support\Facades\Log::error("Failed to broadcast location on attendance change: " . $e->getMessage());
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     /**
      * Get the trip for this attendance record.
      */

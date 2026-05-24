@@ -5,12 +5,12 @@ namespace App\Events;
 use App\Models\Notification;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 
-class NotificationPushed implements ShouldBroadcast
+class NotificationPushed implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets;
 

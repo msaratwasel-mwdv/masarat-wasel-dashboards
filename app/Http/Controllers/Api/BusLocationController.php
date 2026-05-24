@@ -37,11 +37,102 @@ class BusLocationController extends Controller
         ]);
 
         $heading = $request->input('heading', 0);
+        
+        $targetLat = null;
+        $targetLng = null;
+
+        $updateData = [
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+            'last_location_update' => now(),
+        ];
+
+        $tLat = $request->input('target_lat');
+        $tLng = $request->input('target_lng');
+
+        // Check if target is stale (i.e., matches a student who already boarded/dropped/absent/excused)
+        $isStaleTarget = false;
+        if ($tLat !== null && $tLng !== null) {
+            $today = now()->startOfDay();
+            $trip = \App\Models\Trip::where('bus_id', $bus->id)
+                ->whereDate('trip_date', $today)
+                ->whereIn('status', ['in_progress', 'started'])
+                ->first();
+
+            if ($trip) {
+                $processedStudents = \App\Models\Student::where(function($q) use ($bus) {
+                        $q->where('forth_bus_id', $bus->id)
+                          ->orWhere('back_bus_id', $bus->id);
+                    })
+                    ->whereHas('tripAttendances', function($q) use ($trip) {
+                        $q->where('trip_id', $trip->id)
+                          ->whereIn('status', ['boarded', 'dropped', 'absent', 'excused']);
+                    })
+                    ->get();
+
+                foreach ($processedStudents as $student) {
+                    $coords = [
+                        ['lat' => $student->latitude, 'lng' => $student->longitude],
+                        ['lat' => $student->forth_latitude, 'lng' => $student->forth_longitude],
+                        ['lat' => $student->back_latitude, 'lng' => $student->back_longitude],
+                    ];
+                    foreach ($coords as $coord) {
+                        if ($coord['lat'] && $coord['lng']) {
+                            $latDiff = abs((double)$coord['lat'] - (double)$tLat);
+                            $lngDiff = abs((double)$coord['lng'] - (double)$tLng);
+                            if ($latDiff < 0.00015 && $lngDiff < 0.00015) {
+                                $isStaleTarget = true;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($isStaleTarget) {
+            \Log::info("Ignoring stale target coordinates from driver location update for bus {$bus->id}. Coords: {$tLat}, {$tLng}");
+            $bus->setAttribute('target_latitude', null);
+            $bus->setAttribute('target_longitude', null);
+            $updateData['target_latitude'] = $bus->target_latitude;
+            $updateData['target_longitude'] = $bus->target_longitude;
+            $targetLat = $bus->target_latitude;
+            $targetLng = $bus->target_longitude;
+        } else {
+            // Cache and manage active target coordinates
+            if ($request->has('target_lat')) {
+                if ($tLat !== null) {
+                    cache()->put('bus_target_lat_'.$bus->id, (double)$tLat, now()->addMinutes(10));
+                    $updateData['target_latitude'] = (double)$tLat;
+                    $targetLat = (double)$tLat;
+                } else {
+                    $updateData['target_latitude'] = null;
+                    $targetLat = null;
+                }
+            } else {
+                $targetLat = $bus->target_latitude;
+            }
+
+            if ($request->has('target_lng')) {
+                if ($tLng !== null) {
+                    cache()->put('bus_target_lng_'.$bus->id, (double)$tLng, now()->addMinutes(10));
+                    $updateData['target_longitude'] = (double)$tLng;
+                    $targetLng = (double)$tLng;
+                } else {
+                    $updateData['target_longitude'] = null;
+                    $targetLng = null;
+                }
+            } else {
+                $targetLng = $bus->target_longitude;
+            }
+        }
 
         \Log::debug("📡 [DRIVER] Received location update for Bus {$bus->id}", [
             'lat' => $request->latitude,
             'lng' => $request->longitude,
-            'heading' => $heading
+            'heading' => $heading,
+            'target_lat' => $targetLat,
+            'target_lng' => $targetLng
         ]);
 
         // حماية: السائق المسجل فقط هو من يمكنه تحديث موقع الباص
@@ -63,11 +154,7 @@ class BusLocationController extends Controller
         cache()->put('bus_speed_'.$bus->id, min(round($speedKmh, 1), 120), now()->addMinutes(5));
         cache()->put('bus_heading_'.$bus->id, $heading, now()->addMinutes(5));
 
-        $bus->update([
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
-            'last_location_update' => now(),
-        ]);
+        $bus->update($updateData);
 
         // 🔔 بث الموقع فورياً لجميع المتابعين (تطبيق السائق، المشرف، ولي الأمر)
         try {
@@ -100,10 +187,10 @@ class BusLocationController extends Controller
             }
 
             // الحدث القديم للتوافق
-            broadcast(new BusLocationUpdated($bus, $request->latitude, $request->longitude, $heading, $onBoardCount));
+            broadcast(new BusLocationUpdated($bus, $request->latitude, $request->longitude, $heading, $onBoardCount, $targetLat, $targetLng));
             
             // الحدث الجديد المطلوب للتتبع اللحظي مع بيانات ETA
-            broadcast(new DriverLocationUpdated($bus, $request->latitude, $request->longitude, $heading, $etaData));
+            broadcast(new DriverLocationUpdated($bus, $request->latitude, $request->longitude, $heading, $etaData, $targetLat, $targetLng));
 
             \Log::debug("✅ [DRIVER] Broadcast Successful for Bus {$bus->id}");
 
@@ -165,7 +252,7 @@ class BusLocationController extends Controller
         }
 
         // Fetch Driver Info
-        $driver = $bus->driver;
+        $driver = $bus->driver?->user;
         $activeTrip = $bus->activeTrip;
         
         // Calculate Students on Board
@@ -197,6 +284,8 @@ class BusLocationController extends Controller
             'latitude' => $bus->latitude ? (double) $bus->latitude : null,
             'longitude' => $bus->longitude ? (double) $bus->longitude : null,
             'heading' => (double) cache()->get('bus_heading_'.$bus->id, 0),
+            'target_lat' => $bus->target_latitude,
+            'target_lng' => $bus->target_longitude,
             'trip_status' => $bus->trip_status,
             'trip_type' => $activeTrip ? $activeTrip->type : null,
             'departure_time' => $activeTrip ? $activeTrip->departure_time?->toIso8601String() : null,
@@ -212,6 +301,12 @@ class BusLocationController extends Controller
                 'name' => $driver->name,
                 'phone' => $driver->phone,
                 'image_url' => $driver->image_url ? url($driver->image_url) : 'https://i.pravatar.cc/150?u=' . $driver->id,
+            ] : null,
+            'supervisor' => $bus->supervisor ? [
+                'id' => $bus->supervisor->id,
+                'name' => $bus->supervisor->name,
+                'phone' => $bus->supervisor->phone,
+                'image_url' => $bus->supervisor->image_url ? url($bus->supervisor->image_url) : 'https://i.pravatar.cc/150?u=' . $bus->supervisor->id,
             ] : null,
         ]);
     }

@@ -18,7 +18,7 @@ class FieldSupervisorApiController extends Controller
      */
     public function buses(Request $request): JsonResponse
     {
-        $buses = Bus::with(['driver', 'school', 'assistant', 'fieldSupervisor'])
+        $buses = Bus::with(['driver.user', 'school', 'assistant', 'fieldSupervisor'])
             ->active()
             ->get()
             ->map(function ($bus) {
@@ -46,17 +46,20 @@ class FieldSupervisorApiController extends Controller
                     $lng += $offsetDistance * sin($offsetAngle);
                 }
 
-                return [
+                 return [
                     'id' => $bus->id,
                     'bus_number' => $bus->bus_number,
                     'school' => $bus->school ? $bus->school->name : null,
                     'driver' => $bus->driver ? $bus->driver->name : null,
                     'assistant' => $bus->assistant ? $bus->assistant->name : null,
+                    'supervisor' => $bus->assistant ? $bus->assistant->name : null,
                     'field_supervisor' => $bus->fieldSupervisor ? $bus->fieldSupervisor->name : null,
                     'front_qr' => $bus->front_qr ? asset('storage/' . $bus->front_qr) : null,
                     'back_qr' => $bus->back_qr ? asset('storage/' . $bus->back_qr) : null,
                     'location_lat' => $lat,
                     'location_lng' => $lng,
+                    'target_lat' => $bus->target_latitude,
+                    'target_lng' => $bus->target_longitude,
                     'status' => $bus->status,
                     'trip_status' => $bus->trip_status,
                     'speed_kmh' => in_array($bus->trip_status, ['on_route', 'to_school', 'to_home']) ? rand(30, 60) : 0,

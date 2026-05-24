@@ -40,6 +40,8 @@ class TripStatusUpdated implements ShouldBroadcastNow
             'trip_id' => $this->trip->id,
             'bus_id' => $this->bus->id,
             'status' => $this->status,
+            'target_lat' => $this->bus->target_latitude,
+            'target_lng' => $this->bus->target_longitude,
             'timestamp' => now()->toIso8601String(),
         ];
     }

@@ -32,6 +32,8 @@ class Bus extends Model
         'color',
         'latitude',
         'longitude',
+        'target_latitude',
+        'target_longitude',
         'last_location_update',
         'route_id',
     ];
@@ -41,6 +43,8 @@ class Bus extends Model
         'year' => 'integer',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
+        'target_latitude' => 'decimal:7',
+        'target_longitude' => 'decimal:7',
         'last_location_update' => 'datetime',
     ];
 
@@ -111,12 +115,9 @@ class Bus extends Model
         return $this->hasOne(Trip::class)->latestOfMany();
     }
 
-    /**
-     * Get the active trip (in progress) for the bus.
-     */
     public function activeTrip(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
-        return $this->hasOne(Trip::class)->whereIn('status', ['in_progress', 'started'])->latestOfMany();
+        return $this->hasOne(Trip::class)->whereIn('status', ['in_progress', 'started', 'awaiting_confirmation', 'awaiting_video'])->latestOfMany();
     }
 
     /**
@@ -151,6 +152,120 @@ class Bus extends Model
             default => 'in_progress',
         };
     }
+    public function getTargetLatitudeAttribute(): ?float
+    {
+        // 1. Check database column first (set directly from driver)
+        if (isset($this->attributes['target_latitude']) && $this->attributes['target_latitude'] !== null && $this->attributes['target_latitude'] != 0.0) {
+            return (double) $this->attributes['target_latitude'];
+        }
+
+        // 2. Check cache next
+        if (cache()->has('bus_target_lat_' . $this->id)) {
+            $val = cache()->get('bus_target_lat_' . $this->id);
+            if ($val !== null && $val != 0.0) {
+                return (double) $val;
+            }
+        }
+
+        // 3. Derive dynamically from active trip
+        $trip = $this->activeTrip;
+        if (!$trip) {
+            return null;
+        }
+
+        if ($trip->type === 'forth') {
+            $nextStudent = \App\Models\Student::where('is_active', true)
+                ->where('forth_bus_id', $this->id)
+                ->whereDoesntHave('tripAttendances', function($q) use ($trip) {
+                    $q->where('trip_id', $trip->id)
+                      ->whereIn('status', ['boarded', 'dropped', 'absent', 'excused']);
+                })
+                ->whereDoesntHave('absenceRequests', function($q) {
+                    $q->whereDate('date', today())->where('status', '!=', 'rejected');
+                })
+                ->first();
+
+            if ($nextStudent) {
+                return (double) ($nextStudent->forth_latitude ?? $nextStudent->latitude ?? ($nextStudent->guardians->first()?->latitude ?? $this->school?->latitude));
+            }
+
+            return (double) $this->school?->latitude;
+        }
+
+        if ($trip->type === 'back') {
+            $nextStudent = \App\Models\Student::where('is_active', true)
+                ->where('back_bus_id', $this->id)
+                ->whereDoesntHave('tripAttendances', function($q) use ($trip) {
+                    $q->where('trip_id', $trip->id)
+                      ->whereIn('status', ['dropped', 'absent', 'excused']);
+                })
+                ->first();
+
+            if ($nextStudent) {
+                return (double) ($nextStudent->back_latitude ?? $nextStudent->latitude ?? ($nextStudent->guardians->first()?->latitude ?? $this->school?->latitude));
+            }
+        }
+
+        return null;
+    }
+
+    public function getTargetLongitudeAttribute(): ?float
+    {
+        // 1. Check database column first (set directly from driver)
+        if (isset($this->attributes['target_longitude']) && $this->attributes['target_longitude'] !== null && $this->attributes['target_longitude'] != 0.0) {
+            return (double) $this->attributes['target_longitude'];
+        }
+
+        // 2. Check cache next
+        if (cache()->has('bus_target_lng_' . $this->id)) {
+            $val = cache()->get('bus_target_lng_' . $this->id);
+            if ($val !== null && $val != 0.0) {
+                return (double) $val;
+            }
+        }
+
+        // 3. Derive dynamically from active trip
+        $trip = $this->activeTrip;
+        if (!$trip) {
+            return null;
+        }
+
+        if ($trip->type === 'forth') {
+            $nextStudent = \App\Models\Student::where('is_active', true)
+                ->where('forth_bus_id', $this->id)
+                ->whereDoesntHave('tripAttendances', function($q) use ($trip) {
+                    $q->where('trip_id', $trip->id)
+                      ->whereIn('status', ['boarded', 'dropped', 'absent', 'excused']);
+                })
+                ->whereDoesntHave('absenceRequests', function($q) {
+                    $q->whereDate('date', today())->where('status', '!=', 'rejected');
+                })
+                ->first();
+
+            if ($nextStudent) {
+                return (double) ($nextStudent->forth_longitude ?? $nextStudent->longitude ?? ($nextStudent->guardians->first()?->longitude ?? $this->school?->longitude));
+            }
+
+            return (double) $this->school?->longitude;
+        }
+
+        if ($trip->type === 'back') {
+            $nextStudent = \App\Models\Student::where('is_active', true)
+                ->where('back_bus_id', $this->id)
+                ->whereDoesntHave('tripAttendances', function($q) use ($trip) {
+                    $q->where('trip_id', $trip->id)
+                      ->whereIn('status', ['dropped', 'absent', 'excused']);
+                })
+                ->first();
+
+            if ($nextStudent) {
+                return (double) ($nextStudent->back_longitude ?? $nextStudent->longitude ?? ($nextStudent->guardians->first()?->longitude ?? $this->school?->longitude));
+            }
+        }
+
+        return null;
+    }
+
     public function documents()
     {
         return $this->hasMany(BusDocument::class);

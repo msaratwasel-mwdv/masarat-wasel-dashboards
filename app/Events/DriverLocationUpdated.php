@@ -22,7 +22,9 @@ class DriverLocationUpdated implements ShouldBroadcastNow
         public float $latitude,
         public float $longitude,
         public float $heading = 0,
-        public ?array $etaData = null
+        public ?array $etaData = null,
+        public ?float $targetLat = null,
+        public ?float $targetLng = null
     ) {}
 
     /**
@@ -52,14 +54,22 @@ class DriverLocationUpdated implements ShouldBroadcastNow
      */
     public function broadcastWith(): array
     {
+        $activeTrip = $this->bus->activeTrip;
+
         return [
             'bus_id' => $this->bus->id,
             'bus_number' => $this->bus->bus_number,
+            'plate_number' => $this->bus->plate_number,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'heading' => $this->heading,
+            'target_lat' => $this->targetLat ?? $this->bus->target_latitude,
+            'target_lng' => $this->targetLng ?? $this->bus->target_longitude,
+            'trip_status' => $this->bus->trip_status,
             'speed_kmh' => cache()->get('bus_speed_' . $this->bus->id, 0),
             'eta_data' => $this->etaData,
+            'total_students' => $this->bus->students_count,
+            'departure_time' => $activeTrip ? $activeTrip->departure_time?->toIso8601String() : null,
             'timestamp' => now()->toIso8601String(),
         ];
     }

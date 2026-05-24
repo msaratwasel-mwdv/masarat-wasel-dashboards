@@ -681,12 +681,21 @@ class DailyTripApiController extends Controller
                 ]);
             }
 
+            // Auto-update any remaining pending students to absent
+            TripAttendance::where('trip_id', $trip->id)
+                ->where('status', 'pending')
+                ->update(['status' => 'absent']);
+
             $trip->update([
                 'status' => 'awaiting_video',
                 'arrival_time' => $recordedAt,
             ]);
             
-            $bus->update(['trip_status' => 'idle']);
+            $bus->update([
+                'trip_status' => 'idle',
+                'target_latitude' => null,
+                'target_longitude' => null,
+            ]);
         });
 
         try {
@@ -849,6 +858,8 @@ class DailyTripApiController extends Controller
                             $studentStatus = ($activeTrip->type === 'forth') ? 'atSchool' : 'atHome';
                         } elseif ($lastAttendance->status === 'waiting') {
                             $studentStatus = 'waiting';
+                        } elseif (in_array($lastAttendance->status, ['absent', 'excused'])) {
+                            $studentStatus = 'absent';
                         }
                     } else {
                         // Attendance is from a previous trip today (e.g. morning trip)
@@ -856,6 +867,8 @@ class DailyTripApiController extends Controller
                             $studentStatus = 'atSchool';
                         } elseif ($lastAttendance->status === 'dropped' && $lastAttendance->trip?->type === 'back') {
                             $studentStatus = 'atHome';
+                        } elseif (in_array($lastAttendance->status, ['absent', 'excused'])) {
+                            $studentStatus = 'absent';
                         }
                     }
                 }
@@ -1227,7 +1240,15 @@ class DailyTripApiController extends Controller
                 'departure_time' => now(),
             ]);
 
-            $bus->update(['trip_status' => 'in_progress']);
+            // Set memory attributes to null to force dynamic calculation
+            $bus->setAttribute('target_latitude', null);
+            $bus->setAttribute('target_longitude', null);
+
+            $bus->update([
+                'trip_status' => 'in_progress',
+                'target_latitude' => $bus->target_latitude,
+                'target_longitude' => $bus->target_longitude,
+            ]);
         });
 
         try {
@@ -1578,6 +1599,21 @@ class DailyTripApiController extends Controller
             DB::transaction(function () use ($trip, $bus, $path, $tripType) {
                 // For Morning trips: auto-update boarded students to 'at school' (dropped status)
                 if ($tripType === 'forth') {
+                    $boardedAttendances = TripAttendance::where('trip_id', $trip->id)
+                        ->where('status', 'boarded')
+                        ->with('student')
+                        ->get();
+
+                    foreach ($boardedAttendances as $attendance) {
+                        if ($attendance->student) {
+                            try {
+                                broadcast(new StudentStatusUpdated($attendance->student, $bus, 'alight', 'to_school'));
+                            } catch (\Exception $e) {
+                                Log::error("Broadcast error (end trip student alight): " . $e->getMessage());
+                            }
+                        }
+                    }
+
                     TripAttendance::where('trip_id', $trip->id)
                         ->where('status', 'boarded')
                         ->update([
@@ -1585,6 +1621,26 @@ class DailyTripApiController extends Controller
                             'check_out_time' => now()
                         ]);
                 }
+
+                // Auto-update any remaining pending students to absent
+                $pendingAttendances = TripAttendance::where('trip_id', $trip->id)
+                    ->where('status', 'pending')
+                    ->with('student')
+                    ->get();
+
+                foreach ($pendingAttendances as $attendance) {
+                    if ($attendance->student) {
+                        try {
+                            broadcast(new StudentStatusUpdated($attendance->student, $bus, 'absent', $tripType === 'forth' ? 'to_school' : 'to_home'));
+                        } catch (\Exception $e) {
+                            Log::error("Broadcast error (end trip student absent): " . $e->getMessage());
+                        }
+                    }
+                }
+
+                TripAttendance::where('trip_id', $trip->id)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'absent']);
 
                 $trip->update([
                     'status' => 'finished',
@@ -1594,7 +1650,11 @@ class DailyTripApiController extends Controller
                     'end_qr_scanned_at' => now(),
                 ]);
 
-                $bus->update(['trip_status' => 'idle']);
+                $bus->update([
+                    'trip_status' => 'idle',
+                    'target_latitude' => null,
+                    'target_longitude' => null,
+                ]);
                 
                 try {
                     broadcast(new TripStatusUpdated($trip, $bus, 'finished'));

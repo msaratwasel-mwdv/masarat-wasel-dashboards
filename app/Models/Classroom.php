@@ -95,9 +95,14 @@ class Classroom extends Model
 
     public function getNameAttribute($value): string
     {
-        $isEn = (request()->header('Accept-Language') === 'en' 
-            || request()->input('lang') === 'en' 
-            || (auth()->check() && auth()->user()->preferred_language === 'en'));
+        $acceptLanguage = request()->header('Accept-Language') ?? '';
+        if (!empty($acceptLanguage)) {
+            $isEn = str_starts_with($acceptLanguage, 'en');
+        } else {
+            $isEn = (request()->input('lang') === 'en' 
+                || (auth()->check() && auth()->user()->preferred_language === 'en')
+                || app()->getLocale() === 'en');
+        }
 
         if ($isEn && !empty(trim($this->name_en))) {
             return $this->name_en;

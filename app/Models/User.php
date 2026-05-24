@@ -131,10 +131,13 @@ class User extends Authenticatable
     public function getNameAttribute(): string
     {
         $acceptLanguage = request()->header('Accept-Language') ?? '';
-        $isEn = (str_starts_with($acceptLanguage, 'en') 
-            || request()->input('lang') === 'en' 
-            || (empty($acceptLanguage) && app()->getLocale() === 'en')
-            || (auth()->check() && auth()->user()->preferred_language === 'en'));
+        if (!empty($acceptLanguage)) {
+            $isEn = str_starts_with($acceptLanguage, 'en');
+        } else {
+            $isEn = (request()->input('lang') === 'en' 
+                || (auth()->check() && auth()->user()->preferred_language === 'en')
+                || app()->getLocale() === 'en');
+        }
 
         if ($isEn) {
             $nameEn = $this->name_en;

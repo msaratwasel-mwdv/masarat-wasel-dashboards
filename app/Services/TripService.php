@@ -258,7 +258,7 @@ class TripService
             ->groupBy('student_id');
 
         foreach ($students as $student) {
-            $status = 'absent'; // الافتراضي غائب حتى يركب
+            $status = 'pending'; // الافتراضي قيد الانتظار حتى يركب أو يسجل غياب أو ينزل
 
             if ($absences->has($student->id)) {
                 $studentAbsences = $absences->get($student->id);
@@ -335,7 +335,7 @@ class TripService
             $now = now();
 
             foreach ($students as $student) {
-                $status = 'absent';
+                $status = 'pending';
 
                 if ($absences->has($student->id)) {
                     $studentAbsences = $absences->get($student->id);

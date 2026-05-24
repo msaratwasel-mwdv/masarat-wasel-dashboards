@@ -20,7 +20,9 @@ class BusLocationUpdated implements ShouldBroadcastNow
         public float $latitude,
         public float $longitude,
         public float $heading = 0,
-        public ?int $studentsOnBoard = 0
+        public ?int $studentsOnBoard = 0,
+        public ?float $targetLat = null,
+        public ?float $targetLng = null
     ) {}
 
     public function broadcastOn(): array
@@ -36,9 +38,10 @@ class BusLocationUpdated implements ShouldBroadcastNow
         return 'bus.location.updated';
     }
 
+
     public function broadcastWith(): array
     {
-        $driver = $this->bus->driver;
+        $driver = $this->bus->driver?->user;
         $activeTrip = $this->bus->activeTrip;
 
         return [
@@ -48,6 +51,8 @@ class BusLocationUpdated implements ShouldBroadcastNow
             'latitude'          => $this->latitude,
             'longitude'         => $this->longitude,
             'heading'           => $this->heading,
+            'target_lat'        => $this->targetLat ?? $this->bus->target_latitude,
+            'target_lng'        => $this->targetLng ?? $this->bus->target_longitude,
             'trip_status'       => $this->bus->trip_status,
             'speed_kmh'         => cache()->get('bus_speed_'.$this->bus->id, 0),
             'students_on_board' => $this->studentsOnBoard,
@@ -55,7 +60,9 @@ class BusLocationUpdated implements ShouldBroadcastNow
             'departure_time'    => $activeTrip ? $activeTrip->departure_time?->toIso8601String() : null,
             'eta_minutes'       => cache()->get('bus_eta_'.$this->bus->id),
             'driver' => $driver ? [
-                'name' => $driver->name,
+                'id'        => $driver->id,
+                'name'      => $driver->name,
+                'phone'     => $driver->phone,
                 'image_url' => $driver->image_url ? url($driver->image_url) : 'https://i.pravatar.cc/150?u=' . $driver->id,
             ] : null,
             'timestamp'         => now()->toIso8601String(),

@@ -101,7 +101,7 @@ class FieldSupervisorController extends Controller
      */
     public function getBuses(): JsonResponse
     {
-        $buses = Bus::with(['school', 'assistant', 'fieldSupervisor'])
+        $buses = Bus::with(['school', 'driver.user', 'assistant', 'fieldSupervisor'])
             ->where('status', 'active')
             ->get()
             ->map(function ($bus) {
@@ -136,9 +136,12 @@ class FieldSupervisorController extends Controller
                     'school'          => $bus->school?->name ?? 'N/A',
                     'driver'          => $bus->driver?->name ?? 'N/A',
                     'assistant'       => $bus->assistant?->name ?? 'N/A',
+                    'supervisor'      => $bus->assistant?->name ?? 'N/A',
                     'field_supervisor'=> $bus->fieldSupervisor?->name ?? 'N/A',
                     'location_lat'    => $lat,
                     'location_lng'    => $lng,
+                    'target_lat'      => $bus->target_latitude,
+                    'target_lng'      => $bus->target_longitude,
                     'status'          => $bus->status,
                     'trip_status'     => $bus->trip_status,
                     'speed_kmh'       => 0,
