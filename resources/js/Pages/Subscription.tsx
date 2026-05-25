@@ -104,7 +104,17 @@ export default function Subscription({ plans }: any) {
     <div className={`min-h-screen font-sans selection:bg-brand-yellow/30 selection:text-brand-navy transition-colors duration-300 ${isDark ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-900'}`} dir={dir}>
       <Head>
         <title>{isAr ? "انضم لمنصة مسارات واصل | طلب اشتراك مدرسة" : "Join Masarat Wasel | School Subscription"}</title>
-        <meta name="description" content="اشترك الآن في منصة مسارات واصل للتحول الرقمي الكامل في إدارة النقل المدرسي." />
+        <meta name="description" content={isAr ? "اشترك الآن في منصة مسارات واصل للتحول الرقمي الكامل في إدارة النقل المدرسي. باقات مرنة للسنة والترم الدراسي لتأمين وتتبع حافلات الطلاب." : "Subscribe now to the Masarat Wasel platform for the complete digital transformation of school transport management. Flexible pricing plans for Oman schools."} />
+        <meta name="keywords" content={isAr ? "اشتراك النقل المدرسي, أسعار النقل المدرسي, تسجيل مدرسة مسارات واصل, باقات النقل المدرسي, تكلفة نظام تتبع الحافلات, طلب تفعيل النقل المدرسي, باقة النقل المدرسي عمان" : "school transport subscription, school bus tracking price, join Masarat Wasel, school bus management pricing, register school transport Oman"} />
+        <link rel="canonical" href="https://masarat-wasel.com/subscription" />
+        
+        {/* Open Graph Tags */}
+        <meta property="og:title" content={isAr ? "انضم لمنصة مسارات واصل | طلب اشتراك مدرسة" : "Join Masarat Wasel | School Subscription"} />
+        <meta property="og:description" content={isAr ? "اشترك الآن في منصة مسارات واصل للتحول الرقمي الكامل في إدارة النقل المدرسي." : "Subscribe now to the Masarat Wasel platform for the complete digital transformation of school transport management."} />
+        <meta property="og:image" content="/assets/images/masarat-wasel-logo.jpg" />
+        <meta property="og:url" content="https://masarat-wasel.com/subscription" />
+        <meta property="og:type" content="website" />
+        
         <link rel="icon" type="image/png" href="/assets/images/masarat-wasel-logo.jpg" />
       </Head>
 

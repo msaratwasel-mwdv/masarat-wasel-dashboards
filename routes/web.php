@@ -42,6 +42,42 @@ Route::post('/subscription', [\App\Http\Controllers\SubscriptionPageController::
 // Public Events Page
 Route::get('/events', [\App\Http\Controllers\PublicEventController::class, 'index'])->name('events.index');
 
+// Dynamic XML Sitemap for SEO
+Route::get('/sitemap.xml', function () {
+    $events = \App\Models\Event::where('is_published', true)->orderBy('updated_at', 'desc')->get();
+    
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>';
+    $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+    
+    // Home Page
+    $xml .= '  <url>';
+    $xml .= '    <loc>' . url('/') . '</loc>';
+    $xml .= '    <lastmod>' . date('Y-m-d') . '</lastmod>';
+    $xml .= '    <changefreq>daily</changefreq>';
+    $xml .= '    <priority>1.0</priority>';
+    $xml .= '  </url>';
+    
+    // Subscription Page
+    $xml .= '  <url>';
+    $xml .= '    <loc>' . route('subscription') . '</loc>';
+    $xml .= '    <lastmod>' . date('Y-m-d') . '</lastmod>';
+    $xml .= '    <changefreq>weekly</changefreq>';
+    $xml .= '    <priority>0.9</priority>';
+    $xml .= '  </url>';
+    
+    // Events List Page
+    $xml .= '  <url>';
+    $xml .= '    <loc>' . route('events.index') . '</loc>';
+    $xml .= '    <lastmod>' . (count($events) > 0 && isset($events[0]->updated_at) ? $events[0]->updated_at->format('Y-m-d') : date('Y-m-d')) . '</lastmod>';
+    $xml .= '    <changefreq>daily</changefreq>';
+    $xml .= '    <priority>0.8</priority>';
+    $xml .= '  </url>';
+    
+    $xml .= '</urlset>';
+    
+    return response($xml, 200)->header('Content-Type', 'text/xml');
+});
+
 // ✅ تم حذف روابط الاختبار التالية لأسباب أمنية:
 //    - GET  /seed-test-data        ← كانت تبذر بيانات وتعرض معلومات النظام
 //    - GET  /boarding-test         ← كانت تعرض FCM tokens الخاصة بأولياء الأمور

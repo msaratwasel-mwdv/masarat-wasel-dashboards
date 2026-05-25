@@ -74,11 +74,34 @@ export default function Welcome({
             dir={dir}
         >
             <Head>
-                <title>{isAr ? "مسارات واصل | نقل ذكي وآمن" : "Masarat Wasel | Smart & Safe Transport"}</title>
+                <title>{isAr ? "مسارات واصل | نقل ذكي وآمن للمدارس في سلطنة عمان" : "Masarat Wasel | Smart & Safe School Transport in Oman"}</title>
                 <meta
                     name="description"
-                    content="مسارات واصل - المنصة الأكثر أماناً وكفاءة لإدارة الأساطيل المدرسية في سلطنة عمان."
+                    content={isAr ? "شركة مسارات واصل هي المنصة الرائدة لنقل الطلاب وإدارة الحافلات المدرسية في سلطنة عمان. نقدم تطبيقاً ذكياً لتتبع حافلات المدارس بأمان وربط أولياء الأمور والمشرفات والمدارس لحظياً. مع واصل.. الكل واصل! ونقل ذكي وآمن لأبنائكم." : "Masarat Wasel is the leading school transport and bus tracking platform in Oman. We offer a smart and safe application for school bus tracking, connecting parents, schools, and drivers in real-time. With Wasel, everyone arrives safely!"}
                 />
+                <meta
+                    name="keywords"
+                    content={isAr ? "شركة مسارات واصل, شركة نقل طلاب, خدمات النقل المدرسي, تطبيق النقل المدرسي, تتبع الحافلات المدرسية, نقل الطلاب بأمان, حافلات المدارس, تطبيق ولي الأمر, تطبيق السائق, تطبيق المشرفة, تطبيق المدرسة, إدارة النقل المدرسي, خدمة النقل الذكي, تطبيق تتبع الطلاب, تطبيق تتبع الحافلات, سلامة الطلاب, نظام النقل المدرسي, اشتراك النقل المدرسي, أسعار النقل المدرسي, تطبيق النقل الذكي, خدمة النقل للمدارس العالمية, تطبيق النقل للطلاب, تطبيق النقل للمدارس, تطبيق النقل للمعلمات, تطبيق النقل للمعلمين, تطبيق النقل للموظفين, تطبيق النقل للجامعات, تطبيق النقل للمدارس الخاصة, تطبيق النقل للمدارس الحكومية, تطبيق النقل للمدارس الدولية, تطبيق النقل للمدارس الأهلية, تطبيق النقل للمدارس العربية, تطبيق النقل للمدارس الإنجليزية, تطبيق النقل للمدارس الفرنسية, تطبيق النقل للمدارس الألمانية, تطبيق النقل للمدارس الهندية, تطبيق النقل للمدارس الباكستانية, تطبيق النقل للمدارس الأمريكية, تطبيق النقل للمدارس الكندية, تطبيق النقل للمدارس العمانية, تطبيق النقل للمدارس الخليجية, تطبيق النقل للمدارس العربية الدولية, افضل تطبيق لنقل طلاب المدارس في سلطنة عمان, افضل شركة نقل طلاب مدارس, تطبيق تتبع حافلات, تطبيق نقل طلاب مدارس" : "Masarat Wasel, school transport Oman, school bus tracking app, safe school bus Oman, parent app school bus tracking, Oman school bus system, smart school transportation Muscat, school bus driver app, school bus empty alert Oman, private school transport Oman, school bus fleet management GCC"}
+                />
+                <link rel="canonical" href="https://masarat-wasel.com" />
+                <link rel="alternate" href="https://masarat-wasel.com" hrefLang="ar" />
+                <link rel="alternate" href="https://masarat-wasel.com/en" hrefLang="en" />
+                <link rel="alternate" href="https://masarat-wasel.com" hrefLang="x-default" />
+                
+                {/* Open Graph Tags for Social Media */}
+                <meta property="og:title" content={isAr ? "مسارات واصل | نقل ذكي وآمن للمدارس في سلطنة عمان" : "Masarat Wasel | Smart & Safe School Transport in Oman"} />
+                <meta property="og:description" content={isAr ? "شركة مسارات واصل هي المنصة الرائدة لنقل الطلاب وإدارة الحافلات المدرسية في سلطنة عمان. نقدم تطبيقاً ذكياً لتتبع حافلات المدارس بأمان." : "Masarat Wasel is the leading school transport and bus tracking platform in Oman. We offer a smart and safe application for school bus tracking."} />
+                <meta property="og:image" content="/images/logo2.png" />
+                <meta property="og:url" content="https://masarat-wasel.com" />
+                <meta property="og:type" content="website" />
+                
+                {/* Twitter Card Tags */}
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content={isAr ? "مسارات واصل | نقل ذكي وآمن للمدارس في سلطنة عمان" : "Masarat Wasel | Smart & Safe School Transport in Oman"} />
+                <meta name="twitter:description" content={isAr ? "تطبيق ذكي لتتبع حافلات المدارس بأمان في سلطنة عمان." : "Smart school bus tracking and management in Oman."} />
+                <meta name="twitter:image" content="/images/logo2.png" />
+                
+
                 <link
                     rel="icon"
                     type="image/png"

@@ -112,7 +112,19 @@ export default function Events({ events }: Props) {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? "bg-brand-dark text-white" : "bg-gray-50 text-gray-900"} font-sans`} dir={isRTL ? "rtl" : "ltr"}>
-      <Head title={isRTL ? "الفعاليات والأخبار" : "News & Events"} />
+      <Head>
+        <title>{isRTL ? "الفعاليات والأخبار | مسارات واصل" : "News & Events | Masarat Wasel"}</title>
+        <meta name="description" content={isRTL ? "تابع أحدث أخبار شركة مسارات واصل، فعالياتنا، ورش العمل، وأحدث الإضافات لأسطول النقل المدرسي في سلطنة عمان." : "Follow the latest news from Masarat Wasel, our events, workshops, and the newest additions to our school transport fleet in Oman."} />
+        <meta name="keywords" content={isRTL ? "أخبار النقل المدرسي, فعاليات مسارات واصل, ورش عمل سلامة الحافلات, أخبار حافلات عمان, المنتدى المصغر مسارات واصل" : "school transport news, Masarat Wasel events, school bus safety workshops, Oman school bus news, mini forum Masarat Wasel"} />
+        <link rel="canonical" href="https://masarat-wasel.com/events" />
+        
+        {/* Open Graph Tags */}
+        <meta property="og:title" content={isRTL ? "الفعاليات والأخبار | مسارات واصل" : "News & Events | Masarat Wasel"} />
+        <meta property="og:description" content={isRTL ? "تابع أحدث أخبار شركة مسارات واصل، فعالياتنا، ورش العمل، وأحدث الإضافات لأسطول النقل المدرسي." : "Follow the latest news from Masarat Wasel, our events, workshops, and the newest additions to our school transport fleet."} />
+        <meta property="og:image" content="/assets/images/masarat-wasel-logo.jpg" />
+        <meta property="og:url" content="https://masarat-wasel.com/events" />
+        <meta property="og:type" content="website" />
+      </Head>
       <Header />
 
       {/* Hero Section */}
