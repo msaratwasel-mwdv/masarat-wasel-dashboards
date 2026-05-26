@@ -106,16 +106,14 @@ export default function Subscription({ plans }: any) {
         <title>{isAr ? "انضم لمنصة مسارات واصل | طلب اشتراك مدرسة" : "Join Masarat Wasel | School Subscription"}</title>
         <meta name="description" content={isAr ? "اشترك الآن في منصة مسارات واصل للتحول الرقمي الكامل في إدارة النقل المدرسي. باقات مرنة للسنة والترم الدراسي لتأمين وتتبع حافلات الطلاب." : "Subscribe now to the Masarat Wasel platform for the complete digital transformation of school transport management. Flexible pricing plans for Oman schools."} />
         <meta name="keywords" content={isAr ? "اشتراك النقل المدرسي, أسعار النقل المدرسي, تسجيل مدرسة مسارات واصل, باقات النقل المدرسي, تكلفة نظام تتبع الحافلات, طلب تفعيل النقل المدرسي, باقة النقل المدرسي عمان" : "school transport subscription, school bus tracking price, join Masarat Wasel, school bus management pricing, register school transport Oman"} />
-        <link rel="canonical" href="https://masarat-wasel.com/subscription" />
-        
+        <link rel="canonical" href="https://masaratwasal.com/subscription" />
+
         {/* Open Graph Tags */}
         <meta property="og:title" content={isAr ? "انضم لمنصة مسارات واصل | طلب اشتراك مدرسة" : "Join Masarat Wasel | School Subscription"} />
         <meta property="og:description" content={isAr ? "اشترك الآن في منصة مسارات واصل للتحول الرقمي الكامل في إدارة النقل المدرسي." : "Subscribe now to the Masarat Wasel platform for the complete digital transformation of school transport management."} />
-        <meta property="og:image" content="/assets/images/masarat-wasel-logo.jpg" />
-        <meta property="og:url" content="https://masarat-wasel.com/subscription" />
+        <meta property="og:image" content="https://masaratwasal.com/assets/images/masarat-wasel-logo.jpg" />
+        <meta property="og:url" content="https://masaratwasal.com/subscription" />
         <meta property="og:type" content="website" />
-        
-        <link rel="icon" type="image/png" href="/assets/images/masarat-wasel-logo.jpg" />
       </Head>
 
       {/* --- Abstract Background Patterns --- */}
@@ -135,7 +133,7 @@ export default function Subscription({ plans }: any) {
                  {isAr ? "مسارات واصل" : "Masarat Wasel"}
              </span>
           </Link>
-          
+
           <div className="flex items-center gap-6">
              <div className="flex items-center gap-2 border-r border-slate-200 pr-4 rtl:border-r-0 rtl:border-l rtl:pr-0 rtl:pl-4">
                  <button
@@ -173,7 +171,7 @@ export default function Subscription({ plans }: any) {
 
       {/* --- Subscription Content --- */}
       <main className="max-w-[1400px] mx-auto px-6 pt-16 pb-32">
-        <motion.div 
+        <motion.div
            initial="hidden"
            animate="visible"
            variants={containerVariants}
@@ -209,7 +207,7 @@ export default function Subscription({ plans }: any) {
                       <p className={`font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isAr ? "فريقنا جاهز لمساعدتك في رفع البيانات وتدريب السائقين في أقل من 24 ساعة." : "Our team is ready to help you upload data and train drivers in less than 24 hours."}</p>
                    </div>
                 </motion.div>
-                
+
                 <motion.div variants={itemVariants} className="flex gap-5 group items-start">
                    <div className="w-12 h-12 shrink-0 rounded-2xl bg-slate-200 text-slate-600 flex items-center justify-center shadow-xl shadow-slate-200/20 group-hover:scale-110 transition-transform"><BadgeCheck size={24}/></div>
                    <div>
@@ -240,7 +238,7 @@ export default function Subscription({ plans }: any) {
           <div className="lg:col-span-7">
              <AnimatePresence mode="wait">
                {showSuccess ? (
-                 <motion.div 
+                 <motion.div
                     key="success"
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -250,7 +248,7 @@ export default function Subscription({ plans }: any) {
                     <div className="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center"><BadgeCheck size={64}/></div>
                     <h2 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "شكراً لثقتك بنا!" : "Thank You for Trusting Us!"}</h2>
                     <p className={`text-lg font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isAr ? "لقد تم استلام طلب مدرستك بنجاح. سيقوم فريق المبيعات الخاص بنا بالتواصل معك خلال الساعات القادمة لإكمال عملية التفعيل." : "Your school's request has been received successfully. Our sales team will contact you within the coming hours to complete the activation process."}</p>
-                    <button 
+                    <button
                        onClick={() => setShowSuccess(false)}
                        className="px-10 py-4 bg-emerald-500 text-white rounded-2xl font-black shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center gap-3 mt-4"
                     >
@@ -258,7 +256,7 @@ export default function Subscription({ plans }: any) {
                     </button>
                  </motion.div>
                ) : (
-                 <motion.form 
+                 <motion.form
                     key="form"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -287,34 +285,34 @@ export default function Subscription({ plans }: any) {
                              <div className="w-10 h-10 rounded-xl bg-brand-yellow/10 text-brand-dark flex items-center justify-center"><UserCircle2 size={24}/></div>
                              <h2 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "بيانات الحساب الأساسية" : "Basic Account Info"}</h2>
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                             <FormInput 
-                                theme={theme} 
-                                label={isAr ? "البريد الإلكتروني للمسؤول" : "Admin Email"} 
-                                id="email" 
+                             <FormInput
+                                theme={theme}
+                                label={isAr ? "البريد الإلكتروني للمسؤول" : "Admin Email"}
+                                id="email"
                                 type="email"
-                                icon={<Mail size={18}/>} 
-                                placeholder="admin@school.com" 
-                                required 
+                                icon={<Mail size={18}/>}
+                                placeholder="admin@school.com"
+                                required
                                 value={data.email}
                                 onChange={(e: any) => setData("email", e.target.value)}
                                 error={errors.email}
-                                dir="ltr" 
+                                dir="ltr"
                              />
-                             <FormInput 
-                                theme={theme} 
-                                label={isAr ? "كلمة المرور الابتدائية" : "Initial Password"} 
-                                id="password" 
-                                type="password" 
-                                icon={<Lock size={18}/>} 
-                                placeholder="••••••••" 
-                                required 
+                             <FormInput
+                                theme={theme}
+                                label={isAr ? "كلمة المرور الابتدائية" : "Initial Password"}
+                                id="password"
+                                type="password"
+                                icon={<Lock size={18}/>}
+                                placeholder="••••••••"
+                                required
                                 value={data.password}
                                 onChange={(e: any) => setData("password", e.target.value)}
                                 error={errors.password}
-                                helpText={isAr ? "يمكن تغييرها لاحقاً من لوحة الإعدادات" : "Can be changed later from dashboard settings"} 
-                                dir="ltr" 
+                                helpText={isAr ? "يمكن تغييرها لاحقاً من لوحة الإعدادات" : "Can be changed later from dashboard settings"}
+                                dir="ltr"
                              />
                           </div>
                        </div>
@@ -325,77 +323,77 @@ export default function Subscription({ plans }: any) {
                              <div className="w-10 h-10 rounded-xl bg-brand-navy/10 text-brand-navy flex items-center justify-center"><School size={24}/></div>
                              <h2 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "معلومات المؤسسة التعليمية" : "Educational Institution Info"}</h2>
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                             <FormInput 
-                                theme={theme} 
-                                label={isAr ? "اسم المدرسة (العربية)" : "School Name (Arabic)"} 
-                                id="school_ar" 
-                                placeholder={isAr ? "مدرسة الأجيال الأهلية" : "Al-Ajyal National School"} 
-                                required 
+                             <FormInput
+                                theme={theme}
+                                label={isAr ? "اسم المدرسة (العربية)" : "School Name (Arabic)"}
+                                id="school_ar"
+                                placeholder={isAr ? "مدرسة الأجيال الأهلية" : "Al-Ajyal National School"}
+                                required
                                 value={data.school_ar}
                                 onChange={(e: any) => setData("school_ar", e.target.value)}
                                 error={errors.school_ar}
-                                dir="rtl" 
+                                dir="rtl"
                              />
-                             <FormInput 
-                                theme={theme} 
-                                label={isAr ? "اسم المدرسة (English)" : "School Name (English)"} 
-                                id="school_en" 
-                                placeholder="Al-Ajyal School" 
-                                required 
+                             <FormInput
+                                theme={theme}
+                                label={isAr ? "اسم المدرسة (English)" : "School Name (English)"}
+                                id="school_en"
+                                placeholder="Al-Ajyal School"
+                                required
                                 value={data.school_en}
                                 onChange={(e: any) => setData("school_en", e.target.value)}
                                 error={errors.school_en}
-                                dir="ltr" 
+                                dir="ltr"
                              />
-                             <FormInput 
-                                theme={theme} 
-                                label={isAr ? "المدينة" : "City"} 
-                                id="city" 
-                                icon={<MapPin size={18}/>} 
-                                placeholder={isAr ? "مسقط" : "Muscat"} 
-                                required 
+                             <FormInput
+                                theme={theme}
+                                label={isAr ? "المدينة" : "City"}
+                                id="city"
+                                icon={<MapPin size={18}/>}
+                                placeholder={isAr ? "مسقط" : "Muscat"}
+                                required
                                 value={data.city}
                                 onChange={(e: any) => setData("city", e.target.value)}
                                 error={errors.city}
-                                dir={dir} 
+                                dir={dir}
                              />
-                             <FormInput 
-                                theme={theme} 
-                                label={isAr ? "المنطقة / الحي" : "District"} 
-                                id="district" 
-                                icon={<Navigation size={18}/>} 
-                                placeholder={isAr ? "الخوير" : "Al Khuwair"} 
-                                required 
+                             <FormInput
+                                theme={theme}
+                                label={isAr ? "المنطقة / الحي" : "District"}
+                                id="district"
+                                icon={<Navigation size={18}/>}
+                                placeholder={isAr ? "الخوير" : "Al Khuwair"}
+                                required
                                 value={data.district}
                                 onChange={(e: any) => setData("district", e.target.value)}
                                 error={errors.district}
-                                dir={dir} 
+                                dir={dir}
                              />
-                             <FormInput 
-                                theme={theme} 
-                                label={isAr ? "الاسم الكامل للمشرف (عربي)" : "Admin Full Name (Arabic)"} 
-                                id="admin_name" 
-                                icon={<User size={18}/>} 
-                                placeholder={isAr ? "اكتب اسمك الثلاثي" : "Enter full name"} 
-                                required 
+                             <FormInput
+                                theme={theme}
+                                label={isAr ? "الاسم الكامل للمشرف (عربي)" : "Admin Full Name (Arabic)"}
+                                id="admin_name"
+                                icon={<User size={18}/>}
+                                placeholder={isAr ? "اكتب اسمك الثلاثي" : "Enter full name"}
+                                required
                                 value={data.admin_name}
                                 onChange={(e: any) => setData("admin_name", e.target.value)}
                                 error={errors.admin_name}
-                                dir="rtl" 
+                                dir="rtl"
                              />
-                             <FormInput 
-                                theme={theme} 
-                                label={isAr ? "Admin Full Name (English)" : "Admin Full Name (English)"} 
-                                id="admin_name_en" 
-                                icon={<User size={18}/>} 
-                                placeholder="Mohammed Al Busaidi" 
-                                required 
+                             <FormInput
+                                theme={theme}
+                                label={isAr ? "Admin Full Name (English)" : "Admin Full Name (English)"}
+                                id="admin_name_en"
+                                icon={<User size={18}/>}
+                                placeholder="Mohammed Al Busaidi"
+                                required
                                 value={data.admin_name_en}
                                 onChange={(e: any) => setData("admin_name_en", e.target.value)}
                                 error={errors.admin_name_en}
-                                dir="ltr" 
+                                dir="ltr"
                              />
                           </div>
                        </div>
@@ -406,7 +404,7 @@ export default function Subscription({ plans }: any) {
                              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><PhoneCall size={24}/></div>
                              <h2 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "التواصل واللغة" : "Contact & Language"}</h2>
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                              <div className="space-y-3">
                                 <label className={`text-sm font-black ${isDark ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "رقم الجوال النشط" : "Active Phone Number"}</label>
@@ -421,11 +419,11 @@ export default function Subscription({ plans }: any) {
                                          <option value="+965">🇰🇼 +965</option>
                                       </select>
                                    </div>
-                                   <input 
-                                      type="tel" 
-                                      className={`flex-1 bg-transparent border-none h-full px-4 font-black text-base focus:ring-0 ${isDark ? 'text-white placeholder:text-slate-500' : 'text-brand-navy placeholder:text-slate-400'}`} 
-                                      placeholder="7xxx xxxx" 
-                                      required 
+                                   <input
+                                      type="tel"
+                                      className={`flex-1 bg-transparent border-none h-full px-4 font-black text-base focus:ring-0 ${isDark ? 'text-white placeholder:text-slate-500' : 'text-brand-navy placeholder:text-slate-400'}`}
+                                      placeholder="7xxx xxxx"
+                                      required
                                       value={data.phone}
                                       onChange={(e) => setData("phone", e.target.value)}
                                    />
@@ -439,7 +437,7 @@ export default function Subscription({ plans }: any) {
                                    <div className={`absolute inset-y-0 ${dir === 'rtl' ? 'right-4' : 'left-4'} flex items-center pointer-events-none transition-colors z-10 ${isDark ? 'text-slate-500 group-focus-within:text-brand-yellow' : 'text-slate-400 group-focus-within:text-brand-navy'}`}>
                                       <Globe size={18} />
                                    </div>
-                                   <select 
+                                   <select
                                       value={lang}
                                       onChange={(e) => setLang(e.target.value as "ar" | "en")}
                                       className={`w-full border rounded-2xl py-4 font-bold appearance-none transition-all ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} ${isDark ? 'bg-slate-700 border-slate-600 text-white focus:ring-brand-yellow/20 focus:border-brand-yellow' : 'bg-slate-50 border-slate-100 text-slate-700 focus:ring-brand-navy/20 focus:border-brand-navy'}`}
@@ -481,8 +479,8 @@ export default function Subscription({ plans }: any) {
                                  </button>
                               </div>
                            </div>
-                           
-                           <PlanSelectorGrid 
+
+                           <PlanSelectorGrid
                                plans={plans}
                                selectedId={selectedPlanId}
                                onSelect={(id: number) => setSelectedPlanId(id)}
@@ -494,9 +492,9 @@ export default function Subscription({ plans }: any) {
 
                        <div className="space-y-3">
                           <label className={`text-sm font-black ${isDark ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "ملاحظات إضافية" : "Additional Notes"}</label>
-                          <textarea 
-                              rows={4} 
-                              className={`w-full border rounded-2xl p-4 font-bold transition-all ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder:text-slate-500 focus:ring-brand-yellow/20 focus:border-brand-yellow' : 'bg-slate-50 border-slate-100 text-slate-700 placeholder:text-slate-300 focus:ring-brand-navy/20 focus:border-brand-navy'}`} 
+                          <textarea
+                              rows={4}
+                              className={`w-full border rounded-2xl p-4 font-bold transition-all ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder:text-slate-500 focus:ring-brand-yellow/20 focus:border-brand-yellow' : 'bg-slate-50 border-slate-100 text-slate-700 placeholder:text-slate-300 focus:ring-brand-navy/20 focus:border-brand-navy'}`}
                               placeholder={isAr ? "هل لديك متطلبات خاصة تود منا مراعاتها؟" : "Do you have any special requirements?"}
                               value={data.notes}
                               onChange={(e) => setData("notes", e.target.value)}
@@ -512,7 +510,7 @@ export default function Subscription({ plans }: any) {
                           <a href="#" className={`underline underline-offset-4 ${isDark ? 'text-brand-yellow' : 'text-brand-navy'}`}>{isAr ? "سياسة الخصوصية" : "Privacy Policy"}</a>
                           {isAr ? " وشروط الاستخدام الخاصة بمنظومة مسارات واصل." : " and Terms of Service."}
                        </p>
-                       <button 
+                       <button
                           disabled={processing}
                           className="w-full max-md py-5 bg-brand-navy text-white text-xl font-black rounded-[1.5rem] shadow-2xl shadow-brand-navy/30 hover:shadow-brand-navy/50 hover:-translate-y-1 transition-all disabled:opacity-50 disabled:translate-y-0 flex items-center justify-center gap-4"
                        >
@@ -539,8 +537,8 @@ export default function Subscription({ plans }: any) {
       </footer>
 
       {/* --- Enhanced Floating Support Button --- */}
-      <a 
-         href="https://wa.me/96879967769" 
+      <a
+         href="https://wa.me/96879967769"
          target="_blank"
          rel="noreferrer"
          className={`fixed bottom-8 ${dir === 'rtl' ? 'left-8' : 'right-8'} z-50 group flex items-center gap-4`}
@@ -557,7 +555,7 @@ export default function Subscription({ plans }: any) {
               {/* Pulsing Outer Ring */}
               <div className="absolute inset-0 rounded-full bg-brand-yellow/40 animate-ping scale-150" />
               <div className="absolute inset-0 rounded-full bg-brand-yellow/20 animate-pulse scale-125" />
-              
+
               {/* Main Avatar Container */}
               <div className={`relative w-20 h-20 rounded-full border-4 border-brand-yellow shadow-[0_0_40px_rgba(255,191,0,0.4)] overflow-hidden hover:scale-110 transition-transform duration-500 hover:rotate-6 ${
                   isDark ? 'bg-slate-800' : 'bg-white'
@@ -594,11 +592,11 @@ function FormInput({ label, id, type = "text", icon, placeholder, helpText, requ
                {icon}
             </div>
           )}
-          <input 
-             type={type} 
-             id={id} 
+          <input
+             type={type}
+             id={id}
              dir={dir}
-             placeholder={placeholder} 
+             placeholder={placeholder}
              required={required}
              value={value}
              onChange={onChange}

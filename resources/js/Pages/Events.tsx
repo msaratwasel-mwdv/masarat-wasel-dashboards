@@ -40,7 +40,7 @@ export default function Events({ events }: Props) {
             </span>
           </div>
         </Link>
-        
+
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 border-r border-slate-200 pr-4 rtl:border-r-0 rtl:border-l rtl:pr-0 rtl:pl-4">
               <button
@@ -64,11 +64,11 @@ export default function Events({ events }: Props) {
               </button>
           </div>
 
-          <Link 
+          <Link
             href="/"
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-              isDark 
-                ? "bg-brand-navy text-white hover:bg-brand-dark" 
+              isDark
+                ? "bg-brand-navy text-white hover:bg-brand-dark"
                 : "bg-brand-navy text-white hover:bg-brand-dark"
             }`}
           >
@@ -116,13 +116,13 @@ export default function Events({ events }: Props) {
         <title>{isRTL ? "الفعاليات والأخبار | مسارات واصل" : "News & Events | Masarat Wasel"}</title>
         <meta name="description" content={isRTL ? "تابع أحدث أخبار شركة مسارات واصل، فعالياتنا، ورش العمل، وأحدث الإضافات لأسطول النقل المدرسي في سلطنة عمان." : "Follow the latest news from Masarat Wasel, our events, workshops, and the newest additions to our school transport fleet in Oman."} />
         <meta name="keywords" content={isRTL ? "أخبار النقل المدرسي, فعاليات مسارات واصل, ورش عمل سلامة الحافلات, أخبار حافلات عمان, المنتدى المصغر مسارات واصل" : "school transport news, Masarat Wasel events, school bus safety workshops, Oman school bus news, mini forum Masarat Wasel"} />
-        <link rel="canonical" href="https://masarat-wasel.com/events" />
-        
+        <link rel="canonical" href="https://masaratwasal.com/events" />
+
         {/* Open Graph Tags */}
         <meta property="og:title" content={isRTL ? "الفعاليات والأخبار | مسارات واصل" : "News & Events | Masarat Wasel"} />
         <meta property="og:description" content={isRTL ? "تابع أحدث أخبار شركة مسارات واصل، فعالياتنا، ورش العمل، وأحدث الإضافات لأسطول النقل المدرسي." : "Follow the latest news from Masarat Wasel, our events, workshops, and the newest additions to our school transport fleet."} />
-        <meta property="og:image" content="/assets/images/masarat-wasel-logo.jpg" />
-        <meta property="og:url" content="https://masarat-wasel.com/events" />
+        <meta property="og:image" content="https://masaratwasal.com/assets/images/masarat-wasel-logo.jpg" />
+        <meta property="og:url" content="https://masaratwasal.com/events" />
         <meta property="og:type" content="website" />
       </Head>
       <Header />
@@ -145,7 +145,7 @@ export default function Events({ events }: Props) {
               <span className="w-2 h-2 rounded-full bg-brand-yellow animate-pulse"></span>
               <span className="text-xs font-bold uppercase tracking-widest">{isRTL ? "آخر التحديثات" : "Latest Updates"}</span>
             </div>
-            
+
             <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
               {isRTL ? (
                 <>المنتدى المصغر <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-yellow to-yellow-600">والأخبار</span></>
@@ -153,10 +153,10 @@ export default function Events({ events }: Props) {
                 <>Mini Forum <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-yellow to-yellow-600">& News</span></>
               )}
             </h1>
-            
+
             <p className={`max-w-2xl text-lg md:text-xl font-medium ${isDark ? "text-gray-300" : "text-gray-600"}`}>
-              {isRTL 
-                ? "تابع أحدث أخبار شركة مسارات واصل، فعالياتنا، ورش العمل، وأحدث الإضافات لأسطول النقل المدرسي." 
+              {isRTL
+                ? "تابع أحدث أخبار شركة مسارات واصل، فعالياتنا، ورش العمل، وأحدث الإضافات لأسطول النقل المدرسي."
                 : "Follow the latest news from Masarat Wasel, our events, workshops, and the newest additions to our school transport fleet."}
             </p>
           </motion.div>
@@ -182,17 +182,17 @@ export default function Events({ events }: Props) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className={`group rounded-3xl overflow-hidden border transition-all duration-500 hover:-translate-y-2 ${
-                  isDark 
-                    ? "bg-white/5 border-white/10 hover:border-brand-yellow/30 hover:bg-white/10" 
+                  isDark
+                    ? "bg-white/5 border-white/10 hover:border-brand-yellow/30 hover:bg-white/10"
                     : "bg-white border-gray-200 shadow-sm hover:shadow-xl hover:border-brand-yellow/30"
                 }`}
               >
                 {/* Image or Placeholder */}
                 <div className="relative h-56 overflow-hidden bg-gray-100 dark:bg-gray-800">
                   {event.image ? (
-                    <img 
-                      src={event.image} 
-                      alt={isRTL ? event.title_ar : event.title_en} 
+                    <img
+                      src={event.image}
+                      alt={isRTL ? event.title_ar : event.title_en}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   ) : (
@@ -200,7 +200,7 @@ export default function Events({ events }: Props) {
                       <img src="/assets/images/logo.png" alt="Logo" className="w-24 h-24 opacity-20 grayscale" />
                     </div>
                   )}
-                  
+
                   {/* Badge */}
                   <div className="absolute top-4 right-4">
                     <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md ${getEventBadgeColor(event.type)}`}>
@@ -222,7 +222,7 @@ export default function Events({ events }: Props) {
                   <h3 className="text-xl font-black mb-3 line-clamp-2 group-hover:text-brand-yellow transition-colors">
                     {isRTL ? event.title_ar : event.title_en}
                   </h3>
-                  
+
                   <p className={`text-sm leading-relaxed mb-6 line-clamp-3 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
                     {isRTL ? event.content_ar : event.content_en}
                   </p>
