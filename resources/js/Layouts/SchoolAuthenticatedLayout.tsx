@@ -650,7 +650,7 @@ export default function SchoolAuthenticatedLayout({
       {/* --- MAIN CONTENT --- */}
       <main
         className={`
-          flex-1 min-h-screen flex flex-col relative transition-all duration-300
+          flex-1 min-w-0 min-h-screen flex flex-col relative transition-all duration-300
           ${isRTL 
             ? (isCollapsed ? "md:mr-20" : "md:mr-[260px]") 
             : (isCollapsed ? "md:ml-20" : "md:ml-[260px]")
