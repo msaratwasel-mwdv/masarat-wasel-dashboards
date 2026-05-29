@@ -231,14 +231,17 @@ export default function Authenticated({
     return false;
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Prevent mobile menu from getting stuck when resizing to desktop
+  // Handle window resizing and mobile state tracking
   useEffect(() => {
     const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
       if (window.innerWidth >= 768 && isMobileMenuOpen) {
         setIsMobileMenuOpen(false);
       }
     };
+    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [isMobileMenuOpen]);
@@ -410,8 +413,8 @@ export default function Authenticated({
       {/* --- SIDEBAR --- */}
       <motion.aside
         variants={sidebarVariants}
-        initial={isCollapsed ? "collapsed" : "expanded"}
-        animate={isCollapsed ? "collapsed" : "expanded"}
+        initial={isMobile ? "expanded" : (isCollapsed ? "collapsed" : "expanded")}
+        animate={isMobile ? "expanded" : (isCollapsed ? "collapsed" : "expanded")}
         className={`
           bg-gradient-to-b from-brand-dark to-brand-navy dark:from-gray-900 dark:to-gray-800
           text-white flex flex-col fixed inset-y-0 h-full z-50 shadow-sidebar overflow-hidden
@@ -678,8 +681,8 @@ export default function Authenticated({
         className={`
           flex-1 min-h-screen flex flex-col relative transition-all duration-300
           ${isRTL 
-            ? (isCollapsed ? "md:mr-20" : "md:mr-20 lg:mr-[260px]") 
-            : (isCollapsed ? "md:ml-20" : "md:ml-20 lg:ml-[260px]")
+            ? (isCollapsed ? "md:mr-20" : "md:mr-[260px]") 
+            : (isCollapsed ? "md:ml-20" : "md:ml-[260px]")
           }
         `}
       >
