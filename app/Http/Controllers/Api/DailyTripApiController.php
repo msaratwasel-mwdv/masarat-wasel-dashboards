@@ -1144,6 +1144,24 @@ class DailyTripApiController extends Controller
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
+        $request->validate([
+            'latitude'  => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+        ]);
+
+        if ($request->filled('latitude') && $request->filled('longitude')) {
+            $bus->update([
+                'latitude'  => $request->latitude,
+                'longitude' => $request->longitude,
+                'last_location_update' => now(),
+            ]);
+            Log::info('startTrip: Bus location updated at trip start request', [
+                'bus_id' => $bus->id,
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+            ]);
+        }
+
         // 1. تنظيف وإلغاء أي رحلات معلقة أو نشطة من الأيام السابقة تلقائياً للحفاظ على سلامة البيانات ومنع التراكمات
         $this->cleanupStaleTrips($bus, $user);
 
