@@ -736,12 +736,12 @@ export default function Authenticated({
 
           {/* Right Side Controls */}
           <div className="flex items-center gap-1.5 md:gap-4">
-            {/* Logout Button (Far Left in RTL) */}
+            {/* Logout Button (Far Left in RTL) - Hidden on mobile as it is inside the sidebar drawer */}
             <Link
               method="post"
               href={route("logout")}
               as="button"
-              className="p-2 sm:p-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all border border-transparent hover:border-red-100 dark:hover:border-red-900/30"
+              className="hidden md:flex p-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all border border-transparent hover:border-red-100 dark:hover:border-red-900/30"
               title={isRTL ? "تسجيل الخروج" : "Logout"}
             >
               <LogOut className="w-5 h-5" />
@@ -777,8 +777,8 @@ export default function Authenticated({
             {/* Notifications Dropdown */}
             <NotificationDropdown isRTL={isRTL} />
 
-            {/* User Profile */}
-            <div className={`flex items-center gap-1.5 sm:gap-3 ${isRTL ? "pr-2 sm:pr-4 md:pr-6 border-r" : "pl-2 sm:pl-4 md:pl-6 border-l"} border-gray-100 dark:border-gray-700`}>
+            {/* User Profile - Hidden on mobile as it is inside the sidebar drawer */}
+            <div className={`hidden md:flex items-center gap-3 ${isRTL ? "pr-4 md:pr-6 border-r" : "pl-4 md:pl-6 border-l"} border-gray-100 dark:border-gray-700`}>
               <div className={`hidden sm:block ${isRTL ? "text-right" : "text-left"}`}>
                 <p className="text-[13px] font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap truncate max-w-[120px] leading-none mb-1" dir="auto">
                   {user.name}
