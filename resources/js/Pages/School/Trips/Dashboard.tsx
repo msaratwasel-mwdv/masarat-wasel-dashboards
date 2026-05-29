@@ -308,34 +308,34 @@ export default function TripDashboard({ auth, dailyTrips, fieldTrips, routes, fi
                                             </button>
                                         </div>
                                     
-                                    <div className="flex gap-3 flex-wrap">
-                                        <div className="relative">
+                                    <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                                        <div className="relative w-full sm:w-auto">
                                             <Filter className={`absolute w-4 h-4 text-gray-400 top-1/2 -translate-y-1/2 ${isRtl ? "right-3" : "left-3"}`} />
                                             <select
                                                 value={tripTypeFilter}
                                                 onChange={(e) => setTripTypeFilter(e.target.value as any)}
-                                                className={`${DS_searchInput} ${isRtl ? 'pr-10' : 'pl-10'} py-2 min-w-[140px]`}
+                                                className={`${DS_searchInput} ${isRtl ? 'pr-10' : 'pl-10'} py-2 w-full sm:min-w-[140px]`}
                                             >
                                                 <option value="all">{isRtl ? 'جميع الرحلات' : 'All Trips'}</option>
                                                 <option value="forth">{isRtl ? 'رحلات الذهاب' : 'Morning Trips'}</option>
                                                 <option value="back">{isRtl ? 'رحلات العودة' : 'Evening Trips'}</option>
                                             </select>
                                         </div>
-                                        <div className="relative">
+                                        <div className="relative w-full sm:w-auto">
                                             <Calendar className={`absolute w-4 h-4 text-gray-400 top-1/2 -translate-y-1/2 ${isRtl ? "right-3" : "left-3"}`} />
                                             <input
                                                 type="date"
                                                 value={date}
                                                 onChange={(e) => { setDate(e.target.value); handleFilterChange(e.target.value, routeId); }}
-                                                className={`${DS_searchInput} ${isRtl ? 'pr-10' : 'pl-10'} py-2 min-w-[150px]`}
+                                                className={`${DS_searchInput} ${isRtl ? 'pr-10' : 'pl-10'} py-2 w-full sm:min-w-[150px]`}
                                             />
                                         </div>
-                                        <div className="relative">
+                                        <div className="relative w-full sm:w-auto">
                                             <Filter className={`absolute w-4 h-4 text-gray-400 top-1/2 -translate-y-1/2 ${isRtl ? "right-3" : "left-3"}`} />
                                             <select
                                                 value={routeId}
                                                 onChange={(e) => { setRouteId(e.target.value); handleFilterChange(date, e.target.value); }}
-                                                className={`${DS_searchInput} ${isRtl ? 'pr-10' : 'pl-10'} py-2 min-w-[150px]`}
+                                                className={`${DS_searchInput} ${isRtl ? 'pr-10' : 'pl-10'} py-2 w-full sm:min-w-[150px]`}
                                             >
                                                 <option value="">{isRtl ? 'جميع المسارات' : 'All Routes'}</option>
                                                 {routes.map((r: any) => <option key={r.id} value={r.id.toString()}>{r.name}</option>)}

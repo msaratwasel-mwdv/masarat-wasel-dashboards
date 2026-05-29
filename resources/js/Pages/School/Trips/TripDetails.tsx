@@ -234,7 +234,7 @@ export default function TripDetails({ auth, trip }: Props) {
                         </div>
                         
                         <div className="overflow-x-auto">
-                            <table className="w-full text-start border-collapse">
+                            <table className="w-full min-w-[700px] text-start border-collapse">
                                 <thead>
                                     <tr className="bg-slate-50 dark:bg-slate-900/30 text-[10px] uppercase font-black tracking-widest text-slate-400">
                                         <th className="px-8 py-4 text-start">{t('Student')}</th>

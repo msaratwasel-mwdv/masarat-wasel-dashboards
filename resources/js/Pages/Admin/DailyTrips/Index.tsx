@@ -539,14 +539,14 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                     <div className="h-12 w-px bg-gray-100 dark:bg-white/5 hidden md:block" />
 
                     <div className="flex-1 flex flex-col md:flex-row items-center justify-between gap-6 w-full">
-                        <div className="flex items-center gap-4 w-full md:w-auto">
-                            <div className="flex items-center gap-3 bg-white dark:bg-[#0f2044]/40 border border-gray-200 dark:border-white/10 rounded-[22px] p-2 pr-6 group transition-all focus-within:ring-2 focus-within:ring-[#f5b800]/30 shadow-sm hover:border-[#f5b800]/50">
-                                <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 group-hover:text-[#f5b800] transition-colors">
+                        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 w-full lg:w-auto">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white dark:bg-[#0f2044]/40 border border-gray-200 dark:border-white/10 rounded-[22px] p-3 sm:p-2 sm:pr-6 group transition-all focus-within:ring-2 focus-within:ring-[#f5b800]/30 shadow-sm hover:border-[#f5b800]/50 w-full sm:w-auto">
+                                <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 group-hover:text-[#f5b800] transition-colors shrink-0">
                                     <Calendar size={18} />
                                 </div>
                                 <input
                                     type="date"
-                                    className="bg-transparent border-none focus:ring-0 text-xs dark:text-white p-0 font-black w-32 tracking-wider"
+                                    className="bg-transparent border-none focus:ring-0 text-xs dark:text-white p-0 font-black flex-1 sm:w-32 tracking-wider"
                                     value={autoCreateDate}
                                     onChange={(e) => setAutoCreateDate(e.target.value)}
                                 />
@@ -556,14 +556,14 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                                             router.post(route('admin.daily-trips.auto-create'), { date: autoCreateDate });
                                         }
                                     }}
-                                    className="px-8 py-2.5 bg-[#f5b800] hover:bg-[#e5ac00] text-[#0f2044] rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-[#f5b800]/10 active:scale-95"
+                                    className="px-8 py-2.5 bg-[#f5b800] hover:bg-[#e5ac00] text-[#0f2044] rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-[#f5b800]/10 active:scale-95 w-full sm:w-auto"
                                 >
                                     {isRTL ? 'توليد تلقائي' : 'Auto-Generate'}
                                 </button>
                             </div>
 
                             {dateValidation && (
-                                <div className={`flex flex-col gap-2 p-3.5 rounded-[22px] border transition-all animate-in zoom-in-95 duration-500 shadow-sm min-w-[280px] max-w-[450px] ${
+                                <div className={`flex flex-col gap-2 p-3.5 rounded-[22px] border transition-all animate-in zoom-in-95 duration-500 shadow-sm w-full lg:min-w-[280px] lg:max-w-[450px] ${
                                     dateValidation.is_working
                                     ? 'bg-emerald-50/80 border-emerald-200 dark:bg-emerald-500/5 dark:border-emerald-500/10'
                                     : 'bg-amber-50/80 border-amber-200 dark:bg-amber-500/5 dark:border-amber-500/10'

@@ -277,7 +277,7 @@ export default function AdminDailyTripDetailsModal({ show, onClose, tripId }: Pr
                                     </div>
 
                                     <div className="overflow-x-auto flex-1">
-                                        <table className="w-full text-sm" dir={isRTL ? 'rtl' : 'ltr'}>
+                                        <table className="w-full min-w-[500px] text-sm" dir={isRTL ? 'rtl' : 'ltr'}>
                                             <thead className="bg-gray-50 dark:bg-[#1a2845] sticky top-0 border-b border-gray-100 dark:border-white/5">
                                                 <tr>
                                                     <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center w-12">#</th>
