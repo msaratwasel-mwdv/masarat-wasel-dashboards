@@ -66,6 +66,7 @@ class DriverLocationUpdated implements ShouldBroadcastNow
             'target_lat' => $this->targetLat ?? $this->bus->target_latitude,
             'target_lng' => $this->targetLng ?? $this->bus->target_longitude,
             'trip_status' => $this->bus->trip_status,
+            'trip_type' => $activeTrip ? $activeTrip->type : null,
             'speed_kmh' => cache()->get('bus_speed_' . $this->bus->id, 0),
             'eta_data' => $this->etaData,
             'total_students' => $this->bus->students_count,

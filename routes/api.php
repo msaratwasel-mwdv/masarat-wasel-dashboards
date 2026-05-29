@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Hash;
 
 // ✅ Rate Limiting: 5 محاولات دخول فقط كل دقيقة — يمنع Brute Force attacks
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/auth/login-attempt-status', [AuthController::class, 'checkLoginAttemptStatus']);
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -58,6 +60,8 @@ Route::middleware(['auth:sanctum', app()->environment('local') ? 'throttle:300,1
     Route::post('/auth/profile/update', [AuthController::class, 'updateProfile']);    // تحديث البيانات
     Route::post('/auth/profile/avatar', [AuthController::class, 'updateAvatar']);    // تحديث الصورة
     Route::post('/auth/profile/language', [AuthController::class, 'updateLanguage']); // تحديث اللغة المفضلة
+    Route::post('/auth/approve-login-attempt', [AuthController::class, 'approveLoginAttempt']);
+    Route::post('/auth/reject-login-attempt', [AuthController::class, 'rejectLoginAttempt']);
 
     Route::middleware([\App\Http\Middleware\CheckTransportAccess::class])->group(function () {
         // --- ركوب/نزول الطلاب (للمشرف والسائق) ---
@@ -79,9 +83,8 @@ Route::middleware(['auth:sanctum', app()->environment('local') ? 'throttle:300,1
         Route::post('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'store']);
         Route::get('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'index']);
 
-        // --- تحديث وجلب موقع الباص ---
+        // --- تحديث موقع الباص (للسائق والمشرف فقط) ---
         Route::post('/bus/{bus}/location', [BusLocationController::class, 'update']);
-        Route::get('/bus/{bus}/location', [BusLocationController::class, 'show']);
         
         // --- المشرف الميداني ---
         Route::get('/field/buses', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'buses']);
@@ -90,6 +93,11 @@ Route::middleware(['auth:sanctum', app()->environment('local') ? 'throttle:300,1
         Route::post('/field/violations', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'storeViolation']);
         Route::post('/field/incidents', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'storeIncident']);
     });
+
+    // --- جلب موقع الباص (لأولياء الأمور، السائقين، والمشرفين) ---
+    // ⚠️ هذا الـ route خارج CheckTransportAccess لأن ولي الأمر يحتاج الوصول إليه
+    // الحماية موجودة داخل BusLocationController::show() نفسه
+    Route::get('/bus/{bus}/location', [BusLocationController::class, 'show']);
     
     // --- إشعارات ولي الأمر ---
     Route::get('/guardian/notifications', [GuardianNotificationController::class, 'index']);

@@ -875,7 +875,7 @@ class DailyTripApiController extends Controller
             }
 
             // Fallback chain for student coordinates
-            $parent = $student->guardian->first();
+            $parent = $student->guardian->first(fn($g) => $g->latitude && $g->longitude) ?? $student->guardian->first();
             
             $forthLat = $student->forth_latitude ?? $student->latitude ?? $parent?->latitude;
             $forthLng = $student->forth_longitude ?? $student->longitude ?? $parent?->longitude;

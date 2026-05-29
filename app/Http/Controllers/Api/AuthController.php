@@ -80,6 +80,36 @@ class AuthController extends Controller
             ]);
         }
 
+        // التحقق من وجود جلسات نشطة على أجهزة أخرى لتطبيق الخدمات
+        if ($appContext === 'services') {
+            $otherTokensCount = $user->tokens()->where('name', '!=', $request->device_name)->count();
+            if ($otherTokensCount > 0) {
+                // 🛡️ قفل الأمان الذكي: إذا كان هناك جلسة نشطة على جهاز آخر وهناك رحلة نشطة للحافلة، يتم الرفض
+                $bus = $this->getBusForUser($user);
+                if ($bus) {
+                    $hasActiveTrip = \App\Models\Trip::where('bus_id', $bus->id)
+                        ->whereDate('trip_date', today())
+                        ->whereIn('status', ['in_progress', 'awaiting_confirmation', 'awaiting_video'])
+                        ->exists();
+
+                    if ($hasActiveTrip) {
+                        Log::warning('[Auth] Rejecting login attempt: Active trip in progress with active session', ['user_id' => $user->id, 'bus_id' => $bus->id]);
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.',
+                            'errors' => [
+                                'national_id' => ['لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.']
+                            ]
+                        ], 422);
+                    }
+                }
+
+                // إذا لم تكن هناك رحلة نشطة، يتم تسجيل خروج جميع الأجهزة القديمة تلقائياً بمسح التوكنات
+                $user->tokens()->delete();
+            }
+        }
+
+
         // ✅ updateFcmToken() تحفظ في الجدول الصحيح حسب دور المستخدم
         // ❌ update(['fcm_token'=>...]) لا تفعل شيئاً لأن fcm_token غير موجود في $fillable
         if ($request->has('fcm_token') && !empty($request->fcm_token)) {
@@ -399,6 +429,187 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'تم تحديث اللغة بنجاح.',
         ]);
+    }
+
+    /**
+     * الموافقة على طلب تسجيل الدخول لجهاز جديد
+     */
+    public function approveLoginAttempt(Request $request): JsonResponse
+    {
+        $request->validate([
+            'login_attempt_id' => 'required|integer',
+        ]);
+
+        $attempt = \App\Models\LoginAttempt::where('id', $request->login_attempt_id)
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$attempt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لم يتم العثور على طلب تسجيل الدخول أو تم معالجته بالفعل.'
+            ], 404);
+        }
+
+        if ((int)$attempt->user_id !== (int)$request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'غير مصرح لك بإجراء هذه العملية.'
+            ], 403);
+        }
+
+        // تحديث الحالة للموافقة
+        $attempt->update(['status' => 'approved']);
+
+        // إلغاء كافة التوكنات السابقة للمستخدم لإجباره على تسجيل الخروج
+        $user = $request->user();
+        $user->tokens()->delete();
+
+        // مسح FCM tokens القديمة باستثناء التوكن الخاص بالجهاز الجديد
+        if ($attempt->fcm_token) {
+            $user->fcmTokens()->where('token', '!=', $attempt->fcm_token)->delete();
+        } else {
+            $user->fcmTokens()->delete();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تمت الموافقة بنجاح وسيتم تسجيل الخروج من هذا الجهاز.'
+        ]);
+    }
+
+    /**
+     * رفض طلب تسجيل الدخول لجهاز جديد
+     */
+    public function rejectLoginAttempt(Request $request): JsonResponse
+    {
+        $request->validate([
+            'login_attempt_id' => 'required|integer',
+        ]);
+
+        $attempt = \App\Models\LoginAttempt::where('id', $request->login_attempt_id)
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$attempt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لم يتم العثور على طلب تسجيل الدخول أو تم معالجته بالفعل.'
+            ], 404);
+        }
+
+        if ((int)$attempt->user_id !== (int)$request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'غير مصرح لك بإجراء هذه العملية.'
+            ], 403);
+        }
+
+        // تحديث الحالة للرفض
+        $attempt->update(['status' => 'rejected']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم رفض طلب تسجيل الدخول.'
+        ]);
+    }
+
+    /**
+     * التحقق من حالة طلب تسجيل الدخول (غير محمي بـ Sanctum)
+     */
+    public function checkLoginAttemptStatus(Request $request): JsonResponse
+    {
+        $request->validate([
+            'login_attempt_id' => 'required|integer',
+            'temp_token' => 'required|string',
+        ]);
+
+        $attempt = \App\Models\LoginAttempt::where('id', $request->login_attempt_id)
+            ->where('temp_token', $request->temp_token)
+            ->first();
+
+        if (!$attempt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'طلب غير صالح أو منتهي الصلاحية.'
+            ], 404);
+        }
+
+        if ($attempt->status === 'pending') {
+            return response()->json([
+                'success' => false,
+                'status' => 'pending',
+                'message' => 'بانتظار موافقة الجهاز الآخر.'
+            ]);
+        }
+
+        if ($attempt->status === 'rejected') {
+            $attempt->delete(); // تنظيف الطلب المرفوض
+            return response()->json([
+                'success' => false,
+                'status' => 'rejected',
+                'message' => 'تم رفض طلب تسجيل الدخول من الجهاز الآخر.'
+            ]);
+        }
+
+        if ($attempt->status === 'approved') {
+            // تسجيل دخول المستخدم بنجاح
+            $user = User::find($attempt->user_id);
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المستخدم غير موجود.'
+                ], 404);
+            }
+
+            // تحديث FCM token للجهاز الجديد
+            if ($attempt->fcm_token) {
+                $user->updateFcmToken(
+                    $attempt->fcm_token,
+                    $attempt->device_type ?? 'android',
+                    $attempt->device_name,
+                    $attempt->device_id,
+                    $attempt->app_context === 'services' ? 'com.msaratwasel.services' : 'com.msaratwasel.services'
+                );
+            }
+
+            // إنشاء Token جديد للجهاز الجديد
+            $token = $user->createToken($attempt->device_name)->plainTextToken;
+
+            $userData = [
+                'id'          => $user->id,
+                'name'        => $user->name,
+                'name_en'     => $user->name_en,
+                'national_id' => $user->national_id,
+                'email'       => $user->email,
+                'phone'       => $user->phone,
+                'role'        => $user->role,
+                'image_url'   => $user->avatar_url,
+                'school_id'   => $user->school_id,
+                'school_name'        => $user->school ? $user->school->name : null,
+                'preferred_language' => $user->preferred_language ?? 'ar',
+                'bus_id'             => $this->getBusId($user),
+                'bus'                => $this->getBusDetails($user),
+            ];
+
+            // مسح الطلب المكتمل
+            $attempt->delete();
+
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'user'  => $userData,
+                    'token' => $token,
+                ],
+                'user'  => $userData,
+                'token' => $token,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'حالة طلب غير صالحة.'
+        ], 400);
     }
 }
 

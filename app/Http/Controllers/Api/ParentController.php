@@ -119,7 +119,8 @@ class ParentController extends Controller
                 'lastTripAttendance',
                 'currentEnrollment.classroom.school',
                 'currentEnrollment.classroom.grade',
-                'locationRequests' => fn($q) => $q->where('status', 'pending')->latest()
+                'locationRequests' => fn($q) => $q->where('status', 'pending')->latest(),
+                'guardians'
             ])
             ->get();
 
@@ -306,8 +307,12 @@ class ParentController extends Controller
                 'trip_count'             => $student->trips_count ?? 0,
                 'attendance_percentage'  => $attendancePercentage,
                 'image_url'              => $imageUrl,
-                'home_lat'               => $student->latitude ?? $user->latitude,
-                'home_lng'               => $student->longitude ?? $user->longitude,
+                'home_lat'               => $student->latitude ?? ($student->guardians->first(fn($g) => $g->latitude && $g->longitude) ?? $user)->latitude,
+                'home_lng'               => $student->longitude ?? ($student->guardians->first(fn($g) => $g->latitude && $g->longitude) ?? $user)->longitude,
+                'forth_lat'              => $student->forth_latitude ?? $student->latitude ?? ($student->guardians->first(fn($g) => $g->latitude && $g->longitude) ?? $user)->latitude,
+                'forth_lng'              => $student->forth_longitude ?? $student->longitude ?? ($student->guardians->first(fn($g) => $g->latitude && $g->longitude) ?? $user)->longitude,
+                'back_lat'               => $student->back_latitude ?? $student->latitude ?? ($student->guardians->first(fn($g) => $g->latitude && $g->longitude) ?? $user)->latitude,
+                'back_lng'               => $student->back_longitude ?? $student->longitude ?? ($student->guardians->first(fn($g) => $g->latitude && $g->longitude) ?? $user)->longitude,
                 'home_address'           => $student->address ?? $user->address,
                 'location_note'          => $student->location_note,
                 'pending_location' => $pendingReq ? [
