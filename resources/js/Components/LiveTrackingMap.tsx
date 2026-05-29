@@ -204,7 +204,7 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
     const initialCenter = { lat: centerLat, lng: centerLng };
 
     return (
-        <div className="relative w-full h-full bg-[#f8fafc] overflow-hidden rounded-[30px] border-4 border-white shadow-inner mx-4 my-4" style={{ height: 'calc(100vh - 120px)', width: 'calc(100% - 32px)' }}>
+        <div className="relative bg-[#f8fafc] overflow-hidden transition-all duration-300 w-full h-full md:rounded-[30px] md:border-4 md:border-white md:shadow-inner md:mx-4 md:my-4 md:h-[calc(100vh-120px)] md:w-[calc(100%-32px)]">
             
             {/* --- GOOGLE MAPS --- */}
             {isLoaded ? (
@@ -243,7 +243,7 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
             )}
 
             {/* --- 1. SMART CONTROL BUTTON --- */}
-            <div className={`absolute top-6 ${isRtl ? 'right-6' : 'left-6'} z-[50]`}>
+            <div className={`absolute top-4 md:top-6 ${isRtl ? 'right-4 md:right-6' : 'left-4 md:left-6'} z-[50]`}>
                 <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -258,7 +258,7 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
             </div>
 
             {/* --- LEGEND --- */}
-            <div className={`absolute bottom-6 ${isRtl ? 'right-6' : 'left-6'} z-[40]`}>
+            <div className={`absolute bottom-6 ${isRtl ? 'right-6' : 'left-6'} z-[40] hidden sm:block`}>
                 <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl px-5 py-3.5 rounded-[20px] border border-white/20 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
                     <div className="flex items-center gap-4">
                         <LegendItem dotColor="bg-emerald-500" label={t('active') || 'Active'} />
@@ -273,7 +273,9 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
                 <motion.div
                     initial={{ y: -10, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className={`absolute top-24 ${isRtl ? 'right-6' : 'left-6'} w-[320px] bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] rounded-[28px] border border-white/20 dark:border-white/10 z-[101] flex flex-col`}
+                    className={`absolute top-20 md:top-24 left-4 right-4 md:w-[320px] bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] rounded-[28px] border border-white/20 dark:border-white/10 z-[101] flex flex-col ${
+                        isRtl ? 'md:right-6 md:left-auto' : 'md:left-6 md:right-auto'
+                    }`}
                 >
                     <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 dark:border-white/5">
                         <span className="font-black text-sm text-slate-800 dark:text-white">
@@ -392,7 +394,9 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
                 <motion.div 
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className={`absolute top-6 ${isRtl ? 'left-6' : 'right-6'} w-[280px] bg-white/95 backdrop-blur-3xl dark:bg-[#0f172a]/95 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 dark:border-white/10 z-[60] flex flex-col`}
+                    className={`absolute bottom-4 left-4 right-4 md:bottom-auto md:top-6 md:w-[280px] bg-white/95 backdrop-blur-3xl dark:bg-[#0f172a]/95 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 dark:border-white/10 z-[60] flex flex-col ${
+                        isRtl ? 'md:left-6 md:right-auto' : 'md:right-6 md:left-auto'
+                    }`}
                 >
                     {/* Horizontal Compact Header */}
                     <div className="p-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 relative">
