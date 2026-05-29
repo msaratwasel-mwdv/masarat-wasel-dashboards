@@ -285,3 +285,10 @@ html[dir="rtl"] {
     filter: invert(1) brightness(1.5);
     cursor: pointer;
 }
+
+/* Prevent horizontal overflow scrolling globally on dashboard layout */
+html, body {
+    overflow-x: hidden;
+    width: 100%;
+}
+

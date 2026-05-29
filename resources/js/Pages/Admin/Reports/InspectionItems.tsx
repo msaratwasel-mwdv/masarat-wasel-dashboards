@@ -198,17 +198,17 @@ export default function InspectionItems({ items, auth }: Props) {
                 </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 <Link
                     href={route('admin.inspection-logs.index')}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all shadow-sm"
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all shadow-sm w-full sm:w-auto"
                 >
                     <ChevronRight size={16} className={isRTL ? "rotate-0" : "rotate-180"} />
                     {isRTL ? "العودة للسجلات" : "Back to Logs"}
                 </Link>
                 <button
                     onClick={() => openModal()}
-                    className={DS_btnGold}
+                    className={`${DS_btnGold} !w-full sm:!w-auto justify-center`}
                 >
                     <Plus size={16} />
                     {isRTL ? "إضافة بند جديد" : "Add New Item"}
@@ -217,7 +217,7 @@ export default function InspectionItems({ items, auth }: Props) {
         </div>
 
         {/* Info Card */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
              <div className={DS_statCard('navy')}>
                 <div className={DS_statIcon('navy')}><LayoutGrid size={20} /></div>
                 <div>

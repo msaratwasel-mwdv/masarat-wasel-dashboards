@@ -394,7 +394,7 @@ export default function Authenticated({
 
   return (
     <div
-      className={`min-h-screen bg-gray-50 dark:bg-gray-900 flex font-sans ${rtlClasses}`}
+      className={`min-h-screen bg-gray-50 dark:bg-gray-900 flex font-sans overflow-x-hidden relative w-full ${rtlClasses}`}
       dir={isRTL ? "rtl" : "ltr"}
     >
       {/* Mobile Backdrop */}
@@ -687,7 +687,7 @@ export default function Authenticated({
         `}
       >
         {/* Top Header */}
-        <header className="h-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md flex items-center justify-between px-4 md:px-8 sticky top-0 z-40 border-b border-gray-100 dark:border-gray-700 shadow-sm">
+        <header className="h-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md flex items-center justify-between px-4 md:px-8 sticky top-0 z-40 border-b border-gray-100 dark:border-gray-700 shadow-sm w-full">
           <div className="flex items-center gap-4">
             {/* Collapse Toggle - Desktop */}
             <button
@@ -735,13 +735,13 @@ export default function Authenticated({
           </div>
 
           {/* Right Side Controls */}
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-1.5 md:gap-4">
             {/* Logout Button (Far Left in RTL) */}
             <Link
               method="post"
               href={route("logout")}
               as="button"
-              className="p-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all border border-transparent hover:border-red-100 dark:hover:border-red-900/30"
+              className="p-2 sm:p-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all border border-transparent hover:border-red-100 dark:hover:border-red-900/30"
               title={isRTL ? "تسجيل الخروج" : "Logout"}
             >
               <LogOut className="w-5 h-5" />
@@ -750,7 +750,7 @@ export default function Authenticated({
             {/* Language Toggle */}
             <button
               onClick={toggleLanguage}
-              className="p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
+              className="p-2 sm:p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
               title={isRTL ? "Switch to English" : "التبديل إلى العربية"}
             >
               <span className="text-xs font-bold leading-none">
@@ -760,7 +760,7 @@ export default function Authenticated({
 
             <button
               onClick={toggleTheme}
-              className="p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
+              className="p-2 sm:p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
               title={theme === "dark" ? (isRTL ? "الوضع الفاتح" : "Light Mode") : (isRTL ? "الوضع المظلم" : "Dark Mode")}
             >
               {theme === "dark" ? (
@@ -778,7 +778,7 @@ export default function Authenticated({
             <NotificationDropdown isRTL={isRTL} />
 
             {/* User Profile */}
-            <div className={`flex items-center gap-3 ${isRTL ? "pr-4 md:pr-6 border-r" : "pl-4 md:pl-6 border-l"} border-gray-100 dark:border-gray-700`}>
+            <div className={`flex items-center gap-1.5 sm:gap-3 ${isRTL ? "pr-2 sm:pr-4 md:pr-6 border-r" : "pl-2 sm:pl-4 md:pl-6 border-l"} border-gray-100 dark:border-gray-700`}>
               <div className={`hidden sm:block ${isRTL ? "text-right" : "text-left"}`}>
                 <p className="text-[13px] font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap truncate max-w-[120px] leading-none mb-1" dir="auto">
                   {user.name}

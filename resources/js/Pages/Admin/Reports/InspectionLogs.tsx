@@ -233,17 +233,17 @@ export default function InspectionLogs({ inspections, filters, auth }: Props) {
                 </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 <Link
                     href={route('admin.inspection-items.index')}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-brand-navy text-white font-bold text-xs rounded-xl hover:bg-brand-navy/90 transition-all shadow-md shadow-brand-navy/20"
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-navy text-white font-bold text-xs rounded-xl hover:bg-brand-navy/90 transition-all shadow-md shadow-brand-navy/20 w-full sm:w-auto"
                 >
                     <ClipboardCheck size={16} />
                     {isRTL ? "إدارة بنود الفحص" : "Manage Inspection Items"}
                 </Link>
                 <button 
                     onClick={handlePrint}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all shadow-sm"
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all shadow-sm w-full sm:w-auto"
                 >
                     <Download size={16} />
                     {isRTL ? "تصدير التقرير" : "Export Report"}
@@ -252,7 +252,7 @@ export default function InspectionLogs({ inspections, filters, auth }: Props) {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
             <div className={DS_statCard('navy')}>
                 <div className={DS_statIcon('navy')}><ClipboardCheck size={20} /></div>
                 <div>
@@ -303,31 +303,33 @@ export default function InspectionLogs({ inspections, filters, auth }: Props) {
                 <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col print:rounded-none print:shadow-none print:max-h-none`}>
                     
                     {/* Modal Header */}
-                    <div className="px-8 py-6 flex items-center justify-between bg-[#0f2044] print:hidden">
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 bg-white/10 text-brand-yellow rounded-2xl">
-                                <FileText size={24} />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-black text-white">
-                                    {isRTL ? `تقرير فحص #${selectedInspection.id}` : `Inspection Report #${selectedInspection.id}`}
-                                </h3>
-                                <p className="text-xs text-blue-100 font-bold uppercase tracking-widest opacity-80">
-                                    {new Date(selectedInspection.created_at).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { dateStyle: 'full' })}
-                                </p>
+                    <div className="px-8 py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-[#0f2044] gap-4 print:hidden">
+                        <div className="flex items-center gap-3 justify-between sm:justify-start w-full sm:w-auto">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 bg-white/10 text-brand-yellow rounded-2xl shrink-0">
+                                    <FileText size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-white">
+                                        {isRTL ? `تقرير فحص #${selectedInspection.id}` : `Inspection Report #${selectedInspection.id}`}
+                                    </h3>
+                                    <p className="text-xs text-blue-100 font-bold uppercase tracking-widest opacity-80">
+                                        {new Date(selectedInspection.created_at).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { dateStyle: 'full' })}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
                             <button 
                                 onClick={() => window.print()}
-                                className="flex items-center gap-2 px-4 py-2 bg-brand-gold text-brand-navy font-black text-xs rounded-xl hover:bg-brand-gold/90 transition-all"
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-brand-gold text-brand-navy font-black text-xs rounded-xl hover:bg-brand-gold/90 transition-all flex-1 sm:flex-none"
                             >
                                 <Download size={16} />
                                 {isRTL ? "طباعة" : "Print"}
                             </button>
                             <button 
                                 onClick={() => setIsDetailsModalOpen(false)}
-                                className="p-2 transition-colors rounded-lg text-white/80 hover:text-white hover:bg-white/10"
+                                className="p-2 transition-colors rounded-lg text-white/80 hover:text-white hover:bg-white/10 shrink-0"
                             >
                                 <XCircle size={24} />
                             </button>
@@ -357,7 +359,7 @@ export default function InspectionLogs({ inspections, filters, auth }: Props) {
                         </div>
 
                         {/* Summary Info */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
                             <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRTL ? "الحافلة" : "Bus"}</p>
                                 <p className="text-lg font-black text-slate-800 dark:text-white">{selectedInspection.bus?.bus_number}</p>
@@ -397,7 +399,7 @@ export default function InspectionLogs({ inspections, filters, auth }: Props) {
                             </h4>
                             
                             {selectedInspection.results.map((result) => (
-                                <div key={result.id} className="flex items-center justify-between p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl hover:shadow-md transition-all">
+                                <div key={result.id} className="flex items-center justify-between p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl hover:shadow-md transition-all gap-4">
                                     <div className="flex flex-col gap-1">
                                         <span className="font-black text-slate-800 dark:text-white">{result.item.name}</span>
                                         {result.notes && (
