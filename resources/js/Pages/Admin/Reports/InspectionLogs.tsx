@@ -121,6 +121,7 @@ export default function InspectionLogs({ inspections, filters, auth }: Props) {
     columnHelper.accessor("id", {
       header: "#",
       cell: (info) => <span className="font-bold text-slate-400">#{info.getValue()}</span>,
+      meta: { className: "hidden sm:table-cell" }
     }),
     columnHelper.accessor("created_at", {
       header: isRTL ? "التاريخ والوقت" : "Date & Time",
@@ -138,8 +139,8 @@ export default function InspectionLogs({ inspections, filters, auth }: Props) {
     columnHelper.accessor("bus.bus_number", {
       header: isRTL ? "الحافلة" : "Bus",
       cell: (info) => (
-        <div className="flex items-center gap-2">
-            <div className="p-2 bg-brand-navy/5 rounded-lg text-brand-navy">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="hidden sm:block p-2 bg-brand-navy/5 rounded-lg text-brand-navy">
                 <Bus size={14} />
             </div>
             <span className="font-black text-slate-800 dark:text-white">{info.getValue()}</span>

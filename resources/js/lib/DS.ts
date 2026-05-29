@@ -14,10 +14,10 @@ export const DS_statLabel = "text-[9px] md:text-[10px] font-bold uppercase track
 export const DS_statValue = "text-lg md:text-2xl font-black text-[#0f2044] dark:text-white mt-0.5";
 export const DS_avatar = "w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#0f2044]/10 dark:bg-[#0f2044]/40 text-[#0f2044] dark:text-[#7ba7e8] flex items-center justify-center font-bold text-xs md:text-sm overflow-hidden flex-shrink-0";
 export const DS_tableWrapper = "overflow-x-auto scrollbar-hide -mx-4 md:mx-0 pb-20"; // Negative margin on mobile for edge-to-edge feel
-export const DS_tableBase = "w-full text-sm min-w-[600px] md:min-w-full";
+export const DS_tableBase = "w-full text-sm min-w-full";
 export const DS_tableHead = "bg-[#0f2044]/[0.03] dark:bg-[#0f2044]/40 border-b border-gray-100 dark:border-[#243460]";
 export const DS_tableRow = "hover:bg-[#0f2044]/[0.02] dark:hover:bg-[#0f2044]/20 transition-colors border-b border-gray-50 dark:border-[#243460] last:border-0";
-export const DS_tableTd = "px-2 py-3 text-gray-800 dark:text-white align-middle text-xs md:text-sm";
+export const DS_tableTd = "px-2 py-3 text-gray-800 dark:text-white align-middle text-xs sm:text-sm";
 export const DS_divider = "border-b border-gray-100 dark:border-[#243460]";
 
 // Responsive Layout Helpers
@@ -93,7 +93,7 @@ export function DS_filterBtn(active: boolean): string {
 }
 
 export function DS_tableTh(isRtl: boolean): string {
-  return `px-2 py-2.5 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-[#0f2044]/60 dark:text-[#7ba7e8]/70 ${isRtl ? "text-right" : "text-left"}`;
+  return `px-2 py-2.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#0f2044]/60 dark:text-[#7ba7e8]/70 ${isRtl ? "text-right" : "text-left"}`;
 }
 
 export function DS_modalHeader(isRtl: boolean): string {
