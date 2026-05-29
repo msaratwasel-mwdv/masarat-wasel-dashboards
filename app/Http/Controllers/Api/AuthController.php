@@ -84,27 +84,31 @@ class AuthController extends Controller
         if ($appContext === 'services') {
             $otherTokensCount = $user->tokens()->where('name', '!=', $request->device_name)->count();
             if ($otherTokensCount > 0) {
-                // 🛡️ قفل الأمان الذكي: إذا كان هناك جلسة نشطة على جهاز آخر وهناك رحلة نشطة للحافلة، يتم الرفض
-                $bus = $this->getBusForUser($user);
-                if ($bus) {
-                    $hasActiveTrip = \App\Models\Trip::where('bus_id', $bus->id)
-                        ->whereDate('trip_date', today())
-                        ->whereIn('status', ['in_progress', 'awaiting_confirmation', 'awaiting_video'])
-                        ->exists();
+                // 🛡️ قفل الأمان الذكي: ينطبق فقط على السائق (driver)
+                // المشرفة (assistant) يجب أن تتمكن من الدخول حتى أثناء الرحلة لتوافق عليها
+                if ($user->role === 'driver') {
+                    $bus = $this->getBusForUser($user);
+                    if ($bus) {
+                        $hasActiveTrip = \App\Models\Trip::where('bus_id', $bus->id)
+                            ->whereDate('trip_date', today())
+                            ->whereIn('status', ['in_progress', 'awaiting_confirmation', 'awaiting_video'])
+                            ->exists();
 
-                    if ($hasActiveTrip) {
-                        Log::warning('[Auth] Rejecting login attempt: Active trip in progress with active session', ['user_id' => $user->id, 'bus_id' => $bus->id]);
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.',
-                            'errors' => [
-                                'national_id' => ['لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.']
-                            ]
-                        ], 422);
+                        if ($hasActiveTrip) {
+                            Log::warning('[Auth] Rejecting driver login: Active trip in progress with active session', ['user_id' => $user->id, 'bus_id' => $bus->id]);
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.',
+                                'errors' => [
+                                    'national_id' => ['لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.']
+                                ]
+                            ], 422);
+                        }
                     }
                 }
 
-                // إذا لم تكن هناك رحلة نشطة، يتم تسجيل خروج جميع الأجهزة القديمة تلقائياً بمسح التوكنات
+                // إذا لم تكن هناك رحلة نشطة (للسائق)، أو كان المستخدم مشرفة/غيرها،
+                // يتم مسح التوكنات القديمة والسماح بالدخول
                 $user->tokens()->delete();
             }
         }
