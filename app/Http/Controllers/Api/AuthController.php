@@ -84,31 +84,51 @@ class AuthController extends Controller
         if ($appContext === 'services') {
             $otherTokensCount = $user->tokens()->where('name', '!=', $request->device_name)->count();
             if ($otherTokensCount > 0) {
-                // 🛡️ قفل الأمان الذكي: ينطبق فقط على السائق (driver)
-                // المشرفة (assistant) يجب أن تتمكن من الدخول حتى أثناء الرحلة لتوافق عليها
-                if ($user->role === 'driver') {
-                    $bus = $this->getBusForUser($user);
-                    if ($bus) {
-                        $hasActiveTrip = \App\Models\Trip::where('bus_id', $bus->id)
-                            ->whereDate('trip_date', today())
-                            ->whereIn('status', ['in_progress', 'awaiting_confirmation', 'awaiting_video'])
-                            ->exists();
+                $bus = $this->getBusForUser($user);
 
-                        if ($hasActiveTrip) {
-                            Log::warning('[Auth] Rejecting driver login: Active trip in progress with active session', ['user_id' => $user->id, 'bus_id' => $bus->id]);
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.',
-                                'errors' => [
-                                    'national_id' => ['لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.']
-                                ]
-                            ], 422);
-                        }
+                // 🛡️ السائق: يُمنع من الدخول من جهاز آخر عند وجود أي رحلة نشطة
+                if ($user->role === 'driver' && $bus) {
+                    $hasActiveTrip = \App\Models\Trip::where('bus_id', $bus->id)
+                        ->whereDate('trip_date', today())
+                        ->whereIn('status', ['in_progress', 'awaiting_confirmation', 'awaiting_video'])
+                        ->exists();
+
+                    if ($hasActiveTrip) {
+                        Log::warning('[Auth] Rejecting driver login: Active trip with existing session', [
+                            'user_id' => $user->id, 'bus_id' => $bus->id,
+                        ]);
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.',
+                            'errors' => ['national_id' => ['لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.']]
+                        ], 422);
                     }
                 }
 
-                // إذا لم تكن هناك رحلة نشطة (للسائق)، أو كان المستخدم مشرفة/غيرها،
-                // يتم مسح التوكنات القديمة والسماح بالدخول
+                // 🛡️ مشرفة الحافلة (assistant):
+                // - مسموح بالدخول عندما الرحلة بانتظار موافقتها (awaiting_confirmation) → تحتاج للموافقة
+                // - ممنوع الدخول بعد الموافقة (in_progress / awaiting_video) → الرحلة تسير بالفعل
+                if ($user->role === 'assistant' && $bus) {
+                    $activeAfterApproval = \App\Models\Trip::where('bus_id', $bus->id)
+                        ->whereDate('trip_date', today())
+                        ->whereIn('status', ['in_progress', 'awaiting_video'])
+                        ->exists();
+
+                    if ($activeAfterApproval) {
+                        Log::warning('[Auth] Rejecting assistant login: Trip already approved and in progress', [
+                            'user_id' => $user->id, 'bus_id' => $bus->id,
+                        ]);
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'لا يمكن تسجيل الدخول من جهاز آخر بعد الموافقة على الرحلة.',
+                            'errors' => ['national_id' => ['لا يمكن تسجيل الدخول من جهاز آخر بعد الموافقة على الرحلة.']]
+                        ], 422);
+                    }
+                    // إذا الرحلة awaiting_confirmation → يُسمح بالدخول (لتوافق عليها)
+                    // سيُكمل التنفيذ ويمسح التوكنات القديمة أدناه
+                }
+
+                // مسح التوكنات القديمة للجميع الذين وصلوا لهذه النقطة والسماح بالدخول
                 $user->tokens()->delete();
             }
         }
