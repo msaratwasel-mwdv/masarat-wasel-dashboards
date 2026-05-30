@@ -57,10 +57,9 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
     protected function gate(): void
     {
         Gate::define('viewTelescope', function (User $user) {
-            // ✅ أضف إيميلات المطورين هنا للوصول لـ Telescope على السيرفر
             return in_array($user->email, [
-                'admin@masarat-wasel.com',  // غيّر هذا لإيميلك الفعلي
-            ]) || $user->hasRole('admin');
+                //
+            ]);
         });
     }
 }

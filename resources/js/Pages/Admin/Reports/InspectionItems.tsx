@@ -123,7 +123,6 @@ export default function InspectionItems({ items, auth }: Props) {
     columnHelper.accessor("order_index", {
         header: "#",
         cell: (info) => <span className="font-black text-slate-400">#{info.getValue()}</span>,
-        meta: { className: "hidden sm:table-cell" }
     }),
     columnHelper.accessor("name", {
       header: isRTL ? "اسم البند" : "Item Name",

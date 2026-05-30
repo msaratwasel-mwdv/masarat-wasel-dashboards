@@ -84,6 +84,7 @@ Broadcast::channel('bus.{id}', function ($user, $id) {
         \Log::warning("Broadcasting auth failed: Role {$role} not permitted for bus.{$id}");
         return false;
     } catch (\Throwable $e) {
+        report($e);
         \Log::error("Broadcasting auth FATAL error for bus.{$id}: " . $e->getMessage(), [
             'user_id' => $user->id ?? 'unknown',
             'trace' => $e->getTraceAsString()

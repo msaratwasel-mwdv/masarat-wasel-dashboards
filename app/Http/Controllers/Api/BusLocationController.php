@@ -195,6 +195,7 @@ class BusLocationController extends Controller
             \Log::debug("✅ [DRIVER] Broadcast Successful for Bus {$bus->id}");
 
         } catch (\Exception $e) {
+            report($e);
             \Illuminate\Support\Facades\Log::error("Location broadcast error: " . $e->getMessage());
         }
 

@@ -334,7 +334,7 @@ export default function BaseDataTable<T extends { id?: number | string }>({
                           canSort
                             ? "cursor-pointer select-none hover:text-[#0f2044] dark:hover:text-white"
                             : ""
-                        } ${(header.column.columnDef as any).meta?.className || ""}`}
+                        }`}
                       >
                         <div
                           className="flex items-center gap-1.5 justify-start w-full"
@@ -394,7 +394,7 @@ export default function BaseDataTable<T extends { id?: number | string }>({
                           key={cell.id}
                           className={`${DS_tableTd} ${
                             isRTL ? "text-right" : "text-left"
-                          } ${(cell.column.columnDef as any).meta?.className || ""}`}
+                          }`}
                         >
                           {flexRender(
                             cell.column.columnDef.cell,
