@@ -125,13 +125,8 @@ class Bus extends Model
      */
     public function getTripStatusAttribute(): string
     {
-        // Only use pre-loaded relationships to avoid N+1 in bus listings
-        if ($this->relationLoaded('activeTrip')) {
-            $trip = $this->activeTrip;
-        } else {
-            // Skip querying if not eagerly loaded — return idle to prevent N+1
-            return 'idle';
-        }
+        // Use normal dynamic loading for individual model queries to preserve active statuses
+        $trip = $this->activeTrip;
 
         if (!$trip) {
             if ($this->relationLoaded('latestTrip')) {

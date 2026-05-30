@@ -129,11 +129,14 @@ class ParentController extends Controller
             $morningBus = $student->forthBus;
             $eveningBus = $student->backBus ?? $morningBus;
 
-            // تحديد الباص النشط بناءً على حالة الرحلة
-            $activeBus = $morningBus; // الافتراضي
-            if ($eveningBus && in_array($eveningBus->trip_status, ['to_home', 'on_route']) && now()->hour >= 11) {
+            // تحديد الباص النشط بناءً على حالة الرحلة الفعلية والتوقيت الصحيح
+            if ($eveningBus && in_array($eveningBus->trip_status, ['to_home', 'on_route', 'in_progress'])) {
                 $activeBus = $eveningBus;
-            } elseif ($morningBus && in_array($morningBus->trip_status, ['to_school', 'on_route'])) {
+            } elseif ($morningBus && in_array($morningBus->trip_status, ['to_school', 'on_route', 'in_progress'])) {
+                $activeBus = $morningBus;
+            } elseif ($eveningBus && now('Asia/Riyadh')->hour >= 11) {
+                $activeBus = $eveningBus;
+            } else {
                 $activeBus = $morningBus;
             }
 
