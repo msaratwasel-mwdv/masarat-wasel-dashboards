@@ -134,7 +134,7 @@ class ParentController extends Controller
                 $activeBus = $eveningBus;
             } elseif ($morningBus && in_array($morningBus->trip_status, ['to_school', 'on_route', 'in_progress'])) {
                 $activeBus = $morningBus;
-            } elseif ($eveningBus && now('Asia/Riyadh')->hour >= 11) {
+            } elseif ($eveningBus && now(config('app.timezone'))->hour >= 11) {
                 $activeBus = $eveningBus;
             } else {
                 $activeBus = $morningBus;
