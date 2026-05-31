@@ -226,8 +226,7 @@ class ParentController extends Controller
                     } elseif ($att->status === 'waiting') {
                         $waitingAtHomeTime = $att->updated_at->toIso8601String();
                     } else {
-                        // Fallback to trip departure time or creation time so waiting timer does not show '--'
-                        $waitingAtHomeTime = ($att->trip?->departure_time ?: $att->created_at)?->toIso8601String();
+                        $waitingAtHomeTime = null;
                     }
 
                     if ($att->check_in_time) {
