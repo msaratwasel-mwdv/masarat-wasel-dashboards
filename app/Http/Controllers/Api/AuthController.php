@@ -297,8 +297,10 @@ class AuthController extends Controller
         ], [
             'current_password.required' => 'كلمة السر الحالية مطلوبة.',
             'new_password.required'     => 'كلمة السر الجديدة مطلوبة.',
-            'new_password.min'          => 'كلمة السر الجديدة يجب أن تكون 6 أحرف على الأقل.',
+            'new_password.min'          => 'كلمة السر الجديدة يجب أن تكون 8 أحرف على الأقل.',
             'new_password.confirmed'    => 'تأكيد كلمة السر غير مطابق.',
+            'new_password.mixed'        => 'يجب أن تحتوي كلمة السر الجديدة على حرف كبير وحرف صغير واحد على الأقل.',
+            'new_password.numbers'      => 'يجب أن تحتوي كلمة السر الجديدة على رقم واحد على الأقل.',
         ]);
 
         $user = $request->user();
