@@ -24,25 +24,38 @@ Broadcast::channel('guardian.{id}', function ($user, $id) {
  * قناة خاصة بمتابعة موقع الباص لحظياً
  */
 Broadcast::channel('bus.{id}', function ($user, $id) {
-    \Log::debug("Authorizing bus.{$id} for user {$user->id} ({$user->role})");
+    // 🌐 كشف لغة التطبيق الحالية (افتراضياً عربي)
+    $acceptLanguage = request()->header('Accept-Language') ?? '';
+    if (!empty($acceptLanguage)) {
+        $isEn = str_starts_with($acceptLanguage, 'en');
+    } else {
+        $isEn = (request()->input('lang') === 'en' 
+            || ($user && $user->preferred_language === 'en')
+            || app()->getLocale() === 'en');
+    }
+
+    \Log::debug("Authorizing bus.{$id} for user {$user->id} (" . ($user->role ?? 'no role') . ")");
     try {
         // 1. Get the bus. Use find() to handle missing bus gracefully.
         $bus = \App\Models\Bus::find($id);
         if (!$bus) {
-            \Log::warning("Broadcasting auth failed: Bus {$id} not found.");
-            return false;
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException(
+                $isEn ? "Bus with ID {$id} not found." : "الحافلة ذات المعرف {$id} غير موجودة."
+            );
         }
 
         // 2. Validate user and role
         if (!$user) {
-            \Log::warning("Broadcasting auth failed: No authenticated user.");
-            return false;
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException(
+                $isEn ? "No authenticated user." : "لا يوجد مستخدم مسجل الدخول."
+            );
         }
 
-        $role = $user->role; // Accessor in User model
+        $role = $user->role ?? $user->roles()->first()?->name;
         if (!$role) {
-            \Log::warning("Broadcasting auth failed: User {$user->id} has no role.");
-            return false;
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException(
+                $isEn ? "User has no assigned role." : "المستخدم لا يملك أي صلاحيات أو دور محدد."
+            );
         }
 
         // Admin or School Admin
@@ -55,7 +68,12 @@ Broadcast::channel('bus.{id}', function ($user, $id) {
             $userSchoolId = $user->getSchoolId();
             $authorized = $userSchoolId !== null && (int) $bus->school_id === (int) $userSchoolId;
             \Log::debug("School Admin authorization for bus.{$id}: " . ($authorized ? 'Allowed' : 'Denied'));
-            return $authorized;
+            if (!$authorized) {
+                throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException(
+                    $isEn ? "School admin is not authorized for this bus." : "مدير المدرسة غير مصرح له بمتابعة هذه الحافلة."
+                );
+            }
+            return true;
         }
 
         // Driver or Assistant or Field Supervisor
@@ -64,7 +82,12 @@ Broadcast::channel('bus.{id}', function ($user, $id) {
                 || (int) $bus->assistant_id === (int) $user->id
                 || (int) $bus->field_supervisor_id === (int) $user->id;
             \Log::debug("Staff ({$role}) authorization for bus.{$id}: " . ($authorized ? 'Allowed' : 'Denied'));
-            return $authorized;
+            if (!$authorized) {
+                throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException(
+                    $isEn ? "Staff member is not assigned to this bus." : "الموظف غير مرتبط بهذه الحافلة."
+                );
+            }
+            return true;
         }
 
         // Guardian check
@@ -78,11 +101,24 @@ Broadcast::channel('bus.{id}', function ($user, $id) {
                 })
                 ->exists();
             \Log::debug("Guardian/Parent authorization for bus.{$id}: " . ($authorized ? 'Allowed' : 'Denied'));
-            return $authorized;
+            if (!$authorized) {
+                throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException(
+                    $isEn 
+                        ? "Parent does not have any active children assigned to this bus." 
+                        : "ولي الأمر ليس لديه أي طلاب نشطين مرتبطين بهذه الحافلة حالياً لليوم الجديد."
+                );
+            }
+            return true;
         }
 
         \Log::warning("Broadcasting auth failed: Role {$role} not permitted for bus.{$id}");
-        return false;
+        throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException(
+            $isEn 
+                ? "Role {$role} is not permitted to track this bus." 
+                : "الدور {$role} غير مصرح له بمتابعة هذه الحافلة."
+        );
+    } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+        throw $e;
     } catch (\Throwable $e) {
         report($e);
         \Log::error("Broadcasting auth FATAL error for bus.{$id}: " . $e->getMessage(), [

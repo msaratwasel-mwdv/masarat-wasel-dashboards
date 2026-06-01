@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Hash;
 // ✅ Rate Limiting: 5 محاولات دخول فقط كل دقيقة — يمنع Brute Force attacks
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/auth/login-attempt-status', [AuthController::class, 'checkLoginAttemptStatus']);
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
 
 
 Route::get('/user', function (Request $request) {
@@ -40,6 +41,10 @@ Route::post('/broadcasting/auth', function (Request $request) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
         return \Illuminate\Support\Facades\Broadcast::auth($request);
+    } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+        $message = $e->getMessage() ?: 'Access Denied';
+        \Log::warning("Broadcasting auth access denied: {$message}");
+        return response()->json(['message' => $message], 403);
     } catch (\Throwable $e) {
         \Log::error("Broadcasting auth API route error: " . $e->getMessage(), [
             'exception' => $e->getTraceAsString()

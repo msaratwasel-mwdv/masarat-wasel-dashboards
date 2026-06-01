@@ -322,6 +322,54 @@ class AuthController extends Controller
     }
 
     /**
+     * استعادة كلمة المرور عبر الرقم المدني (تُعاد إلى رقم الجوال المسجل)
+     * POST /api/auth/forgot-password
+     * (غير محمي بـ Sanctum - المستخدم ليس مسجلاً دخوله)
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'national_id' => 'required|string',
+        ], [
+            'national_id.required' => 'الرقم المدني مطلوب.',
+        ]);
+
+        $nationalId = trim($request->national_id);
+
+        $user = User::where('national_id', $nationalId)->first();
+
+        if (! $user) {
+            Log::warning('[Auth] Failed forgot-password attempt: User not found', [
+                'national_id' => $nationalId,
+            ]);
+
+            throw ValidationException::withMessages([
+                'national_id' => ['الرقم المدني غير مسجل لدينا.'],
+            ]);
+        }
+
+        // الحصول على رقم الجوال المسجل
+        $phone = trim($user->phone);
+
+        if (empty($phone)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'عذراً، لا يوجد رقم جوال مسجل لهذا الحساب. يرجى التواصل مع الإدارة.',
+            ], 422);
+        }
+
+        // إعادة تعيين كلمة المرور لرقم الجوال المسجل
+        $user->update(['password' => $phone]); // 'hashed' cast يتكفل بالتشفير
+
+        Log::info('[Auth] Password reset to phone via forgot-password', ['user_id' => $user->id]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تمت إعادة تعيين كلمة المرور إلى رقم جوالك المسجل بنجاح.',
+        ]);
+    }
+
+    /**
      * تحديث بيانات الملف الشخصي (الهاتف، البريد)
      * POST /api/auth/profile/update
      */
