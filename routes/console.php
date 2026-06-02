@@ -38,4 +38,7 @@ Schedule::call(function () {
     }
 })->hourly();
 
+// Check for overdue installments daily
+Schedule::command('installments:check-overdue')->dailyAt('08:00');
+
 

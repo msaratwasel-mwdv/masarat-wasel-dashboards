@@ -72,6 +72,17 @@ class AuthenticatedSessionController extends Controller
         }
 
         if ($user->role === 'school_admin') {
+            // Check if the school is active
+            $schoolAdmin = \App\Models\SchoolAdmin::with('school')->where('user_id', $user->id)->first();
+            if ($schoolAdmin && $schoolAdmin->school && !$schoolAdmin->school->is_active) {
+                Auth::guard('web')->logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+                
+                throw ValidationException::withMessages([
+                    'email' => 'حساب مدرستك قيد المراجعة والموافقة من الإدارة. يرجى الانتظار حتى تصلك رسالة التأكيد.',
+                ]);
+            }
             return redirect()->intended(route('school.dashboard'));
         }
 

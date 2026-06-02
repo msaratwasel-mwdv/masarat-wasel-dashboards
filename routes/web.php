@@ -117,6 +117,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::delete('subscriptions/{subscription}', [SubscriptionController::class, 'destroy'])->name('subscriptions.destroy');
         Route::post('subscriptions/{subscription}/approve', [SubscriptionController::class, 'approve'])->name('subscriptions.approve');
         Route::post('subscriptions/{subscription}/reject', [SubscriptionController::class, 'reject'])->name('subscriptions.reject');
+        Route::post('subscriptions/{subscription}/pause', [SubscriptionController::class, 'pause'])->name('subscriptions.pause');
+        Route::post('subscriptions/{subscription}/resume', [SubscriptionController::class, 'resume'])->name('subscriptions.resume');
         Route::get('installments', [SubscriptionController::class, 'installmentsList'])->name('installments.index');
         Route::post('installments/{installment}/pay', [SubscriptionController::class, 'payInstallment'])->name('subscriptions.installments.pay');
         Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
@@ -370,6 +372,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         // Subscriptions & Plans
         Route::get('plans', [\App\Http\Controllers\School\SubscriptionController::class, 'plans'])->name('plans.index');
         Route::get('transactions', [\App\Http\Controllers\School\SubscriptionController::class, 'transactions'])->name('transactions.index');
+        Route::post('installments/{installment}/receipt', [\App\Http\Controllers\School\SubscriptionController::class, 'uploadReceipt'])->name('installments.receipt');
 
         // School Settings
         Route::post('settings/school', [\App\Http\Controllers\School\SchoolSettingsController::class, 'update'])->name('settings.school.update');

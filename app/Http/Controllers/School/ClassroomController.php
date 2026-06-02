@@ -190,8 +190,8 @@ class ClassroomController extends Controller
         $user = Auth::user();
         Classroom::create([
             'name' => $validated['name'],
-            'grade_id' => $validated['grade_id'],    'school_id' => $user->getSchoolId(),
-]);
+            'grade_id' => $validated['grade_id'],
+        ]);
 
         return redirect()->back()->with('success', 'Class created successfully');
     }

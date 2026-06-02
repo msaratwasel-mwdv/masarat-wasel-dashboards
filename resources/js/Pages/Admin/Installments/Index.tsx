@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Head, router, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { CheckCircle2, Clock, Wallet, Calendar, Search, Filter, ArrowRight, LayoutGrid, AlertCircle, School } from 'lucide-react';
+import { CheckCircle2, Clock, Wallet, Calendar, Search, Filter, ArrowRight, LayoutGrid, AlertCircle, School, FileText } from 'lucide-react';
 import { useTheme } from '@/Contexts/ThemeContext';
+import OmaniRial from '@/Components/OmaniRial';
 
 export default function InstallmentsIndex({ installments, schools = [], initialSearch = '' }: any) {
     const { isRTL, theme } = useTheme();
@@ -120,8 +121,9 @@ export default function InstallmentsIndex({ installments, schools = [], initialS
                                     <div className="text-xs font-black text-slate-300 uppercase tracking-widest mb-1">
                                         {isRTL ? 'إجمالي الدفعات المعلقة' : 'Total Pending Collections'}
                                     </div>
-                                    <div className="text-4xl font-black text-[#f5b800] tracking-tighter" dir="ltr">
-                                        ${installments.filter((i:any)=>i.status!=='paid').reduce((acc:any, curr:any)=>acc+Number(curr.amount), 0).toFixed(2)}
+                                    <div className="flex items-center gap-2 text-4xl font-black text-[#f5b800] tracking-tighter" dir="ltr">
+                                        <span>{installments.filter((i:any)=>i.status!=='paid').reduce((acc:any, curr:any)=>acc+Number(curr.amount), 0).toFixed(2)}</span>
+                                        <OmaniRial className="w-6 h-6 inline-block" />
                                     </div>
                                 </div>
                             </div>
@@ -201,18 +203,23 @@ export default function InstallmentsIndex({ installments, schools = [], initialS
                                         <div className="text-xs font-bold text-white/60 uppercase tracking-widest mb-1 relative z-10 flex gap-2 items-center">
                                             {isRTL ? 'المبلغ المتبقي' : 'Remaining Balance'}
                                         </div>
-                                        <div className="text-4xl lg:text-5xl font-black tracking-tighter mb-4" dir="ltr">
-                                            ${(inst.amount - (inst.paid_amount || 0)).toFixed(2)}
+                                        <div className="flex items-center gap-1.5 text-4xl lg:text-5xl font-black tracking-tighter mb-4" dir="ltr">
+                                            <span>{(inst.amount - (inst.paid_amount || 0)).toFixed(2)}</span>
+                                            <OmaniRial className="w-8 h-8 inline-block" />
                                         </div>
                                         
                                         <div className="w-10 h-1 bg-white/20 rounded-full mb-4"></div>
                                         
-                                        <div className="text-white/80 font-bold text-sm">
-                                            {isRTL ? 'الإجمالي: ' : 'Total: '}${inst.amount}
+                                        <div className="flex items-center gap-1 text-white/80 font-bold text-sm" dir="ltr">
+                                            <span>{inst.amount}</span>
+                                            <OmaniRial className="w-3.5 h-3.5 inline-block" />
+                                            <span>{isRTL ? ' :الإجمالي' : 'Total:'}</span>
                                         </div>
                                         {isPartiallyPaid && (
-                                            <div className="text-white/60 font-medium text-[10px] mt-1">
-                                                {isRTL ? 'تم دفع: ' : 'Paid: '}${inst.paid_amount}
+                                            <div className="flex items-center gap-1 text-white/60 font-medium text-[10px] mt-1" dir="ltr">
+                                                <span>{inst.paid_amount}</span>
+                                                <OmaniRial className="w-3 h-3 inline-block" />
+                                                <span>{isRTL ? ' :تم دفع' : 'Paid:'}</span>
                                             </div>
                                         )}
                                     </div>
@@ -261,8 +268,33 @@ export default function InstallmentsIndex({ installments, schools = [], initialS
                                         </div>
                                     </div>
 
+                                    {inst.receipt_path && (
+                                        <div className="mt-4 p-4 rounded-xl border border-blue-100 bg-blue-50/50 dark:bg-blue-900/10 dark:border-blue-900/30 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600">
+                                                    <FileText size={18} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                                        {isRTL ? 'إيصال دفع مرفق' : 'Payment Receipt Attached'}
+                                                    </p>
+                                                    <p className="text-xs text-blue-600 font-bold">
+                                                        {inst.verification_status === 'pending' ? (isRTL ? 'بانتظار المراجعة' : 'Pending Verification') : (isRTL ? 'تمت المراجعة' : 'Verified')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <a 
+                                                href={`/storage/${inst.receipt_path}`} 
+                                                target="_blank" 
+                                                className="px-4 py-2 bg-white dark:bg-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:shadow-md transition-all"
+                                            >
+                                                {isRTL ? 'عرض' : 'View'}
+                                            </a>
+                                        </div>
+                                    )}
+
                                     {!isPaid && (
-                                        <div className={`mt-auto flex justify-end ${isRTL ? 'flex-row-reverse' : ''}`}>
+                                        <div className={`mt-auto pt-6 flex justify-end ${isRTL ? 'flex-row-reverse' : ''}`}>
                                             <button 
                                                 onClick={() => openPayModal(inst)}
                                                 className={`group/btn relative w-full overflow-hidden flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black transition-all active:scale-95 shadow-xl ${

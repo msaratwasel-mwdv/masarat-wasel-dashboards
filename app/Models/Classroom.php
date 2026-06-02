@@ -23,7 +23,6 @@ class Classroom extends Model
         'name',
         'name_en',
         'grade_id',
-        'school_id',
     ];
 
     public function school(): \Illuminate\Database\Eloquent\Relations\HasOneThrough

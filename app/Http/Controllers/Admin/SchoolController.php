@@ -141,7 +141,19 @@ class SchoolController extends Controller
 
     public function destroy(School $school)
     {
+        $schoolName = $school->name;
         $school->delete();
+
+        try {
+            app(\App\Services\NotificationService::class)->notifyCompanyAdmins(
+                'school_deleted',
+                "🏢 حذف مدرسة",
+                "تم حذف مدرسة: {$schoolName} من النظام",
+                ['school_name' => $schoolName]
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to notify admins on school deletion: ' . $e->getMessage());
+        }
 
         return redirect()->route('admin.schools.index')
             ->with('success', 'School deleted successfully');

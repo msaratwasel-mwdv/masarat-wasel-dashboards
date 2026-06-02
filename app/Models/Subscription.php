@@ -15,11 +15,17 @@ class Subscription extends Model
         'status',
         'start_date',
         'end_date',
+        'final_price',
+        'grace_period_ends_at',
+        'notes',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'final_price' => 'decimal:2',
+        'grace_period_ends_at' => 'datetime',
+        'notes' => 'array',
     ];
 
     public function plan()

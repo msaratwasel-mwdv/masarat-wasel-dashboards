@@ -102,11 +102,12 @@ class SubscriptionController extends Controller
     public function approve(Request $request, Subscription $subscription)
     {
         $validated = $request->validate([
-            'installments_count' => 'required|integer|min:1|max:24'
+            'installments_count' => 'required|integer|min:1|max:24',
+            'price_per_student' => 'required|numeric|min:0'
         ]);
 
         try {
-            $this->subscriptionService->approveSubscription($subscription->id, $validated['installments_count']);
+            $this->subscriptionService->approveSubscription($subscription->id, $validated['installments_count'], $validated['price_per_student']);
             return redirect()->back()->with('success', 'تم الموافقة على الاشتراك وإنشاء الدفعات بنجاح');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
@@ -151,5 +152,17 @@ class SubscriptionController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
         }
+    }
+
+    public function pause(Subscription $subscription)
+    {
+        $subscription->update(['status' => 'paused']);
+        return redirect()->back()->with('success', 'تم تجميد الاشتراك بنجاح. لن تتمكن المدرسة من إجراء عمليات جديدة.');
+    }
+
+    public function resume(Subscription $subscription)
+    {
+        $subscription->update(['status' => 'active']);
+        return redirect()->back()->with('success', 'تم إعادة تفعيل الاشتراك.');
     }
 }

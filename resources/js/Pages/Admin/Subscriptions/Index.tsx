@@ -18,6 +18,8 @@ import {
     Edit2,
     FileText,
     CreditCard,
+    PauseCircle,
+    PlayCircle,
     Briefcase,
     Settings,
     Mail,
@@ -82,6 +84,12 @@ interface Subscription {
         }>;
     };
     plan: Plan;
+    notes?: {
+        student_count?: number;
+        bus_count?: number;
+        billing_type?: string;
+        approved_price_per_student?: number;
+    } | null;
 }
 
 interface Props {
@@ -111,8 +119,9 @@ export default function SubscriptionsIndex({ subscriptions, filters, all_plans, 
     const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
     const [modalStep, setModalStep] = useState<'details' | 'approve'>('details');
 
-    const { data: approveData, setData: setApproveData, post: postApprove, processing: approveProcessing } = useForm({
-        installments_count: 1
+    const { data: approveData, setData: setApproveData, post: postApprove, processing: approveProcessing, errors: approveErrors, reset: resetApprove } = useForm({
+        price_per_student: 0,
+        installments_count: 1,
     });
 
     const { data: editData, setData: setEditData, put: putEdit, processing: editProcessing, errors: editErrors } = useForm({
@@ -127,8 +136,17 @@ export default function SubscriptionsIndex({ subscriptions, filters, all_plans, 
         router.get(route('admin.subscriptions.index'), { search: value }, { preserveState: true, replace: true });
     };
 
-    const openApproveModal = (sub: Subscription) => {
-        setSelectedSubscription(sub);
+    const openApproveModal = (subscription: Subscription) => {
+        setSelectedSubscription(subscription);
+        
+        // Auto-suggest the plan's default price per student
+        const suggestedPricePerStudent = subscription.plan.price_per_student || 0;
+        
+        setApproveData({
+            price_per_student: suggestedPricePerStudent,
+            installments_count: 1, // Will auto calculate based on billing_type on the backend if needed, or admin chooses.
+        });
+        
         setModalStep('details');
         setIsApproveModalOpen(true);
     };
@@ -168,6 +186,22 @@ export default function SubscriptionsIndex({ subscriptions, filters, all_plans, 
         if(confirm(isRTL ? 'هل أنت متأكد من رفض هذا الطلب؟' : 'Are you sure you want to reject this request?')) {
             router.post(route('admin.subscriptions.reject', subId), {}, {
                 onSuccess: () => toast.success(isRTL ? 'تم رفض الطلب' : 'Request rejected')
+            });
+        }
+    };
+
+    const handlePause = (subId: number) => {
+        if(confirm(isRTL ? 'هل أنت متأكد من تجميد هذا الاشتراك؟ لن تتمكن المدرسة من إجراء عمليات جديدة.' : 'Are you sure you want to pause this subscription? The school will not be able to perform new operations.')) {
+            router.post(route('admin.subscriptions.pause', subId), {}, {
+                onSuccess: () => toast.success(isRTL ? 'تم تجميد الاشتراك' : 'Subscription paused')
+            });
+        }
+    };
+
+    const handleResume = (subId: number) => {
+        if(confirm(isRTL ? 'هل أنت متأكد من إعادة تفعيل هذا الاشتراك؟' : 'Are you sure you want to resume this subscription?')) {
+            router.post(route('admin.subscriptions.resume', subId), {}, {
+                onSuccess: () => toast.success(isRTL ? 'تم إعادة تفعيل الاشتراك' : 'Subscription resumed')
             });
         }
     };
@@ -248,6 +282,24 @@ export default function SubscriptionsIndex({ subscriptions, filters, all_plans, 
                                 title={isRTL ? "تعديل" : "Edit"}
                             >
                                 <Edit2 size={16} />
+                            </button>
+                        )}
+                        {sub.status === 'active' && (
+                            <button 
+                                onClick={() => handlePause(sub.id)}
+                                className="p-2 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-lg hover:bg-amber-600 hover:text-white transition-all shadow-sm"
+                                title={isRTL ? "تجميد (إيقاف مؤقت)" : "Pause"}
+                            >
+                                <PauseCircle size={16} />
+                            </button>
+                        )}
+                        {sub.status === 'paused' && (
+                            <button 
+                                onClick={() => handleResume(sub.id)}
+                                className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                title={isRTL ? "إعادة التفعيل" : "Resume"}
+                            >
+                                <PlayCircle size={16} />
                             </button>
                         )}
                         <button 
@@ -407,6 +459,25 @@ export default function SubscriptionsIndex({ subscriptions, filters, all_plans, 
                                                 <span className="font-black text-slate-700 dark:text-white text-sm">{selectedSubscription?.school?.address || '-'}</span>
                                             </div>
                                         </div>
+                                        <div className="space-y-4 mt-6">
+                                            <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 border-b dark:border-slate-700 pb-2">{isRTL ? 'بيانات الفوترة والطلاب (من الطلب)' : 'Billing & Students (From Request)'}</h4>
+                                            <div className="bg-[#f5b800]/5 border border-[#f5b800]/20 rounded-xl p-4 grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <div className="text-[10px] font-bold text-slate-400 uppercase">{isRTL ? 'عدد الطلاب المتوقع' : 'Expected Students'}</div>
+                                                    <div className="font-black text-slate-700 dark:text-white text-lg">{selectedSubscription?.notes?.student_count || 0}</div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[10px] font-bold text-slate-400 uppercase">{isRTL ? 'نظام الدفع المفضل' : 'Preferred Billing'}</div>
+                                                    <div className="font-black text-slate-700 dark:text-white text-lg">
+                                                        {selectedSubscription?.notes?.billing_type === 'yearly' ? (isRTL ? 'سنوي' : 'Yearly') : (isRTL ? 'شهري' : 'Monthly')}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[10px] font-bold text-slate-400 uppercase">{isRTL ? 'عدد الحافلات المتوقع' : 'Expected Buses'}</div>
+                                                    <div className="font-black text-slate-700 dark:text-white text-lg">{selectedSubscription?.notes?.bus_count || 0}</div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-4">
@@ -444,6 +515,64 @@ export default function SubscriptionsIndex({ subscriptions, filters, all_plans, 
                             ) : (
                                 <form onSubmit={handleApprove} className="space-y-6">
                                     <div className="p-6 bg-[#f5b800]/5 rounded-2xl border border-[#f5b800]/20">
+                                        <div className="mb-4">
+                                            <label className={DS_label}>{isRTL ? "السعر المعتمد للطالب الواحد" : "Approved Price Per Student"}</label>
+                                            <div className="flex items-center gap-2">
+                                                <input 
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={approveData.price_per_student}
+                                                    onChange={e => setApproveData('price_per_student', parseFloat(e.target.value) || 0)}
+                                                    className={DS_input}
+                                                />
+                                                <span className="text-[#f5b800] font-black shrink-0"><OmaniRial className="w-6 h-6 inline-block" /></span>
+                                            </div>
+                                            {approveErrors.price_per_student && <InputError message={approveErrors.price_per_student} />}
+                                            
+                                            {/* --- Subscription Calculator --- */}
+                                            <div className="mt-4 bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm">
+                                                <h5 className="text-xs font-black uppercase text-slate-400 mb-3 flex items-center gap-1.5">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-[#f5b800]" />
+                                                    {isRTL ? "حاسبة الاشتراك (تلقائية)" : "Subscription Calculator (Auto)"}
+                                                </h5>
+                                                
+                                                <div className="flex flex-col gap-3">
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-slate-500 font-bold">{isRTL ? "عدد الطلاب المسجلين" : "Enrolled Students"}</span>
+                                                        <span className="font-black text-slate-700 dark:text-white">{selectedSubscription?.notes?.student_count || 0}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-slate-500 font-bold">{isRTL ? "السعر للطالب" : "Price Per Student"}</span>
+                                                        <div className="flex items-center gap-1 font-black text-slate-700 dark:text-white" dir="ltr">
+                                                            <span>{approveData.price_per_student || 0}</span>
+                                                            <OmaniRial className="w-3.5 h-3.5 text-slate-400" />
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="h-px bg-slate-100 dark:bg-slate-800 w-full my-1" />
+                                                    
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-sm font-black text-[#0f2044] dark:text-brand-yellow">{isRTL ? "إجمالي الفاتورة المتوقع" : "Estimated Total Bill"}</span>
+                                                        <div className="flex items-center gap-1 font-black text-2xl text-[#0f2044] dark:text-brand-yellow" dir="ltr">
+                                                            <span>{((approveData.price_per_student || 0) * (selectedSubscription?.notes?.student_count || 0)).toFixed(2)}</span>
+                                                            <OmaniRial className="w-5 h-5" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4 p-3 bg-brand-navy/5 border border-brand-navy/10 rounded-lg">
+                                                <div className="flex gap-2 items-start text-xs font-bold text-brand-navy">
+                                                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                                                    <p className="leading-relaxed">
+                                                        {isRTL 
+                                                            ? "ملاحظة هامة: هذا السعر سيتم اعتماده لحساب التكلفة السنوية الديناميكية. إذا قامت المدرسة بإضافة طالب جديد لاحقاً، سيتم احتساب هذا السعر تلقائياً وتحديث مبالغ الأقساط القادمة." 
+                                                            : "Important Note: This price will be used for dynamic annual costing. If the school adds a new student later, this price will be automatically calculated and upcoming installments updated."}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <label className={DS_label}>{isRTL ? "عدد الأقساط السنوية" : "Annual Installments"}</label>
                                         <select 
                                             value={approveData.installments_count}
@@ -456,12 +585,7 @@ export default function SubscriptionsIndex({ subscriptions, filters, all_plans, 
                                             <option value={12}>{isRTL ? "12 دفعة (شهري)" : "12 Payments (Monthly)"}</option>
                                         </select>
                                         <p className="text-[10px] text-gray-400 mt-2 italic leading-relaxed">
-                                            {isRTL ? 'سيتم تقسيم مبلغ' : 'The amount of'} 
-                                            <span className="font-black inline-flex items-center gap-0.5 mx-1">
-                                                <OmaniRial className="w-3 h-3" />
-                                                {(selectedSubscription?.plan?.max_buses || 1) * 20 * (selectedSubscription?.plan?.price_per_student || 0)}
-                                            </span> 
-                                            {isRTL ? 'على' : 'will be split into'} 
+                                            {isRTL ? 'بناءً على اختيارك، سيتم تقسيم التكلفة السنوية الإجمالية على' : 'Based on your selection, the total annual cost will be split into'} 
                                             <span className="font-black mx-1">{approveData.installments_count}</span> 
                                             {isRTL ? 'أقساط متساوية.' : 'equal installments.'}
                                         </p>
@@ -525,7 +649,7 @@ export default function SubscriptionsIndex({ subscriptions, filters, all_plans, 
                                             required
                                         >
                                             {all_plans.map(p => (
-                                                <option key={p.id} value={p.id}>{p.name} (${p.price_per_student})</option>
+                                                <option key={p.id} value={p.id}>{p.name} ({p.price_per_student} ر.ع)</option>
                                             ))}
                                         </select>
                                         <InputError message={editErrors.plan_id} />

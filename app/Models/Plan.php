@@ -16,8 +16,12 @@ class Plan extends Model
         'description',
         'description_ar',
         'description_en',
+        'type',
+        'billing_cycle',
+        'price',
         'price_per_student',
         'price_per_student_yearly',
+        'trial_days',
         'is_active',
         'max_buses',
         'has_driver_app',
@@ -41,7 +45,9 @@ class Plan extends Model
     ];
 
     protected $casts = [
+        'price' => 'decimal:2',
         'price_per_student' => 'decimal:2',
+        'price_per_student_yearly' => 'decimal:2',
         'is_active' => 'boolean',
         'max_buses' => 'integer',
         'has_driver_app' => 'boolean',

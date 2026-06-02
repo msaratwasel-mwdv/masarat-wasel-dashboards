@@ -37,4 +37,27 @@ class SubscriptionController extends Controller
             'billingData' => $this->subscriptionService->getSchoolBillingData($schoolId),
         ]);
     }
+
+    public function uploadReceipt(Request $request, \App\Models\Installment $installment)
+    {
+        $request->validate([
+            'receipt' => 'required|image|mimes:jpeg,png,jpg,pdf|max:5120',
+        ]);
+
+        // Ensure this installment belongs to this school
+        if ($installment->school_id !== $request->user()->getSchoolId()) {
+            abort(403);
+        }
+
+        if ($request->hasFile('receipt')) {
+            $path = $request->file('receipt')->store('receipts', 'public');
+            $installment->update([
+                'receipt_path' => $path,
+                'verification_status' => 'pending',
+                'status' => 'pending' // Still pending financial approval
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'تم رفع إيصال التحويل بنجاح. سيتم مراجعته من قبل الإدارة.');
+    }
 }

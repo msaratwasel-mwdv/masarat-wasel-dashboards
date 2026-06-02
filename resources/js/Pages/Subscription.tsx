@@ -22,6 +22,7 @@ import {
   Loader2,
   Mail,
   Moon,
+  Users,
   Sun
 } from "lucide-react";
 import OmaniRial from "@/Components/OmaniRial";
@@ -39,23 +40,29 @@ export default function Subscription({ plans }: any) {
 
   const { data, setData, post, processing, errors, reset, clearErrors } =
     useForm({
-      email: "",
-      password: "",
+      // School Identity
       school_ar: "",
       school_en: "",
       city: "Muscat",
       district: "",
+      // Contact Person
       admin_name: "",
       admin_name_en: "",
+      email: "",
+      password: "",
+      password_confirmation: "",
       phone: "",
       language: "ar",
-      plan_id: selectedPlanId,
-      billing_cycle: "yearly",
+      // Subscription Preferences
+      plan_id: selectedPlanId as number | null,
+      billing_type: "yearly" as "monthly" | "yearly",
+      student_count: 100,
+      bus_count: 0,
       notes: "",
     });
 
   useEffect(() => {
-    setData("billing_cycle", billingCycle);
+    setData("billing_type", billingCycle);
   }, [billingCycle]);
 
   useEffect(() => {
@@ -63,7 +70,7 @@ export default function Subscription({ plans }: any) {
   }, [lang]);
 
   useEffect(() => {
-    setData("plan_id", selectedPlanId);
+    setData("plan_id", selectedPlanId as number | null);
   }, [selectedPlanId]);
 
   const submit: FormEventHandler = (e) => {
@@ -279,45 +286,58 @@ export default function Subscription({ plans }: any) {
                           </div>
                        )}
 
-                       {/* Step 1: Account Info */}
+                       {/* Step 1: Contact Person Info */}
                        <div className="space-y-8">
                           <div className="flex items-center gap-4">
                              <div className="w-10 h-10 rounded-xl bg-brand-yellow/10 text-brand-dark flex items-center justify-center"><UserCircle2 size={24}/></div>
-                             <h2 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "بيانات الحساب الأساسية" : "Basic Account Info"}</h2>
+                              <h2 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "بيانات المسؤول للتواصل" : "Contact Person Details"}</h2>
                           </div>
-
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                             <FormInput
-                                theme={theme}
-                                label={isAr ? "البريد الإلكتروني للمسؤول" : "Admin Email"}
-                                id="email"
-                                type="email"
-                                icon={<Mail size={18}/>}
-                                placeholder="admin@school.com"
-                                required
-                                value={data.email}
-                                onChange={(e: any) => setData("email", e.target.value)}
-                                error={errors.email}
-                                dir="ltr"
-                             />
-                             <FormInput
-                                theme={theme}
-                                label={isAr ? "كلمة المرور الابتدائية" : "Initial Password"}
-                                id="password"
-                                type="password"
-                                icon={<Lock size={18}/>}
-                                placeholder="••••••••"
-                                required
-                                value={data.password}
-                                onChange={(e: any) => setData("password", e.target.value)}
-                                error={errors.password}
-                                helpText={isAr ? "يمكن تغييرها لاحقاً من لوحة الإعدادات" : "Can be changed later from dashboard settings"}
-                                dir="ltr"
-                             />
-                          </div>
-                       </div>
+                              <FormInput
+                                 theme={theme}
+                                 label={isAr ? "البريد الإلكتروني للمسؤول" : "Admin Email"}
+                                 id="email"
+                                 type="email"
+                                 icon={<Mail size={18}/>}
+                                 placeholder="admin@school.com"
+                                 required
+                                 value={data.email}
+                                 onChange={(e: any) => setData("email", e.target.value)}
+                                 error={errors.email}
+                                 helpText={isAr ? "سيتم استخدامه لتسجيل الدخول لاحقاً" : "Will be used to login later"}
+                                 dir="ltr"
+                              />
+                              <div className="hidden md:block"></div>
+                              <FormInput
+                                 theme={theme}
+                                 label={isAr ? "كلمة المرور" : "Password"}
+                                 id="password"
+                                 type="password"
+                                 icon={<Lock size={18}/>}
+                                 placeholder="••••••••"
+                                 required
+                                 value={data.password}
+                                 onChange={(e: any) => setData("password", e.target.value)}
+                                 error={errors.password}
+                                 dir="ltr"
+                              />
+                              <FormInput
+                                 theme={theme}
+                                 label={isAr ? "تأكيد كلمة المرور" : "Confirm Password"}
+                                 id="password_confirmation"
+                                 type="password"
+                                 icon={<Lock size={18}/>}
+                                 placeholder="••••••••"
+                                 required
+                                 value={data.password_confirmation}
+                                 onChange={(e: any) => setData("password_confirmation", e.target.value)}
+                                 error={errors.password_confirmation}
+                                 dir="ltr"
+                              />
+                           </div>
+                        </div>
 
-                       {/* Step 2: School Info */}
+                        {/* Step 2: School Info */}
                        <div className="space-y-8">
                           <div className="flex items-center gap-4">
                              <div className="w-10 h-10 rounded-xl bg-brand-navy/10 text-brand-navy flex items-center justify-center"><School size={24}/></div>
@@ -479,8 +499,35 @@ export default function Subscription({ plans }: any) {
                                  </button>
                               </div>
                            </div>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end mb-8">
+                              <FormInput
+                                 theme={theme}
+                                 label={isAr ? "عدد الطلاب المتوقع" : "Expected Student Count"}
+                                 id="student_count"
+                                 type="number"
+                                 icon={<Users size={18}/>}
+                                 placeholder="100"
+                                 required
+                                 value={data.student_count}
+                                 onChange={(e: any) => setData("student_count", parseInt(e.target.value) || 0)}
+                                 error={errors.student_count}
+                                 dir="ltr"
+                              />
+                              <FormInput
+                                 theme={theme}
+                                 label={isAr ? "عدد الحافلات المتوقع" : "Expected Bus Count"}
+                                 id="bus_count"
+                                 type="number"
+                                 icon={<Zap size={18}/>}
+                                 placeholder="5"
+                                 value={data.bus_count}
+                                 onChange={(e: any) => setData("bus_count", parseInt(e.target.value) || 0)}
+                                 error={errors.bus_count}
+                                 dir="ltr"
+                              />
+                           </div>
 
-                           <PlanSelectorGrid
+                           <PlanSelectorGrid 
                                plans={plans}
                                selectedId={selectedPlanId}
                                onSelect={(id: number) => setSelectedPlanId(id)}

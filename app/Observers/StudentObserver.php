@@ -17,6 +17,8 @@ class StudentObserver
         $this->notifyBusCrewOnAssignment($student);
     }
 
+
+
     /**
      * Send notifications to the bus crew when a student is assigned to the bus.
      */

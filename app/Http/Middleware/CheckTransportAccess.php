@@ -22,6 +22,25 @@ class CheckTransportAccess
 
         $school = $user->school;
 
+        if (!$school) {
+            return $this->errorResponse($request, 'School not found.', 403);
+        }
+
+        // Check if modifying request (POST, PUT, DELETE)
+        if (in_array($request->method(), ['POST', 'PUT', 'DELETE', 'PATCH'])) {
+            $subscription = $school->subscriptions()->whereIn('status', ['active', 'paused'])->latest()->first();
+
+            if ($subscription) {
+                if ($subscription->status === 'paused') {
+                    return $this->errorResponse($request, 'اشتراك المدرسة مجمد حالياً. لا يمكنك إجراء عمليات جديدة.', 403);
+                }
+                
+                if ($subscription->grace_period_ends_at && \Carbon\Carbon::now()->isAfter($subscription->grace_period_ends_at)) {
+                    return $this->errorResponse($request, 'انتهت فترة السماح للسداد. يرجى تسديد الأقساط المتأخرة لتفعيل الخدمة مجدداً.', 403);
+                }
+            }
+        }
+
         return $next($request);
     }
 

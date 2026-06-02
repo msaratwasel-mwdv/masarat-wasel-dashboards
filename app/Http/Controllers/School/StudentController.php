@@ -309,7 +309,7 @@ class StudentController extends Controller
         $school = Auth::user()->school;
 
         // استخدام Transaction لضمان سلامة البيانات
-        DB::transaction(function () use ($validated, $schoolId, $request) {
+        DB::transaction(function () use ($validated, $schoolId, $request, $school) {
             // ⬅️ تحديث بيانات إنشاء الطالب
             $studentData = [
                 'first_name_ar' => $validated['first_name_ar'],
@@ -341,6 +341,25 @@ class StudentController extends Controller
                 'classroom_id' => $validated['classroom_id'],
                 'is_active' => true,
             ]);
+
+            // Recalculate billing based on new student count
+            try {
+                app(\App\Services\SubscriptionService::class)->recalculatePendingInstallments($schoolId);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to recalculate installments on student creation: ' . $e->getMessage());
+            }
+
+            // Notify Company Admins about new student
+            try {
+                app(\App\Services\NotificationService::class)->notifyCompanyAdmins(
+                    'student_added',
+                    "👤 تسجيل طالب جديد",
+                    "تم تسجيل الطالب ({$student->first_name_ar} {$student->last_name_ar}) في مدرسة: {$school->name}",
+                    ['school_id' => $schoolId, 'student_id' => $student->id]
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to notify admins on student creation: ' . $e->getMessage());
+            }
         });
 
         return redirect()->route('school.students.index')->with('success', 'Student created successfully.');
@@ -504,6 +523,25 @@ class StudentController extends Controller
             // 1. إلغاء تخصيص الباصات (forth_bus_id, back_bus_id → null)
             // 2. تعطيل التسجيل الأكاديمي (is_active → false)
             $student->delete(); // Soft Delete — يحتفظ بالسجل مع deleted_at
+
+            // Recalculate billing based on new student count
+            try {
+                if ($studentSchoolId) {
+                    app(\App\Services\SubscriptionService::class)->recalculatePendingInstallments($studentSchoolId);
+                    
+                    $school = \App\Models\School::find($studentSchoolId);
+                    if ($school) {
+                        app(\App\Services\NotificationService::class)->notifyCompanyAdmins(
+                            'student_deleted',
+                            "👤 حذف طالب",
+                            "تم حذف طالب من مدرسة: {$school->name}",
+                            ['school_id' => $studentSchoolId, 'student_id' => $student->id]
+                        );
+                    }
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to recalculate installments or notify on student deletion: ' . $e->getMessage());
+            }
         });
 
         return redirect()->route('school.students.index')->with('success', 'Student deleted successfully.');

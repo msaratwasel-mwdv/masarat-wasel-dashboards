@@ -41,27 +41,48 @@ class SubscriptionService
     /**
      * Admin approves subscription and generates installment schedule
      */
-    public function approveSubscription(int $subscriptionId, int $installmentsCount = 1, float $prorationCredit = 0): array
+    public function approveSubscription(int $subscriptionId, int $installmentsCount = 1, float $pricePerStudent = 0): array
     {
-        return DB::transaction(function () use ($subscriptionId, $installmentsCount, $prorationCredit) {
-            $subscription = Subscription::with('plan')->findOrFail($subscriptionId);
+        return DB::transaction(function () use ($subscriptionId, $installmentsCount, $pricePerStudent) {
+            $subscription = Subscription::with(['plan', 'school'])->findOrFail($subscriptionId);
             $plan = $subscription->plan;
+            $school = $subscription->school;
+
+            // Activate school
+            $school->update(['is_active' => true]);
+
+            // Ensure the user exists and is linked properly (fallback just in case)
+            $adminUser = \App\Models\User::where('email', $school->contact_email)->first();
+            if ($adminUser) {
+                // Send approval email
+                try {
+                    \Illuminate\Support\Facades\Mail::to($school->contact_email)->send(new \App\Mail\SchoolSubscriptionApproved($school));
+                    \Illuminate\Support\Facades\Log::info("Sent approval email to school: {$school->name}");
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Failed to send approval email to school: {$school->name}. Error: " . $e->getMessage());
+                }
+            } else {
+                \Illuminate\Support\Facades\Log::warning("Could not find admin user for school: {$school->name} during approval.");
+            }
 
             [$startDate, $endDate] = $this->calculateDates($plan);
+
+            $notes = $subscription->notes ?? [];
+            $projectedStudentCount = $notes['student_count'] ?? 0;
+            $notes['approved_price_per_student'] = $pricePerStudent;
+            
+            $totalAmount = $projectedStudentCount * $pricePerStudent;
 
             $subscription->update([
                 'status' => 'active',
                 'start_date' => $startDate,
                 'end_date' => $endDate,
+                'final_price' => $totalAmount,
+                'notes' => $notes,
             ]);
 
-            if ($plan->price_per_student > 0) {
-                // Calculation: max_buses * 20 students per bus * price per student
-                $busCapacity = 20;
-                $maxBuses = $plan->max_buses ?: 1; // Fallback to 1 if not set
-                $totalAmount = ($maxBuses * $busCapacity * $plan->price_per_student) - $prorationCredit;
-
-                $description = "Subscription Plan - {$plan->name} (" . ($prorationCredit > 0 ? "Prorated Upgrade" : "{$maxBuses} Buses x {$busCapacity} Students x \${$plan->price_per_student}") . ")";
+            if ($totalAmount > 0) {
+                $description = "Subscription Plan - {$plan->name} (Price per student: {$pricePerStudent}, Initial students: {$projectedStudentCount})";
 
                 // Create installments directly
                 $installmentAmount = $totalAmount / $installmentsCount;
@@ -92,6 +113,123 @@ class SubscriptionService
             }
 
             return ['subscription' => $subscription];
+        });
+    }
+
+    /**
+     * Recalculates pending installments dynamically based on current student count.
+     */
+    public function recalculatePendingInstallments(int $schoolId): void
+    {
+        DB::transaction(function () use ($schoolId) {
+            $school = \App\Models\School::findOrFail($schoolId);
+            $subscription = $school->currentSubscription;
+
+            if (!$subscription || $subscription->status !== 'active') {
+                return;
+            }
+
+            $pricePerStudent = $subscription->notes['approved_price_per_student'] ?? 0;
+            if ($pricePerStudent <= 0) return;
+
+            // Get actual student count
+            $actualStudentCount = \App\Models\Student::inSchool($schoolId)->count();
+            
+            $newTotalAmount = $actualStudentCount * $pricePerStudent;
+            
+            // Update the subscription's final price to reflect the new reality
+            $subscription->update(['final_price' => $newTotalAmount]);
+
+            $installments = \App\Models\Installment::where('subscription_id', $subscription->id)
+                                                   ->orderBy('installment_number')
+                                                   ->get();
+            $totalInvoicedAmount = $installments->sum('amount');
+            $difference = $newTotalAmount - $totalInvoicedAmount;
+
+            if (abs($difference) < 0.01) return;
+
+            $pendingInstallments = $installments->where('status', 'pending');
+            $pendingCount = $pendingInstallments->count();
+
+            if ($difference > 0) {
+                // We need to bill more (e.g. students added)
+                if ($pendingCount > 0) {
+                    $extraPerPending = $difference / $pendingCount;
+                    foreach ($pendingInstallments as $installment) {
+                        $installment->update([
+                            'amount' => $installment->amount + $extraPerPending,
+                            'notes' => $installment->notes . " | Adjusted (+{$extraPerPending}). Students: {$actualStudentCount}"
+                        ]);
+                    }
+                } else {
+                    // Create Adjustment Invoice
+                    $lastInstallment = $installments->last();
+                    $newNumber = $lastInstallment ? $lastInstallment->installment_number + 1 : 1;
+                    
+                    \App\Models\Installment::create([
+                        'school_id' => $subscription->school_id,
+                        'subscription_id' => $subscription->id,
+                        'installment_number' => $newNumber,
+                        'amount' => $difference,
+                        'due_date' => Carbon::now()->toDateString(), // Due immediately
+                        'status' => 'pending',
+                        'notes' => "Adjustment Invoice: Added students after existing installments were processed. Students: {$actualStudentCount}, Rate: {$pricePerStudent}"
+                    ]);
+                }
+            } else {
+                // We need to bill less (e.g. students removed)
+                $reductionNeeded = abs($difference);
+                
+                // Try to reduce pending installments first, starting from the last one
+                foreach ($pendingInstallments->reverse() as $installment) {
+                    if ($reductionNeeded <= 0.01) break;
+                    
+                    $reducibleAmount = $installment->amount - $installment->paid_amount;
+                    if ($reducibleAmount <= 0) continue;
+                    
+                    if ($reductionNeeded >= $reducibleAmount) {
+                        // Completely wipe out this installment's unpaid portion
+                        $installment->update([
+                            'amount' => $installment->paid_amount,
+                            'status' => $installment->paid_amount > 0 ? 'paid' : 'cancelled',
+                            'notes' => $installment->notes . " | Cancelled/Reduced due to student reduction."
+                        ]);
+                        $reductionNeeded -= $reducibleAmount;
+                    } else {
+                        // Partially reduce this installment
+                        $installment->update([
+                            'amount' => $installment->amount - $reductionNeeded,
+                            'notes' => $installment->notes . " | Reduced (-{$reductionNeeded}) due to student reduction."
+                        ]);
+                        $reductionNeeded = 0;
+                    }
+                }
+                
+                // If reductionNeeded > 0, it cuts into overdue or partially_paid installments
+                if ($reductionNeeded > 0.01) {
+                    $otherUnpaid = $installments->whereIn('status', ['overdue', 'partially_paid'])->reverse();
+                    foreach ($otherUnpaid as $installment) {
+                        if ($reductionNeeded <= 0.01) break;
+                        $reducibleAmount = $installment->amount - $installment->paid_amount;
+                        if ($reducibleAmount <= 0) continue;
+                        
+                        if ($reductionNeeded >= $reducibleAmount) {
+                            $installment->update([
+                                'amount' => $installment->paid_amount,
+                                'status' => 'paid',
+                                'notes' => $installment->notes . " | Debt waived due to student reduction."
+                            ]);
+                            $reductionNeeded -= $reducibleAmount;
+                        } else {
+                            $installment->update([
+                                'amount' => $installment->amount - $reductionNeeded,
+                                'notes' => $installment->notes . " | Debt reduced (-{$reductionNeeded}) due to student reduction."
+                            ]);
+                            $reductionNeeded = 0;
+                        }
+                    }
+                }
+            }
         });
     }
 
@@ -172,6 +310,11 @@ class SubscriptionService
 
             if ($nextInstallment) {
                 $this->processPayment($nextInstallment, $excess, $transaction);
+            } else {
+                // Log unallocated excess
+                $transaction->update([
+                    'notes' => trim($transaction->notes . " | Unallocated Overpayment: {$excess}")
+                ]);
             }
         }
     }
@@ -183,7 +326,8 @@ class SubscriptionService
     public function getSchoolBillingData(int $schoolId): array
     {
         $school = \App\Models\School::findOrFail($schoolId);
-        $currentPlan = $school->currentSubscription?->plan;
+        $subscription = $school->currentSubscription;
+        $currentPlan = $subscription?->plan;
         
         $installments = \App\Models\Installment::with(['subscription.plan'])
             ->where('school_id', $schoolId)
@@ -200,6 +344,7 @@ class SubscriptionService
 
         return [
             'current_plan' => $currentPlan,
+            'subscription' => $subscription,
             'total_owed' => $totalOwed,
             'total_paid' => $totalPaid,
             'installments' => $installments,

@@ -17,6 +17,9 @@ class Installment extends Model
         'paid_amount',
         'due_date',
         'status',
+        'receipt_path',
+        'verification_status',
+        'admin_note',
     ];
 
     protected $casts = [
