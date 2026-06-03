@@ -55,7 +55,7 @@ class SubscriptionPageController extends Controller
             // Subscription Preferences
             'plan_id'           => 'required|exists:plans,id',
             'billing_type'      => 'required|in:monthly,yearly',
-            'student_count'     => 'required|integer|min:1|max:5000',
+            'student_count'     => 'required|integer|min:20|max:5000',
             'bus_count'         => 'nullable|integer|min:0|max:500',
 
             'notes'             => 'nullable|string|max:1000',

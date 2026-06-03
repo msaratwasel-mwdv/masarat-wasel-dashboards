@@ -16,17 +16,23 @@ class SchoolSubscriptionApproved extends Mailable
 
     public $school;
     public $subscription;
+    public $lang;
 
     public function __construct(School $school, $subscription)
     {
         $this->school = $school;
         $this->subscription = $subscription;
+        $this->lang = $subscription->notes['preferred_lang'] ?? 'ar';
     }
 
     public function envelope(): Envelope
     {
+        $subject = $this->lang === 'en' 
+            ? 'Your school subscription has been approved - Masarat Wasel'
+            : 'تمت الموافقة على اشتراك مدرستك - مسارات واصل';
+
         return new Envelope(
-            subject: 'تمت الموافقة على اشتراك مدرستك - مسارات واصل',
+            subject: $subject,
         );
     }
 

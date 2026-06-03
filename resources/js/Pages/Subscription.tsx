@@ -56,7 +56,7 @@ export default function Subscription({ plans }: any) {
       // Subscription Preferences
       plan_id: selectedPlanId as number | null,
       billing_type: "yearly" as "monthly" | "yearly",
-      student_count: 100,
+      student_count: 20,
       bus_count: 0,
       notes: "",
     });
@@ -506,7 +506,7 @@ export default function Subscription({ plans }: any) {
                                  id="student_count"
                                  type="number"
                                  icon={<Users size={18}/>}
-                                 placeholder="100"
+                                 placeholder="20"
                                  required
                                  value={data.student_count}
                                  onChange={(e: any) => setData("student_count", parseInt(e.target.value) || 0)}
