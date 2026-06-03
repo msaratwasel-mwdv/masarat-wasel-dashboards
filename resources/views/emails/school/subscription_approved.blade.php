@@ -94,13 +94,28 @@
                 
                 <p>نحن فخورون بانضمامكم إلينا، ومستعدون لتقديم أفضل تقنيات إدارة النقل المدرسي لمؤسستكم لضمان أمن وسلامة أبنائنا الطلاب وتسهيل العمليات اليومية.</p>
 
-                <p>يمكنك الآن تسجيل الدخول إلى لوحة تحكم الإدارة الخاصة بمدرستك باستخدام البريد الإلكتروني وكلمة المرور التي قمت بإعدادها أثناء طلب الاشتراك.</p>
+                <div style="background-color: #f8fafc; border-right: 4px solid #fbbf24; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                    <h3 style="margin-top: 0; color: #0f172a; font-size: 16px;">تفاصيل تسجيل الدخول:</h3>
+                    <ul style="list-style-type: none; padding-right: 0; margin-bottom: 0;">
+                        <li><strong>اسم المستخدم:</strong> {{ $school->contact_email }}</li>
+                        <li><strong>كلمة المرور:</strong> هي كلمة المرور التي قمت بإنشائها أثناء طلب التسجيل.</li>
+                    </ul>
+                </div>
+
+                <div style="background-color: #f8fafc; border-right: 4px solid #0f172a; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                    <h3 style="margin-top: 0; color: #0f172a; font-size: 16px;">تفاصيل الاشتراك المعتمد:</h3>
+                    <ul style="list-style-type: none; padding-right: 0; margin-bottom: 0;">
+                        <li><strong>الباقة:</strong> {{ $subscription->plan->name ?? 'الباقة المختارة' }}</li>
+                        <li><strong>إجمالي المبلغ:</strong> {{ number_format($subscription->final_price, 2) }} ر.ع</li>
+                        <li><strong>عدد الأقساط المعتمدة:</strong> {{ $subscription->installments()->count() }} أقساط</li>
+                    </ul>
+                </div>
                 
                 <div class="btn-container">
                     <a href="{{ url('/login') }}" class="btn">تسجيل الدخول للوحة التحكم</a>
                 </div>
                 
-                <p>بمجرد دخولك، ننصحك بالبدء في إعداد بيانات الطلاب، الحافلات، والسائقين لتفعيل المنظومة بشكل كامل.</p>
+                <p>بمجرد دخولك، ننصحك بالبدء في إعداد بيانات الطلاب، الحافلات، والسائقين لتفعيل المنظومة بشكل كامل. يمكنك أيضاً الاطلاع على تفاصيل الأقساط ومواعيد استحقاقها من خلال لوحة التحكم.</p>
                 <p>إذا كان لديك أي استفسار، فريق الدعم لدينا متواجد دائماً لخدمتك.</p>
             </div>
             

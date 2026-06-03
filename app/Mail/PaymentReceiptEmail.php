@@ -8,32 +8,35 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use App\Models\PaymentTransaction;
 use App\Models\School;
 
-class SchoolSubscriptionApproved extends Mailable
+class PaymentReceiptEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
+    public $transaction;
     public $school;
-    public $subscription;
+    public $remainingBalance;
 
-    public function __construct(School $school, $subscription)
+    public function __construct(PaymentTransaction $transaction, School $school, float $remainingBalance)
     {
+        $this->transaction = $transaction;
         $this->school = $school;
-        $this->subscription = $subscription;
+        $this->remainingBalance = $remainingBalance;
     }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'تمت الموافقة على اشتراك مدرستك - مسارات واصل',
+            subject: 'سند قبض - تم استلام دفعتكم بنجاح (مسارات واصل)',
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.school.subscription_approved',
+            view: 'emails.school.payment_receipt',
         );
     }
 

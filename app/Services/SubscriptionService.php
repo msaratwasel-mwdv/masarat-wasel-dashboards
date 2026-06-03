@@ -51,19 +51,7 @@ class SubscriptionService
             // Activate school
             $school->update(['is_active' => true]);
 
-            // Ensure the user exists and is linked properly (fallback just in case)
-            $adminUser = \App\Models\User::where('email', $school->contact_email)->first();
-            if ($adminUser) {
-                // Send approval email
-                try {
-                    \Illuminate\Support\Facades\Mail::to($school->contact_email)->send(new \App\Mail\SchoolSubscriptionApproved($school));
-                    \Illuminate\Support\Facades\Log::info("Sent approval email to school: {$school->name}");
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error("Failed to send approval email to school: {$school->name}. Error: " . $e->getMessage());
-                }
-            } else {
-                \Illuminate\Support\Facades\Log::warning("Could not find admin user for school: {$school->name} during approval.");
-            }
+
 
             [$startDate, $endDate] = $this->calculateDates($plan);
 
@@ -111,6 +99,19 @@ class SubscriptionService
                     ]);
                 }
             }
+            // Ensure the user exists and is linked properly (fallback just in case)
+            $adminUser = \App\Models\User::where('email', $school->contact_email)->first();
+            if ($adminUser) {
+                // Send approval email with fully updated subscription
+                try {
+                    \Illuminate\Support\Facades\Mail::to($school->contact_email)->send(new \App\Mail\SchoolSubscriptionApproved($school, $subscription));
+                    \Illuminate\Support\Facades\Log::info("Sent approval email to school: {$school->name}");
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Failed to send approval email to school: {$school->name}. Error: " . $e->getMessage());
+                }
+            } else {
+                \Illuminate\Support\Facades\Log::warning("Could not find admin user for school: {$school->name} during approval.");
+            }
 
             return ['subscription' => $subscription];
         });
@@ -137,8 +138,10 @@ class SubscriptionService
             
             $newTotalAmount = $actualStudentCount * $pricePerStudent;
             
-            // Update the subscription's final price to reflect the new reality
-            $subscription->update(['final_price' => $newTotalAmount]);
+            // Only update the subscription's final price if it increases (baseline protection)
+            if ($newTotalAmount > $subscription->final_price) {
+                $subscription->update(['final_price' => $newTotalAmount]);
+            }
 
             $installments = \App\Models\Installment::where('subscription_id', $subscription->id)
                                                    ->orderBy('installment_number')
@@ -177,58 +180,10 @@ class SubscriptionService
                     ]);
                 }
             } else {
-                // We need to bill less (e.g. students removed)
-                $reductionNeeded = abs($difference);
-                
-                // Try to reduce pending installments first, starting from the last one
-                foreach ($pendingInstallments->reverse() as $installment) {
-                    if ($reductionNeeded <= 0.01) break;
-                    
-                    $reducibleAmount = $installment->amount - $installment->paid_amount;
-                    if ($reducibleAmount <= 0) continue;
-                    
-                    if ($reductionNeeded >= $reducibleAmount) {
-                        // Completely wipe out this installment's unpaid portion
-                        $installment->update([
-                            'amount' => $installment->paid_amount,
-                            'status' => $installment->paid_amount > 0 ? 'paid' : 'cancelled',
-                            'notes' => $installment->notes . " | Cancelled/Reduced due to student reduction."
-                        ]);
-                        $reductionNeeded -= $reducibleAmount;
-                    } else {
-                        // Partially reduce this installment
-                        $installment->update([
-                            'amount' => $installment->amount - $reductionNeeded,
-                            'notes' => $installment->notes . " | Reduced (-{$reductionNeeded}) due to student reduction."
-                        ]);
-                        $reductionNeeded = 0;
-                    }
-                }
-                
-                // If reductionNeeded > 0, it cuts into overdue or partially_paid installments
-                if ($reductionNeeded > 0.01) {
-                    $otherUnpaid = $installments->whereIn('status', ['overdue', 'partially_paid'])->reverse();
-                    foreach ($otherUnpaid as $installment) {
-                        if ($reductionNeeded <= 0.01) break;
-                        $reducibleAmount = $installment->amount - $installment->paid_amount;
-                        if ($reducibleAmount <= 0) continue;
-                        
-                        if ($reductionNeeded >= $reducibleAmount) {
-                            $installment->update([
-                                'amount' => $installment->paid_amount,
-                                'status' => 'paid',
-                                'notes' => $installment->notes . " | Debt waived due to student reduction."
-                            ]);
-                            $reductionNeeded -= $reducibleAmount;
-                        } else {
-                            $installment->update([
-                                'amount' => $installment->amount - $reductionNeeded,
-                                'notes' => $installment->notes . " | Debt reduced (-{$reductionNeeded}) due to student reduction."
-                            ]);
-                            $reductionNeeded = 0;
-                        }
-                    }
-                }
+                // DIFFERENCE < 0 (Students removed)
+                // AS PER STAKEHOLDER REQUEST: Do not reduce existing billed installments.
+                // We keep the billing as is, but we might want to log it internally.
+                \Illuminate\Support\Facades\Log::info("Students removed for School {$schoolId}. Billed amount remains unchanged as per business rules. Difference: {$difference}");
             }
         });
     }
@@ -265,6 +220,22 @@ class SubscriptionService
 
             // 2. Process the money across installments
             $this->processPayment($installment, $amount, $transaction);
+
+            // 3. Send Payment Receipt Email
+            $school = \App\Models\School::with('installments')->find($installment->school_id);
+            if ($school && $school->contact_email) {
+                // Calculate remaining balance across all pending and partially_paid installments
+                $remainingBalance = $school->installments->whereIn('status', ['pending', 'partially_paid', 'overdue'])->sum(function ($inst) {
+                    return max(0, $inst->amount - $inst->paid_amount);
+                });
+                
+                try {
+                    \Illuminate\Support\Facades\Mail::to($school->contact_email)->send(new \App\Mail\PaymentReceiptEmail($transaction, $school, $remainingBalance));
+                    \Illuminate\Support\Facades\Log::info("Sent payment receipt email to school: {$school->name} for transaction {$transaction->id}");
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Failed to send payment receipt email to school: {$school->name}. Error: " . $e->getMessage());
+                }
+            }
         });
     }
 

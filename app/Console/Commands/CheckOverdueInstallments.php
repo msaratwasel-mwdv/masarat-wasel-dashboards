@@ -38,9 +38,15 @@ class CheckOverdueInstallments extends Command
             ->get();
 
         foreach ($upcomingInstallments as $installment) {
-            // Placeholder for email/notification system
-            // \Illuminate\Support\Facades\Notification::send($installment->school->users, new InstallmentReminderNotification($installment));
-            Log::info("Reminder: Installment #{$installment->installment_number} for School ID {$installment->school_id} is due in 7 days.");
+            $school = $installment->school;
+            if ($school && $school->contact_email) {
+                try {
+                    \Illuminate\Support\Facades\Mail::to($school->contact_email)->send(new \App\Mail\PaymentReminderEmail($installment, false));
+                    Log::info("Sent upcoming reminder: Installment #{$installment->installment_number} for School ID {$installment->school_id} is due in 7 days.");
+                } catch (\Exception $e) {
+                    Log::error("Failed to send upcoming reminder for School {$school->name}: " . $e->getMessage());
+                }
+            }
         }
 
         // 2. Mark as overdue if past due date
@@ -60,7 +66,15 @@ class CheckOverdueInstallments extends Command
                 ]);
             }
             
-            Log::warning("Installment #{$installment->installment_number} for School ID {$installment->school_id} marked as overdue.");
+            $school = $installment->school;
+            if ($school && $school->contact_email) {
+                try {
+                    \Illuminate\Support\Facades\Mail::to($school->contact_email)->send(new \App\Mail\PaymentReminderEmail($installment, true));
+                    Log::warning("Sent overdue reminder: Installment #{$installment->installment_number} for School ID {$installment->school_id} is marked as overdue.");
+                } catch (\Exception $e) {
+                    Log::error("Failed to send overdue reminder for School {$school->name}: " . $e->getMessage());
+                }
+            }
         }
 
         $this->info('Finished checking overdue installments.');

@@ -130,6 +130,11 @@ class School extends Model
         return $this->hasOne(Subscription::class)->whereIn('status', ['active', 'trialing'])->latest();
     }
 
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
     public function hasFeature(string $feature): bool
     {
         return true;
