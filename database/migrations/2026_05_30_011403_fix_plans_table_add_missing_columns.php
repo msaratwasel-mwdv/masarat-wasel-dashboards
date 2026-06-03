@@ -12,10 +12,18 @@ return new class extends Migration
         Schema::table('plans', function (Blueprint $table) {
             // Pricing fields (the real column is 'price', we add 'price_per_student' as alias)
             if (!Schema::hasColumn('plans', 'price_per_student')) {
-                $table->decimal('price_per_student', 10, 2)->default(0)->after('price');
+                if (Schema::hasColumn('plans', 'price')) {
+                    $table->decimal('price_per_student', 10, 2)->default(0)->after('price');
+                } else {
+                    $table->decimal('price_per_student', 10, 2)->default(0);
+                }
             }
             if (!Schema::hasColumn('plans', 'currency')) {
-                $table->string('currency', 10)->default('OMR')->after('price_per_student');
+                if (Schema::hasColumn('plans', 'price_per_student')) {
+                    $table->string('currency', 10)->default('OMR')->after('price_per_student');
+                } else {
+                    $table->string('currency', 10)->default('OMR');
+                }
             }
             if (!Schema::hasColumn('plans', 'max_buses')) {
                 $table->integer('max_buses')->nullable()->after('currency');
@@ -46,8 +54,10 @@ return new class extends Migration
             }
         });
 
-        // Sync price_per_student from existing price column
-        DB::statement('UPDATE plans SET price_per_student = price WHERE price_per_student = 0 AND price > 0');
+        // Sync price_per_student from existing price column if it exists
+        if (Schema::hasColumn('plans', 'price')) {
+            DB::statement('UPDATE plans SET price_per_student = price WHERE price_per_student = 0 AND price > 0');
+        }
     }
 
     public function down(): void
