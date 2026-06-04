@@ -46,11 +46,17 @@ trait DataTableTrait
                         $relationPath = implode('.', $parts);
                         
                         $q->{$i === 0 ? 'whereHas' : 'orWhereHas'}($relationPath, function ($rq) use ($field, $search) {
-                            if ($field === 'name') {
+                            $model = $rq->getModel();
+                            if ($field === 'name' && $model->getConnection()->getSchemaBuilder()->hasColumn($model->getTable(), 'first_name_ar')) {
                                 $rq->where(function($sq) use ($search) {
                                     $sq->where('first_name_ar', 'like', "%{$search}%")
                                        ->orWhere('last_name_ar', 'like', "%{$search}%")
                                        ->orWhere('first_name_en', 'like', "%{$search}%")
+                                       ->orWhere('last_name_en', 'like', "%{$search}%");
+                                });
+                            } elseif ($field === 'name_en' && $model->getConnection()->getSchemaBuilder()->hasColumn($model->getTable(), 'first_name_en')) {
+                                $rq->where(function($sq) use ($search) {
+                                    $sq->where('first_name_en', 'like', "%{$search}%")
                                        ->orWhere('last_name_en', 'like', "%{$search}%");
                                 });
                             } else {
@@ -58,19 +64,29 @@ trait DataTableTrait
                             }
                         });
                     } elseif ($column === 'name') {
-                        // Special case for 'name' which is often a virtual field or split in DB
-                        $q->{$method}(function($sq) use ($search) {
-                            $sq->where('first_name_ar', 'like', "%{$search}%")
-                               ->orWhere('last_name_ar', 'like', "%{$search}%")
-                               ->orWhere('first_name_en', 'like', "%{$search}%")
-                               ->orWhere('last_name_en', 'like', "%{$search}%");
-                        });
+                        $model = $q->getModel();
+                        if ($model->getConnection()->getSchemaBuilder()->hasColumn($model->getTable(), 'first_name_ar')) {
+                            // Special case for 'name' which is often a virtual field or split in DB
+                            $q->{$method}(function($sq) use ($search) {
+                                $sq->where('first_name_ar', 'like', "%{$search}%")
+                                   ->orWhere('last_name_ar', 'like', "%{$search}%")
+                                   ->orWhere('first_name_en', 'like', "%{$search}%")
+                                   ->orWhere('last_name_en', 'like', "%{$search}%");
+                            });
+                        } else {
+                            $q->{$method}($column, 'like', "%{$search}%");
+                        }
                     } elseif ($column === 'name_en') {
-                        // Special case for 'name_en' virtual attribute
-                        $q->{$method}(function($sq) use ($search) {
-                            $sq->where('first_name_en', 'like', "%{$search}%")
-                               ->orWhere('last_name_en', 'like', "%{$search}%");
-                        });
+                        $model = $q->getModel();
+                        if ($model->getConnection()->getSchemaBuilder()->hasColumn($model->getTable(), 'first_name_en')) {
+                            // Special case for 'name_en' virtual attribute
+                            $q->{$method}(function($sq) use ($search) {
+                                $sq->where('first_name_en', 'like', "%{$search}%")
+                                   ->orWhere('last_name_en', 'like', "%{$search}%");
+                            });
+                        } else {
+                            $q->{$method}($column, 'like', "%{$search}%");
+                        }
                     } else {
                         $q->{$method}($column, 'like', "%{$search}%");
                     }
@@ -82,10 +98,11 @@ trait DataTableTrait
         $sortColumn = $request->input('sort');
         $sortDirection = $request->input('direction', 'desc');
         if ($sortColumn && in_array($sortDirection, ['asc', 'desc'])) {
-            if ($sortColumn === 'name') {
+            $model = $query->getModel();
+            if ($sortColumn === 'name' && $model->getConnection()->getSchemaBuilder()->hasColumn($model->getTable(), 'first_name_ar')) {
                 $query->orderBy('first_name_ar', $sortDirection)
                       ->orderBy('last_name_ar', $sortDirection);
-            } elseif ($sortColumn === 'name_en') {
+            } elseif ($sortColumn === 'name_en' && $model->getConnection()->getSchemaBuilder()->hasColumn($model->getTable(), 'first_name_en')) {
                 $query->orderBy('first_name_en', $sortDirection)
                       ->orderBy('last_name_en', $sortDirection);
             } else {
