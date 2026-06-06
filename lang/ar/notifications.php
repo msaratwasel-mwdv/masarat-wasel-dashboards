@@ -35,8 +35,8 @@ return [
     'location_rejected_message' => 'تم رفض طلب تغيير موقع الطالب :student. السبب: :reason',
 
     // Bus Approaching / Proximity
-    'bus_approaching_title' => 'الحافلة تقترب',
-    'bus_approaching_message' => 'الحافلة تقترب الآن من منزل الطالب :student. يرجى التجهيز.',
+    'bus_approaching_title' => 'بجوار المنزل',
+    'bus_approaching_message' => 'الحافلة الآن بجوار منزل الطالب :student. يرجى التجهيز.',
     'bus_proximity_to_school_title' => 'الحافلة تقترب لاستلام :student',
     'bus_proximity_to_school_message' => 'الحافلة على بعد :distance من منزلك، ستصل خلال دقيقتين تقريباً. يرجى تجهيز الطالب للركوب.',
     'bus_proximity_to_home_title' => 'طالبك :student سيصل خلال دقيقتين',

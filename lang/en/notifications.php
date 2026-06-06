@@ -35,8 +35,8 @@ return [
     'location_rejected_message' => 'The location change request for :student has been rejected. Reason: :reason',
 
     // Bus Approaching / Proximity
-    'bus_approaching_title' => 'Bus is approaching',
-    'bus_approaching_message' => 'The bus is approaching the house of :student. Please be ready.',
+    'bus_approaching_title' => 'Near the house',
+    'bus_approaching_message' => 'The bus is now near the house of :student. Please be ready.',
     'bus_proximity_to_school_title' => 'Bus is approaching to pick up :student',
     'bus_proximity_to_school_message' => 'The bus is :distance from your house and will arrive in approximately 2 minutes. Please prepare the student.',
     'bus_proximity_to_home_title' => 'Your student :student will arrive in 2 minutes',
