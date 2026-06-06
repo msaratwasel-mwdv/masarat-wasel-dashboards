@@ -1381,12 +1381,15 @@ class DailyTripApiController extends Controller
         $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
 
         // 2. إرسال الإشعار لولي الأمر (Push Notification)
+        $isBack = $trip && $trip->type === 'back';
+        $messageKey = $isBack ? 'notifications.bus_approaching_back_message' : 'notifications.bus_approaching_message';
+
         foreach ($student->guardians as $guardian) {
             $this->notificationService->sendTranslatedToUser(
                 userId: $guardian->id,
                 type: 'bus_approaching',
                 titleKey: 'notifications.bus_approaching_title',
-                messageKey: 'notifications.bus_approaching_message',
+                messageKey: $messageKey,
                 translationParams: ['student' => $student->full_name],
                 data: [
                     'type'              => 'bus_approaching',
@@ -1523,15 +1526,26 @@ class DailyTripApiController extends Controller
         $expectedStart = "FRONT-" . $bus->id;
         $expectedEnd = "BACK-" . $bus->id;
 
+        $startValid = ($startQr === $expectedStart) || 
+                      ($bus->bus_number && $startQr === "FRONT-" . strtoupper(trim($bus->bus_number))) ||
+                      ($bus->plate_number && $startQr === "FRONT-" . strtoupper(trim($bus->plate_number)));
+
+        $endValid = ($endQr === $expectedEnd) || 
+                    ($bus->bus_number && $endQr === "BACK-" . strtoupper(trim($bus->bus_number))) ||
+                    ($bus->plate_number && $endQr === "BACK-" . strtoupper(trim($bus->plate_number))) ||
+                    str_contains($endQr, 'MANUAL');
+
         Log::info('QR Validation Debug:', [
             'bus_id' => $bus->id,
             'received_start' => $startQr,
             'received_end' => $endQr,
+            'start_valid' => $startValid,
+            'end_valid' => $endValid,
             'expected_start' => $expectedStart,
             'expected_end' => $expectedEnd,
         ]);
 
-        if ($startQr !== $expectedStart || $endQr !== $expectedEnd) {
+        if (!$startValid || !$endValid) {
             if (app()->environment('production')) {
                 // ⛔ في الإنتاج: رفض قاطع
                 return response()->json(['message' => 'بيانات كود QR غير صحيحة لهذه الحافلة.'], 422);
