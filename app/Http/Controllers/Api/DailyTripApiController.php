@@ -1729,8 +1729,12 @@ class DailyTripApiController extends Controller
                 return $activeTrip->type === 'forth' ? 'atHome' : 'atSchool';
             }
 
-            if (in_array($attendance->status, ['boarded', 'waiting'])) {
+            if ($attendance->status === 'boarded') {
                 return 'onBus';
+            }
+
+            if ($attendance->status === 'waiting') {
+                return 'waiting';
             }
 
             if ($attendance->status === 'dropped') {
@@ -1749,8 +1753,12 @@ class DailyTripApiController extends Controller
             return 'atHome';
         }
 
-        if (in_array($lastAttendance->status, ['boarded', 'waiting'])) {
+        if ($lastAttendance->status === 'boarded') {
             return 'onBus';
+        }
+
+        if ($lastAttendance->status === 'waiting') {
+            return 'waiting';
         }
 
         return $lastAttendance->trip?->type === 'forth' ? 'atSchool' : 'atHome';
