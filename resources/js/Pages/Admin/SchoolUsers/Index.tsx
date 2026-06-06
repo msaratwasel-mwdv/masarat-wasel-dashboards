@@ -146,7 +146,6 @@ export default function SchoolUsersIndex({
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<number | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState(1);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<SchoolUser | null>(null);
 
@@ -154,12 +153,8 @@ export default function SchoolUsersIndex({
     useForm({
       _method: "post",
       first_name_ar: "",
-      second_name_ar: "",
-      third_name_ar: "",
       last_name_ar: "",
       first_name_en: "",
-      second_name_en: "",
-      third_name_en: "",
       last_name_en: "",
       national_id: "",
       email: "",
@@ -177,7 +172,6 @@ export default function SchoolUsersIndex({
     setIsEditing(false);
     setCurrentId(null);
     setPreviewImage(null);
-    setCurrentStep(1);
     reset();
     setData("_method", "post");
     clearErrors();
@@ -188,7 +182,6 @@ export default function SchoolUsersIndex({
     setIsEditing(true);
     setCurrentId(user.id);
     setPreviewImage(user.image ? `/storage/${user.image}` : null);
-    setCurrentStep(1);
 
     // Parse name components if not directly available
     const arParts = user.name.split(" ");
@@ -197,13 +190,9 @@ export default function SchoolUsersIndex({
     setData({
       _method: "put",
       first_name_ar: user.first_name_ar || arParts[0] || "",
-      second_name_ar: user.second_name_ar || arParts[1] || "",
-      third_name_ar: user.third_name_ar || arParts[2] || "",
-      last_name_ar: user.last_name_ar || arParts.slice(3).join(" ") || arParts[arParts.length - 1] || "",
+      last_name_ar: user.last_name_ar || arParts.slice(1).join(" ") || "",
       first_name_en: user.first_name_en || enParts[0] || "",
-      second_name_en: user.second_name_en || enParts[1] || "",
-      third_name_en: user.third_name_en || enParts[2] || "",
-      last_name_en: user.last_name_en || enParts.slice(3).join(" ") || enParts[enParts.length - 1] || "",
+      last_name_en: user.last_name_en || enParts.slice(1).join(" ") || "",
       national_id: user.national_id || "",
       email: user.email || "",
       phone: user.phone || "",
@@ -232,11 +221,6 @@ export default function SchoolUsersIndex({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (currentStep === 1) {
-      setCurrentStep(2);
-      return;
-    }
 
     if (isEditing && currentId) {
       post(route("admin.school-admins.update", currentId), {
@@ -303,18 +287,13 @@ export default function SchoolUsersIndex({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  user.name.charAt(0)
+                  (isRTL ? (user.name || user.name_en) : (user.name_en || user.name))?.charAt(0) || 'U'
                 )}
               </div>
               <div className="flex flex-col">
                 <span className={`text-sm font-black ${isDark ? "text-white" : "text-[#0f2044]"} tracking-tight`}>
-                  {user.name}
+                  {isRTL ? (user.name || user.name_en) : (user.name_en || user.name)}
                 </span>
-                {user.name_en && (
-                  <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
-                    {user.name_en}
-                  </span>
-                )}
               </div>
             </div>
           );
@@ -594,7 +573,7 @@ export default function SchoolUsersIndex({
                                     <img src={`/storage/${selectedUser.image}`} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-4xl font-black text-[#0f2044] dark:text-[#f5b800] bg-gray-50">
-                                        {selectedUser.name.charAt(0)}
+                                        {(isRTL ? (selectedUser.name || selectedUser.name_en) : (selectedUser.name_en || selectedUser.name))?.charAt(0) || 'U'}
                                     </div>
                                 )}
                             </div>
@@ -604,11 +583,8 @@ export default function SchoolUsersIndex({
                             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-gray-100 dark:border-[#243460] pb-8">
                                 <div className="space-y-1">
                                     <h2 className="text-3xl font-black text-[#0f2044] dark:text-white tracking-tighter">
-                                        {selectedUser.name}
+                                        {isRTL ? (selectedUser.name || selectedUser.name_en) : (selectedUser.name_en || selectedUser.name)}
                                     </h2>
-                                    <p className="text-lg font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                                        {selectedUser.name_en || (isRTL ? "غير محدد" : "UNSPECIFIED")}
-                                    </p>
                                     <div className="flex gap-2 mt-4">
                                         <StatusBadge status={selectedUser.school_admin?.status === "active" ? "active" : "inactive"} />
                                         <span className="px-3 py-1 bg-[#0f2044]/5 dark:bg-[#0f2044]/40 rounded-full text-[10px] font-black text-gray-500 uppercase tracking-tighter">
@@ -669,224 +645,204 @@ export default function SchoolUsersIndex({
                     </button>
                 </div>
 
-                {/* Tactical Stepper */}
-                <div className="bg-[#0f2044]/5 dark:bg-[#0f2044]/30 px-10 py-3 border-b border-gray-100 dark:border-[#243460]">
-                    <div className="relative flex items-center justify-between">
-                        <div className="absolute inset-x-10 top-1/2 -translate-y-1/2 h-0.5 bg-gray-200 dark:bg-[#243460]" />
-                        <div className={`absolute left-10 top-1/2 -translate-y-1/2 h-0.5 bg-[#f5b800] transition-all duration-500`} style={{ width: currentStep === 1 ? '0%' : '100%' }} />
-
-                        <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg transition-all ${currentStep >= 1 ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] text-gray-400'}`}>1</div>
-                        <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg transition-all ${currentStep >= 2 ? 'bg-[#f5b800] text-[#0f2044]' : 'bg-white dark:bg-[#1a2845] text-gray-400'}`}>2</div>
-                    </div>
-                    <div className="flex justify-between mt-1 px-4">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-[#0f2044] dark:text-[#f5b800]">{isRTL ? "الهوية الشخصية" : "Personal Identity"}</span>
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${currentStep === 2 ? 'text-[#0f2044] dark:text-[#f5b800]' : 'text-gray-400'}`}>{isRTL ? "بيانات الاتصال والأمان" : "Contact & Security"}</span>
-                    </div>
-                </div>
-
                 <form onSubmit={submit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <div className={DS_modalBody}>
-                        {currentStep === 1 && (
-                            <motion.div initial={{ opacity: 0, x: isRTL ? 20 : -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-                                {/* Photo Upload */}
-                                <div className="flex items-center gap-4">
-                                    <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-[#0f2044]/40 border-2 border-dashed border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden">
-                                        {data.image ? (
-                                            <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
-                                        ) : previewImage ? (
-                                            <img src={previewImage} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <Users size={32} className="text-gray-300" />
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{isRTL ? "الصورة الشخصية" : "Visual ID"}</label>
-                                        <label className="cursor-pointer px-4 py-2 bg-[#0f2044] text-white rounded-xl text-xs font-black hover:bg-[#1a3a7a] transition-all">
-                                            {isRTL ? "رفع صورة" : "Upload Dossier Photo"}
-                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => setData("image", e.target.files?.[0] || null)} />
-                                        </label>
-                                        <InputError message={errors.image} />
-                                    </div>
-                                </div>
-
-                                {/* Names Grid - Arabic */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
-                                        {isRTL ? "البيانات الرسمية (بالعربية)" : "Official Dossier Name (Arabic)"}
-                                    </h4>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"}</label>
-                                            <input type="text" value={data.first_name_ar} onChange={(e) => setData("first_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
+                    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 max-h-[78vh]">
+                        
+                        {/* §1 The Names */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#243460] pb-2">
+                                <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] flex items-center gap-2">
+                                    <Users size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                                    {isRTL ? "الأسماء الرسمية" : "Official Names"}
+                                </h4>
+                                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded">
+                                    {isRTL ? "* مطلوب" : "* Required"}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Arabic Panel */}
+                                <div className="p-3 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-xl border border-gray-100/80 dark:border-[#243460]/40 space-y-3">
+                                    <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider">{isRTL ? "البيانات بالعربية" : "ARABIC DOSSIER"}</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"} <span className="text-rose-500">*</span></label>
+                                            <input type="text" value={data.first_name_ar} onChange={e => setData("first_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
                                             <InputError message={errors.first_name_ar} />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم الأب" : "Father Name"}</label>
-                                            <input type="text" value={data.second_name_ar} onChange={(e) => setData("second_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم الجد" : "Grandfather Name"}</label>
-                                            <input type="text" value={data.third_name_ar} onChange={(e) => setData("third_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label>
-                                            <input type="text" value={data.last_name_ar} onChange={(e) => setData("last_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"} <span className="text-rose-500">*</span></label>
+                                            <input type="text" value={data.last_name_ar} onChange={e => setData("last_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
                                             <InputError message={errors.last_name_ar} />
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Names Grid - English */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
-                                        {isRTL ? "الاسم بناءً على الهوية (إنجليزي)" : "Official Dossier Name (English)"}
-                                    </h4>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                        <div className="space-y-1.5">
+                                {/* English Panel */}
+                                <div className="p-3 bg-gray-50/50 dark:bg-[#0f2044]/10 rounded-xl border border-gray-100/80 dark:border-[#243460]/40 space-y-3">
+                                    <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider">{isRTL ? "البيانات بالإنجليزية" : "ENGLISH DOSSIER"}</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
                                             <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"}</label>
-                                            <input type="text" value={data.first_name_en} onChange={(e) => setData("first_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                            <input type="text" value={data.first_name_en} onChange={e => setData("first_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                            <InputError message={errors.first_name_en} />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم الأب" : "Father Name"}</label>
-                                            <input type="text" value={data.second_name_en} onChange={(e) => setData("second_name_en", e.target.value)} className={DS_input} dir="ltr" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اسم الجد" : "Grandfather Name"}</label>
-                                            <input type="text" value={data.third_name_en} onChange={(e) => setData("third_name_en", e.target.value)} className={DS_input} dir="ltr" />
-                                        </div>
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-1">
                                             <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label>
-                                            <input type="text" value={data.last_name_en} onChange={(e) => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                            <input type="text" value={data.last_name_en} onChange={e => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                            <InputError message={errors.last_name_en} />
                                         </div>
                                     </div>
                                 </div>
-                            </motion.div>
-                        )}
+                            </div>
+                        </div>
 
-                        {currentStep === 2 && (
-                            <motion.div initial={{ opacity: 0, x: isRTL ? -20 : 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                                {/* Contact & Preferences */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
-                                        {isRTL ? "معلومات التواصل واللغة" : "Contact & Preferences"}
-                                    </h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "رقم الجوال" : "Primary Phone"}</label>
-                                            <input type="text" value={data.phone} onChange={(e) => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" placeholder="5X XXX XXXX" required />
+                        {/* §2 Personal Identity & Profile Photo */}
+                        <div className="space-y-3">
+                            <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-2 flex items-center gap-2">
+                                <CreditCard size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                                {isRTL ? "الهوية الشخصية" : "Personal Identity"}
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "الرقم المدني / الإقامة" : "Civil ID / Iqama"} <span className="text-rose-500">*</span></label>
+                                            <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
+                                            <InputError message={errors.national_id} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className={DS_label}>{isRTL ? "رقم الجوال" : "Phone Number"} <span className="text-rose-500">*</span></label>
+                                            <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" placeholder="5XXXXXXXX" required />
                                             <InputError message={errors.phone} />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "البريد الإلكتروني" : "Email Address"}</label>
+                                        <div className="space-y-1 col-span-2">
+                                            <label className={DS_label}>{isRTL ? "البريد الإلكتروني" : "Email Address"} <span className="text-rose-500">*</span></label>
                                             <input type="email" value={data.email} onChange={(e) => setData("email", e.target.value)} className={DS_input} dir="ltr" required />
                                             <InputError message={errors.email} />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "اللغة المفضلة" : "Preferred Language"}</label>
-                                            <select value={data.preferred_language} onChange={(e) => setData("preferred_language", e.target.value)} className={DS_select} dir={isRTL ? "rtl" : "ltr"}>
-                                                <option value="ar">{isRTL ? "العربية" : "Arabic"}</option>
-                                                <option value="en">{isRTL ? "الإنجليزية" : "English"}</option>
-                                            </select>
-                                            <InputError message={errors.preferred_language} />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5 mt-4">
-                                        <label className={DS_label}>{isRTL ? "العنوان" : "Registered Address"}</label>
-                                        <input type="text" value={data.address} onChange={(e) => setData("address", e.target.value)} className={DS_input} dir={isRTL ? "rtl" : "ltr"} />
                                     </div>
                                 </div>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                                        <div className="w-10 h-10 rounded-lg border border-gray-200 dark:border-[#243460] flex items-center justify-center overflow-hidden bg-white dark:bg-[#0f2044] flex-shrink-0 relative group">
+                                            {data.image ? (
+                                                <>
+                                                    <img src={URL.createObjectURL(data.image)} className="w-full h-full object-cover" />
+                                                    <button type="button" onClick={() => setData("image", null)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <X size={14} className="text-white" />
+                                                    </button>
+                                                </>
+                                            ) : previewImage ? (
+                                                <>
+                                                    <img src={previewImage} className="w-full h-full object-cover" />
+                                                    <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                        <Upload size={14} className="text-white" />
+                                                        <input type="file" className="hidden" accept="image/*" onChange={e => setData("image", e.target.files?.[0] || null)} />
+                                                    </label>
+                                                </>
+                                            ) : (
+                                                <Users size={20} className="text-gray-300" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-[10px] font-black text-[#0f2044] dark:text-gray-300 uppercase">{isRTL ? "الصورة الشخصية" : "Profile Photo"}</p>
+                                            <p className="text-[9px] text-gray-400">{isRTL ? "JPEG, PNG حتى 2MB" : "JPEG, PNG up to 2MB"}</p>
+                                        </div>
+                                        {!data.image && !previewImage && (
+                                            <label className="cursor-pointer px-3 py-1.5 bg-[#0f2044] dark:bg-white/10 text-white dark:text-gray-200 rounded-lg text-[10px] font-black hover:bg-[#1a3a7a] transition-all">
+                                                {isRTL ? "تصفح" : "Browse"}
+                                                <input type="file" className="hidden" accept="image/*" onChange={e => setData("image", e.target.files?.[0] || null)} />
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                {/* School Assignment */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.2em] border-b border-gray-100 dark:border-[#243460] pb-2">
-                                        {isRTL ? "المدرسة المرتبطة والوظيفية" : "Affiliated School & Status"}
-                                    </h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div className="space-y-1.5 sm:col-span-2">
-                                            <SearchableSelect
-                                                label={isRTL ? "المؤسسة التعليمية" : "Educational School"}
-                                                options={schools.map(s => ({ id: s.id, label: s.name }))}
-                                                value={data.school_id}
-                                                onChange={val => setData('school_id', val)}
-                                                placeholder={isRTL ? "اختر المدرسة..." : "Choose School..."}
-                                            />
-                                            <InputError message={errors.school_id} />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "الرقم المدني / الإقامة" : "Civil ID / Iqama"}</label>
-                                            <input type="text" value={data.national_id} onChange={(e) => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
-                                            <InputError message={errors.national_id} />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "حالة الحساب" : "Operational Status"}</label>
-                                            <select value={data.status} onChange={(e) => setData("status", e.target.value)} className={DS_select} required>
-                                                <option value="active">{isRTL ? "نشط" : "Active"}</option>
-                                                <option value="inactive">{isRTL ? "غير نشط" : "Inactive"}</option>
-                                            </select>
-                                            <InputError message={errors.status} />
-                                        </div>
-                                    </div>
+                        {/* §3 School Assignment & Settings */}
+                        <div className="space-y-3">
+                            <h4 className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-[#243460] pb-2 flex items-center gap-2">
+                                <Briefcase size={14} className="text-[#f5b800] dark:text-[#7ba7e8]" />
+                                {isRTL ? "الارتباط والمدرسة" : "Assignment & Details"}
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <SearchableSelect
+                                        label={isRTL ? "المؤسسة التعليمية" : "Educational School"}
+                                        options={schools.map(s => ({ id: s.id, label: s.name }))}
+                                        value={data.school_id}
+                                        onChange={val => setData('school_id', val)}
+                                        placeholder={isRTL ? "اختر المدرسة..." : "Choose School..."}
+                                    />
+                                    <InputError message={errors.school_id} />
                                 </div>
+                                <div className="space-y-1">
+                                    <label className={DS_label}>{isRTL ? "العنوان" : "Registered Address"}</label>
+                                    <input type="text" value={data.address} onChange={(e) => setData("address", e.target.value)} className={DS_input} dir={isRTL ? "rtl" : "ltr"} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className={DS_label}>{isRTL ? "اللغة المفضلة" : "Preferred Language"}</label>
+                                    <select value={data.preferred_language} onChange={(e) => setData("preferred_language", e.target.value)} className={DS_select} dir={isRTL ? "rtl" : "ltr"}>
+                                        <option value="ar">{isRTL ? "العربية" : "Arabic"}</option>
+                                        <option value="en">{isRTL ? "الإنجليزية" : "English"}</option>
+                                    </select>
+                                    <InputError message={errors.preferred_language} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className={DS_label}>{isRTL ? "حالة الحساب" : "Operational Status"}</label>
+                                    <select value={data.status} onChange={(e) => setData("status", e.target.value)} className={DS_select} required>
+                                        <option value="active">{isRTL ? "نشط" : "Active"}</option>
+                                        <option value="inactive">{isRTL ? "غير نشط" : "Inactive"}</option>
+                                    </select>
+                                    <InputError message={errors.status} />
+                                </div>
+                            </div>
+                        </div>
 
-                                {/* Security Access */}
-                                <div className="p-4 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-gray-100 dark:border-[#243460]">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <Lock size={16} className="text-[#f5b800]" />
-                                        <h4 className="text-xs font-black text-[#0f2044] dark:text-gray-300 uppercase">
-                                            {isRTL ? "إعدادات الأمان والسرية" : "Security Access Details"}
-                                        </h4>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "كلمة المرور" : "Password"}</label>
-                                            <input
-                                                type="password"
-                                                value={data.password}
-                                                onChange={e => setData('password', e.target.value)}
-                                                className={DS_input}
-                                                required={!isEditing}
-                                                placeholder={isEditing ? (isRTL ? "اتركه فارغاً لعدم التغيير" : "Leave blank to keep same") : ""}
-                                            />
-                                            <InputError message={errors.password} />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className={DS_label}>{isRTL ? "تأكيد كلمة المرور" : "Confirm Password"}</label>
-                                            <input
-                                                type="password"
-                                                value={data.password_confirmation}
-                                                onChange={e => setData('password_confirmation', e.target.value)}
-                                                className={DS_input}
-                                                required={!isEditing}
-                                            />
-                                        </div>
-                                    </div>
+                        {/* §4 Security Access */}
+                        <div className="p-4 bg-gray-50 dark:bg-[#0f2044]/20 rounded-2xl border border-gray-100 dark:border-[#243460] space-y-3">
+                            <div className="flex items-center gap-2 border-b border-gray-200 dark:border-white/10 pb-2">
+                                <Lock size={14} className="text-[#f5b800]" />
+                                <h4 className="text-xs font-black text-[#0f2044] dark:text-gray-300 uppercase tracking-widest">
+                                    {isRTL ? "إعدادات الأمان والسرية" : "Security Access Details"}
+                                </h4>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className={DS_label}>{isRTL ? "كلمة المرور" : "Password"}</label>
+                                    <input
+                                        type="password"
+                                        value={data.password}
+                                        onChange={e => setData('password', e.target.value)}
+                                        className={DS_input}
+                                        required={!isEditing}
+                                        placeholder={isEditing ? (isRTL ? "اتركه فارغاً لعدم التغيير" : "Leave blank to keep same") : ""}
+                                    />
+                                    <InputError message={errors.password} />
                                 </div>
-                            </motion.div>
-                        )}
+                                <div className="space-y-1.5">
+                                    <label className={DS_label}>{isRTL ? "تأكيد كلمة المرور" : "Confirm Password"}</label>
+                                    <input
+                                        type="password"
+                                        value={data.password_confirmation}
+                                        onChange={e => setData('password_confirmation', e.target.value)}
+                                        className={DS_input}
+                                        required={!isEditing}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
 
                     <div className={DS_modalFooter(isRTL)}>
-                        {currentStep === 2 && (
-                            <button type="button" onClick={() => setCurrentStep(1)} className={DS_btnSecondary}>
-                                {isRTL ? "رجوع" : "Back"}
-                            </button>
-                        )}
                         <div className="ml-auto flex items-center gap-3">
                             <button type="button" onClick={closeModal} className="text-xs font-bold text-gray-400 hover:text-[#0f2044] transition-colors">
                                 {isRTL ? "إلغاء" : "Cancel"}
                             </button>
-                            {currentStep === 1 ? (
-                                <button type="button" onClick={(e) => { e.preventDefault(); setCurrentStep(2); }} className={DS_btnPrimary}>
-                                    {isRTL ? "متابعة" : "Continue"} <ChevronRight size={16} />
-                                </button>
-                            ) : (
-                                <button type="submit" disabled={processing} className={DS_btnGold}>
-                                    {processing && <Loader2 size={16} className="animate-spin" />}
-                                    {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل المدير" : "Enroll Manager")}
-                                </button>
-                            )}
+                            <button type="submit" disabled={processing} className={DS_btnGold}>
+                                {processing && <Loader2 size={16} className="animate-spin" />}
+                                {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل المدير" : "Enroll Manager")}
+                            </button>
                         </div>
                     </div>
                 </form>

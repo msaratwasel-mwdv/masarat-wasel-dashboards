@@ -368,18 +368,6 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                 <span className={`text-sm font-black ${isDark ? "text-white" : "text-[#0f2044]"} tracking-tight`}>
                   {isRTL ? (driver.name || driver.name_en) : (driver.name_en || driver.name)}
                 </span>
-                {(() => {
-                  const altName = isRTL ? driver.name_en : driver.name;
-                  const displayName = isRTL ? (driver.name || driver.name_en) : (driver.name_en || driver.name);
-                  if (altName && altName !== displayName) {
-                    return (
-                      <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
-                        {altName}
-                      </span>
-                    );
-                  }
-                  return null;
-                })()}
               </div>
             </div>
           );
@@ -695,13 +683,6 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                                     <h2 className="text-3xl font-black text-[#0f2044] dark:text-white tracking-tighter">
                                         {isRTL ? (selectedDriver.name || selectedDriver.name_en) : (selectedDriver.name_en || selectedDriver.name)}
                                     </h2>
-                                    <p className="text-lg font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                                        {(() => {
-                                            const altName = isRTL ? selectedDriver.name_en : selectedDriver.name;
-                                            const displayName = isRTL ? (selectedDriver.name || selectedDriver.name_en) : (selectedDriver.name_en || selectedDriver.name);
-                                            return altName && altName !== displayName ? altName : "";
-                                        })()}
-                                    </p>
                                     <div className="flex gap-2 mt-4">
                                         <StatusBadge status={selectedDriver.driver?.status === "active" ? "active" : "inactive"} />
                                         <span className="px-3 py-1 bg-[#0f2044]/5 dark:bg-[#0f2044]/40 rounded-full text-[10px] font-black text-gray-500 uppercase tracking-tighter">

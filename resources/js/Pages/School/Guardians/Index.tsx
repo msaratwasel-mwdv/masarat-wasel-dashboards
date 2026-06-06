@@ -504,7 +504,6 @@ export default function ParentsIndex({ auth, guardians, stats, filters }: Props)
                         </div>
                         <div className={isRtl ? "text-right" : "text-left"}>
                           <p className="font-semibold text-[#0f2044] dark:text-white">{getGuardianDisplayName(g, isRtl)}</p>
-                          {getGuardianAlternateName(g, isRtl) ? <p className="text-xs text-gray-400">{getGuardianAlternateName(g, isRtl)}</p> : null}
                         </div>
                       </div>
                     </td>

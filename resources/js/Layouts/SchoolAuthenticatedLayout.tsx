@@ -405,7 +405,7 @@ export default function SchoolAuthenticatedLayout({
         {/* Logo Section */}
         <div className={`h-20 flex items-center border-b border-white/10 dark:border-gray-700 overflow-hidden ${isCollapsed ? "justify-center px-0" : "px-8"}`}>
           <Link
-            href="/"
+            href={route("school.dashboard")}
             className={`flex items-center gap-3 group ${flexDirection}`}
           >
             <div className={`rounded-xl flex items-center justify-center bg-white shadow-lg group-hover:scale-105 transition-transform ${isCollapsed ? "w-11 h-11" : "w-16 h-16"} p-1`}>

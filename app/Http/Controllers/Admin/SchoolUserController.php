@@ -78,15 +78,15 @@ class SchoolUserController extends Controller
         }
 
         DB::transaction(function () use ($request, $schoolId, $roleId) {
-            $ar = User::parseFullName($request->name);
-            $enName = $request->name_en ?: $request->name;
+            $ar = User::parseFullName($request->name ?: '');
+            $enName = $request->name_en ?: $request->name ?: '';
             $en = User::parseFullName($enName);
 
             $user = User::create([
-                'first_name_ar' => $ar[0],
-                'last_name_ar' => $ar[3] ?: $ar[0],
-                'first_name_en' => $en[0],
-                'last_name_en' => $en[3] ?: $en[0],
+                'first_name_ar' => $request->first_name_ar ?? $ar[0],
+                'last_name_ar' => $request->last_name_ar ?? ($ar[3] ?: $ar[0]),
+                'first_name_en' => $request->first_name_en ?? $en[0],
+                'last_name_en' => $request->last_name_en ?? ($en[3] ?: $en[0]),
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'national_id' => $request->national_id,
@@ -109,15 +109,15 @@ class SchoolUserController extends Controller
     // تحديث بيانات مدير المدرسة
     public function update(StoreSchoolUserRequest $request, User $user, ?School $school = null)
     {
-        $ar = User::parseFullName($request->name);
-        $enName = $request->name_en ?: $request->name;
+        $ar = User::parseFullName($request->name ?: '');
+        $enName = $request->name_en ?: $request->name ?: '';
         $en = User::parseFullName($enName);
         
         $updateData = [
-            'first_name_ar' => $ar[0],
-            'last_name_ar' => $ar[3] ?: $ar[0],
-            'first_name_en' => $en[0],
-            'last_name_en' => $en[3] ?: $en[0],
+            'first_name_ar' => $request->first_name_ar ?? $ar[0],
+            'last_name_ar' => $request->last_name_ar ?? ($ar[3] ?: $ar[0]),
+            'first_name_en' => $request->first_name_en ?? $en[0],
+            'last_name_en' => $request->last_name_en ?? ($en[3] ?: $en[0]),
             'email' => $request->email,
             'phone' => $request->phone,
             'national_id' => $request->national_id,

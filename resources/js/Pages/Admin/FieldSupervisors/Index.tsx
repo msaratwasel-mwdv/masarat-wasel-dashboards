@@ -311,11 +311,6 @@ export default function FieldSupervisorsIndex({ auth, supervisors, counts, filte
                 <span className={`text-sm font-black ${isDark ? "text-white" : "text-[#0f2044]"} tracking-tight`}>
                   {displayName}
                 </span>
-                {alternateName && alternateName !== displayName && (
-                  <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
-                    {alternateName}
-                  </span>
-                )}
               </div>
             </div>
           );
@@ -545,9 +540,6 @@ export default function FieldSupervisorsIndex({ auth, supervisors, counts, filte
                                     <h2 className="text-3xl font-black text-[#0f2044] dark:text-white tracking-tighter">
                                         {getSupervisorName(selectedSupervisor, isRTL)}
                                     </h2>
-                                    <p className="text-lg font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                                        {isRTL ? selectedSupervisor.name_en : selectedSupervisor.name}
-                                    </p>
                                     <div className="flex gap-2 mt-4">
                                         <StatusBadge status={selectedSupervisor.field_supervisor?.status === "active" ? "active" : "inactive"} />
                                         <span className="px-3 py-1 bg-[#0f2044]/5 dark:bg-[#0f2044]/40 rounded-full text-[10px] font-black text-gray-500 uppercase tracking-tighter">

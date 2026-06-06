@@ -100,11 +100,25 @@ class SubscriptionService
                 }
             }
             // Ensure the user exists and is linked properly (fallback just in case)
-            $adminUser = \App\Models\User::where('email', $school->contact_email)->first();
+            $adminUser = null;
+            if ($school->contact_email) {
+                $adminUser = \App\Models\User::where('email', $school->contact_email)->first();
+            }
+            
+            if (!$adminUser) {
+                $schoolAdmin = \App\Models\SchoolAdmin::where('school_id', $school->id)->first();
+                if ($schoolAdmin) {
+                    $adminUser = \App\Models\User::find($schoolAdmin->user_id);
+                }
+            }
+
             if ($adminUser) {
+                $recipientEmail = $school->contact_email ?: $adminUser->email;
+                $school->contact_email = $recipientEmail; // Temporary inject for the email view
+
                 // Send approval email with fully updated subscription
                 try {
-                    \Illuminate\Support\Facades\Mail::to($school->contact_email)->send(new \App\Mail\SchoolSubscriptionApproved($school, $subscription));
+                    \Illuminate\Support\Facades\Mail::to($recipientEmail)->send(new \App\Mail\SchoolSubscriptionApproved($school, $subscription));
                     \Illuminate\Support\Facades\Log::info("Sent approval email to school: {$school->name}");
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\Log::error("Failed to send approval email to school: {$school->name}. Error: " . $e->getMessage());

@@ -71,6 +71,25 @@ class SchoolController extends Controller
                 ]);
             }
 
+            // Create a pending subscription so it appears in the Subscriptions list
+            // This forces the admin to set the financial details and activate the school properly.
+            $defaultPlan = \App\Models\Plan::orderBy('sort_order')->first();
+            
+            \App\Models\Subscription::create([
+                'school_id' => $school->id,
+                'plan_id' => $defaultPlan ? $defaultPlan->id : 1,
+                'status' => 'pending_approval',
+                'start_date' => now()->toDateString(),
+                'end_date' => now()->addYear()->toDateString(),
+                'notes' => [
+                    'billing_type' => 'yearly',
+                    'student_count' => 20,
+                    'bus_count' => 0,
+                    'preferred_lang' => 'ar',
+                    'custom_notes' => 'تمت الإضافة يدوياً من قبل الإدارة. يرجى المراجعة لاعتماد وتفعيل المدرسة.',
+                ],
+            ]);
+
             return redirect()->route('admin.schools.index')
                 ->with('success', 'School created successfully' . ($request->create_admin ? ' with admin' : ''));
         });
