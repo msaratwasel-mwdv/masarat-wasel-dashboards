@@ -129,13 +129,17 @@ class ParentController extends Controller
             $morningBus = $student->forthBus;
             $eveningBus = $student->backBus ?? $morningBus;
 
-            // تحديد الباص النشط بناءً على حالة الرحلة الفعلية والتوقيت الصحيح
-            if ($eveningBus && in_array($eveningBus->trip_status, ['to_home', 'on_route', 'in_progress'])) {
+            // تحديد الباص النشط: الأولوية للرحلة الفعلية (نشطة أو قيد الانتظار) بغض النظر عن التوقيت
+            $morningActiveStatuses = ['to_school', 'on_route', 'in_progress', 'pending_to_school'];
+            $eveningActiveStatuses = ['to_home', 'on_route', 'in_progress', 'pending_to_home'];
+
+            if ($eveningBus && in_array($eveningBus->trip_status, $eveningActiveStatuses)) {
                 $activeBus = $eveningBus;
-            } elseif ($morningBus && in_array($morningBus->trip_status, ['to_school', 'on_route', 'in_progress'])) {
+            } elseif ($morningBus && in_array($morningBus->trip_status, $morningActiveStatuses)) {
                 $activeBus = $morningBus;
-            } elseif ($eveningBus && now(config('app.timezone'))->hour >= 11) {
-                $activeBus = $eveningBus;
+            } elseif ($eveningBus && $morningBus && $eveningBus->id !== $morningBus->id) {
+                // لا توجد رحلة نشطة: نختار بناءً على الوقت فقط كخيار أخير
+                $activeBus = now(config('app.timezone'))->hour >= 11 ? $eveningBus : $morningBus;
             } else {
                 $activeBus = $morningBus;
             }

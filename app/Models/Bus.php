@@ -117,7 +117,7 @@ class Bus extends Model
 
     public function activeTrip(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
-        return $this->hasOne(Trip::class)->whereIn('status', ['in_progress', 'started', 'awaiting_confirmation', 'awaiting_video'])->latestOfMany();
+        return $this->hasOne(Trip::class)->whereIn('status', ['pending', 'in_progress', 'started', 'awaiting_confirmation', 'awaiting_video'])->latestOfMany();
     }
 
     /**
@@ -142,9 +142,9 @@ class Bus extends Model
         }
 
         return match ($trip->type) {
-            'forth' => 'to_school',
-            'back' => 'to_home',
-            default => 'in_progress',
+            'forth' => $trip->status === 'pending' ? 'pending_to_school' : 'to_school',
+            'back'  => $trip->status === 'pending' ? 'pending_to_home'   : 'to_home',
+            default => $trip->status === 'pending' ? 'pending'           : 'in_progress',
         };
     }
     public function getTargetLatitudeAttribute(): ?float

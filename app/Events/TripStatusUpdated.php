@@ -36,11 +36,15 @@ class TripStatusUpdated implements ShouldBroadcastNow
 
     public function broadcastWith(): array
     {
+        // عند انتهاء الرحلة نُرسل trip_type كـ null حتى يتمكن تطبيق ولي الأمر
+        // من الخروج من الحالة المعلقة (Sticky Status Bug Fix)
+        $isTerminal = in_array($this->status, ['finished', 'completed', 'idle', 'cancelled']);
+
         return [
             'trip_id' => $this->trip->id,
             'bus_id' => $this->bus->id,
             'status' => $this->status,
-            'trip_type' => $this->trip->type,
+            'trip_type' => $isTerminal ? null : $this->trip->type,
             'target_lat' => $this->bus->target_latitude,
             'target_lng' => $this->bus->target_longitude,
             'timestamp' => now()->toIso8601String(),

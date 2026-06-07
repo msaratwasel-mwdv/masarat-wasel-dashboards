@@ -282,6 +282,13 @@ class TripService
         // Bulk insert (سريع جداً للأعداد الكبيرة)
         TripAttendance::insert($attendances);
 
+        // إرسال حدث WebSocket فوري لتطبيق ولي الأمر عند إنشاء الرحلة
+        try {
+            broadcast(new \App\Events\TripStatusUpdated($trip, $bus, 'pending'));
+        } catch (\Exception $e) {
+            Log::error('[TripService] Broadcast error (createDailyTrip): ' . $e->getMessage());
+        }
+
         return [$trip, 'created'];
     }
 
