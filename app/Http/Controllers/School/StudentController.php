@@ -210,8 +210,8 @@ class StudentController extends Controller
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
             'name_en' => 'nullable|string|max:255',
-            'national_id' => 'required|string|max:50|unique:users,national_id',
-            'phone' => 'required|string|max:50|unique:users,phone',
+            'national_id' => 'required|string|max:50',
+            'phone' => 'required|string|max:50',
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:500',
             'home_number' => 'nullable|string|max:50',
@@ -234,6 +234,10 @@ class StudentController extends Controller
         }
 
         $guardian = DB::transaction(function () use ($validated, $request) {
+            $guardian = User::where('national_id', $validated['national_id'])
+                ->orWhere('phone', $validated['phone'])
+                ->first();
+
             $nameParts = User::parseFullName($validated['name'] ?? '');
             $enNameParts = User::parseFullName($validated['name_en'] ?? '');
 
@@ -245,21 +249,29 @@ class StudentController extends Controller
                 'national_id'    => $validated['national_id'],
                 'phone'          => $validated['phone'],
                 'email'          => $validated['email'] ?? null,
-                'password'       => Hash::make($validated['phone']),
             ];
 
             if ($request->hasFile('image')) {
                 $guardianData['image'] = $request->file('image')->store('guardians', 'public');
             }
 
-            $guardian = User::create($guardianData);
+            if ($guardian) {
+                // تحديث بيانات ولي الأمر الحالي دون المساس بكلمة المرور
+                $guardian->update($guardianData);
+            } else {
+                $guardianData['password'] = Hash::make($validated['phone']);
+                $guardian = User::create($guardianData);
+            }
 
-            // Attach guardian/parent role via pivot
+            // التأكد من منح صلاحية parent وإضافة سجل Guardian
             $role = \App\Models\Role::firstOrCreate(['name' => 'parent']);
-            $guardian->roles()->attach($role->id);
+            if (!$guardian->roles->contains($role->id)) {
+                $guardian->roles()->attach($role->id);
+            }
 
-            // Create Guardian extension record
-            \App\Models\Guardian::create(['user_id' => $guardian->id]);
+            if (!$guardian->guardian) {
+                \App\Models\Guardian::create(['user_id' => $guardian->id]);
+            }
 
             return $guardian;
         });

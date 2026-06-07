@@ -105,9 +105,9 @@ class GuardianController extends Controller
             'last_name_ar'       => 'required|string|max:255',
             'first_name_en'      => 'required|string|max:255',
             'last_name_en'       => 'required|string|max:255',
-            'national_id'        => 'required|string|max:50|unique:users,national_id',
-            'phone'              => 'required|string|max:50|unique:users,phone',
-            'email'              => 'nullable|email|max:255|unique:users,email',
+            'national_id'        => 'required|string|max:50',
+            'phone'              => 'required|string|max:50',
+            'email'              => 'nullable|email|max:255',
             'address'            => 'nullable|string|max:500',
             'status'             => 'nullable|in:active,inactive',
             'preferred_language' => 'nullable|in:ar,en',
@@ -115,7 +115,11 @@ class GuardianController extends Controller
         ]);
 
         DB::transaction(function () use ($validated, $request) {
-            $user = User::create([
+            $user = User::where('national_id', $validated['national_id'])
+                ->orWhere('phone', preg_replace('/\s+/', '', $validated['phone']))
+                ->first();
+
+            $userData = [
                 'first_name_ar'      => $validated['first_name_ar'],
                 'last_name_ar'       => $validated['last_name_ar'],
                 'first_name_en'      => $validated['first_name_en'],
@@ -124,18 +128,33 @@ class GuardianController extends Controller
                 'phone'              => preg_replace('/\s+/', '', $validated['phone']),
                 'email'              => $validated['email'] ?? null,
                 'address'            => $validated['address'] ?? null,
-                'password'           => Hash::make($validated['phone']),
                 'preferred_language' => $validated['preferred_language'] ?? 'ar',
-                'image'              => $request->hasFile('image') ? $request->file('image')->store('users', 'public') : null,
-            ]);
+            ];
+
+            if ($request->hasFile('image')) {
+                $userData['image'] = $request->file('image')->store('users', 'public');
+            }
+
+            if ($user) {
+                $user->update($userData);
+            } else {
+                $userData['password'] = Hash::make($userData['phone']);
+                $user = User::create($userData);
+            }
 
             $role = Role::firstOrCreate(['name' => 'parent']);
-            $user->roles()->attach($role->id);
+            if (!$user->roles->contains($role->id)) {
+                $user->roles()->attach($role->id);
+            }
 
-            Guardian::create([
-                'user_id' => $user->id,
-                'status'  => $validated['status'] ?? 'active',
-            ]);
+            if (!$user->guardian) {
+                Guardian::create([
+                    'user_id' => $user->id,
+                    'status'  => $validated['status'] ?? 'active',
+                ]);
+            } else {
+                $user->guardian->update(['status' => $validated['status'] ?? 'active']);
+            }
         });
 
         return redirect()->back()->with('success', 'Parent added successfully.');

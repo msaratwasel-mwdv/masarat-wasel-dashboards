@@ -16,6 +16,7 @@ interface SearchableSelectProps {
   label?: string;
   className?: string;
   forceBottom?: boolean; // Backward compatibility
+  onNotFoundClick?: (searchTerm: string) => void;
 }
 
 export default function SearchableSelect({
@@ -26,6 +27,7 @@ export default function SearchableSelect({
   label,
   className = "",
   forceBottom = false,
+  onNotFoundClick,
 }: SearchableSelectProps) {
   const { t, isRtl } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -137,8 +139,24 @@ export default function SearchableSelect({
           {/* Options List */}
           <ul className="max-h-44 overflow-y-auto space-y-0.5 scrollbar-thin">
             {filteredOptions.length === 0 ? (
-              <li className="py-2.5 px-3 text-center text-gray-400 dark:text-gray-500 text-xs italic">
-                {searchTerm ? t("No results match your search") : t("No options available")}
+              <li className="py-2.5 px-3 text-center flex flex-col items-center gap-2">
+                <span className="text-gray-400 dark:text-gray-500 text-xs italic">
+                    {searchTerm ? t("No results match your search") : t("No options available")}
+                </span>
+                {onNotFoundClick && searchTerm && searchTerm.length >= 5 && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsOpen(false);
+                            onNotFoundClick(searchTerm);
+                        }}
+                        className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 px-3 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 w-full"
+                    >
+                        <Search size={12} />
+                        {t("Search globally for")} "{searchTerm}"
+                    </button>
+                )}
               </li>
             ) : (
               filteredOptions.map((opt) => {

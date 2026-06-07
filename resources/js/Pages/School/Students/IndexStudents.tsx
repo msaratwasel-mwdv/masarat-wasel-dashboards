@@ -551,17 +551,23 @@ export default function IndexStudents({
   };
 
   // Guardian Verification (per entry)
-  const handleGuardianLookup = (index: number) => {
+  const handleGuardianLookup = (index: number, term?: string) => {
     const entry = guardianEntries[index];
-    if (!entry.national_id || entry.national_id.length < 5) return;
-    updateGuardianEntry(index, { isSearching: true });
-    router.post(route('school.guardians.search'), { national_id: entry.national_id }, {
+    const searchId = term || entry.national_id;
+    if (!searchId || searchId.length < 5) return;
+    updateGuardianEntry(index, { isSearching: true, national_id: searchId });
+    router.post(route('school.guardians.search'), { national_id: searchId }, {
       preserveScroll: true,
+      preserveState: true,
       onSuccess: (page: any) => {
         const res = page.props.guardianResult;
         if (res?.found && res.guardian) {
           toast.success(t('Existing guardian found'));
           updateGuardianEntry(index, {
+            first_name_ar: res.guardian.first_name_ar || res.guardian.name || '',
+            last_name_ar: res.guardian.last_name_ar || '',
+            first_name_en: res.guardian.first_name_en || res.guardian.name_en || '',
+            last_name_en: res.guardian.last_name_en || '',
             name: res.guardian.name || '', name_en: res.guardian.name_en || '',
             phone: res.guardian.phone || '', email: res.guardian.email || '',
             address: res.guardian.address || '', home_number: res.guardian.home_number || '',
@@ -1228,6 +1234,11 @@ export default function IndexStudents({
                       onChange={handleSelectParent}
                       options={parentOptions}
                       forceBottom={true}
+                      onNotFoundClick={(term) => {
+                          setShowNewGuardianForm(true);
+                          setSelectedGuardianId("");
+                          handleGuardianLookup(0, term);
+                      }}
                     />
 
                     {/* Add New Guardian Button */}
@@ -1403,15 +1414,21 @@ export default function IndexStudents({
 
                       {/* Civil ID, Phone, Relationship Row */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                        <div className="space-y-0.5">
+                        <div className="space-y-0.5 relative">
                           <label className={DS_labelCls}>{t("Civil ID")} *</label>
                           <input
                             type="text"
                             value={guardianEntries[0]?.national_id || ""}
-                            onChange={e => updatePrimaryGuardian({ national_id: e.target.value, hasSearched: true })}
+                            onChange={e => updatePrimaryGuardian({ national_id: e.target.value, hasSearched: false })}
+                            onBlur={() => handleGuardianLookup(0)}
                             className={DS_inputCls}
                             required
                           />
+                          {guardianEntries[0]?.isSearching && (
+                              <div className="absolute top-7 right-3 rtl:right-auto rtl:left-3 flex items-center">
+                                  <Loader2 size={16} className="text-amber-500 animate-spin" />
+                              </div>
+                          )}
                         </div>
                         <div className="space-y-0.5">
                           <label className={DS_labelCls}>{t("Phone")} *</label>
