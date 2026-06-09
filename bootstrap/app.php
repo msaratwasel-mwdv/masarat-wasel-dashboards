@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->encryptCookies(except: [
+            'locale',
+        ]);
+
         $middleware->web(append: [
             \App\Http\Middleware\SetAppLocale::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
