@@ -209,8 +209,10 @@ class DailyTripApiController extends Controller
             return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
         }
 
-        // استخراج الكود
-        $code = str_replace('STUDENT-', '', $request->code);
+        // استخراج الكود بمرونة وبدون مسافات/رموز إضافية (مثل أسطر جديدة أو فراغات)
+        $code = trim($request->code);
+        $code = str_ireplace('STUDENT-', '', $code);
+        $code = trim($code);
         $student = Student::where('student_code', $code)->orWhere('national_id', $code)->first();
 
         if (!$student) {

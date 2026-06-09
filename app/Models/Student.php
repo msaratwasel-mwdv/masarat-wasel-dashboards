@@ -85,14 +85,7 @@ class Student extends Model
      */
     public function getFullNameAttribute(): string
     {
-        $acceptLanguage = request()->header('Accept-Language') ?? '';
-        if (!empty($acceptLanguage)) {
-            $isEn = str_starts_with($acceptLanguage, 'en');
-        } else {
-            $isEn = (request()->input('lang') === 'en' 
-                || (auth()->check() && auth()->user()->preferred_language === 'en')
-                || app()->getLocale() === 'en');
-        }
+        $isEn = app()->getLocale() === 'en';
 
         if ($isEn) {
             $nameEn = $this->full_name_en;

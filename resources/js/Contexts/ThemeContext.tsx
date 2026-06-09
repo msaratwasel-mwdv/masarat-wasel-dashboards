@@ -60,6 +60,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     root.setAttribute("dir", language === "ar" ? "rtl" : "ltr");
     root.setAttribute("lang", language);
     localStorage.setItem("language", language);
+    document.cookie = `locale=${language}; path=/; max-age=31536000; SameSite=Lax`;
   }, [language]);
 
   const toggleTheme = () => {

@@ -23,6 +23,9 @@ class CheckTransportAccess
         $school = $user->school;
 
         if (!$school) {
+            if ($user->hasRole('field_supervisor') || $user->hasRole('admin')) {
+                return $next($request);
+            }
             return $this->errorResponse($request, 'School not found.', 403);
         }
 

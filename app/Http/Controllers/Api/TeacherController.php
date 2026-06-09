@@ -97,9 +97,11 @@ class TeacherController extends Controller
             'status' => 'required|in:present,absent,late,excused,unknown',
         ]);
 
-        // Clean the student ID from common prefixes (like STUDENT-) used in QR codes
+        // Clean the student ID from common prefixes (like STUDENT-) used in QR codes and trim it
         if (is_string($studentId)) {
+            $studentId = trim($studentId);
             $studentId = str_ireplace('STUDENT-', '', $studentId);
+            $studentId = trim($studentId);
         }
 
         \Log::info("TeacherController.markAttendance called for studentId: {$studentId}", [

@@ -14,6 +14,25 @@ class HandleInertiaRequests extends Middleware
      */
     protected $rootView = 'app';
 
+    public function handle(Request $request, \Closure $next)
+    {
+        $locale = null;
+
+        if ($request->has('lang')) {
+            $locale = $request->input('lang');
+        } elseif ($request->hasCookie('locale')) {
+            $locale = $request->cookie('locale');
+        } elseif ($request->user() && $request->user()->preferred_language) {
+            $locale = $request->user()->preferred_language;
+        }
+
+        if ($locale && in_array($locale, ['ar', 'en'])) {
+            app()->setLocale($locale);
+        }
+
+        return parent::handle($request, $next);
+    }
+
     /**
      * Determine the current asset version.
      */

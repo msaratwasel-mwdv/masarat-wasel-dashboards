@@ -62,7 +62,7 @@ class FieldSupervisorController extends Controller
                     'phone'     => $user->phone,
                     'role'      => 'driver',
                     'is_active' => (bool) $user->is_active,
-                    'bus_code'  => $bus ? $bus->bus_code : null,
+                    'bus_code'  => $bus ? ($bus->bus_code ?? $bus->bus_number) : null,
                     'bus_id'    => $bus ? $bus->id : null,
                     'image'     => $user->image,
                 ];
@@ -80,7 +80,7 @@ class FieldSupervisorController extends Controller
                     'phone'     => $user->phone,
                     'role'      => 'assistant',
                     'is_active' => (bool) $user->is_active,
-                    'bus_code'  => $bus ? $bus->bus_code : null,
+                    'bus_code'  => $bus ? ($bus->bus_code ?? $bus->bus_number) : null,
                     'bus_id'    => $bus ? $bus->id : null,
                     'image'     => $user->image,
                 ];
@@ -132,7 +132,8 @@ class FieldSupervisorController extends Controller
                 return [
                     'id'              => $bus->id,
                     'bus_number'      => $bus->bus_number,
-                    'bus_code'        => $bus->bus_code,
+                    'bus_code'        => $bus->bus_code ?? $bus->bus_number,
+                    'plate_number'    => $bus->plate_number,
                     'school'          => $bus->school?->name ?? 'N/A',
                     'driver'          => $bus->driver?->name ?? 'N/A',
                     'assistant'       => $bus->assistant?->name ?? 'N/A',
@@ -471,7 +472,7 @@ class FieldSupervisorController extends Controller
                 return [
                     'id'             => $ins->id,
                     'bus_id'         => $ins->bus_id,
-                    'bus_code'       => $ins->bus?->bus_code ?? 'N/A',
+                    'bus_code'       => $ins->bus?->bus_code ?? $ins->bus?->bus_number ?? 'N/A',
                     'overall_status' => $ins->overall_status,
                     'notes'          => $ins->notes,
                     'total_items'    => $totalItems,
@@ -494,21 +495,21 @@ class FieldSupervisorController extends Controller
     public function getFieldTrips(): JsonResponse
     {
         $trips = \App\Models\FieldTrip::with(['school', 'bus'])
-            ->orderByDesc('trip_date')
+            ->orderByDesc('date')
             ->get()
             ->map(function ($trip) {
                 return [
                     'id'          => $trip->id,
-                    'trip_name'   => $trip->trip_name,
+                    'trip_name'   => $trip->name,
                     'description' => $trip->description,
-                    'destination' => $trip->destination,
-                    'trip_date'   => $trip->trip_date,
-                    'trip_time'   => $trip->trip_time,
-                    'duration'    => $trip->duration_days,
+                    'destination' => $trip->destination_address,
+                    'trip_date'   => $trip->date ? $trip->date->toDateString() : null,
+                    'trip_time'   => $trip->departure_time,
+                    'duration'    => $trip->duration_days ?? 1,
                     'status'      => $trip->status,
                     'school'      => $trip->school?->name ?? 'N/A',
-                    'bus_code'    => $trip->bus?->bus_code ?? 'N/A',
-                    'students'    => $trip->number_of_students,
+                    'bus_code'    => $trip->bus?->bus_code ?? $trip->bus?->bus_number ?? 'N/A',
+                    'students'    => $trip->students()->count(),
                     'cost'        => $trip->cost,
                 ];
             });
@@ -576,7 +577,7 @@ class FieldSupervisorController extends Controller
                 'student_id'       => $delay->student_id,
                 'national_id'      => $delay->student?->national_id,
                 'bus_id'           => $delay->bus_id,
-                'bus_code'         => $delay->bus?->bus_code ?? 'N/A',
+                'bus_code'         => $delay->bus?->bus_code ?? $delay->bus?->bus_number ?? 'N/A',
                 'duration_minutes' => $delay->duration_minutes,
                 'reason'           => $delay->reason,
                 'notes'            => $delay->notes,
