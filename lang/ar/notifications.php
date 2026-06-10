@@ -36,7 +36,7 @@ return [
 
     // Bus Approaching / Proximity
     'bus_approaching_title' => 'بجوار المنزل',
-    'bus_approaching_message' => 'الحافلة الآن بجوار منزل الطالب :student. يرجى التجهيز.',
+    'bus_approaching_message' => 'الحافلة الآن بجوار منزل الطالب :student. يرجى الاستعداد.',
     'bus_approaching_back_message' => 'الحافلة الآن بجوار منزل الطالب :student.',
     'bus_proximity_to_school_title' => 'الحافلة تقترب لاستلام :student',
     'bus_proximity_to_school_message' => 'الحافلة على بعد :distance من منزلك، ستصل خلال دقيقتين تقريباً. يرجى تجهيز الطالب للركوب.',
