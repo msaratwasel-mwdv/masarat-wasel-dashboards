@@ -23,12 +23,8 @@ class AssistantSeeder extends Seeder
                 ['national_id' => "100000004$i"],
                 [
                     'first_name_ar' => $fakerAr->firstName('female'),
-                    'second_name_ar' => 'مساعدة',
-                    'third_name_ar' => 'الباص',
                     'last_name_ar' => $fakerAr->lastName,
                     'first_name_en' => $fakerEn->firstName('female'),
-                    'second_name_en' => 'Bus',
-                    'third_name_en' => 'Assistant',
                     'last_name_en' => $fakerEn->lastName,
                     'email' => "assistant$i@wasel.com",
                     'password' => Hash::make('password'),

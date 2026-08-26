@@ -29,22 +29,21 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
         return User::whereHas('roles', fn($q) => $q->where('name', 'driver'))->with('driver')->get();
     }
 
-    public function headings(): array
+            public function headings(): array
     {
         return [
-            ['ملاحظة هامة: الأعمدة الملونة باللون الأزرق إجبارية (يجب تعبئتها)، بينما الأعمدة باللون الأبيض اختيارية.'],
+            [__('exports.notices.drivers')],
             [
-                'الاسم الأول (عربي)',
-                'الاسم الأخير (عربي)',
-                'الاسم الأول (انجليزي)',
-                'الاسم الأخير (انجليزي)',
-                'الرقم المدني',
-                'رقم الجوال',
-                'البريد الإلكتروني',
-                'العنوان',
-                'رقم الرخصة',
-                'تاريخ انتهاء الرخصة (YYYY-MM-DD)',
-                'اللغة المفضلة (ar / en)'
+                __('exports.columns.first_name_ar'),
+                __('exports.columns.last_name_ar'),
+                __('exports.columns.first_name_en'),
+                __('exports.columns.last_name_en'),
+                __('exports.columns.national_id'),
+                __('exports.columns.phone'),
+                __('exports.columns.email'),
+                __('exports.columns.address'),
+                __('exports.columns.license_number'),
+                __('exports.columns.license_expiry'),
             ]
         ];
     }
@@ -67,7 +66,6 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
             $row->address,
             $row->driver?->license_number,
             $row->driver?->license_expiry_date,
-            $row->preferred_language ?: 'ar',
         ];
     }
 
@@ -82,7 +80,7 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
     public function styles(Worksheet $sheet)
     {
         // جعل الورقة من اليمين لليسار
-        $sheet->setRightToLeft(true);
+        $sheet->setRightToLeft(app()->getLocale() === 'ar');
 
         // ارتفاع الصفوف الافتراضي ليكون أكبر
         $sheet->getDefaultRowDimension()->setRowHeight(25);
@@ -96,12 +94,12 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
         ]);
 
         // دمج خلايا الصف الأول للملاحظة (حتى العمود K)
-        $sheet->mergeCells('A1:K1');
+        $sheet->mergeCells('A1:J1');
 
         // تنسيق الصف الأول (الملاحظة)
         $sheet->getStyle('A1')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF'], 'size' => 12],
-            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['argb' => 'FFDC2626']], // أحمر للتنبيه
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['argb' => 'FFCCCCCC']], // أحمر للتنبيه
         ]);
         $sheet->getRowDimension(1)->setRowHeight(35);
 

@@ -29,22 +29,22 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
         return User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))->with('assistant')->get();
     }
 
-    public function headings(): array
+            public function headings(): array
     {
         return [
-            ['ملاحظة هامة: الأعمدة الملونة باللون الأزرق إجبارية (يجب تعبئتها)، بينما الأعمدة باللون الأبيض اختيارية. يجب تعبئة إما الاسم العربي أو الإنجليزي.'],
+            [__('exports.notices.assistants')],
             [
-                'الاسم الأول (عربي)',
-                'الاسم الأخير (عربي)',
-                'الاسم الأول (انجليزي)',
-                'الاسم الأخير (انجليزي)',
-                'الرقم المدني',
-                'رقم الجوال',
-                'البريد الإلكتروني',
-                'العنوان',
-                'اسم جهة الطوارئ',
-                'رقم الطوارئ',
-                'اللغة المفضلة'
+                __('exports.columns.first_name_ar'),
+                __('exports.columns.last_name_ar'),
+                __('exports.columns.first_name_en'),
+                __('exports.columns.last_name_en'),
+                __('exports.columns.national_id'),
+                __('exports.columns.phone'),
+                __('exports.columns.email'),
+                __('exports.columns.address'),
+                __('exports.columns.emergency_contact_name'),
+                __('exports.columns.emergency_contact_phone'),
+                __('exports.columns.preferred_language')
             ]
         ];
     }
@@ -82,7 +82,7 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
     public function styles(Worksheet $sheet)
     {
         // جعل الورقة من اليمين لليسار
-        $sheet->setRightToLeft(true);
+        $sheet->setRightToLeft(app()->getLocale() === 'ar');
 
         // ارتفاع الصفوف الافتراضي ليكون أكبر
         $sheet->getDefaultRowDimension()->setRowHeight(25);

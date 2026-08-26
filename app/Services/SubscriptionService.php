@@ -362,17 +362,8 @@ class SubscriptionService
         $startDate = Carbon::now();
         $endDate = clone $startDate;
 
-        switch ($plan->billing_cycle) {
-            case 'monthly':
-                $endDate->addMonth();
-                break;
-            case 'yearly':
-                $endDate->addYear();
-                break;
-            case 'trial':
-                $endDate->addDays($plan->trial_days ?? 14);
-                break;
-        }
+        // Default to a 1 year subscription since billing_cycle column does not exist
+        $endDate->addYear();
 
         return [$startDate->toDateString(), $endDate->toDateString()];
     }

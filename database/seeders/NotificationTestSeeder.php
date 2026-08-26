@@ -46,12 +46,8 @@ class NotificationTestSeeder extends Seeder
         $supervisor = User::where('national_id', '1002004001')->first() 
             ?? User::create([
                 'first_name_ar' => 'مشرف',
-                'second_name_ar' => 'رقم',
-                'third_name_ar' => '1',
                 'last_name_ar' => 'الإخطار',
                 'first_name_en' => 'Supervisor',
-                'second_name_en' => 'Number',
-                'third_name_en' => '1',
                 'last_name_en' => 'Notify',
                 'email' => 'supervisor_notify@wasel.com',
                 'password' => Hash::make('password'),
@@ -72,12 +68,8 @@ class NotificationTestSeeder extends Seeder
         $driver = User::where('national_id', '1002005001')->first() 
             ?? User::create([
                 'first_name_ar' => 'سائق',
-                'second_name_ar' => 'رقم',
-                'third_name_ar' => '1',
                 'last_name_ar' => 'الإخطار',
                 'first_name_en' => 'Driver',
-                'second_name_en' => 'Number',
-                'third_name_en' => '1',
                 'last_name_en' => 'Notify',
                 'email' => 'driver_notify@wasel.com',
                 'password' => Hash::make('password'),
@@ -106,12 +98,8 @@ class NotificationTestSeeder extends Seeder
         $assistant = User::where('national_id', '1002006001')->first() 
             ?? User::create([
                 'first_name_ar' => 'مساعدة',
-                'second_name_ar' => 'الباص',
-                'third_name_ar' => '1',
                 'last_name_ar' => 'الإخطار',
                 'first_name_en' => 'Assistant',
-                'second_name_en' => 'Bus',
-                'third_name_en' => '1',
                 'last_name_en' => 'Notify',
                 'email' => 'assistant_notify@wasel.com',
                 'password' => Hash::make('password'),
@@ -148,12 +136,8 @@ class NotificationTestSeeder extends Seeder
         // 7. Create Guardian
         $parentUser = User::where('national_id', '1000200030')->first() ?? User::create([
             'first_name_ar' => 'ولي',
-            'second_name_ar' => 'أمر',
-            'third_name_ar' => 'تجريبي',
             'last_name_ar' => 'الأول',
             'first_name_en' => 'Guardian',
-            'second_name_en' => 'Test',
-            'third_name_en' => 'Parent',
             'last_name_en' => 'One',
             'email' => 'parent@wasel.com',
             'password' => Hash::make('password'),
@@ -189,12 +173,8 @@ class NotificationTestSeeder extends Seeder
                 ['student_code' => "TEST-ST-" . (100 + $index)],
                 [
                     'first_name_ar' => $data['name'],
-                    'second_name_ar' => 'اسم',
-                    'third_name_ar' => 'ثاني',
                     'last_name_ar' => 'أخير',
                     'first_name_en' => $data['name_en'],
-                    'second_name_en' => 'Second',
-                    'third_name_en' => 'Third',
                     'last_name_en' => 'Last',
                     'national_id' => $data['id'],
                     'gender' => ($index % 2 == 0) ? 'male' : 'female',

@@ -117,7 +117,8 @@ export default function Dashboard({
   const handleApprove = (e: React.FormEvent) => {
     e.preventDefault();
     router.post(route('admin.subscriptions.approve', selectedSub.id), {
-      installments_count: installmentsCount
+      installments_count: installmentsCount,
+      price_per_student: selectedSub.plan?.price || selectedSub.plan?.price_per_student || 0
     }, {
       onSuccess: () => setApproveModalOpen(false)
     });

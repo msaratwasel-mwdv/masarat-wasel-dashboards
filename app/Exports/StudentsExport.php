@@ -32,21 +32,21 @@ class StudentsExport implements FromCollection, WithHeadings, WithMapping, Shoul
             ->get();
     }
 
-    public function headings(): array
+            public function headings(): array
     {
         return [
-            ['ملاحظة هامة: الأعمدة الملونة باللون الأزرق إجبارية. يجب إدخال هوية ولي الأمر لربط الطالب. إذا كان ولي الأمر غير مسجل مسبقاً، يجب إدخال اسمه ورقم جواله.'],
+            [__('exports.notices.students')],
             [
-                'الاسم الأول للطالب (عربي)', 
-                'اسم العائلة للطالب (عربي)', 
-                'الاسم الأول للطالب (انجليزي)', 
-                'اسم العائلة للطالب (انجليزي)', 
-                'الرقم المدني للطالب', 
-                'الجنس (male/female)',
-                'الرقم المدني لولي الأمر',
-                'اسم ولي الأمر',
-                'رقم جوال ولي الأمر',
-                'صلة القرابة (أب، أم، إلخ)'
+                __('exports.columns.student_first_name_ar'),
+                __('exports.columns.student_last_name_ar'),
+                __('exports.columns.student_first_name_en'),
+                __('exports.columns.student_last_name_en'),
+                __('exports.columns.student_national_id'),
+                __('exports.columns.gender'),
+                __('exports.columns.guardian_national_id'),
+                __('exports.columns.guardian_name'),
+                __('exports.columns.guardian_phone'),
+                __('exports.columns.relationship')
             ]
         ];
     }
@@ -81,7 +81,7 @@ class StudentsExport implements FromCollection, WithHeadings, WithMapping, Shoul
 
     public function styles(Worksheet $sheet)
     {
-        $sheet->setRightToLeft(true);
+        $sheet->setRightToLeft(app()->getLocale() === 'ar');
         $sheet->getDefaultRowDimension()->setRowHeight(25);
         $sheet->getStyle('A:J')->applyFromArray([
             'alignment'=>[

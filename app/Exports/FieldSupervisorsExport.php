@@ -23,11 +23,21 @@ class FieldSupervisorsExport implements FromCollection, WithHeadings, WithMappin
         return User::whereHas('roles', fn($q) => $q->where('name', 'field_supervisor'))->with('fieldSupervisor')->get();
     }
 
-    public function headings(): array
+            public function headings(): array
     {
         return [
-            ['ملاحظة هامة: الأعمدة الملونة باللون الأزرق إجبارية (يجب تعبئتها)، بينما الأعمدة باللون الأبيض اختيارية. يجب تعبئة إما الاسم العربي أو الإنجليزي.'],
-            ['الاسم الأول (عربي)','الاسم الأخير (عربي)','الاسم الأول (انجليزي)','الاسم الأخير (انجليزي)','الرقم المدني','رقم الجوال','البريد الإلكتروني','العنوان','اللغة المفضلة']
+            [__('exports.notices.field_supervisors')],
+            [
+                __('exports.columns.first_name_ar'),
+                __('exports.columns.last_name_ar'),
+                __('exports.columns.first_name_en'),
+                __('exports.columns.last_name_en'),
+                __('exports.columns.national_id'),
+                __('exports.columns.phone'),
+                __('exports.columns.email'),
+                __('exports.columns.address'),
+                __('exports.columns.preferred_language')
+            ]
         ];
     }
 
@@ -43,7 +53,7 @@ class FieldSupervisorsExport implements FromCollection, WithHeadings, WithMappin
 
     public function styles(Worksheet $sheet)
     {
-        $sheet->setRightToLeft(true);
+        $sheet->setRightToLeft(app()->getLocale() === 'ar');
         $sheet->getDefaultRowDimension()->setRowHeight(25);
         $sheet->getStyle('A:I')->applyFromArray(['alignment'=>['horizontal'=>\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,'vertical'=>\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER]]);
         $sheet->mergeCells('A1:I1');

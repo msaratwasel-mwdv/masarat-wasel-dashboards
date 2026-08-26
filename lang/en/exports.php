@@ -1,0 +1,46 @@
+<?php
+
+return array (
+  'notices' => 
+  array (
+    'assistants' => 'Important Note: Blue columns are mandatory (must be filled), while white columns are optional. Either Arabic or English name must be filled.',
+    'drivers' => 'Important Note: Blue columns are mandatory (must be filled), while white columns are optional.',
+    'field_supervisors' => 'Important Note: Blue columns are mandatory (must be filled), while white columns are optional. Either Arabic or English name must be filled.',
+    'guardians' => 'Important Note: Blue columns are mandatory. Either Arabic or English name must be filled.',
+    'school_users' => 'Important Note: Blue columns are mandatory (must be filled), while white columns are optional.',
+    'students' => 'Important Note: Blue columns are mandatory. Guardian ID must be entered to link the student. If the guardian is not registered previously, you must enter their name and phone number.',
+    'teachers' => 'Important Note: Blue columns are mandatory. Either Arabic or English name must be filled.',
+  ),
+  'columns' => 
+  array (
+    'first_name_ar' => 'First Name (Arabic)',
+    'last_name_ar' => 'Last Name (Arabic)',
+    'first_name_en' => 'First Name (English)',
+    'last_name_en' => 'Last Name (English)',
+    'national_id' => 'National ID',
+    'phone' => 'Phone Number',
+    'email' => 'Email',
+    'address' => 'Address',
+    'emergency_contact_name' => 'Emergency Contact Name',
+    'emergency_contact_phone' => 'Emergency Contact Phone',
+    'preferred_language' => 'Preferred Language',
+    'preferred_language_ar_en' => 'Preferred Language (ar / en)',
+    'license_number' => 'License Number',
+    'license_expiry' => 'License Expiry Date (YYYY-MM-DD)',
+    'father_name_ar' => 'Father Name (Arabic)',
+    'grandfather_name_ar' => 'Grandfather Name (Arabic)',
+    'father_name_en' => 'Father Name (English)',
+    'grandfather_name_en' => 'Grandfather Name (English)',
+    'school_id' => 'School ID',
+    'student_first_name_ar' => 'Student First Name (Arabic)',
+    'student_last_name_ar' => 'Student Last Name (Arabic)',
+    'student_first_name_en' => 'Student First Name (English)',
+    'student_last_name_en' => 'Student Last Name (English)',
+    'student_national_id' => 'Student National ID',
+    'gender' => 'Gender (male/female)',
+    'guardian_national_id' => 'Guardian National ID',
+    'guardian_name' => 'Guardian Name',
+    'guardian_phone' => 'Guardian Phone Number',
+    'relationship' => 'Relationship (Father, Mother, etc.)',
+  ),
+);

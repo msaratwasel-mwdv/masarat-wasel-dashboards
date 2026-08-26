@@ -68,12 +68,8 @@ class TestTrackingSeeder extends Seeder
         $driverUser = User::create([
             'phone' => '771111111',
             'first_name_ar' => 'سائق',
-            'second_name_ar' => 'تجريبي',
-            'third_name_ar' => 'الباص',
             'last_name_ar' => '200',
             'first_name_en' => 'Driver',
-            'second_name_en' => 'Test',
-            'third_name_en' => 'Bus',
             'last_name_en' => '200',
             'email' => 'driver200@masarat.com',
             'password' => Hash::make('password'),
@@ -100,12 +96,8 @@ class TestTrackingSeeder extends Seeder
         $assistantUser = User::create([
             'phone' => '772222222',
             'first_name_ar' => 'مشرفة',
-            'second_name_ar' => 'تجريبية',
-            'third_name_ar' => 'الباص',
             'last_name_ar' => '200',
             'first_name_en' => 'Assistant',
-            'second_name_en' => 'Test',
-            'third_name_en' => 'Bus',
             'last_name_en' => '200',
             'email' => 'assistant200@masarat.com',
             'password' => Hash::make('password'),
@@ -165,12 +157,8 @@ class TestTrackingSeeder extends Seeder
 
             $parent = User::create([
                 'first_name_ar' => 'ولي أمر',
-                'second_name_ar' => 'تجريبي',
-                'third_name_ar' => 'رقم',
                 'last_name_ar' => (string)$i,
                 'first_name_en' => 'Parent',
-                'second_name_en' => 'Test',
-                'third_name_en' => 'Number',
                 'last_name_en' => (string)$i,
                 'phone' => $phone,
                 'national_id' => '200300400' . $i,
@@ -193,12 +181,8 @@ class TestTrackingSeeder extends Seeder
             for ($j = 1; $j <= 3; $j++) {
                 $student = Student::create([
                     'first_name_ar' => 'طالب ' . $j,
-                    'second_name_ar' => 'ابن',
-                    'third_name_ar' => 'ولي أمر ' . $i,
                     'last_name_ar' => 'الأفق',
                     'first_name_en' => 'Student ' . $j,
-                    'second_name_en' => 'Son of',
-                    'third_name_en' => 'Parent ' . $i,
                     'last_name_en' => 'Al-Ufuq',
                     'student_code' => 'ALU-' . $i . '-' . $j . '-' . rand(100, 999),
                     'national_id' => '300400500' . $i . $j,
