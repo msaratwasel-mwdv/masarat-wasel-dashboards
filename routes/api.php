@@ -1,13 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\DailyTripApiController;
 use App\Http\Controllers\Api\BusLocationController;
+use App\Http\Controllers\Api\DailyTripApiController;
 use App\Http\Controllers\Api\GuardianNotificationController;
+use App\Http\Controllers\Api\WhatsAppWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,11 +17,13 @@ use Illuminate\Support\Facades\Hash;
 |
 */
 
+// ═══ WhatsApp Webhook ═══
+Route::match(['get', 'post'], '/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
+
 // ✅ Rate Limiting: 5 محاولات دخول فقط كل دقيقة — يمنع Brute Force attacks
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/auth/login-attempt-status', [AuthController::class, 'checkLoginAttemptStatus']);
 Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
-
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -32,23 +33,26 @@ Route::get('/user', function (Request $request) {
 Route::post('/broadcasting/auth', function (Request $request) {
     try {
         $user = $request->user();
-        \Log::info("Broadcasting auth attempt", [
+        \Log::info('Broadcasting auth attempt', [
             'user_id' => $user ? $user->id : 'guest',
             'channel' => $request->channel_name,
-            'socket_id' => $request->socket_id
+            'socket_id' => $request->socket_id,
         ]);
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
+
         return \Illuminate\Support\Facades\Broadcast::auth($request);
     } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
         $message = $e->getMessage() ?: 'Access Denied';
         \Log::warning("Broadcasting auth access denied: {$message}");
+
         return response()->json(['message' => $message], 403);
     } catch (\Throwable $e) {
-        \Log::error("Broadcasting auth API route error: " . $e->getMessage(), [
-            'exception' => $e->getTraceAsString()
+        \Log::error('Broadcasting auth API route error: '.$e->getMessage(), [
+            'exception' => $e->getTraceAsString(),
         ]);
+
         return response()->json(['message' => 'Broadcasting auth failed'], 500);
     }
 })->middleware('auth:sanctum');
@@ -90,7 +94,7 @@ Route::middleware(['auth:sanctum', app()->environment('local') ? 'throttle:300,1
 
         // --- تحديث موقع الباص (للسائق والمشرف فقط) ---
         Route::post('/bus/{bus}/location', [BusLocationController::class, 'update']);
-        
+
         // --- المشرف الميداني ---
         Route::get('/field/buses', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'buses']);
         Route::get('/field/inspection-items', [\App\Http\Controllers\Api\FieldSupervisorApiController::class, 'inspectionItems']);
@@ -103,7 +107,7 @@ Route::middleware(['auth:sanctum', app()->environment('local') ? 'throttle:300,1
     // ⚠️ هذا الـ route خارج CheckTransportAccess لأن ولي الأمر يحتاج الوصول إليه
     // الحماية موجودة داخل BusLocationController::show() نفسه
     Route::get('/bus/{bus}/location', [BusLocationController::class, 'show']);
-    
+
     // --- إشعارات ولي الأمر ---
     Route::get('/guardian/notifications', [GuardianNotificationController::class, 'index']);
     Route::post('/guardian/notifications/{id}/read', [GuardianNotificationController::class, 'markAsRead']);
@@ -175,7 +179,7 @@ Route::middleware(['auth:sanctum', app()->environment('local') ? 'throttle:300,1
     // Subscriptions, Plans, and Invoices
     // ═══════════════════════════════════════════════════════════
     Route::apiResource('plans', \App\Http\Controllers\Api\PlanController::class);
-    
+
     Route::get('/subscriptions/my', [\App\Http\Controllers\Api\SubscriptionController::class, 'mySubscriptions']);
     Route::post('/subscriptions/attendance', [\App\Http\Controllers\Api\SubscriptionController::class, 'subscribeAttendance']);
     Route::post('/subscriptions/transport', [\App\Http\Controllers\Api\SubscriptionController::class, 'subscribeTransport']);

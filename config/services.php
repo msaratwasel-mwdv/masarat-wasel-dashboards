@@ -39,5 +39,8 @@ return [
     'google_maps' => [
         'key' => env('Maps_API_KEY'), // Server-side key (backend only)
     ],
-
+    'meta_whatsapp' => [
+        'token' => env('META_WHATSAPP_TOKEN'),
+        'phone_number_id' => env('META_PHONE_NUMBER_ID'),
+    ],
 ];

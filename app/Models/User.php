@@ -4,13 +4,12 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
@@ -40,6 +39,7 @@ class User extends Authenticatable
         'preferred_language',
         'role',
         'is_active',
+        'is_whatsapp_active',
     ];
 
     /**
@@ -95,6 +95,7 @@ class User extends Authenticatable
     {
         // Use getRelationValue to avoid triggering load if not loaded
         $roles = $this->getRelationValue('roles');
+
         return $roles ? $roles->first()?->name : null;
     }
 
@@ -134,18 +135,18 @@ class User extends Authenticatable
 
         if ($isEn) {
             $nameEn = $this->name_en;
-            if (!empty(trim($nameEn)) && $nameEn !== $this->email) {
+            if (! empty(trim($nameEn)) && $nameEn !== $this->email) {
                 return $nameEn;
             }
         }
 
         $names = [
             $this->first_name_ar,
-            $this->last_name_ar
+            $this->last_name_ar,
         ];
 
         // Ensure each part is UTF-8 or empty
-        $names = array_map(function($n) {
+        $names = array_map(function ($n) {
             return is_string($n) ? mb_convert_encoding($n, 'UTF-8', 'UTF-8') : null;
         }, $names);
 
@@ -156,6 +157,7 @@ class User extends Authenticatable
         }
 
         $email = is_string($this->email) ? mb_convert_encoding($this->email, 'UTF-8', 'UTF-8') : '';
+
         return $fullName ?: $email;
     }
 
@@ -184,16 +186,17 @@ class User extends Authenticatable
     {
         $namesEn = [
             $this->first_name_en,
-            $this->last_name_en
+            $this->last_name_en,
         ];
 
-        $namesEn = array_map(function($n) {
+        $namesEn = array_map(function ($n) {
             return is_string($n) ? mb_convert_encoding($n, 'UTF-8', 'UTF-8') : null;
         }, $namesEn);
 
         $fullNameEn = trim(implode(' ', array_filter($namesEn)));
 
         $email = is_string($this->email) ? mb_convert_encoding($this->email, 'UTF-8', 'UTF-8') : '';
+
         return $fullNameEn ?: $email;
     }
 
@@ -213,7 +216,7 @@ class User extends Authenticatable
         try {
             return url(\Illuminate\Support\Facades\Storage::url($this->image));
         } catch (\Exception $e) {
-            return asset('storage/' . ltrim($this->image, '/'));
+            return asset('storage/'.ltrim($this->image, '/'));
         }
     }
 
@@ -235,7 +238,9 @@ class User extends Authenticatable
         $schoolId = $this->schoolAdmin?->school_id
             ?? $this->teacher?->school_id;
 
-        if ($schoolId) return $schoolId;
+        if ($schoolId) {
+            return $schoolId;
+        }
 
         // 2. For drivers, assistants, and field supervisors, resolve via assigned bus
         return $this->assignedBus?->school_id
@@ -379,7 +384,6 @@ class User extends Authenticatable
      * Returns all registered device tokens for this user.
      *
      * @param  \Illuminate\Notifications\Notification|null  $notification
-     * @return array
      */
     public function routeNotificationForFcm($notification = null): array
     {
@@ -392,7 +396,7 @@ class User extends Authenticatable
      */
     public function updateFcmToken($fcmToken, $deviceType = 'android', $deviceName = null, $deviceId = null, $appBundleId = null, $preferredLanguage = null): void
     {
-        if (!$fcmToken) {
+        if (! $fcmToken) {
             return;
         }
 
@@ -404,10 +408,10 @@ class User extends Authenticatable
 
         // 2. We use the TOKEN as the primary key for search to avoid Unique Violation
         $updateData = [
-            'user_id'       => $this->id,
-            'device_id'     => $deviceId,
-            'device_type'   => $deviceType,
-            'device_name'   => $deviceName,
+            'user_id' => $this->id,
+            'device_id' => $deviceId,
+            'device_type' => $deviceType,
+            'device_name' => $deviceName,
             'app_bundle_id' => $appBundleId,
         ];
 
@@ -421,10 +425,10 @@ class User extends Authenticatable
         );
 
         \Illuminate\Support\Facades\Log::debug("[FCM] Token updated for user {$this->id}", [
-            'device_id'   => $deviceId,
+            'device_id' => $deviceId,
             'device_name' => $deviceName,
-            'has_token'   => true,
-            'preferred_language' => $preferredLanguage
+            'has_token' => true,
+            'preferred_language' => $preferredLanguage,
         ]);
     }
 
@@ -465,9 +469,12 @@ class User extends Authenticatable
             return $this->attributes['_cached_school'];
         }
         $schoolId = $this->getSchoolIdEfficient();
-        if (!$schoolId) return null;
+        if (! $schoolId) {
+            return null;
+        }
         $school = \App\Models\School::find($schoolId);
         $this->attributes['_cached_school'] = $school;
+
         return $school;
     }
 
@@ -510,29 +517,29 @@ class User extends Authenticatable
 
     public function scopeWithRole($query, string $role)
     {
-        return $query->whereHas('roles', fn($q) => $q->where('name', $role));
+        return $query->whereHas('roles', fn ($q) => $q->where('name', $role));
     }
 
     /**
      * Get the history of buses assigned to this driver.
      */
-/*     public function busHistory(): HasMany
-    {
-        return $this->hasMany(BusDriverAssignment::class, 'driver_id');
-    } */
+    /*     public function busHistory(): HasMany
+        {
+            return $this->hasMany(BusDriverAssignment::class, 'driver_id');
+        } */
 
     /**
      * Scope a query to only include users belonging to a specific school.
      */
     public function scopeAtSchool($query, $schoolId)
     {
-        return $query->where(function($q) use ($schoolId) {
-            $q->whereHas('schoolAdmin', fn($sq) => $sq->where('school_id', $schoolId))
-              ->orWhereHas('teacher', fn($sq) => $sq->where('school_id', $schoolId))
-              ->orWhereHas('assignedBus', fn($sq) => $sq->where('school_id', $schoolId))
-              ->orWhereHas('assignedBusAsAssistant', fn($sq) => $sq->where('school_id', $schoolId))
-              ->orWhereHas('assignedBusAsFieldSupervisor', fn($sq) => $sq->where('school_id', $schoolId))
-              ->orWhereHas('students.enrollments.classroom', fn($sq) => $sq->atSchool($schoolId));
+        return $query->where(function ($q) use ($schoolId) {
+            $q->whereHas('schoolAdmin', fn ($sq) => $sq->where('school_id', $schoolId))
+                ->orWhereHas('teacher', fn ($sq) => $sq->where('school_id', $schoolId))
+                ->orWhereHas('assignedBus', fn ($sq) => $sq->where('school_id', $schoolId))
+                ->orWhereHas('assignedBusAsAssistant', fn ($sq) => $sq->where('school_id', $schoolId))
+                ->orWhereHas('assignedBusAsFieldSupervisor', fn ($sq) => $sq->where('school_id', $schoolId))
+                ->orWhereHas('students.enrollments.classroom', fn ($sq) => $sq->atSchool($schoolId));
         });
     }
 }
