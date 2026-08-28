@@ -57,7 +57,7 @@ class WhatsAppManagementController extends Controller
         ];
 
         // 3. Filtered Logs Query
-        $logsQuery = WhatsAppLog::with('user:id,first_name_ar,last_name_ar,phone,role')
+        $logsQuery = WhatsAppLog::with('user:id,first_name_ar,last_name_ar,phone')
             ->latest('id');
 
         if ($search) {
