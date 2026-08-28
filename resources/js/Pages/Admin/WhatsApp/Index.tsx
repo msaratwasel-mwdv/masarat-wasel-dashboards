@@ -323,28 +323,32 @@ export default function WhatsAppIndex({
               {/* Big Interactive Toggle */}
               <div className="flex flex-col items-center gap-2 self-end sm:self-center">
                 <button
+                  type="button"
+                  dir="ltr"
                   disabled={isTogglingMaster}
                   onClick={() => handleToggleMaster(stats.master_switch)}
-                  className={`relative inline-flex h-12 w-24 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none shadow-inner ${
-                    stats.master_switch ? "bg-emerald-500" : "bg-gray-700"
+                  className={`relative inline-flex h-11 w-22 items-center rounded-full p-1 transition-colors duration-300 focus:outline-none cursor-pointer shadow-inner flex-shrink-0 ${
+                    stats.master_switch ? "bg-emerald-500" : "bg-gray-700 border border-gray-600"
                   } ${isTogglingMaster ? "opacity-50 cursor-not-allowed" : ""}`}
+                  role="switch"
+                  aria-checked={stats.master_switch}
                 >
-                  <span
-                    className={`pointer-events-none inline-block h-11 w-11 transform rounded-full bg-white shadow-lg ring-0 transition duration-300 ease-in-out flex items-center justify-center ${
+                  <motion.div
+                    layout
+                    transition={{ type: "spring", stiffness: 600, damping: 35 }}
+                    className={`h-9 w-9 rounded-full shadow-lg flex items-center justify-center transition-all ${
                       stats.master_switch
-                        ? isRTL
-                          ? "-translate-x-12 text-emerald-600"
-                          : "translate-x-12 text-emerald-600"
-                        : isRTL
-                        ? "translate-x-0 text-gray-400"
-                        : "translate-x-0 text-gray-400"
+                        ? "bg-white text-emerald-600 ml-auto"
+                        : "bg-gray-200 text-gray-500 mr-auto"
                     }`}
                   >
-                    <Power className="w-5 h-5" />
-                  </span>
+                    <Power className="w-4 h-4 stroke-[2.5]" />
+                  </motion.div>
                 </button>
                 <span className="text-xs font-semibold text-gray-300">
-                  {stats.master_switch ? "اضغط للإيقاف" : "اضغط للتشغيل"}
+                  {stats.master_switch
+                    ? (isRTL ? "اضغط للإيقاف" : "Click to Disable")
+                    : (isRTL ? "اضغط للتشغيل" : "Click to Enable")}
                 </span>
               </div>
             </div>
@@ -470,21 +474,31 @@ export default function WhatsAppIndex({
 
                     {/* Template Switch Button */}
                     <button
+                      type="button"
+                      dir="ltr"
                       disabled={!stats.master_switch || togglingTemplate === tpl.name}
                       onClick={() => handleToggleTemplate(tpl.name, tpl.is_enabled)}
-                      className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        tpl.is_enabled && stats.master_switch ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"
+                      className={`relative inline-flex h-7 w-13 items-center rounded-full p-0.5 transition-colors duration-300 focus:outline-none cursor-pointer flex-shrink-0 ${
+                        tpl.is_enabled && stats.master_switch
+                          ? "bg-emerald-500"
+                          : "bg-gray-300 dark:bg-gray-700 border border-gray-400/20"
                       } ${!stats.master_switch || togglingTemplate === tpl.name ? "opacity-50 cursor-not-allowed" : ""}`}
+                      role="switch"
+                      aria-checked={tpl.is_enabled && stats.master_switch}
                     >
-                      <span
-                        className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      <motion.div
+                        layout
+                        transition={{ type: "spring", stiffness: 600, damping: 35 }}
+                        className={`h-6 w-6 rounded-full shadow-md flex items-center justify-center ${
                           tpl.is_enabled && stats.master_switch
-                            ? isRTL
-                              ? "-translate-x-6"
-                              : "translate-x-6"
-                            : "translate-x-0"
+                            ? "bg-white text-emerald-600 ml-auto"
+                            : "bg-white text-gray-400 mr-auto"
                         }`}
-                      />
+                      >
+                        {tpl.is_enabled && stats.master_switch && (
+                          <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                        )}
+                      </motion.div>
                     </button>
                   </div>
 

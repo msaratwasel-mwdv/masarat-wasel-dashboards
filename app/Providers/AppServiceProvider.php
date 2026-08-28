@@ -27,6 +27,10 @@ class AppServiceProvider extends ServiceProvider
             if (class_exists(\Spatie\WebTinker\WebTinkerServiceProvider::class)) {
                 $this->app->register(\Spatie\WebTinker\WebTinkerServiceProvider::class);
             }
+            if (class_exists(\Laravel\Telescope\TelescopeServiceProvider::class) && class_exists(\App\Providers\TelescopeServiceProvider::class)) {
+                $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
+                $this->app->register(\App\Providers\TelescopeServiceProvider::class);
+            }
         }
     }
 

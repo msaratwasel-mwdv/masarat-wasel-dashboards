@@ -1312,7 +1312,6 @@ const dictionary = {
 
 
   "No trips found": { ar: "لم يتم العثور على رحلات", en: "No trips found" },
-  "No Trips Found": { ar: "لم يتم العثور على رحلات", en: "No Trips Found" },
 
   // Common Actions
   Back: { ar: "رجوع", en: "Back" },
