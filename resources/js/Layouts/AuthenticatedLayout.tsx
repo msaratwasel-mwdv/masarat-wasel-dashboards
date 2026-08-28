@@ -209,6 +209,11 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "grid",
   },
   {
+    label: isRTL ? "رسائل الواتساب" : "WhatsApp Service",
+    route: "admin.whatsapp.index",
+    icon: "chat",
+  },
+  {
     label: isRTL ? "الإعدادات" : "Settings",
     route: "profile.edit",
     icon: "cog",

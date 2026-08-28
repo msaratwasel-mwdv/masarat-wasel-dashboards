@@ -2,7 +2,9 @@
 
 namespace Tests\Unit\Services;
 
+use App\Models\SystemSetting;
 use App\Models\User;
+use App\Models\WhatsAppLog;
 use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
@@ -22,7 +24,7 @@ class WhatsAppServiceTest extends TestCase
         $this->whatsAppService = new WhatsAppService;
     }
 
-    public function test_send_template_calls_meta_api_successfully(): void
+    public function test_send_template_calls_meta_api_successfully_and_logs_to_database(): void
     {
         Http::fake([
             'https://graph.facebook.com/*' => Http::response([
@@ -34,7 +36,7 @@ class WhatsAppServiceTest extends TestCase
 
         $success = $this->whatsAppService->sendTemplate(
             to: '771234567',
-            templateName: 'student_boarded_bus',
+            templateName: 'student_bus_status',
             parameters: ['أحمد', '101'],
             lang: 'ar'
         );
@@ -45,19 +47,30 @@ class WhatsAppServiceTest extends TestCase
             return str_contains($request->url(), 'mock_phone_id_456/messages')
                 && $request['messaging_product'] === 'whatsapp'
                 && $request['to'] === '967771234567'
-                && $request['template']['name'] === 'student_boarded_bus';
+                && $request['template']['name'] === 'student_bus_status';
         });
+
+        // Verify Log creation
+        $this->assertDatabaseHas('whatsapp_logs', [
+            'recipient_phone' => '771234567',
+            'template_name' => 'student_bus_status',
+            'status' => 'sent',
+            'wamid' => 'wamid.HBgLMTIzNDU2Nzg5MA==',
+        ]);
     }
 
     public function test_send_template_with_header_image(): void
     {
         Http::fake([
-            'https://graph.facebook.com/*' => Http::response(['success' => true], 200),
+            'https://graph.facebook.com/*' => Http::response([
+                'messaging_product' => 'whatsapp',
+                'messages' => [['id' => 'wamid.HEADER_TEST_123']],
+            ], 200),
         ]);
 
         $success = $this->whatsAppService->sendTemplate(
             to: '771234567',
-            templateName: 'student_boarded_bus',
+            templateName: 'student_bus_status',
             parameters: ['سارة'],
             lang: 'ar',
             headerImageUrl: 'https://example.com/bus.png'
@@ -74,6 +87,49 @@ class WhatsAppServiceTest extends TestCase
         });
     }
 
+    public function test_send_template_skips_when_master_kill_switch_is_disabled(): void
+    {
+        Http::fake();
+
+        SystemSetting::set('whatsapp_master_switch', false, 'whatsapp', 'boolean');
+
+        $success = $this->whatsAppService->sendTemplate(
+            to: '771234567',
+            templateName: 'student_bus_status',
+            parameters: ['أحمد', '101']
+        );
+
+        $this->assertFalse($success);
+        Http::assertNothingSent();
+
+        $this->assertDatabaseHas('whatsapp_logs', [
+            'recipient_phone' => '771234567',
+            'status' => 'skipped',
+        ]);
+    }
+
+    public function test_send_template_skips_when_template_switch_is_disabled(): void
+    {
+        Http::fake();
+
+        SystemSetting::set('whatsapp_master_switch', true, 'whatsapp', 'boolean');
+        SystemSetting::set('whatsapp_template_bus_trip_report_enabled', false, 'whatsapp', 'boolean');
+
+        $success = $this->whatsAppService->sendTemplate(
+            to: '771234567',
+            templateName: 'bus_trip_report',
+            parameters: ['تقرير رحلة']
+        );
+
+        $this->assertFalse($success);
+        Http::assertNothingSent();
+
+        $this->assertDatabaseHas('whatsapp_logs', [
+            'template_name' => 'bus_trip_report',
+            'status' => 'skipped',
+        ]);
+    }
+
     public function test_send_template_skips_when_user_has_whatsapp_disabled(): void
     {
         Http::fake();
@@ -85,15 +141,20 @@ class WhatsAppServiceTest extends TestCase
 
         $success = $this->whatsAppService->sendTemplate(
             to: '771234567',
-            templateName: 'student_boarded_bus',
+            templateName: 'student_bus_status',
             parameters: ['أحمد', '101']
         );
 
         $this->assertFalse($success);
         Http::assertNothingSent();
+
+        $this->assertDatabaseHas('whatsapp_logs', [
+            'recipient_phone' => '771234567',
+            'status' => 'skipped',
+        ]);
     }
 
-    public function test_send_template_handles_api_failure(): void
+    public function test_send_template_handles_api_failure_and_logs_error(): void
     {
         Http::fake([
             'https://graph.facebook.com/*' => Http::response([
@@ -108,5 +169,19 @@ class WhatsAppServiceTest extends TestCase
         );
 
         $this->assertFalse($success);
+
+        $this->assertDatabaseHas('whatsapp_logs', [
+            'recipient_phone' => '771234567',
+            'template_name' => 'invalid_template',
+            'status' => 'failed',
+        ]);
+    }
+
+    public function test_format_phone_number_formats_yemen_oman_and_saudi_numbers(): void
+    {
+        $this->assertEquals('967771234567', $this->whatsAppService->formatPhoneNumber('771234567'));
+        $this->assertEquals('967771234567', $this->whatsAppService->formatPhoneNumber('0771234567'));
+        $this->assertEquals('96891234567', $this->whatsAppService->formatPhoneNumber('91234567'));
+        $this->assertEquals('966501234567', $this->whatsAppService->formatPhoneNumber('501234567'));
     }
 }

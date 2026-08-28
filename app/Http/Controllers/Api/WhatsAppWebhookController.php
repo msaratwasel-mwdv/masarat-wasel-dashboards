@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\WhatsAppLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -19,8 +21,7 @@ class WhatsAppWebhookController extends Controller
             $token = $request->query('hub_verify_token');
             $challenge = $request->query('hub_challenge');
 
-            // يمكنك تغيير هذا الرمز السري للتحقق في لوحة مطوري فيسبوك
-            $verifyToken = 'masarat_wasel_webhook_verify_2026';
+            $verifyToken = config('services.meta_whatsapp.webhook_verify_token', 'masarat_wasel_webhook_verify_2026');
 
             if ($mode && $token) {
                 if ($mode === 'subscribe' && $token === $verifyToken) {
@@ -40,25 +41,34 @@ class WhatsAppWebhookController extends Controller
 
         Log::info('WhatsApp Webhook Received Payload: '.json_encode($payload, JSON_UNESCAPED_UNICODE));
 
-        // تفكيك حالة الرسائل لمعرفة أسباب الفشل صراحة في سجلات للنظام
+        // تفكيك حالة الرسائل وتحديث سجلات WhatsAppLog
         if (isset($payload['entry'][0]['changes'][0]['value']['statuses'][0])) {
             $status = $payload['entry'][0]['changes'][0]['value']['statuses'][0];
-            $messageId = $status['id'] ?? 'unknown';
-            $messageStatus = $status['status'] ?? 'unknown';
+            $messageId = $status['id'] ?? null;
+            $messageStatus = $status['status'] ?? 'unknown'; // sent, delivered, read, failed
             $recipient = $status['recipient_id'] ?? 'unknown';
 
-            Log::info("WhatsApp Message Status Update - ID: $messageId, Status: $messageStatus, To: $recipient");
+            Log::info("WhatsApp Message Status Update - ID: {$messageId}, Status: {$messageStatus}, To: {$recipient}");
+
+            // تحديث سجل الرسالة في قاعدة البيانات
+            if ($messageId) {
+                $logUpdate = ['status' => $messageStatus];
+                if ($messageStatus === 'failed' && isset($status['errors'][0])) {
+                    $logUpdate['error_message'] = json_encode($status['errors'][0], JSON_UNESCAPED_UNICODE);
+                }
+                WhatsAppLog::where('wamid', $messageId)->update($logUpdate);
+            }
 
             if ($messageStatus === 'failed') {
                 // تلقائياً نقوم بتعطيل الواتساب لهذا الرقم لحماية سمعة الحساب في Meta
                 $cleanPhone = preg_replace('/[^0-9]/', '', $recipient);
                 $last9Digits = substr($cleanPhone, -9);
                 if (strlen($last9Digits) >= 8) {
-                    $user = \App\Models\User::where('phone', 'like', "%$last9Digits")->first();
+                    $user = User::where('phone', 'like', "%{$last9Digits}")->first();
                     if ($user && $user->is_whatsapp_active) {
                         $user->is_whatsapp_active = false;
                         $user->save();
-                        Log::warning("WhatsApp Webhook auto-disabled WhatsApp for User ID: {$user->id} due to delivery failure on phone: $recipient");
+                        Log::warning("WhatsApp Webhook auto-disabled WhatsApp for User ID: {$user->id} due to delivery failure on phone: {$recipient}");
                     }
                 }
 

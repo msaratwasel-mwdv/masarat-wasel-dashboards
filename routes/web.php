@@ -244,6 +244,12 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         // إدارة الفعاليات والأخبار
         Route::resource('events', \App\Http\Controllers\Admin\EventController::class);
 
+        // إدارة وإعدادات وسجلات رسائل الواتساب
+        Route::get('whatsapp', [\App\Http\Controllers\Admin\WhatsAppManagementController::class, 'index'])->name('whatsapp.index');
+        Route::post('whatsapp/toggle-master', [\App\Http\Controllers\Admin\WhatsAppManagementController::class, 'toggleMasterSwitch'])->name('whatsapp.toggle-master');
+        Route::post('whatsapp/toggle-template', [\App\Http\Controllers\Admin\WhatsAppManagementController::class, 'toggleTemplateSwitch'])->name('whatsapp.toggle-template');
+        Route::post('whatsapp/send-test', [\App\Http\Controllers\Admin\WhatsAppManagementController::class, 'sendTestMessage'])->name('whatsapp.send-test');
+
     });
 
 

@@ -5,7 +5,9 @@ namespace Tests\Unit\Models;
 use App\Models\Event;
 use App\Models\LoginAttempt;
 use App\Models\SystemEventLog;
+use App\Models\SystemSetting;
 use App\Models\User;
+use App\Models\WhatsAppLog;
 use Tests\TestCase;
 
 class SystemAndSettingsModelTest extends TestCase
@@ -26,6 +28,40 @@ class SystemAndSettingsModelTest extends TestCase
 
         $this->assertDatabaseHas('system_event_logs', ['id' => $eventLog->id]);
         $this->assertIsArray($eventLog->after_data);
+    }
+
+    public function test_system_setting_model_get_and_set(): void
+    {
+        SystemSetting::set('test_feature_key', true, 'features', 'boolean', 'وصف الميزة');
+
+        $this->assertTrue(SystemSetting::get('test_feature_key'));
+
+        SystemSetting::set('test_feature_key', false, 'features', 'boolean');
+        $this->assertFalse(SystemSetting::get('test_feature_key'));
+
+        $this->assertEquals('default_value', SystemSetting::get('non_existent_key', 'default_value'));
+    }
+
+    public function test_whatsapp_log_model(): void
+    {
+        $user = User::factory()->create();
+
+        $log = WhatsAppLog::create([
+            'user_id' => $user->id,
+            'recipient_phone' => '967771234567',
+            'recipient_name' => 'محمد أحمد',
+            'recipient_type' => 'parent',
+            'template_name' => 'student_bus_status',
+            'event_type' => 'student_boarded',
+            'parameters' => ['أحمد', '101'],
+            'wamid' => 'wamid.123456',
+            'status' => 'sent',
+            'sent_at' => now(),
+        ]);
+
+        $this->assertDatabaseHas('whatsapp_logs', ['id' => $log->id]);
+        $this->assertEquals($user->id, $log->user->id);
+        $this->assertIsArray($log->parameters);
     }
 
     public function test_login_attempt_and_event_models(): void

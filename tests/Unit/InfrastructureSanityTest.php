@@ -153,6 +153,12 @@ class InfrastructureSanityTest extends TestCase
             'subscription_id' => $subscription->id,
         ]);
         $this->assertDatabaseHas('installments', ['id' => $installment->id]);
+
+        $setting = \App\Models\SystemSetting::factory()->create();
+        $this->assertDatabaseHas('system_settings', ['id' => $setting->id]);
+
+        $whatsAppLog = \App\Models\WhatsAppLog::factory()->create();
+        $this->assertDatabaseHas('whatsapp_logs', ['id' => $whatsAppLog->id]);
     }
 
     public function test_helpers_generate_complete_structures(): void
