@@ -13,6 +13,7 @@ class SchoolController extends Controller
     public function index()
     {
         $schools = School::withCount(['buses', 'enrollments'])
+            ->with(['currentSubscription.plan', 'currentSubscription.installments', 'schoolAdmins.user'])
             ->latest()
             ->get();
 
@@ -64,26 +65,17 @@ class SchoolController extends Controller
                 ]);
             }
 
-            // Subscription handling
+            // Subscription and installments handling
             if ($request->filled('plan_id')) {
-                $plan = \App\Models\Plan::find($request->plan_id);
-                if ($plan) {
-                    \App\Models\Subscription::create([
-                        'school_id' => $school->id,
-                        'plan_id' => $plan->id,
-                        'status' => 'active',
-                        'start_date' => now()->toDateString(),
-                        'end_date' => now()->addYear()->toDateString(),
-                        'notes' => [
-                            'billing_type' => 'yearly',
-                            'student_count' => 0,
-                            'bus_count' => 0,
-                            'preferred_lang' => 'ar',
-                            'custom_notes' => 'تم إنشاء الاشتراك وتفعيله آلياً عند تسجيل المدرسة.',
-                        ],
-                    ]);
-                    $school->update(['plan_id' => $plan->id]);
-                }
+                $this->syncSubscriptionAndInstallments(
+                    $school,
+                    (int) $request->plan_id,
+                    $request->filled('installments_count') ? (int) $request->installments_count : 1,
+                    $request->filled('price_per_student') ? (float) $request->price_per_student : null,
+                    $request->filled('student_count') ? (int) $request->student_count : 20,
+                    $request->start_date,
+                    $request->billing_type
+                );
             }
 
             return redirect()->route('admin.schools.index')
@@ -137,20 +129,115 @@ class SchoolController extends Controller
 
     public function update(StoreSchoolRequest $request, School $school)
     {
-        $data = $request->validated();
+        return DB::transaction(function () use ($request, $school) {
+            $data = $request->validated();
 
-        if ($request->hasFile('logo')) {
-            // Delete old logo if exists
-            if ($school->logo) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($school->logo);
+            if ($request->hasFile('logo')) {
+                // Delete old logo if exists
+                if ($school->logo) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($school->logo);
+                }
+                $data['logo'] = $request->file('logo')->store('schools/logos', 'public');
             }
-            $data['logo'] = $request->file('logo')->store('schools/logos', 'public');
+
+            $school->update($data);
+
+            // Update or create subscription & installments if plan specified
+            if ($request->filled('plan_id')) {
+                $this->syncSubscriptionAndInstallments(
+                    $school,
+                    (int) $request->plan_id,
+                    $request->filled('installments_count') ? (int) $request->installments_count : 1,
+                    $request->filled('price_per_student') ? (float) $request->price_per_student : null,
+                    $request->filled('student_count') ? (int) $request->student_count : 20,
+                    $request->start_date,
+                    $request->billing_type
+                );
+            }
+
+            return redirect()->route('admin.schools.index')
+                ->with('success', 'تم تحديث بيانات المدرسة والاشتراك بنجاح');
+        });
+    }
+
+    /**
+     * Helper to synchronize plan subscription and installment schedule
+     */
+    private function syncSubscriptionAndInstallments(
+        School $school,
+        int $planId,
+        int $installmentsCount = 1,
+        ?float $pricePerStudent = null,
+        int $studentCount = 20,
+        ?string $startDate = null,
+        ?string $billingType = 'yearly'
+    ): void {
+        $plan = \App\Models\Plan::find($planId);
+        if (! $plan) {
+            return;
         }
 
-        $school->update($data);
+        $price = $pricePerStudent ?: (float) ($plan->price_per_student ?: 10);
+        $totalAmount = $price * $studentCount;
 
-        return redirect()->route('admin.schools.index')
-            ->with('success', 'School updated successfully');
+        $start = $startDate ? \Carbon\Carbon::parse($startDate) : \Carbon\Carbon::now();
+        $end = (clone $start)->addYear();
+
+        $subscription = \App\Models\Subscription::updateOrCreate(
+            ['school_id' => $school->id, 'status' => 'active'],
+            [
+                'plan_id' => $plan->id,
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'final_price' => $totalAmount,
+                'notes' => [
+                    'billing_type' => $billingType ?: 'yearly',
+                    'student_count' => $studentCount,
+                    'price_per_student' => $price,
+                    'installments_count' => $installmentsCount,
+                    'custom_notes' => 'تم اعتماد الخطة والأقساط آلياً.',
+                ],
+            ]
+        );
+
+        $school->update([
+            'plan_id' => $plan->id,
+            'is_active' => true,
+        ]);
+
+        if ($installmentsCount > 0 && $totalAmount > 0) {
+            // Remove previous pending installments for this subscription
+            \App\Models\Installment::where('subscription_id', $subscription->id)
+                ->where('status', 'pending')
+                ->delete();
+
+            $installmentAmount = round($totalAmount / $installmentsCount, 2);
+            $daysBetween = match ($installmentsCount) {
+                1 => 0,
+                2 => 180, // Half year
+                3 => 120, // 4 months
+                4 => 90,  // Quarterly
+                10 => 30, // Monthly school term
+                12 => 30, // Monthly
+                default => (int) floor(365 / $installmentsCount),
+            };
+
+            for ($i = 1; $i <= $installmentsCount; $i++) {
+                $dueDate = $i === 1
+                    ? $start->copy()->addDays(7)
+                    : $start->copy()->addDays(7 + ($daysBetween * ($i - 1)));
+
+                \App\Models\Installment::create([
+                    'school_id' => $school->id,
+                    'subscription_id' => $subscription->id,
+                    'installment_number' => $i,
+                    'amount' => $installmentAmount,
+                    'due_date' => $dueDate->toDateString(),
+                    'status' => 'pending',
+                    'admin_note' => "القسط {$i} من {$installmentsCount} - باقة {$plan->name} ({$studentCount} طالب)",
+                ]);
+            }
+        }
     }
 
     public function destroy(School $school)

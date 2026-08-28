@@ -37,6 +37,14 @@ class StoreSchoolRequest extends FormRequest
             'admin_phone' => ['nullable', 'required_if:create_admin,true', 'string', 'max:20', 'unique:users,phone'],
             'admin_national_id' => ['nullable', 'string', 'max:255'],
             'admin_password' => ['nullable', 'required_if:create_admin,true', 'string', 'min:8', 'confirmed'],
+
+            // Subscription & Installments
+            'plan_id' => ['nullable', 'exists:plans,id'],
+            'installments_count' => ['nullable', 'integer', 'min:1', 'max:12'],
+            'price_per_student' => ['nullable', 'numeric', 'min:0'],
+            'student_count' => ['nullable', 'integer', 'min:0'],
+            'start_date' => ['nullable', 'date'],
+            'billing_type' => ['nullable', 'string'],
         ];
     }
 
@@ -52,6 +60,10 @@ class StoreSchoolRequest extends FormRequest
             'admin_email' => 'البريد الإلكتروني للمدير',
             'admin_phone' => 'رقم هاتف المدير',
             'admin_password' => 'كلمة المرور',
+            'installments_count' => 'عدد الأقساط',
+            'price_per_student' => 'سعر الطالب',
+            'student_count' => 'عدد الطلاب التقديري',
+            'start_date' => 'تاريخ بدء الاشتراك',
         ];
     }
 }

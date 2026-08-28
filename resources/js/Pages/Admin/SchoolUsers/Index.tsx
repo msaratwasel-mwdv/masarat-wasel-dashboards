@@ -34,7 +34,8 @@ import {
     Upload,
     Download,
     Loader2,
-    Lock
+    Lock,
+    MapPin
 } from "lucide-react";
 import {
     DS_pageWrapper,
