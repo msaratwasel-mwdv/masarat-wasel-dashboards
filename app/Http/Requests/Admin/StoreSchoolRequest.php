@@ -27,19 +27,31 @@ class StoreSchoolRequest extends FormRequest
             'latitude' => ['nullable', 'numeric'],
             'longitude' => ['nullable', 'numeric'],
             'status' => ['required', 'in:Active,Inactive'],
-            'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
+            'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
+            'plan_id' => ['nullable', 'exists:plans,id'],
 
-            // Optional Admin Data (Step 2)
+            // Optional School Admin
+            'create_admin' => ['nullable', 'boolean'],
             'admin_name' => ['nullable', 'required_if:create_admin,true', 'string', 'max:255'],
             'admin_email' => ['nullable', 'required_if:create_admin,true', 'email', 'max:255', 'unique:users,email'],
             'admin_phone' => ['nullable', 'required_if:create_admin,true', 'string', 'max:20', 'unique:users,phone'],
-            'admin_national_id' => ['nullable', 'required_if:create_admin,true', 'string', 'max:255', 'unique:users,national_id'],
-            'admin_address' => ['nullable', 'string', 'max:500'],
-            'admin_image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+            'admin_national_id' => ['nullable', 'string', 'max:255'],
             'admin_password' => ['nullable', 'required_if:create_admin,true', 'string', 'min:8', 'confirmed'],
-            'create_admin' => ['boolean'],
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'name' => 'اسم المدرسة',
+            'address' => 'عنوان المدرسة',
+            'status' => 'حالة المدرسة',
+            'logo' => 'شعار المدرسة',
+            'plan_id' => 'خطة الاشتراك',
+            'admin_name' => 'اسم المدير الكامل',
+            'admin_email' => 'البريد الإلكتروني للمدير',
+            'admin_phone' => 'رقم هاتف المدير',
+            'admin_password' => 'كلمة المرور',
         ];
     }
 }
-
-

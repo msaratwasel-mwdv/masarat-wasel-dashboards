@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreSchoolRequest;
 use App\Models\School;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -19,51 +18,45 @@ class SchoolController extends Controller
 
         return Inertia::render('Admin/Schools/Index', [
             'schools' => $schools,
-            'plans' => \App\Models\Plan::active()->orderBy('sort_order')->get()
+            'plans' => \App\Models\Plan::active()->orderBy('sort_order')->get(),
         ]);
     }
-
-
 
     public function store(StoreSchoolRequest $request)
     {
         return DB::transaction(function () use ($request) {
             $data = $request->validated();
-            
+
             if ($request->hasFile('logo')) {
                 $data['logo'] = $request->file('logo')->store('schools/logos', 'public');
             }
 
+            // Default service flags
+            $data['has_transport'] = true;
+            $data['has_attendance'] = true;
+
             $school = School::create($data);
 
-            // Create admin if requested
-            if ($request->create_admin) {
+            // Create admin if requested and email provided
+            if ($request->boolean('create_admin') && ! empty($request->admin_email)) {
                 $ar = \App\Models\User::parseFullName($request->admin_name);
 
                 $adminData = [
-                    'first_name_ar' => $ar[0],
-                    'last_name_ar' => $ar[3] ?: $ar[0],
+                    'first_name_ar' => $ar[0] ?: 'مدير',
+                    'last_name_ar' => $ar[3] ?: ($ar[0] ?: 'المدرسة'),
+                    'first_name_en' => $ar[0] ?: 'School',
+                    'last_name_en' => $ar[3] ?: 'Admin',
                     'email' => $request->admin_email,
                     'phone' => $request->admin_phone,
-                    'national_id' => $request->admin_national_id,
-                    'address' => $request->admin_address,
+                    'national_id' => $request->admin_national_id ?: ('SA'.rand(10000000, 99999999)),
                     'password' => \Illuminate\Support\Facades\Hash::make($request->admin_password),
+                    'is_whatsapp_active' => true,
                 ];
-
-                if ($request->hasFile('admin_image')) {
-                    $adminData['image'] = $request->file('admin_image')->store('users/images', 'public');
-                }
-
-                // If name_en is not sent from frontend yet, we default it to handle the not-null constraint if applicable
-                $adminData['first_name_en'] = $ar[0];
-                $adminData['second_name_en'] = $ar[1];
-                $adminData['third_name_en'] = $ar[2];
-                $adminData['last_name_en'] = $ar[3] ?: $ar[0];
 
                 $user = \App\Models\User::create($adminData);
 
-                $role = \App\Models\Role::firstOrCreate(['name' => 'school_admin']);
-                $user->roles()->attach($role->id);
+                $role = \App\Models\Role::firstOrCreate(['name' => 'school_admin'], ['display_name' => 'مدير مدرسة']);
+                $user->roles()->syncWithoutDetaching([$role->id]);
 
                 \App\Models\SchoolAdmin::create([
                     'user_id' => $user->id,
@@ -71,44 +64,48 @@ class SchoolController extends Controller
                 ]);
             }
 
-            // Create a pending subscription so it appears in the Subscriptions list
-            // This forces the admin to set the financial details and activate the school properly.
-            $defaultPlan = \App\Models\Plan::orderBy('sort_order')->first();
-            
-            \App\Models\Subscription::create([
-                'school_id' => $school->id,
-                'plan_id' => $defaultPlan ? $defaultPlan->id : 1,
-                'status' => 'pending_approval',
-                'start_date' => now()->toDateString(),
-                'end_date' => now()->addYear()->toDateString(),
-                'notes' => [
-                    'billing_type' => 'yearly',
-                    'student_count' => 20,
-                    'bus_count' => 0,
-                    'preferred_lang' => 'ar',
-                    'custom_notes' => 'تمت الإضافة يدوياً من قبل الإدارة. يرجى المراجعة لاعتماد وتفعيل المدرسة.',
-                ],
-            ]);
+            // Subscription handling
+            if ($request->filled('plan_id')) {
+                $plan = \App\Models\Plan::find($request->plan_id);
+                if ($plan) {
+                    \App\Models\Subscription::create([
+                        'school_id' => $school->id,
+                        'plan_id' => $plan->id,
+                        'status' => 'active',
+                        'start_date' => now()->toDateString(),
+                        'end_date' => now()->addYear()->toDateString(),
+                        'notes' => [
+                            'billing_type' => 'yearly',
+                            'student_count' => 0,
+                            'bus_count' => 0,
+                            'preferred_lang' => 'ar',
+                            'custom_notes' => 'تم إنشاء الاشتراك وتفعيله آلياً عند تسجيل المدرسة.',
+                        ],
+                    ]);
+                    $school->update(['plan_id' => $plan->id]);
+                }
+            }
 
             return redirect()->route('admin.schools.index')
-                ->with('success', 'School created successfully' . ($request->create_admin ? ' with admin' : ''));
+                ->with('success', 'تم إنشاء المدرسة بنجاح'.($request->boolean('create_admin') ? ' وتعيين مديرها' : ''));
         });
     }
+
     public function show(School $school)
     {
         // ⚡ Eager load admins + their users in 2 queries instead of N+1
         $school->load('schoolAdmins.user');
 
-        $school->users = $school->schoolAdmins->map(function($sa) {
+        $school->users = $school->schoolAdmins->map(function ($sa) {
             return [
-                'id'         => $sa->user->id,
-                'name'       => $sa->user->name,
-                'email'      => $sa->user->email,
-                'phone'      => $sa->user->phone,
-                'national_id'=> $sa->user->national_id,
-                'address'    => $sa->user->address,
-                'image'      => $sa->user->image,
-                'role'       => $sa->user->role,
+                'id' => $sa->user->id,
+                'name' => $sa->user->name,
+                'email' => $sa->user->email,
+                'phone' => $sa->user->phone,
+                'national_id' => $sa->user->national_id,
+                'address' => $sa->user->address,
+                'image' => $sa->user->image,
+                'role' => $sa->user->role,
             ];
         });
 
@@ -123,22 +120,20 @@ class SchoolController extends Controller
             ->first();
 
         $stats = [
-            'students_count'    => \App\Models\Student::inSchool($school->id)->count(),
-            'buses_count'       => (int) ($busStats->total ?? 0),
-            'active_buses'      => (int) ($busStats->active_count ?? 0),
+            'students_count' => \App\Models\Student::inSchool($school->id)->count(),
+            'buses_count' => (int) ($busStats->total ?? 0),
+            'active_buses' => (int) ($busStats->active_count ?? 0),
             'maintenance_buses' => (int) ($busStats->maintenance_count ?? 0),
-            'drivers_count'     => \App\Models\Driver::whereHas('bus', fn($q) => $q->where('school_id', $school->id))->count(),
-            'assistants_count'  => (int) ($busStats->assistants_count ?? 0),
-            'admins_count'      => $school->schoolAdmins->count(),
+            'drivers_count' => \App\Models\Driver::whereHas('bus', fn ($q) => $q->where('school_id', $school->id))->count(),
+            'assistants_count' => (int) ($busStats->assistants_count ?? 0),
+            'admins_count' => $school->schoolAdmins->count(),
         ];
 
         return Inertia::render('Admin/Schools/Show', [
             'school' => $school,
-            'stats'  => $stats
+            'stats' => $stats,
         ]);
     }
-
-
 
     public function update(StoreSchoolRequest $request, School $school)
     {
@@ -166,12 +161,12 @@ class SchoolController extends Controller
         try {
             app(\App\Services\NotificationService::class)->notifyCompanyAdmins(
                 'school_deleted',
-                "🏢 حذف مدرسة",
+                '🏢 حذف مدرسة',
                 "تم حذف مدرسة: {$schoolName} من النظام",
                 ['school_name' => $schoolName]
             );
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to notify admins on school deletion: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Failed to notify admins on school deletion: '.$e->getMessage());
         }
 
         return redirect()->route('admin.schools.index')
@@ -186,5 +181,3 @@ class SchoolController extends Controller
         return back()->with('success', 'تم تحديث حالة المدرسة بنجاح');
     }
 }
-
-
