@@ -23,6 +23,7 @@
         "pusher/pusher-php-server": "^7.2",
         "sentry/sentry-laravel": "^4.25",
         "simplesoftwareio/simple-qrcode": "^4.2",
+        "spatie/laravel-backup": "^9.3",
         "tightenco/ziggy": "^2.0",
         "yidas/google-maps-services": "^1.2"
     },

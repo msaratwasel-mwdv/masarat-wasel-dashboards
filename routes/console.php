@@ -41,4 +41,9 @@ Schedule::call(function () {
 // Check for overdue installments daily
 Schedule::command('installments:check-overdue')->dailyAt('08:00');
 
+// 💾 Automated Daily System & Database Backup
+Schedule::command('backup:run --only-db')->dailyAt('02:00')->timezone('Asia/Riyadh');
+Schedule::command('backup:clean')->dailyAt('02:30')->timezone('Asia/Riyadh');
+
+
 

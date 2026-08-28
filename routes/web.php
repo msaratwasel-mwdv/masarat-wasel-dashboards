@@ -200,9 +200,6 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::delete('chat/messages/{message}', [\App\Http\Controllers\Admin\ChatMonitorController::class, 'deleteMessage'])->name('chat.messages.destroy');
         Route::post('chat/alert/{user}', [\App\Http\Controllers\Admin\ChatMonitorController::class, 'alertUser'])->name('chat.alert');
 
-        // أزرار لوحة التحكم
-        Route::post('system/execute', [\App\Http\Controllers\Admin\SystemCommandController::class, 'execute'])->name('system.execute');
-
         // الرحلات الميدانية (Admin)
         Route::resource('field-trips', \App\Http\Controllers\Admin\FieldTripController::class)->except(['create', 'store', 'edit', 'destroy']);
         Route::post('field-trips/{field_trip}/approve', [\App\Http\Controllers\Admin\FieldTripController::class, 'approve'])->name('field-trips.approve');
@@ -249,6 +246,12 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('whatsapp/toggle-master', [\App\Http\Controllers\Admin\WhatsAppManagementController::class, 'toggleMasterSwitch'])->name('whatsapp.toggle-master');
         Route::post('whatsapp/toggle-template', [\App\Http\Controllers\Admin\WhatsAppManagementController::class, 'toggleTemplateSwitch'])->name('whatsapp.toggle-template');
         Route::post('whatsapp/send-test', [\App\Http\Controllers\Admin\WhatsAppManagementController::class, 'sendTestMessage'])->name('whatsapp.send-test');
+
+        // إدارة النسخ الاحتياطي للنظام
+        Route::get('backups', [\App\Http\Controllers\Admin\BackupManagementController::class, 'index'])->name('backups.index');
+        Route::post('backups', [\App\Http\Controllers\Admin\BackupManagementController::class, 'store'])->name('backups.store');
+        Route::get('backups/download/{fileName}', [\App\Http\Controllers\Admin\BackupManagementController::class, 'download'])->name('backups.download');
+        Route::delete('backups/{fileName}', [\App\Http\Controllers\Admin\BackupManagementController::class, 'destroy'])->name('backups.destroy');
 
     });
 

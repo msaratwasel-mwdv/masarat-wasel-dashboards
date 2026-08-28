@@ -34,6 +34,7 @@ import {
   Moon,
   Map,
   Video,
+  Database,
 } from "lucide-react";
 
 // تعريف عناصر القائمة
@@ -209,14 +210,22 @@ const getMenuItems = (isRTL: boolean) => [
     icon: "grid",
   },
   {
-    label: isRTL ? "رسائل الواتساب" : "WhatsApp Service",
-    route: "admin.whatsapp.index",
-    icon: "chat",
-  },
-  {
     label: isRTL ? "الإعدادات" : "Settings",
-    route: "profile.edit",
     icon: "cog",
+    subItems: [
+      {
+        label: isRTL ? "الملف الشخصي والشركة" : "Profile & Company",
+        route: "profile.edit",
+      },
+      {
+        label: isRTL ? "رسائل الواتساب" : "WhatsApp Service",
+        route: "admin.whatsapp.index",
+      },
+      {
+        label: isRTL ? "النسخ الاحتياطي" : "System Backups",
+        route: "admin.backups.index",
+      },
+    ],
   },
 ];
 
@@ -392,6 +401,7 @@ export default function Authenticated({
       case "route": return <RouteIcon className={baseClass} />;
       case "calendar": return <Bell className={baseClass} />;
       case "video": return <Video className={baseClass} />;
+      case "database": return <Database className={baseClass} />;
       case "cog": return <Settings className={baseClass} />;
       default: return null;
     }

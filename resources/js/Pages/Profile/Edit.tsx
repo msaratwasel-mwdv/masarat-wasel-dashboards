@@ -13,7 +13,6 @@ import {
     ChevronRight,
     Smartphone,
     Globe,
-    Terminal,
     MessageCircle,
     Mail
 } from "lucide-react";
@@ -27,7 +26,6 @@ import {
 import UpdateProfileInformationForm from "./Partials/UpdateProfileInformationForm";
 import UpdatePasswordForm from "./Partials/UpdatePasswordForm";
 import UpdateSchoolInformationForm from "./Partials/UpdateSchoolInformationForm";
-import SystemCommands from "./Partials/SystemCommands";
 
 interface Props {
     mustVerifyEmail: boolean;
@@ -53,11 +51,7 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
         { id: 'preferences', label: isRtl ? 'التفضيلات' : 'Preferences', icon: Globe },
     ];
 
-    if (isAdmin) {
-        tabs.push({ id: 'system', label: isRtl ? 'أدوات النظام' : 'System Tools', icon: Terminal });
-    }
-
-    const [activeTab, setActiveTab] = useState('info'); // 'info' | 'profile' | 'security' | 'preferences' | 'system'
+    const [activeTab, setActiveTab] = useState('info'); // 'info' | 'profile' | 'security' | 'preferences'
 
     return (
         <Layout
@@ -203,8 +197,6 @@ export default function Edit({ mustVerifyEmail, status, auth }: Props) {
                                 )}
 
                                 {activeTab === 'security' && <UpdatePasswordForm />}
-
-                                {activeTab === 'system' && isAdmin && <SystemCommands />}
 
                                 {activeTab === 'preferences' && (
                                     <div className="space-y-8">
