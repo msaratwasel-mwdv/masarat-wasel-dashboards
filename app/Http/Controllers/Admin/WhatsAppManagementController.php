@@ -166,7 +166,7 @@ class WhatsAppManagementController extends Controller
                 '2',
                 'B-202',
             ];
-            $headerUrl = $request->header_image_url ?? 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800';
+            $headerUrl = $request->header_image_url ?? url('assets/images/bus_trip_report.png');
         } elseif ($templateName === 'masarat_welcome') {
             $params = $request->parameters ?? [$phone];
             $headerUrl = null;
@@ -181,7 +181,7 @@ class WhatsAppManagementController extends Controller
                 '775376507',
                 'المدرسة العصرية الحديثة',
             ];
-            $headerUrl = $request->header_image_url ?? 'https://images.unsplash.com/photo-1557223562-6c77ef16210f?w=800';
+            $headerUrl = $request->header_image_url ?? url('assets/images/student_bus_status.png');
         }
 
         $sent = $this->whatsAppService->sendTemplate(
