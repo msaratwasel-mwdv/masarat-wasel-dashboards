@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('student_location_requests', function (Blueprint $table) {
@@ -24,6 +21,7 @@ return new class extends Migration
             $table->decimal('new_latitude', 10, 8);
             $table->decimal('new_longitude', 11, 8);
             $table->string('new_address', 500)->nullable();
+            $table->string('note', 1000)->nullable();
             
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->string('rejection_reason')->nullable();
@@ -35,9 +33,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('student_location_requests');

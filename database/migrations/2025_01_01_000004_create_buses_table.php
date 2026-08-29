@@ -12,12 +12,12 @@ return new class extends Migration
             $table->id();
 
             // الهوية التعريفية
-            $table->string('bus_number')->unique(); // رقم داخلي
-            $table->string('plate_number')->unique(); // أ ح د 1234
+            $table->string('bus_number')->unique();
+            $table->string('plate_number')->unique();
 
             // المواصفات
             $table->integer('capacity');
-            $table->string('model'); // Mercedes 2023
+            $table->string('model');
             $table->year('year');
             $table->string('color')->nullable();
             
@@ -35,7 +35,11 @@ return new class extends Migration
             // حقول التتبع
             $table->decimal('latitude', 10, 7)->nullable();
             $table->decimal('longitude', 10, 7)->nullable();
+            $table->decimal('target_latitude', 10, 7)->nullable();
+            $table->decimal('target_longitude', 10, 7)->nullable();
             $table->timestamp('last_location_update')->nullable();
+
+            $table->index(['school_id', 'status'], 'idx_buses_school_status');
 
             $table->timestamps();
             $table->softDeletes();

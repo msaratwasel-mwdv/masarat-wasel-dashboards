@@ -17,9 +17,9 @@ return new class extends Migration
             $table->decimal('paid_amount', 10, 2)->default(0);
             $table->date('due_date');
             $table->enum('status', ['pending', 'partially_paid', 'paid', 'overdue', 'cancelled'])->default('pending');
-            $table->datetime('paid_at')->nullable();
-            $table->string('payment_method')->nullable();
-            $table->string('reference_number')->nullable();
+            $table->string('receipt_path')->nullable();
+            $table->string('verification_status')->default('none')->comment('none, pending, verified, rejected');
+            $table->text('admin_note')->nullable();
             $table->timestamps();
         });
     }

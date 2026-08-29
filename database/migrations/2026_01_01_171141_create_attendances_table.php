@@ -19,9 +19,14 @@ return new class extends Migration
                   ->constrained('classrooms')
                   ->onDelete('cascade');
 
-            $table->date('date');
+            $table->foreignId('recorded_by')
+                  ->nullable()
+                  ->constrained('users')
+                  ->onDelete('set null');
 
+            $table->date('date');
             $table->enum('status', ['present', 'absent', 'late', 'excused']);
+            $table->boolean('is_notified')->default(false);
 
             $table->timestamps();
         });

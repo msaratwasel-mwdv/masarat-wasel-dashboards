@@ -11,17 +11,11 @@ return new class extends Migration
         Schema::create('students', function (Blueprint $table) {
             $table->id();
 
-            // تحديد أطوال الحقول لتجنب المشكلة
-            $table->string('student_code', 50)->unique()->nullable(); // ⬅️ تحديد طول 50
+            $table->string('student_code', 50)->unique()->nullable();
 
             $table->string('first_name_ar');
-            $table->string('second_name_ar');
-            $table->string('third_name_ar');
             $table->string('last_name_ar');
-
             $table->string('first_name_en');
-            $table->string('second_name_en');
-            $table->string('third_name_en');
             $table->string('last_name_en');
 
             $table->string('national_id', 20)->nullable();
@@ -30,6 +24,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
 
             $table->string('address')->nullable();
+            $table->string('location_note', 1000)->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
 
@@ -42,15 +37,13 @@ return new class extends Migration
             $table->decimal('back_longitude', 11, 8)->nullable();
 
             $table->timestamps();
+            $table->softDeletes();
 
-            // ⬅️ تصحيح الصلاحيات: إزالة national_id من الصلاحية المركبة
-            // طريقة 1: صلاحيات منفصلة (أفضل)
             $table->index('student_code');
             $table->index('national_id');
             $table->index('is_active');
-
-            // أو طريقة 2: صلاحية مختصرة (إذا كنت تحتاج حقاً صلاحية مركبة)
-            // $table->index(['student_code', 'is_active']);
+            $table->index(['forth_bus_id', 'is_active'], 'idx_students_forth_bus_active');
+            $table->index(['back_bus_id', 'is_active'], 'idx_students_back_bus_active');
         });
     }
 

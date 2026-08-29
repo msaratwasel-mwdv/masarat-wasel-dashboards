@@ -43,7 +43,6 @@ class ClassroomSeeder extends Seeder
             for ($c = 1; $c <= 2; $c++) {
                 Classroom::updateOrCreate(
                     [
-                        'school_id' => $school->id, 
                         'grade_id' => $grade->id,
                         'name' => "فصل " . $gradeName . " ($c)"
                     ],

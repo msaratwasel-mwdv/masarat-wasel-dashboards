@@ -6,17 +6,14 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('trips', function (Blueprint $table) {
             $table->id();
             $table->foreignId('bus_id')->constrained();
             $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('driver_id')->nullable(); // Snapshot of driver at trip time
-            $table->foreignId('route_id')->nullable(); // Snapshot of route at trip time
+            $table->foreignId('driver_id')->nullable();
+            $table->foreignId('route_id')->nullable();
             
             $table->date('trip_date')->index();
             $table->string('type'); // forth, back
@@ -31,7 +28,7 @@ return new class extends Migration
             $table->dateTime('arrival_time')->nullable();
             
             // Status & Workflow
-            $table->string('status')->default('pending'); // Use string instead of enum for flexibility
+            $table->string('status')->default('pending');
             $table->enum('generation_type', ['auto', 'manual'])->default('auto');
             
             $table->text('cancellation_reason')->nullable();
@@ -39,15 +36,12 @@ return new class extends Migration
             
             $table->timestamps();
 
-            // Indexes for performance
-            $table->index(['bus_id', 'trip_date', 'type'], 'trips_bus_date_type_idx');
+            // Unique constraint & indexes
+            $table->unique(['bus_id', 'type', 'trip_date'], 'unique_bus_type_date');
             $table->index(['status', 'trip_date'], 'trips_status_date_idx');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('trips');

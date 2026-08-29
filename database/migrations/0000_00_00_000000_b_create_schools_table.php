@@ -6,27 +6,25 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('schools', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // اسم المدرسة
+            $table->string('name');
+            $table->string('name_en')->nullable();
             $table->string('logo')->nullable();
             $table->decimal('latitude', 10, 7)->nullable();
             $table->decimal('longitude', 10, 7)->nullable();
-            $table->string('address')->nullable(); // المدينة/الموقع
-            $table->enum('status', ['Active', 'Inactive'])->default('Active'); // الحالة
-
-            $table->timestamps(); // تاريخ الإنشاء والتعديل
+            $table->string('address')->nullable();
+            $table->string('city')->nullable();
+            $table->string('contact_email')->nullable();
+            $table->string('contact_phone')->nullable();
+            $table->enum('status', ['Active', 'Inactive'])->default('Active');
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('schools');

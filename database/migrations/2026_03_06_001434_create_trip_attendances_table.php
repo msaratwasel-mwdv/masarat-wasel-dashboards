@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('trip_attendances', function (Blueprint $table) {
@@ -16,6 +13,8 @@ return new class extends Migration
             $table->foreignId('trip_id')->constrained()->cascadeOnDelete();
             $table->foreignId('student_id')->constrained();
             $table->enum('status', ['pending', 'boarded', 'dropped', 'absent', 'excused', 'waiting'])->default('pending');
+            $table->timestamp('waiting_start_time')->nullable();
+            $table->integer('extra_wait_time')->default(0); // stored in seconds
             $table->timestamp('check_in_time')->nullable();
             $table->timestamp('check_out_time')->nullable();
             $table->timestamps();
@@ -26,9 +25,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('trip_attendances');

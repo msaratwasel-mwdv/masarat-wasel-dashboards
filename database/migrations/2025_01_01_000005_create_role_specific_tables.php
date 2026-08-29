@@ -16,13 +16,12 @@ return new class extends Migration
 
         Schema::create('roles', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique(); // driver, parent, admin...
+            $table->string('name')->unique();
         });
 
         Schema::create('user_roles', function (Blueprint $table) {
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('role_id')->constrained()->cascadeOnDelete();
-
             $table->primary(['user_id', 'role_id']);
         });
 
@@ -40,7 +39,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // 2. Field Supervisors (المشرف الميداني)
+        // 2. Field Supervisors
         Schema::create('field_supervisors', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
             $table->string('fcm_token')->nullable();
@@ -52,41 +51,35 @@ return new class extends Migration
         Schema::create('teachers', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
             $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
-
-            $table->foreignId('grade_id')
-                  ->nullable()
-                  ->constrained('grades')
-                  ->nullOnDelete();
+            $table->foreignId('grade_id')->nullable()->constrained('grades')->nullOnDelete();
             $table->string('fcm_token')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });
 
-        // 4. Assistants (المشرفة)
+        // 4. Assistants
         Schema::create('assistants', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
             $table->string('fcm_token')->nullable();
-
             $table->string('emergency_contact_name')->nullable();
             $table->string('emergency_contact_phone')->nullable();
-
+            $table->string('id_card_front_image')->nullable();
+            $table->string('id_card_back_image')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
-
             $table->timestamps();
         });
 
         // 5. Drivers
         Schema::create('drivers', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained()->cascadeOnDelete();
-
             $table->string('fcm_token')->nullable();
             $table->string('license_number')->unique();
             $table->date('license_expiry_date');
             $table->string('license_front_image')->nullable();
             $table->string('license_back_image')->nullable();
-
+            $table->string('id_card_front_image')->nullable();
+            $table->string('id_card_back_image')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
-
             $table->timestamps();
         });
 
@@ -115,7 +108,6 @@ return new class extends Migration
         Schema::dropIfExists('teachers');
         Schema::dropIfExists('field_supervisors');
         Schema::dropIfExists('school_admins');
-
         Schema::dropIfExists('user_roles');
         Schema::dropIfExists('roles');
     }

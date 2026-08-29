@@ -9,33 +9,22 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-
             $table->id();
-
             $table->string('national_id')->unique();
-
             $table->string('first_name_ar');
-            $table->string('second_name_ar');
-            $table->string('third_name_ar');
             $table->string('last_name_ar');
-
             $table->string('first_name_en');
-            $table->string('second_name_en');
-            $table->string('third_name_en');
             $table->string('last_name_en');
-
             $table->string('email')->nullable()->unique();
             $table->string('phone')->nullable()->unique();
-
-             $table->text('address')->nullable();
-             $table->decimal('latitude', 10, 7)->nullable();
-             $table->decimal('longitude', 10, 7)->nullable();
-             $table->string('image')->nullable();
-
-
+            $table->text('address')->nullable();
+            $table->decimal('latitude', 10, 7)->nullable();
+            $table->decimal('longitude', 10, 7)->nullable();
+            $table->string('image')->nullable();
+            $table->string('preferred_language', 2)->default('ar');
+            $table->boolean('is_whatsapp_active')->default(true);
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-
             $table->rememberToken();
             $table->timestamps();
         });

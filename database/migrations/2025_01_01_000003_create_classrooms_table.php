@@ -17,9 +17,9 @@ return new class extends Migration
 
         Schema::create('classrooms', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // اسم الفصل (مثال: أول ثانوي أ)
+            $table->string('name');
+            $table->string('name_en')->nullable();
             $table->foreignId('grade_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('school_id')->constrained('schools')->onDelete('cascade'); // تابع لأي مدرسة
             $table->timestamps();
         });
     }

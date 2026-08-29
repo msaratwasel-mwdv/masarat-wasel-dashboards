@@ -18,15 +18,15 @@ class StudentSeeder extends Seeder
 
         $getNames = function($gender = null) use ($fakerAr, $fakerEn) {
             return [
-                'ar' => [$fakerAr->firstName($gender), $fakerAr->firstName('male'), $fakerAr->firstName('male'), $fakerAr->lastName],
-                'en' => [$fakerEn->firstName($gender), $fakerEn->firstName('male'), $fakerEn->firstName('male'), $fakerEn->lastName]
+                'ar' => [$fakerAr->firstName($gender), $fakerAr->lastName],
+                'en' => [$fakerEn->firstName($gender), $fakerEn->lastName]
             ];
         };
 
         $school = School::first();
         if (!$school) return;
 
-        $classrooms = Classroom::where('school_id', $school->id)->get();
+        $classrooms = Classroom::atSchool($school->id)->get();
         $buses = Bus::where('school_id', $school->id)->get();
         
         $guardians = User::whereHas('roles', fn($q) => $q->where('name', 'parent'))->get();
@@ -44,12 +44,8 @@ class StudentSeeder extends Seeder
                     ['national_id' => "20030040" . $guardian->id . $s],
                     [
                         'first_name_ar' => $stNames['ar'][0],
-                        'second_name_ar' => $guardian->first_name_ar,
-                        'third_name_ar' => $guardian->second_name_ar,
                         'last_name_ar' => $guardian->last_name_ar,
                         'first_name_en' => $stNames['en'][0],
-                        'second_name_en' => $guardian->first_name_en,
-                        'third_name_en' => $guardian->second_name_en,
                         'last_name_en' => $guardian->last_name_en,
                         
                         'student_code' => "STU-" . $guardian->id . "-$s",
