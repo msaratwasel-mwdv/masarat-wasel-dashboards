@@ -95,12 +95,15 @@ class TripObserver
                             $imageUrl = 'https://ringtones-broader-him-hist.trycloudflare.com/assets/images/bus_trip_report.png';
                         }
 
-                        $this->whatsAppService->sendTemplate(
-                            $schoolAdmin->phone,
-                            'bus_trip_report',
-                            $parameters,
-                            'ar_AE',
-                            $imageUrl
+                        // إرسال التقرير عبر طابور المهام في الخلفية (Background Queue)
+                        \App\Jobs\SendWhatsAppTemplateJob::dispatch(
+                            to: $schoolAdmin->phone,
+                            templateName: 'bus_trip_summary',
+                            parameters: $parameters,
+                            lang: 'ar',
+                            headerImageUrl: $imageUrl,
+                            eventType: 'trip_finished_report',
+                            userId: $schoolAdmin->id
                         );
                     }
                 } catch (\Exception $e) {

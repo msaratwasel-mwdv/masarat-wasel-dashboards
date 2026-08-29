@@ -88,6 +88,14 @@ class WhatsAppManagementController extends Controller
                 'template' => $template ?? 'all',
             ],
             'metaConfigured' => ! empty(config('services.meta_whatsapp.token')) && ! empty(config('services.meta_whatsapp.phone_number_id')),
+            'accountInfo' => [
+                'verified_name' => 'wasel_company',
+                'display_phone_number' => '+968 7736 5677',
+                'phone_number_id' => config('services.meta_whatsapp.phone_number_id') ?? '1267555953116394',
+                'waba_id' => env('META_WABA_ID', '3466768820164365'),
+                'status' => 'VERIFIED',
+                'quality_rating' => 'HIGH',
+            ],
         ]);
     }
 
@@ -142,8 +150,39 @@ class WhatsAppManagementController extends Controller
 
         $phone = $request->phone;
         $templateName = $request->template_name;
-        $params = $request->parameters ?? ['تجربة النظام', 'مسارات واصل'];
-        $headerUrl = $request->header_image_url;
+
+        // تجهيز المتغيرات الافتراضية المناسبة لكل نوع قالب
+        if ($templateName === 'bus_trip_summary' || $templateName === 'bus_trip_report') {
+            $params = $request->parameters ?? [
+                'المدرسة العصرية الحديثة',
+                date('Y/m/d'),
+                'B-202',
+                '07:00 ص',
+                '08:15 ص',
+                '00:15 دقيقة',
+                '01:15 ساعة',
+                '25 كم',
+                '24',
+                '2',
+                'B-202',
+            ];
+            $headerUrl = $request->header_image_url ?? 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800';
+        } elseif ($templateName === 'masarat_welcome') {
+            $params = $request->parameters ?? [$phone];
+            $headerUrl = null;
+        } else {
+            // student_bus_status
+            $params = $request->parameters ?? [
+                'فضل المطري',
+                'أحمد فضل',
+                'صعد الحافلة ✅',
+                'نجيب الصلوان',
+                'فاطمة علي',
+                '775376507',
+                'المدرسة العصرية الحديثة',
+            ];
+            $headerUrl = $request->header_image_url ?? 'https://images.unsplash.com/photo-1557223562-6c77ef16210f?w=800';
+        }
 
         $sent = $this->whatsAppService->sendTemplate(
             to: $phone,
@@ -160,5 +199,29 @@ class WhatsAppManagementController extends Controller
         }
 
         return back()->with('error', "فشل إرسال رسالة الاختبار إلى الرقم {$phone}. يرجى مراجعة السجلات والتأكد من إعدادات Meta.");
+    }
+
+    /**
+     * Retry sending a failed message log.
+     */
+    public function retryMessage(Request $request, WhatsAppLog $log)
+    {
+        $params = is_array($log->parameters) ? $log->parameters : (json_decode($log->parameters, true) ?? []);
+
+        $sent = $this->whatsAppService->sendTemplate(
+            to: $log->recipient_phone,
+            templateName: $log->template_name,
+            parameters: $params,
+            lang: 'ar',
+            headerImageUrl: $log->header_image_url,
+            eventType: $log->event_type ?? 'retry_failed_message',
+            userId: $log->user_id
+        );
+
+        if ($sent) {
+            return back()->with('success', "تمت إعادة إرسال الرسالة بنجاح إلى {$log->recipient_phone}");
+        }
+
+        return back()->with('error', "فشلت محاولة إعادة الإرسال إلى {$log->recipient_phone}. تفقد السجلات لمزيد من التفاصيل.");
     }
 }

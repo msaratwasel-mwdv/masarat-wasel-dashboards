@@ -1,13 +1,13 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AssistantController;
 use App\Http\Controllers\Admin\BusController;
+use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SchoolController;
 use App\Http\Controllers\Admin\SchoolUserController;
-use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\StaffController;
-use App\Http\Controllers\Admin\AssistantController;
 use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\ProfileController;
@@ -15,7 +15,6 @@ use App\Http\Controllers\School\Attendance\AttendanceController;
 use App\Http\Controllers\School\ClassroomController;
 use App\Http\Controllers\School\StudentController;
 use App\Http\Controllers\School\TeacherController;
-use App\Models\AssignmentHistory;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -45,36 +44,36 @@ Route::get('/events', [\App\Http\Controllers\PublicEventController::class, 'inde
 // Dynamic XML Sitemap for SEO
 Route::get('/sitemap.xml', function () {
     $events = \App\Models\Event::where('is_published', true)->orderBy('updated_at', 'desc')->get();
-    
+
     $xml = '<?xml version="1.0" encoding="UTF-8"?>';
     $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
-    
+
     // Home Page
     $xml .= '  <url>';
-    $xml .= '    <loc>' . url('/') . '</loc>';
-    $xml .= '    <lastmod>' . date('Y-m-d') . '</lastmod>';
+    $xml .= '    <loc>'.url('/').'</loc>';
+    $xml .= '    <lastmod>'.date('Y-m-d').'</lastmod>';
     $xml .= '    <changefreq>daily</changefreq>';
     $xml .= '    <priority>1.0</priority>';
     $xml .= '  </url>';
-    
+
     // Subscription Page
     $xml .= '  <url>';
-    $xml .= '    <loc>' . route('subscription') . '</loc>';
-    $xml .= '    <lastmod>' . date('Y-m-d') . '</lastmod>';
+    $xml .= '    <loc>'.route('subscription').'</loc>';
+    $xml .= '    <lastmod>'.date('Y-m-d').'</lastmod>';
     $xml .= '    <changefreq>weekly</changefreq>';
     $xml .= '    <priority>0.9</priority>';
     $xml .= '  </url>';
-    
+
     // Events List Page
     $xml .= '  <url>';
-    $xml .= '    <loc>' . route('events.index') . '</loc>';
-    $xml .= '    <lastmod>' . (count($events) > 0 && isset($events[0]->updated_at) ? $events[0]->updated_at->format('Y-m-d') : date('Y-m-d')) . '</lastmod>';
+    $xml .= '    <loc>'.route('events.index').'</loc>';
+    $xml .= '    <lastmod>'.(count($events) > 0 && isset($events[0]->updated_at) ? $events[0]->updated_at->format('Y-m-d') : date('Y-m-d')).'</lastmod>';
     $xml .= '    <changefreq>daily</changefreq>';
     $xml .= '    <priority>0.8</priority>';
     $xml .= '  </url>';
-    
+
     $xml .= '</urlset>';
-    
+
     return response($xml, 200)->header('Content-Type', 'text/xml');
 });
 
@@ -86,7 +85,6 @@ Route::get('/sitemap.xml', function () {
 // البديل: استخدم Artisan Commands بدلاً منها:
 //    php artisan tinker
 //    php artisan db:seed --class=TestDataSeeder
-
 
 // 🟢 أولاً: روابط مدير الشركة (Admin)
 Route::middleware(['auth', 'verified', 'role:admin'])
@@ -107,11 +105,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::put('schools/{school}', [SchoolController::class, 'update'])->name('schools.update');
         Route::delete('schools/{school}', [SchoolController::class, 'destroy'])->name('schools.destroy');
         Route::post('schools/{school}/toggle', [SchoolController::class, 'toggleStatus'])->name('schools.toggle');
-        
+
         // Plans & Financials
         Route::resource('plans', PlanController::class);
         Route::post('plans/{plan}/toggle', [PlanController::class, 'toggle'])->name('plans.toggle');
-        
+
         Route::get('subscriptions', [SubscriptionController::class, 'index'])->name('subscriptions.index');
         Route::put('subscriptions/{subscription}', [SubscriptionController::class, 'update'])->name('subscriptions.update');
         Route::delete('subscriptions/{subscription}', [SubscriptionController::class, 'destroy'])->name('subscriptions.destroy');
@@ -122,7 +120,6 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('installments', [SubscriptionController::class, 'installmentsList'])->name('installments.index');
         Route::post('installments/{installment}/pay', [SubscriptionController::class, 'payInstallment'])->name('subscriptions.installments.pay');
         Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
-
 
         // مديرو المدارس - قائمة شاملة
         Route::get('school-admins', [SchoolUserController::class, 'index'])->name('school-admins.index');
@@ -241,11 +238,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         // إدارة الفعاليات والأخبار
         Route::resource('events', \App\Http\Controllers\Admin\EventController::class);
 
-        // إدارة وإعدادات وسجلات رسائل الواتساب
         Route::get('whatsapp', [\App\Http\Controllers\Admin\WhatsAppManagementController::class, 'index'])->name('whatsapp.index');
         Route::post('whatsapp/toggle-master', [\App\Http\Controllers\Admin\WhatsAppManagementController::class, 'toggleMasterSwitch'])->name('whatsapp.toggle-master');
         Route::post('whatsapp/toggle-template', [\App\Http\Controllers\Admin\WhatsAppManagementController::class, 'toggleTemplateSwitch'])->name('whatsapp.toggle-template');
         Route::post('whatsapp/send-test', [\App\Http\Controllers\Admin\WhatsAppManagementController::class, 'sendTestMessage'])->name('whatsapp.send-test');
+        Route::post('whatsapp/retry/{log}', [\App\Http\Controllers\Admin\WhatsAppManagementController::class, 'retryMessage'])->name('whatsapp.retry');
 
         // إدارة النسخ الاحتياطي للنظام
         Route::get('backups', [\App\Http\Controllers\Admin\BackupManagementController::class, 'index'])->name('backups.index');
@@ -254,7 +251,6 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::delete('backups/{fileName}', [\App\Http\Controllers\Admin\BackupManagementController::class, 'destroy'])->name('backups.destroy');
 
     });
-
 
 // 🔵 ثانياً: روابط مدير المدرسة (School Admin)
 Route::middleware(['auth', 'verified', 'role:school_admin'])
@@ -281,11 +277,11 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
 
         // 4. إدارة الطلاب
         Route::get('students-api', [StudentController::class, 'apiIndex'])->name('students.api');
-        
+
         Route::get('students/export/all', [StudentController::class, 'export'])->name('students.export');
         Route::get('students/export/template', [StudentController::class, 'downloadTemplate'])->name('students.template');
         Route::post('students/import/all', [StudentController::class, 'import'])->name('students.import');
-        
+
         Route::resource('students', StudentController::class);
         Route::post('students/{student}/update', [StudentController::class, 'update'])->name('students.update_post');
         Route::get('students/{student}/print', [StudentController::class, 'printCard'])->name('students.print');
@@ -297,7 +293,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::get('parents/export', [\App\Http\Controllers\School\GuardianController::class, 'export'])->name('parents.export');
         Route::get('parents/template', [\App\Http\Controllers\School\GuardianController::class, 'downloadTemplate'])->name('parents.template');
         Route::post('parents/import', [\App\Http\Controllers\School\GuardianController::class, 'import'])->name('parents.import');
-        
+
         Route::resource('parents', \App\Http\Controllers\School\GuardianController::class)
             ->parameters(['parents' => 'parent'])
             ->except(['create', 'edit', 'show']);
@@ -350,11 +346,10 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
             Route::post('notifications/preview', [\App\Http\Controllers\School\NotificationController::class, 'preview'])->name('notifications.preview');
             Route::post('notifications/incidents/{incident}/resend', [\App\Http\Controllers\School\NotificationController::class, 'resendIncidentToParent'])->name('notifications.incidents.resend');
 
-
             Route::resource('routes', \App\Http\Controllers\School\RouteController::class);
-            
+
             // Field Trips gating
-            Route::middleware(['plan.feature:has_field_trips'])->group(function() {
+            Route::middleware(['plan.feature:has_field_trips'])->group(function () {
                 Route::resource('field-trips', \App\Http\Controllers\School\FieldTripController::class);
             });
 
@@ -363,7 +358,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
             Route::get('trips/{trip}', [\App\Http\Controllers\School\TripDashboardController::class, 'show'])->name('trips.show');
 
             // Trip Reports
-            Route::middleware(['plan.feature:has_reports'])->group(function() {
+            Route::middleware(['plan.feature:has_reports'])->group(function () {
                 Route::get('trip-reports', [\App\Http\Controllers\School\TripReportController::class, 'index'])->name('trip-reports.index');
                 Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');
 
@@ -391,7 +386,6 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::post('location-requests/{id}/approve', [\App\Http\Controllers\Admin\LocationRequestController::class, 'approve'])->name('location-requests.approve');
         Route::post('location-requests/{id}/reject', [\App\Http\Controllers\Admin\LocationRequestController::class, 'reject'])->name('location-requests.reject');
 
-
     });
 
 // ⚪ ثالثاً: روابط الملف الشخصي
@@ -411,4 +405,4 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

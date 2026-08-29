@@ -4,7 +4,6 @@ namespace Tests\Unit\Services;
 
 use App\Models\SystemSetting;
 use App\Models\User;
-use App\Models\WhatsAppLog;
 use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
@@ -113,11 +112,11 @@ class WhatsAppServiceTest extends TestCase
         Http::fake();
 
         SystemSetting::set('whatsapp_master_switch', true, 'whatsapp', 'boolean');
-        SystemSetting::set('whatsapp_template_bus_trip_report_enabled', false, 'whatsapp', 'boolean');
+        SystemSetting::set('whatsapp_template_bus_trip_summary_enabled', false, 'whatsapp', 'boolean');
 
         $success = $this->whatsAppService->sendTemplate(
             to: '771234567',
-            templateName: 'bus_trip_report',
+            templateName: 'bus_trip_summary',
             parameters: ['تقرير رحلة']
         );
 
@@ -125,7 +124,7 @@ class WhatsAppServiceTest extends TestCase
         Http::assertNothingSent();
 
         $this->assertDatabaseHas('whatsapp_logs', [
-            'template_name' => 'bus_trip_report',
+            'template_name' => 'bus_trip_summary',
             'status' => 'skipped',
         ]);
     }

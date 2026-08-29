@@ -46,18 +46,21 @@ class TripAttendanceObserver
                         $trip?->school?->name ?? 'المدرسة العصرية الحديثة',
                     ];
 
-                    // تحديد رابط الصورة ديناميكياً، مع وضع رابط خارجي كاحتياط أثناء العمل المحتلي على Laragon
+                    // تحديد رابط الصورة ديناميكياً، مع وضع رابط خارجي كاحتياط أثناء العمل المحلي على Laragon
                     $imageUrl = url('assets/images/student_bus_status.png');
                     if (str_contains($imageUrl, 'localhost') || str_contains($imageUrl, '.test') || str_contains($imageUrl, '127.0.0.1')) {
                         $imageUrl = 'https://images.unsplash.com/photo-1557223562-6c77ef16210f?w=500';
                     }
 
-                    $this->whatsAppService->sendTemplate(
-                        $guardian->phone,
-                        'student_bus_status',
-                        $parameters,
-                        'ar',
-                        $imageUrl
+                    // إرسال الإشعار عبر طابور المهام في الخلفية (Background Queue) لمنع أي تأخير على تطبيق السائق
+                    \App\Jobs\SendWhatsAppTemplateJob::dispatch(
+                        to: $guardian->phone,
+                        templateName: 'student_bus_status',
+                        parameters: $parameters,
+                        lang: 'ar',
+                        headerImageUrl: $imageUrl,
+                        eventType: 'student_boarded',
+                        userId: $guardian->user_id ?? null
                     );
                 }
             }

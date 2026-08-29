@@ -54,21 +54,25 @@ class WhatsAppService
         return [
             [
                 'name' => 'student_bus_status',
-                'title_ar' => 'إشعار صعود/نزول الطالب من الحافلة',
+                'title_ar' => 'إشعار صعود ونزول الطالب من الحافلة',
                 'title_en' => 'Student Bus Boarding/Alighting Status',
-                'description_ar' => 'يُرسل لولي الأمر لحظياً عند ركوب أو نزول الطالب من الحافلة المدرسية مع تفاصيل السائق والمشرفة.',
+                'description_ar' => 'يُرسل لولي الأمر لحظياً عند ركوب أو نزول الطالب من الحافلة المدرسية متضمناً تفاصيل السائق والمشرفة والمدرسة.',
                 'description_en' => 'Sent to the parent in real-time when the student boards or alights the bus.',
                 'target' => 'parent',
                 'default_enabled' => true,
+                'header_image' => '/assets/images/student_bus_status.png',
+                'sample_body' => "👋 تحديث حالة الطالب\n\nعزيزي الوالد: فضل المطري\nتحياتي، نود أن نبلغكم بحالة الطالب:\n\n👦 الاسم: أحمد فضل\n🚌 الحالة: صعد الحافلة ✅\n👨✈️ السائق: نجيب الصلوان\n🏫 المشرفة: فاطمة علي\n📞 رقم الاتصال: 775376507\n\n🏫 المدرسة العصرية الحديثة | شكراً لتعاونكم 🤝",
             ],
             [
-                'name' => 'bus_trip_report',
-                'title_ar' => 'تقرير الرحلة المدرسية المكتملة',
-                'title_en' => 'Completed Bus Trip Report',
-                'description_ar' => 'يُرسل لإدارة المدرسة عند انتهاء الرحلة متضمناً إحصائيات الحضور والغياب ومدة ومسافة الرحلة.',
+                'name' => 'bus_trip_summary',
+                'title_ar' => 'تقرير رحلة الحافلة المدرسية التفصيلي',
+                'title_en' => 'Detailed Bus Trip Summary Report',
+                'description_ar' => 'يُرسل لإدارة المدرسة عند انتهاء الرحلة متضمناً إحصائيات الحضور والغياب ومدة ومسافة الرحلة التفصيلية.',
                 'description_en' => 'Sent to the school admin upon trip completion with detailed stats.',
                 'target' => 'school_admin',
                 'default_enabled' => true,
+                'header_image' => '/assets/images/bus_trip_report.png',
+                'sample_body' => "📢 تقرير رحلة الحافلة المدرسية التفصيلي\n🏫 المدرسة: المدرسة العصرية الحديثة\n📅 التاريخ: 2026/05/24\n🚌 رقم الحافلة: B-202\n🕒 بدء الرحلة: 07:00 ص\n🕓 انتهاء الرحلة: 08:15 ص\n\n⏳ مدة الانتظار: 00:15 دقيقة\n🕒 مدة الرحلة: 01:15 ساعة\n📏 المسافة: 25 كم\n\n👥 الحضور: 24\n🚫 الغياب: 2\n\n✅ وصلت الحافلة B-202 إلى المدرسة بسلام\n🤝 نشكر لكم شراكتكم وثقتكم بنا",
             ],
         ];
     }
@@ -146,6 +150,21 @@ class WhatsAppService
                 })->toArray(),
             ],
         ];
+
+        // تعيين صورة الهيدر التلقائية إذا كان القالب يتطلب صورة ولم تُمرر صراحة
+        if (! $headerImageUrl) {
+            if ($templateName === 'student_bus_status') {
+                $headerImageUrl = url('assets/images/student_bus_status.png');
+                if (str_contains($headerImageUrl, 'localhost') || str_contains($headerImageUrl, '.test') || str_contains($headerImageUrl, '127.0.0.1')) {
+                    $headerImageUrl = 'https://images.unsplash.com/photo-1557223562-6c77ef16210f?w=800';
+                }
+            } elseif ($templateName === 'bus_trip_summary' || $templateName === 'bus_trip_report') {
+                $headerImageUrl = url('assets/images/bus_trip_report.png');
+                if (str_contains($headerImageUrl, 'localhost') || str_contains($headerImageUrl, '.test') || str_contains($headerImageUrl, '127.0.0.1')) {
+                    $headerImageUrl = 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800';
+                }
+            }
+        }
 
         if ($headerImageUrl) {
             array_unshift($components, [
