@@ -1582,38 +1582,26 @@ class DailyTripApiController extends Controller
             ], 403);
         }
 
-        // ✅ REQUIREMENT: Bus empty check differs by trip type
+        // ✅ REQUIREMENT: Bus empty check (all boarded students must have disembarked)
         $tripType = $trip->type; // 'forth' or 'back'
 
-        if ($tripType === 'back') {
-            // In the afternoon, the bus MUST be empty
-            $onBoardCount = TripAttendance::where('trip_id', $trip->id)
-                ->where('status', 'boarded')
-                ->count();
+        $onBoardCount = TripAttendance::where('trip_id', $trip->id)
+            ->where('status', 'boarded')
+            ->count();
 
-            if ($onBoardCount > 0) {
-                return response()->json([
-                    'message' => "لا يمكن إنهاء رحلة العودة وهناك $onBoardCount طلاب لم يتم تسجيل نزولهم عند منازلهم.",
-                    'on_board_count' => $onBoardCount
-                ], 422);
-            }
+        if ($onBoardCount > 0) {
+            $destination = $tripType === 'forth' ? 'المدرسة' : 'منازلهم';
+            return response()->json([
+                'message' => "لا يمكن إنهاء الرحلة وهناك $onBoardCount طلاب لا يزالون في الحافلة ولم يتم تسجيل نزولهم في $destination.",
+                'on_board_count' => $onBoardCount
+            ], 422);
         }
 
-        // ✅ REQUIREMENT: Ensure all assigned students were processed (Pending check)
-        // Count from trip_attendances directly to be robust against mid-day student assignment changes
+        // ✅ REQUIREMENT: Ensure all assigned students were processed (must be dropped, absent, or excused)
         $totalAssigned = TripAttendance::where('trip_id', $trip->id)->count();
 
-        // Accounted for = students who are in a processed/finalized state
-        // Morning: Boarded, Dropped, Absent, Excused, or Waiting are all 'processed' (boarded is auto-dropped on finish)
-        // Afternoon: Dropped, Absent, or Excused are 'processed'
         $accountedFor = TripAttendance::where('trip_id', $trip->id)
-            ->where(function($query) use ($tripType) {
-                if ($tripType === 'forth') {
-                    $query->whereIn('status', ['boarded', 'dropped', 'absent', 'excused', 'waiting']);
-                } else {
-                    $query->whereIn('status', ['dropped', 'absent', 'excused']);
-                }
-            })
+            ->whereIn('status', ['dropped', 'absent', 'excused'])
             ->count();
 
         if ($accountedFor < $totalAssigned) {
