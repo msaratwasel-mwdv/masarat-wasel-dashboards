@@ -66,5 +66,3 @@ class RouteController extends Controller
         return redirect()->back()->with('success', 'Route deleted successfully');
     }
 }
-
-

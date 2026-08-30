@@ -5,11 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Inertia\Inertia;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class StaffController extends Controller
 {
@@ -20,7 +19,7 @@ class StaffController extends Controller
     {
         $statusFilter = $request->input('status', 'all');
 
-        $query = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
+        $query = User::whereHas('roles', fn ($q) => $q->where('name', 'driver'))
             ->with(['roles', 'driver', 'assignedBus.school']);
 
         if ($statusFilter === 'assigned') {
@@ -34,7 +33,7 @@ class StaffController extends Controller
             'national_id',
             'phone',
             'email',
-        ], 15, function($driver) {
+        ], 15, function ($driver) {
             return [
                 'id' => $driver->id,
                 'الاسم' => $driver->name,
@@ -45,7 +44,7 @@ class StaffController extends Controller
                 'رقم الرخصة' => $driver->driver?->license_number ?? 'غير محدد',
                 'تاريخ انتهاء الرخصة' => $driver->driver?->license_expiry_date ?? 'غير محدد',
                 'الباص المعين' => $driver->assignedBus?->bus_number ?? 'متاح',
-                'حالة السائق' => match($driver->driver?->status ?? '') {
+                'حالة السائق' => match ($driver->driver?->status ?? '') {
                     'active' => 'نشط',
                     'inactive' => 'غير نشط',
                     default => $driver->driver?->status ?? 'نشط',
@@ -59,7 +58,7 @@ class StaffController extends Controller
             return $paginated;
         }
 
-        $counts = \Illuminate\Support\Facades\Cache::remember('driver_counts', 600, function() {
+        $counts = \Illuminate\Support\Facades\Cache::remember('driver_counts', 600, function () {
             $driverUserIds = DB::table('user_roles')
                 ->join('roles', 'user_roles.role_id', '=', 'roles.id')
                 ->where('roles.name', 'driver')
@@ -82,11 +81,11 @@ class StaffController extends Controller
 
         return Inertia::render('Admin/Drivers/Index', [
             'drivers' => $paginated,
-            'counts'  => $counts,
+            'counts' => $counts,
             'filters' => [
                 'search' => $request->input('search', ''),
                 'status' => $statusFilter,
-            ]
+            ],
         ]);
     }
 
@@ -270,7 +269,7 @@ class StaffController extends Controller
         $driver->load(['driver', 'assignedBus.school']);
 
         return Inertia::render('Admin/Drivers/PrintCard', [
-            'driver' => $driver
+            'driver' => $driver,
         ]);
     }
 
@@ -291,13 +290,14 @@ class StaffController extends Controller
             'file' => 'required|mimes:xlsx,xls,csv|max:10240',
         ]);
 
-        $import = new \App\Imports\DriversImport();
+        $import = new \App\Imports\DriversImport;
 
         try {
             \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
         } catch (\Throwable $e) {
             // General extreme failure (e.g., corrupt file structure)
-            $errorMsg = "فشل في معالجة ملف الاستيراد: " . $e->getMessage() . " / Excel Import file processing failed: " . $e->getMessage();
+            $errorMsg = 'فشل في معالجة ملف الاستيراد: '.$e->getMessage().' / Excel Import file processing failed: '.$e->getMessage();
+
             return redirect()->back()->with('import_errors', [$errorMsg]);
         }
 
@@ -305,7 +305,7 @@ class StaffController extends Controller
 
         // 1. validation failures skipped per row
         if ($import->failures()->isNotEmpty()) {
-            $customAttributes = (new \App\Imports\DriversImport())->customValidationAttributes();
+            $customAttributes = (new \App\Imports\DriversImport)->customValidationAttributes();
             foreach ($import->failures() as $failure) {
                 $row = $failure->row();
                 $attributeKey = $failure->attribute(); // This might be the translated string because of customValidationAttributes
@@ -320,8 +320,12 @@ class StaffController extends Controller
                 }
 
                 $badValue = $failure->values()[$originalKey] ?? 'فارغة (Empty)';
-                if (is_scalar($badValue) && trim((string)$badValue) === '') $badValue = 'فارغة (Empty)';
-                if ($badValue === null) $badValue = 'فارغة (Empty)';
+                if (is_scalar($badValue) && trim((string) $badValue) === '') {
+                    $badValue = 'فارغة (Empty)';
+                }
+                if ($badValue === null) {
+                    $badValue = 'فارغة (Empty)';
+                }
 
                 $errors = implode(' | ', $failure->errors());
 
@@ -334,16 +338,17 @@ class StaffController extends Controller
             foreach ($import->errors() as $error) {
                 $msg = $error->getMessage();
                 if (str_contains($msg, 'Duplicate entry') && str_contains($msg, 'users_email_unique')) {
-                    $errorsArray[] = "خطأ قاعدة بيانات: البريد الإلكتروني مكرر ومسجل مسبقاً لدى مستخدم آخر / Database Error: Email address is already taken by another user.";
+                    $errorsArray[] = 'خطأ قاعدة بيانات: البريد الإلكتروني مكرر ومسجل مسبقاً لدى مستخدم آخر / Database Error: Email address is already taken by another user.';
                 } else {
-                    $errorsArray[] = "السطر خطأ: " . $msg . " / Skipped row processing error: " . $msg;
+                    $errorsArray[] = 'السطر خطأ: '.$msg.' / Skipped row processing error: '.$msg;
                 }
             }
         }
 
         // If there are failures, flash them to Inertia
-        if (!empty($errorsArray)) {
+        if (! empty($errorsArray)) {
             $msg = "تم استيراد {$import->successCount} سائق بنجاح. وتم تخطي بعض الأسطر بسبب وجود أخطاء.";
+
             return redirect()->back()
                 ->with('success', $msg)
                 ->with('import_errors', $errorsArray);
@@ -357,7 +362,7 @@ class StaffController extends Controller
         $statusFilter = $request->input('status', 'all');
         $search = $request->input('search');
 
-        $query = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
+        $query = User::whereHas('roles', fn ($q) => $q->where('name', 'driver'))
             ->with(['roles', 'driver', 'assignedBus.school']);
 
         if ($statusFilter === 'assigned') {
@@ -369,12 +374,12 @@ class StaffController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('first_name_ar', 'like', "%{$search}%")
-                  ->orWhere('last_name_ar', 'like', "%{$search}%")
-                  ->orWhere('first_name_en', 'like', "%{$search}%")
-                  ->orWhere('last_name_en', 'like', "%{$search}%")
-                  ->orWhere('national_id', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('last_name_ar', 'like', "%{$search}%")
+                    ->orWhere('first_name_en', 'like', "%{$search}%")
+                    ->orWhere('last_name_en', 'like', "%{$search}%")
+                    ->orWhere('national_id', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -384,7 +389,7 @@ class StaffController extends Controller
         if ($sortColumn && in_array($sortDirection, ['asc', 'desc'])) {
             if ($sortColumn === 'name') {
                 $query->orderBy('first_name_ar', $sortDirection)
-                      ->orderBy('last_name_ar', $sortDirection);
+                    ->orderBy('last_name_ar', $sortDirection);
             } elseif ($sortColumn === 'national_id') {
                 $query->orderBy('national_id', $sortDirection);
             } else {
@@ -394,7 +399,7 @@ class StaffController extends Controller
             $query->latest();
         }
 
-        $drivers = $query->get()->map(function($driver) {
+        $drivers = $query->get()->map(function ($driver) {
             return [
                 'id' => $driver->id,
                 'name' => $driver->name,

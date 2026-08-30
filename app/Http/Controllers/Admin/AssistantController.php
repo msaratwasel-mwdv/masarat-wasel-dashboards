@@ -5,11 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Inertia\Inertia;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class AssistantController extends Controller
 {
@@ -19,7 +18,7 @@ class AssistantController extends Controller
     {
         $statusFilter = $request->input('status', 'all');
 
-        $query = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
+        $query = User::whereHas('roles', fn ($q) => $q->where('name', 'assistant'))
             ->with(['roles', 'assistant', 'assignedBusAsAssistant.school']);
 
         if ($statusFilter === 'assigned') {
@@ -33,7 +32,7 @@ class AssistantController extends Controller
             'national_id',
             'phone',
             'email',
-        ], 15, function($assistant) {
+        ], 15, function ($assistant) {
             return [
                 'الاسم' => $assistant->name,
                 'الاسم (EN)' => $assistant->name_en,
@@ -42,7 +41,7 @@ class AssistantController extends Controller
                 'رقم الجوال' => $assistant->phone,
                 'البريد الإلكتروني' => $assistant->email,
                 'الباص المعين' => $assistant->assignedBusAsAssistant?->bus_number ?? 'متاح',
-                'الحالة' => match($assistant->assistant?->status ?? '') {
+                'الحالة' => match ($assistant->assistant?->status ?? '') {
                     'active' => 'نشط',
                     'inactive' => 'غير نشط',
                     default => $assistant->assistant?->status ?? 'نشط',
@@ -54,7 +53,7 @@ class AssistantController extends Controller
             return $paginated;
         }
 
-        $counts = \Illuminate\Support\Facades\Cache::remember('assistant_counts', 600, function() {
+        $counts = \Illuminate\Support\Facades\Cache::remember('assistant_counts', 600, function () {
             $assistantUserIds = \Illuminate\Support\Facades\DB::table('user_roles')
                 ->join('roles', 'user_roles.role_id', '=', 'roles.id')
                 ->where('roles.name', 'assistant')
@@ -77,11 +76,11 @@ class AssistantController extends Controller
 
         return Inertia::render('Admin/Assistants/Index', [
             'assistants' => $paginated,
-            'counts'      => $counts,
-            'filters'     => [
+            'counts' => $counts,
+            'filters' => [
                 'search' => $request->input('search', ''),
                 'status' => $statusFilter,
-            ]
+            ],
         ]);
     }
 
@@ -230,6 +229,7 @@ class AssistantController extends Controller
     public function destroy(User $assistant)
     {
         $assistant->delete();
+
         return redirect()->back()->with('success', 'Assistant deleted successfully');
     }
 
@@ -239,7 +239,7 @@ class AssistantController extends Controller
 
         return Inertia::render('Admin/Drivers/PrintCard', [
             'driver' => $assistant,
-            'jobTitle' => 'مشرفة حافلة'
+            'jobTitle' => 'مشرفة حافلة',
         ]);
     }
 
@@ -259,19 +259,20 @@ class AssistantController extends Controller
             'file' => 'required|mimes:xlsx,xls,csv|max:10240',
         ]);
 
-        $import = new \App\Imports\AssistantsImport();
+        $import = new \App\Imports\AssistantsImport;
 
         try {
             \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
         } catch (\Throwable $e) {
-            $errorMsg = "فشل في معالجة ملف الاستيراد: " . $e->getMessage() . " / Excel Import file processing failed: " . $e->getMessage();
+            $errorMsg = 'فشل في معالجة ملف الاستيراد: '.$e->getMessage().' / Excel Import file processing failed: '.$e->getMessage();
+
             return redirect()->back()->with('import_errors', [$errorMsg]);
         }
 
         $errorsArray = [];
 
         if ($import->failures()->isNotEmpty()) {
-            $customAttributes = (new \App\Imports\AssistantsImport())->customValidationAttributes();
+            $customAttributes = (new \App\Imports\AssistantsImport)->customValidationAttributes();
             foreach ($import->failures() as $failure) {
                 $row = $failure->row();
                 $attributeKey = $failure->attribute();
@@ -285,8 +286,12 @@ class AssistantController extends Controller
                 }
 
                 $badValue = $failure->values()[$originalKey] ?? 'فارغة (Empty)';
-                if (is_scalar($badValue) && trim((string)$badValue) === '') $badValue = 'فارغة (Empty)';
-                if ($badValue === null) $badValue = 'فارغة (Empty)';
+                if (is_scalar($badValue) && trim((string) $badValue) === '') {
+                    $badValue = 'فارغة (Empty)';
+                }
+                if ($badValue === null) {
+                    $badValue = 'فارغة (Empty)';
+                }
 
                 $errors = implode(' | ', $failure->errors());
 
@@ -298,15 +303,16 @@ class AssistantController extends Controller
             foreach ($import->errors() as $error) {
                 $msg = $error->getMessage();
                 if (str_contains($msg, 'Duplicate entry') && str_contains($msg, 'users_email_unique')) {
-                    $errorsArray[] = "خطأ قاعدة بيانات: البريد الإلكتروني مكرر ومسجل مسبقاً لدى مستخدم آخر / Database Error: Email address is already taken by another user.";
+                    $errorsArray[] = 'خطأ قاعدة بيانات: البريد الإلكتروني مكرر ومسجل مسبقاً لدى مستخدم آخر / Database Error: Email address is already taken by another user.';
                 } else {
-                    $errorsArray[] = "السطر خطأ: " . $msg . " / Skipped row processing error: " . $msg;
+                    $errorsArray[] = 'السطر خطأ: '.$msg.' / Skipped row processing error: '.$msg;
                 }
             }
         }
 
-        if (!empty($errorsArray)) {
+        if (! empty($errorsArray)) {
             $msg = "تم استيراد {$import->successCount} مشرفة بنجاح. وتم تخطي بعض الأسطر بسبب وجود أخطاء.";
+
             return redirect()->back()
                 ->with('success', $msg)
                 ->with('import_errors', $errorsArray);
@@ -320,7 +326,7 @@ class AssistantController extends Controller
         $statusFilter = $request->input('status', 'all');
         $search = $request->input('search');
 
-        $query = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
+        $query = User::whereHas('roles', fn ($q) => $q->where('name', 'assistant'))
             ->with(['roles', 'assistant', 'assignedBusAsAssistant.school']);
 
         if ($statusFilter === 'assigned') {
@@ -332,12 +338,12 @@ class AssistantController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('first_name_ar', 'like', "%{$search}%")
-                  ->orWhere('last_name_ar', 'like', "%{$search}%")
-                  ->orWhere('first_name_en', 'like', "%{$search}%")
-                  ->orWhere('last_name_en', 'like', "%{$search}%")
-                  ->orWhere('national_id', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('last_name_ar', 'like', "%{$search}%")
+                    ->orWhere('first_name_en', 'like', "%{$search}%")
+                    ->orWhere('last_name_en', 'like', "%{$search}%")
+                    ->orWhere('national_id', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -346,7 +352,7 @@ class AssistantController extends Controller
         if ($sortColumn && in_array($sortDirection, ['asc', 'desc'])) {
             if ($sortColumn === 'name') {
                 $query->orderBy('first_name_ar', $sortDirection)
-                      ->orderBy('last_name_ar', $sortDirection);
+                    ->orderBy('last_name_ar', $sortDirection);
             } elseif ($sortColumn === 'national_id') {
                 $query->orderBy('national_id', $sortDirection);
             } else {
@@ -356,7 +362,7 @@ class AssistantController extends Controller
             $query->latest();
         }
 
-        $assistants = $query->get()->map(function($assistant) {
+        $assistants = $query->get()->map(function ($assistant) {
             return [
                 'id' => $assistant->id,
                 'name' => $assistant->name,

@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\Student;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class StudentPolicy
 {
@@ -18,7 +17,7 @@ class StudentPolicy
         $userSchoolId = $user->getSchoolId();
 
         // إذا لم يكن للمستخدم مدرسة، امنعه
-        if (!$userSchoolId) {
+        if (! $userSchoolId) {
             return false;
         }
 
@@ -26,7 +25,7 @@ class StudentPolicy
         $enrollment = $student->currentEnrollment;
 
         // إذا لم يكن للطالب سجل التحاق، امنعه
-        if (!$enrollment) {
+        if (! $enrollment) {
             return false;
         }
 

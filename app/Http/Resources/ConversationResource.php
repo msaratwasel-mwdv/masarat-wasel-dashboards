@@ -32,26 +32,26 @@ class ConversationResource extends JsonResource
         $otherParticipants = $this->participants->where('id', '!=', $user?->id);
 
         return [
-            'id'           => $this->id,
-            'type'         => $this->type,
-            'title'        => $this->title,
-            'participants' => $otherParticipants->map(fn($p) => [
-                'id'     => $p->id,
-                'name'   => $p->name,
+            'id' => $this->id,
+            'type' => $this->type,
+            'title' => $this->title,
+            'participants' => $otherParticipants->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
                 'name_en' => $p->name_en ?? $p->name,
-                'role'   => $p->role,
+                'role' => $p->role,
                 'avatar_url' => $p->avatar_url,
             ])->values(),
             'last_message' => $this->whenLoaded('lastMessage', function () {
                 return [
-                    'id'         => $this->lastMessage->id,
-                    'body'       => $this->lastMessage->body,
-                    'sender_id'  => $this->lastMessage->sender_id,
+                    'id' => $this->lastMessage->id,
+                    'body' => $this->lastMessage->body,
+                    'sender_id' => $this->lastMessage->sender_id,
                     'created_at' => $this->lastMessage->created_at->toISOString(),
                 ];
             }),
             'unread_count' => $unreadCount,
-            'updated_at'   => $this->updated_at->toISOString(),
+            'updated_at' => $this->updated_at->toISOString(),
         ];
     }
 }

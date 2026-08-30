@@ -2,13 +2,12 @@
 
 namespace App\Providers;
 
-use App\Models\Bus;
 use App\Models\Student;
 use App\Policies\StudentPolicy;
 // ✅ 1. استيراد "البوابة" و "المودل" و "البوليسي"
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -57,16 +56,14 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\NotificationRecipient::observe(\App\Observers\NotificationRecipientObserver::class);
         \App\Models\Incident::observe(\App\Observers\IncidentObserver::class);
         \App\Models\FieldTrip::observe(\App\Observers\FieldTripObserver::class);
-        
+
         // Analytics models cache invalidation
         $analyticsObserver = \App\Observers\AnalyticsCacheObserver::class;
         \App\Models\Incident::observe($analyticsObserver);
         \App\Models\BusExpense::observe($analyticsObserver);
         \App\Models\Violation::observe($analyticsObserver);
         \App\Models\Delay::observe($analyticsObserver);
-        \Log::debug("AppServiceProvider: Booting... Registering Broadcast routes with Sanctum.");
+        \Log::debug('AppServiceProvider: Booting... Registering Broadcast routes with Sanctum.');
         \Illuminate\Support\Facades\Broadcast::routes(['middleware' => ['api', 'auth:sanctum']]);
     }
 }
-
-

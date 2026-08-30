@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Installment;
 use App\Services\SubscriptionService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
@@ -23,14 +23,14 @@ class InvoiceController extends Controller
     public function myInvoices(Request $request): JsonResponse
     {
         $schoolId = $request->user()->school_id;
-        if (!$schoolId) {
+        if (! $schoolId) {
             $schoolId = $request->user()->getSchoolIdEfficient();
         }
 
-        if (!$schoolId) {
+        if (! $schoolId) {
             return response()->json([
                 'success' => false,
-                'message' => 'School association not found.'
+                'message' => 'School association not found.',
             ], 403);
         }
 
@@ -47,6 +47,7 @@ class InvoiceController extends Controller
     public function allInvoices(): JsonResponse
     {
         $installments = Installment::with(['school', 'subscription.plan', 'installmentPayments'])->get();
+
         return response()->json($installments);
     }
 
@@ -58,7 +59,7 @@ class InvoiceController extends Controller
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.1',
             'payment_method' => 'required|string',
-            'reference_number' => 'nullable|string'
+            'reference_number' => 'nullable|string',
         ]);
 
         try {
@@ -74,12 +75,12 @@ class InvoiceController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Payment logged successfully',
-                'invoice' => $installment
+                'invoice' => $installment,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 400);
         }
     }

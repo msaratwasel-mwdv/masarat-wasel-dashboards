@@ -1,11 +1,11 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Schedule;
 use App\Models\Notification;
 use App\Models\NotificationRecipient;
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('trips:create-daily')->dailyAt('22:00')->timezone('Asia/Riyadh');
 
@@ -34,7 +34,7 @@ Schedule::call(function () {
     if ($notificationIds->isNotEmpty()) {
         NotificationRecipient::whereIn('notification_id', $notificationIds)->delete();
         Notification::whereIn('id', $notificationIds)->delete();
-        Log::info('[Scheduler] Pruned ' . $notificationIds->count() . ' notifications older than 24 hours.');
+        Log::info('[Scheduler] Pruned '.$notificationIds->count().' notifications older than 24 hours.');
     }
 })->hourly();
 
@@ -44,6 +44,3 @@ Schedule::command('installments:check-overdue')->dailyAt('08:00');
 // 💾 Automated Daily System & Database Backup
 Schedule::command('backup:run --only-db')->dailyAt('02:00')->timezone('Asia/Riyadh');
 Schedule::command('backup:clean')->dailyAt('02:30')->timezone('Asia/Riyadh');
-
-
-

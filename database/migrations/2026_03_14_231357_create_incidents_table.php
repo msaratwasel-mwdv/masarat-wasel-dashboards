@@ -17,21 +17,21 @@ return new class extends Migration
             $table->foreignId('bus_id')->constrained('buses')->cascadeOnDelete();
             $table->json('student_ids')->nullable();
             $table->foreignId('trip_id')->nullable()->constrained('field_trips')->nullOnDelete();
-            
+
             $table->string('type');
             $table->enum('severity', ['low', 'medium', 'high', 'critical'])->default('medium');
-            
+
             $table->text('description');
-            
+
             $table->decimal('location_lat', 10, 8)->nullable();
             $table->decimal('location_lng', 11, 8)->nullable();
-            
+
             $table->string('status')->default('pending');
-            
+
             $table->foreignId('resolved_by')->nullable()->constrained('users')->nullOnDelete();
-            
+
             $table->json('photos')->nullable();
-            
+
             $table->timestamps();
             $table->softDeletes();
         });

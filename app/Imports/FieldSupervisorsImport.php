@@ -2,38 +2,57 @@
 
 namespace App\Imports;
 
-use App\Models\User;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
-use Maatwebsite\Excel\Concerns\WithStartRow;
-use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\SkipsErrors;
+use Maatwebsite\Excel\Concerns\SkipsFailures;
+use Maatwebsite\Excel\Concerns\SkipsOnError;
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
+use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\WithUpserts;
 use Maatwebsite\Excel\Concerns\WithValidation;
-use Maatwebsite\Excel\Concerns\SkipsOnFailure;
-use Maatwebsite\Excel\Concerns\SkipsOnError;
-use Maatwebsite\Excel\Concerns\SkipsFailures;
-use Maatwebsite\Excel\Concerns\SkipsErrors;
 
-class FieldSupervisorsImport implements ToModel, SkipsEmptyRows, WithStartRow, WithChunkReading, WithBatchInserts, WithUpserts, WithValidation, SkipsOnFailure, SkipsOnError
+class FieldSupervisorsImport implements SkipsEmptyRows, SkipsOnError, SkipsOnFailure, ToModel, WithBatchInserts, WithChunkReading, WithStartRow, WithUpserts, WithValidation
 {
-    use SkipsFailures, SkipsErrors;
+    use SkipsErrors, SkipsFailures;
 
     public $successCount = 0;
 
-    public function startRow(): int { return 3; }
-    public function batchSize(): int { return 100; }
-    public function chunkSize(): int { return 100; }
-    public function uniqueBy() { return 'national_id'; }
+    public function startRow(): int
+    {
+        return 3;
+    }
+
+    public function batchSize(): int
+    {
+        return 100;
+    }
+
+    public function chunkSize(): int
+    {
+        return 100;
+    }
+
+    public function uniqueBy()
+    {
+        return 'national_id';
+    }
 
     public function isEmptyWhen(array $row): bool
     {
         foreach ($row as $value) {
-            if (is_string($value) && trim($value) !== '') return false;
-            elseif (!is_string($value) && $value !== null) return false;
+            if (is_string($value) && trim($value) !== '') {
+                return false;
+            } elseif (! is_string($value) && $value !== null) {
+                return false;
+            }
         }
+
         return true;
     }
 
@@ -55,9 +74,15 @@ class FieldSupervisorsImport implements ToModel, SkipsEmptyRows, WithStartRow, W
     public function prepareForValidation($row, $index)
     {
         foreach ($row as $key => $value) {
-            if (is_scalar($value)) { $trimmed = trim((string)$value); $row[$key] = $trimmed === '' ? null : $trimmed; }
+            if (is_scalar($value)) {
+                $trimmed = trim((string) $value);
+                $row[$key] = $trimmed === '' ? null : $trimmed;
+            }
         }
-        if (isset($row[8]) && $row[8] !== null) $row[8] = strtolower($row[8]);
+        if (isset($row[8]) && $row[8] !== null) {
+            $row[8] = strtolower($row[8]);
+        }
+
         return $row;
     }
 
@@ -100,13 +125,15 @@ class FieldSupervisorsImport implements ToModel, SkipsEmptyRows, WithStartRow, W
             'preferred_language' => strtolower(trim($row[8] ?? 'ar')) ?: 'ar',
         ];
 
-        if (empty($data['national_id']) || (empty($data['first_name_ar']) && empty($data['first_name_en']))) return null;
+        if (empty($data['national_id']) || (empty($data['first_name_ar']) && empty($data['first_name_en']))) {
+            return null;
+        }
 
         $user = User::updateOrCreate(['national_id' => $data['national_id']], [
-            'first_name_ar'=>$data['first_name_ar']?:'','last_name_ar'=>$data['last_name_ar']?:'',
-            'first_name_en'=>$data['first_name_en']?:'','last_name_en'=>$data['last_name_en']?:'',
-            'email'=>$data['email']?:null,'phone'=>$data['phone'],'address'=>$data['address']?:null,
-            'password'=>Hash::make($data['phone']),'preferred_language'=>$data['preferred_language'],
+            'first_name_ar' => $data['first_name_ar'] ?: '', 'last_name_ar' => $data['last_name_ar'] ?: '',
+            'first_name_en' => $data['first_name_en'] ?: '', 'last_name_en' => $data['last_name_en'] ?: '',
+            'email' => $data['email'] ?: null, 'phone' => $data['phone'], 'address' => $data['address'] ?: null,
+            'password' => Hash::make($data['phone']), 'preferred_language' => $data['preferred_language'],
         ]);
 
         $role = Role::firstOrCreate(['name' => 'field_supervisor']);
@@ -114,6 +141,7 @@ class FieldSupervisorsImport implements ToModel, SkipsEmptyRows, WithStartRow, W
         $user->fieldSupervisor()->updateOrCreate(['user_id' => $user->id], ['status' => 'active']);
 
         $this->successCount++;
+
         return null;
     }
 }

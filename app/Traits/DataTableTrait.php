@@ -19,10 +19,10 @@ trait DataTableTrait
     /**
      * Apply search, sort, and pagination to a query.
      *
-     * @param Builder $query          The Eloquent query builder
-     * @param Request $request        The incoming request (search, sort, direction, per_page)
-     * @param array   $searchColumns  Columns to search in. Support dot notation for relations (e.g. 'school.name')
-     * @param int     $defaultPerPage Default items per page
+     * @param  Builder  $query  The Eloquent query builder
+     * @param  Request  $request  The incoming request (search, sort, direction, per_page)
+     * @param  array  $searchColumns  Columns to search in. Support dot notation for relations (e.g. 'school.name')
+     * @param  int  $defaultPerPage  Default items per page
      * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
     protected function applyDataTable(
@@ -44,20 +44,20 @@ trait DataTableTrait
                         $parts = explode('.', $column);
                         $field = array_pop($parts);
                         $relationPath = implode('.', $parts);
-                        
+
                         $q->{$i === 0 ? 'whereHas' : 'orWhereHas'}($relationPath, function ($rq) use ($field, $search) {
                             $model = $rq->getModel();
                             if ($field === 'name' && $model->getConnection()->getSchemaBuilder()->hasColumn($model->getTable(), 'first_name_ar')) {
-                                $rq->where(function($sq) use ($search) {
+                                $rq->where(function ($sq) use ($search) {
                                     $sq->where('first_name_ar', 'like', "%{$search}%")
-                                       ->orWhere('last_name_ar', 'like', "%{$search}%")
-                                       ->orWhere('first_name_en', 'like', "%{$search}%")
-                                       ->orWhere('last_name_en', 'like', "%{$search}%");
+                                        ->orWhere('last_name_ar', 'like', "%{$search}%")
+                                        ->orWhere('first_name_en', 'like', "%{$search}%")
+                                        ->orWhere('last_name_en', 'like', "%{$search}%");
                                 });
                             } elseif ($field === 'name_en' && $model->getConnection()->getSchemaBuilder()->hasColumn($model->getTable(), 'first_name_en')) {
-                                $rq->where(function($sq) use ($search) {
+                                $rq->where(function ($sq) use ($search) {
                                     $sq->where('first_name_en', 'like', "%{$search}%")
-                                       ->orWhere('last_name_en', 'like', "%{$search}%");
+                                        ->orWhere('last_name_en', 'like', "%{$search}%");
                                 });
                             } else {
                                 $rq->where($field, 'like', "%{$search}%");
@@ -67,11 +67,11 @@ trait DataTableTrait
                         $model = $q->getModel();
                         if ($model->getConnection()->getSchemaBuilder()->hasColumn($model->getTable(), 'first_name_ar')) {
                             // Special case for 'name' which is often a virtual field or split in DB
-                            $q->{$method}(function($sq) use ($search) {
+                            $q->{$method}(function ($sq) use ($search) {
                                 $sq->where('first_name_ar', 'like', "%{$search}%")
-                                   ->orWhere('last_name_ar', 'like', "%{$search}%")
-                                   ->orWhere('first_name_en', 'like', "%{$search}%")
-                                   ->orWhere('last_name_en', 'like', "%{$search}%");
+                                    ->orWhere('last_name_ar', 'like', "%{$search}%")
+                                    ->orWhere('first_name_en', 'like', "%{$search}%")
+                                    ->orWhere('last_name_en', 'like', "%{$search}%");
                             });
                         } else {
                             $q->{$method}($column, 'like', "%{$search}%");
@@ -80,9 +80,9 @@ trait DataTableTrait
                         $model = $q->getModel();
                         if ($model->getConnection()->getSchemaBuilder()->hasColumn($model->getTable(), 'first_name_en')) {
                             // Special case for 'name_en' virtual attribute
-                            $q->{$method}(function($sq) use ($search) {
+                            $q->{$method}(function ($sq) use ($search) {
                                 $sq->where('first_name_en', 'like', "%{$search}%")
-                                   ->orWhere('last_name_en', 'like', "%{$search}%");
+                                    ->orWhere('last_name_en', 'like', "%{$search}%");
                             });
                         } else {
                             $q->{$method}($column, 'like', "%{$search}%");
@@ -101,10 +101,10 @@ trait DataTableTrait
             $model = $query->getModel();
             if ($sortColumn === 'name' && $model->getConnection()->getSchemaBuilder()->hasColumn($model->getTable(), 'first_name_ar')) {
                 $query->orderBy('first_name_ar', $sortDirection)
-                      ->orderBy('last_name_ar', $sortDirection);
+                    ->orderBy('last_name_ar', $sortDirection);
             } elseif ($sortColumn === 'name_en' && $model->getConnection()->getSchemaBuilder()->hasColumn($model->getTable(), 'first_name_en')) {
                 $query->orderBy('first_name_en', $sortDirection)
-                      ->orderBy('last_name_en', $sortDirection);
+                    ->orderBy('last_name_en', $sortDirection);
             } else {
                 $query->orderBy($sortColumn, $sortDirection);
             }
@@ -115,6 +115,7 @@ trait DataTableTrait
         // 3. Export interception
         if ($request->has('export')) {
             $format = $request->get('export');
+
             return $this->handleExport($query, $format, $exportCallback);
         }
 
@@ -137,7 +138,7 @@ trait DataTableTrait
             // Default mapping: just toArray without relations if it's too complex
             $data = $data->map(function ($item) {
                 return collect($item->toArray())->filter(function ($value) {
-                    return !is_array($value) && !is_object($value);
+                    return ! is_array($value) && ! is_object($value);
                 })->toArray();
             });
         }
@@ -147,21 +148,21 @@ trait DataTableTrait
         }
 
         $headers = array_keys($data->first());
-        $filename = 'export_' . date('Y_m_d_His');
+        $filename = 'export_'.date('Y_m_d_His');
 
         if ($format === 'csv' || $format === 'excel') {
             $headersResp = [
-                "Content-type"        => "text/csv; charset=UTF-8",
-                "Content-Disposition" => "attachment; filename={$filename}.csv",
-                "Pragma"              => "no-cache",
-                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-                "Expires"             => "0"
+                'Content-type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => "attachment; filename={$filename}.csv",
+                'Pragma' => 'no-cache',
+                'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+                'Expires' => '0',
             ];
 
             $callback = function () use ($data, $headers) {
                 $file = fopen('php://output', 'w');
                 // UTF-8 BOM for Excel to read Arabic correctly
-                fputs($file, "\xEF\xBB\xBF");
+                fwrite($file, "\xEF\xBB\xBF");
                 fputcsv($file, $headers);
                 foreach ($data as $row) {
                     fputcsv($file, (array) $row);
@@ -184,27 +185,26 @@ trait DataTableTrait
                 tr:nth-child(even) { background-color: #fafbfc; }
             </style>';
             $html .= '</head><body>';
-            $html .= '<h2>تصدير البيانات - ' . date('Y-m-d') . '</h2>';
+            $html .= '<h2>تصدير البيانات - '.date('Y-m-d').'</h2>';
             $html .= '<table><thead><tr>';
             foreach ($headers as $header) {
-                $html .= '<th>' . htmlspecialchars($header) . '</th>';
+                $html .= '<th>'.htmlspecialchars($header).'</th>';
             }
             $html .= '</tr></thead><tbody>';
             foreach ($data as $row) {
                 $html .= '<tr>';
                 foreach ((array) $row as $value) {
-                    $html .= '<td>' . htmlspecialchars((string) $value) . '</td>';
+                    $html .= '<td>'.htmlspecialchars((string) $value).'</td>';
                 }
                 $html .= '</tr>';
             }
             $html .= '</tbody></table></body></html>';
 
             $pdf = \Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::loadHTML($html);
+
             return $pdf->download("{$filename}.pdf");
         }
 
         return redirect()->back();
     }
 }
-
-

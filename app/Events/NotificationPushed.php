@@ -7,14 +7,13 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
 
 class NotificationPushed implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets;
 
     public ?int $targetUserId = null;
+
     public ?string $correlationId = null;
 
     public function __construct(public Notification $notification, ?int $targetUserId = null, ?string $correlationId = null)
@@ -25,12 +24,12 @@ class NotificationPushed implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        if (!$this->targetUserId) {
+        if (! $this->targetUserId) {
             return [];
         }
-        
+
         return [
-            new PrivateChannel('App.Models.User.' . $this->targetUserId),
+            new PrivateChannel('App.Models.User.'.$this->targetUserId),
         ];
     }
 
@@ -43,16 +42,16 @@ class NotificationPushed implements ShouldBroadcastNow
     {
         $unreadCount = 0;
         if ($this->targetUserId) {
-            $unreadCount = Notification::activeOnly()->where(function($q) {
-                    $q->where(function($sub) {
-                        $sub->where('user_id', $this->targetUserId)
-                            ->where('status', 'unread');
-                    })
-                    ->orWhereHas('recipients', function($sub) {
+            $unreadCount = Notification::activeOnly()->where(function ($q) {
+                $q->where(function ($sub) {
+                    $sub->where('user_id', $this->targetUserId)
+                        ->where('status', 'unread');
+                })
+                    ->orWhereHas('recipients', function ($sub) {
                         $sub->where('user_id', $this->targetUserId)
                             ->whereNull('read_at');
                     });
-                })
+            })
                 ->count();
         }
 

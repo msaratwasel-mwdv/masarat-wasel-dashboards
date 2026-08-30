@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-
-use App\Models\BusExpense;
 use App\Models\Bus;
+use App\Models\BusExpense;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class BusExpenseController extends Controller
@@ -33,7 +32,7 @@ class BusExpenseController extends Controller
                 ->where('date', '>=', now()->subDays(15))
                 ->groupBy('date')
                 ->orderBy('date')
-                ->get()
+                ->get(),
         ];
 
         return Inertia::render('Admin/BusExpenses/Index', [
@@ -47,11 +46,11 @@ class BusExpenseController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'bus_id'        => 'required|exists:buses,id',
-            'type'          => 'required|in:fuel,maintenance',
-            'amount'        => 'required|numeric|min:0',
-            'date'          => 'required|date',
-            'extra_info'    => 'nullable|string|max:500',
+            'bus_id' => 'required|exists:buses,id',
+            'type' => 'required|in:fuel,maintenance',
+            'amount' => 'required|numeric|min:0',
+            'date' => 'required|date',
+            'extra_info' => 'nullable|string|max:500',
             'receipt_photo' => 'nullable|image|max:5120',
         ]);
 
@@ -68,11 +67,11 @@ class BusExpenseController extends Controller
     public function update(Request $request, BusExpense $bus_expense)
     {
         $validated = $request->validate([
-            'bus_id'        => 'required|exists:buses,id',
-            'type'          => 'required|in:fuel,maintenance',
-            'amount'        => 'required|numeric|min:0',
-            'date'          => 'required|date',
-            'extra_info'    => 'nullable|string|max:500',
+            'bus_id' => 'required|exists:buses,id',
+            'type' => 'required|in:fuel,maintenance',
+            'amount' => 'required|numeric|min:0',
+            'date' => 'required|date',
+            'extra_info' => 'nullable|string|max:500',
             'receipt_photo' => 'nullable|image|max:5120',
         ]);
 

@@ -5,14 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Bus;
 use App\Models\Delay;
-use App\Models\InspectionItem;
-use App\Models\Inspection;
-use App\Models\InspectionResult;
 use App\Models\Incident;
+use App\Models\Inspection;
+use App\Models\InspectionItem;
+use App\Models\InspectionResult;
 use App\Models\Student;
 use App\Models\Violation;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -27,20 +27,20 @@ class FieldSupervisorController extends Controller
     public function getDashboardStats(): JsonResponse
     {
         $activeBuses = Bus::where('status', 'active')->count();
-        $activeDrivers = \App\Models\User::whereHas('roles', function($query) {
+        $activeDrivers = \App\Models\User::whereHas('roles', function ($query) {
             $query->where('name', 'driver');
-        })->whereHas('driver', function($query) {
+        })->whereHas('driver', function ($query) {
             $query->where('status', 'active');
         })->count();
         $activeTrips = \App\Models\Trip::where('status', 'in_progress')->count();
 
         return response()->json([
             'success' => true,
-            'data'    => [
-                'active_buses'   => $activeBuses,
+            'data' => [
+                'active_buses' => $activeBuses,
                 'active_drivers' => $activeDrivers,
-                'active_trips'   => $activeTrips,
-            ]
+                'active_trips' => $activeTrips,
+            ],
         ]);
     }
 
@@ -50,48 +50,50 @@ class FieldSupervisorController extends Controller
      */
     public function getStaff(): JsonResponse
     {
-        $drivers = \App\Models\User::whereHas('roles', function($query) {
+        $drivers = \App\Models\User::whereHas('roles', function ($query) {
             $query->where('name', 'driver');
         })
             ->get()
             ->map(function ($user) {
                 $bus = $user->assignedBus;
+
                 return [
-                    'id'        => $user->id,
-                    'name'      => $user->name,
-                    'phone'     => $user->phone,
-                    'role'      => 'driver',
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'phone' => $user->phone,
+                    'role' => 'driver',
                     'is_active' => (bool) $user->is_active,
-                    'bus_code'  => $bus ? ($bus->bus_code ?? $bus->bus_number) : null,
-                    'bus_id'    => $bus ? $bus->id : null,
-                    'image'     => $user->image,
+                    'bus_code' => $bus ? ($bus->bus_code ?? $bus->bus_number) : null,
+                    'bus_id' => $bus ? $bus->id : null,
+                    'image' => $user->image,
                 ];
             });
 
-        $supervisors = \App\Models\User::whereHas('roles', function($query) {
+        $supervisors = \App\Models\User::whereHas('roles', function ($query) {
             $query->where('name', 'assistant');
         })
             ->get()
             ->map(function ($user) {
                 $bus = $user->assignedBusAsAssistant;
+
                 return [
-                    'id'        => $user->id,
-                    'name'      => $user->name,
-                    'phone'     => $user->phone,
-                    'role'      => 'assistant',
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'phone' => $user->phone,
+                    'role' => 'assistant',
                     'is_active' => (bool) $user->is_active,
-                    'bus_code'  => $bus ? ($bus->bus_code ?? $bus->bus_number) : null,
-                    'bus_id'    => $bus ? $bus->id : null,
-                    'image'     => $user->image,
+                    'bus_code' => $bus ? ($bus->bus_code ?? $bus->bus_number) : null,
+                    'bus_id' => $bus ? $bus->id : null,
+                    'image' => $user->image,
                 ];
             });
 
         return response()->json([
             'success' => true,
-            'data'    => [
-                'drivers'     => $drivers,
+            'data' => [
+                'drivers' => $drivers,
                 'supervisors' => $supervisors,
-            ]
+            ],
         ]);
     }
 
@@ -105,18 +107,18 @@ class FieldSupervisorController extends Controller
             ->where('status', 'active')
             ->get()
             ->map(function ($bus) {
-                $lat = (double) $bus->current_latitude;
-                $lng = (double) $bus->current_longitude;
+                $lat = (float) $bus->current_latitude;
+                $lng = (float) $bus->current_longitude;
                 $isFallback = false;
 
                 if ($lat == 0.0 || $lng == 0.0) {
                     $isFallback = true;
-                    if ($bus->latitude && $bus->longitude && (double)$bus->latitude != 0.0 && (double)$bus->longitude != 0.0) {
-                        $lat = (double) $bus->latitude;
-                        $lng = (double) $bus->longitude;
+                    if ($bus->latitude && $bus->longitude && (float) $bus->latitude != 0.0 && (float) $bus->longitude != 0.0) {
+                        $lat = (float) $bus->latitude;
+                        $lng = (float) $bus->longitude;
                     } else {
-                        $lat = (double) ($bus->school && $bus->school->latitude ? $bus->school->latitude : 23.5880);
-                        $lng = (double) ($bus->school && $bus->school->longitude ? $bus->school->longitude : 58.3829);
+                        $lat = (float) ($bus->school && $bus->school->latitude ? $bus->school->latitude : 23.5880);
+                        $lng = (float) ($bus->school && $bus->school->longitude ? $bus->school->longitude : 58.3829);
                     }
                 }
 
@@ -130,29 +132,29 @@ class FieldSupervisorController extends Controller
                 }
 
                 return [
-                    'id'              => $bus->id,
-                    'bus_number'      => $bus->bus_number,
-                    'bus_code'        => $bus->bus_code ?? $bus->bus_number,
-                    'plate_number'    => $bus->plate_number,
-                    'school'          => $bus->school?->name ?? 'N/A',
-                    'driver'          => $bus->driver?->name ?? 'N/A',
-                    'assistant'       => $bus->assistant?->name ?? 'N/A',
-                    'supervisor'      => $bus->assistant?->name ?? 'N/A',
-                    'field_supervisor'=> $bus->fieldSupervisor?->name ?? 'N/A',
-                    'location_lat'    => $lat,
-                    'location_lng'    => $lng,
-                    'target_lat'      => $bus->target_latitude,
-                    'target_lng'      => $bus->target_longitude,
-                    'status'          => $bus->status,
-                    'trip_status'     => $bus->trip_status,
-                    'speed_kmh'       => 0,
-                    'last_update'     => $bus->last_location_update?->toIso8601String(),
+                    'id' => $bus->id,
+                    'bus_number' => $bus->bus_number,
+                    'bus_code' => $bus->bus_code ?? $bus->bus_number,
+                    'plate_number' => $bus->plate_number,
+                    'school' => $bus->school?->name ?? 'N/A',
+                    'driver' => $bus->driver?->name ?? 'N/A',
+                    'assistant' => $bus->assistant?->name ?? 'N/A',
+                    'supervisor' => $bus->assistant?->name ?? 'N/A',
+                    'field_supervisor' => $bus->fieldSupervisor?->name ?? 'N/A',
+                    'location_lat' => $lat,
+                    'location_lng' => $lng,
+                    'target_lat' => $bus->target_latitude,
+                    'target_lng' => $bus->target_longitude,
+                    'status' => $bus->status,
+                    'trip_status' => $bus->trip_status,
+                    'speed_kmh' => 0,
+                    'last_update' => $bus->last_location_update?->toIso8601String(),
                 ];
             });
 
         return response()->json([
             'success' => true,
-            'data'    => $buses
+            'data' => $buses,
         ]);
     }
 
@@ -163,10 +165,10 @@ class FieldSupervisorController extends Controller
     public function getInspectionItems(): JsonResponse
     {
         $items = InspectionItem::where('is_active', true)->get(['id', 'name']);
-        
+
         return response()->json([
             'success' => true,
-            'data'    => $items
+            'data' => $items,
         ]);
     }
 
@@ -177,9 +179,9 @@ class FieldSupervisorController extends Controller
     public function submitInspection(Request $request): JsonResponse
     {
         $request->validate([
-            'bus_id'         => 'required|exists:buses,id',
+            'bus_id' => 'required|exists:buses,id',
             'overall_status' => 'required|in:pass,fail,warning',
-            'results'        => 'required|array',
+            'results' => 'required|array',
             'results.*.item_id' => 'required|exists:inspection_items,id',
             'results.*.is_passed' => 'required|boolean',
         ]);
@@ -195,19 +197,19 @@ class FieldSupervisorController extends Controller
             }
 
             $inspection = Inspection::create([
-                'bus_id'              => $request->bus_id,
+                'bus_id' => $request->bus_id,
                 'field_supervisor_id' => $request->user()->id,
-                'overall_status'      => $request->overall_status,
-                'notes'               => $request->notes,
-                'photos'              => $photos,
+                'overall_status' => $request->overall_status,
+                'notes' => $request->notes,
+                'photos' => $photos,
             ]);
 
             foreach ($request->results as $res) {
                 InspectionResult::create([
-                    'inspection_id'      => $inspection->id,
+                    'inspection_id' => $inspection->id,
                     'inspection_item_id' => $res['item_id'],
-                    'is_passed'          => $res['is_passed'],
-                    'notes'              => $res['notes'] ?? null,
+                    'is_passed' => $res['is_passed'],
+                    'notes' => $res['notes'] ?? null,
                 ]);
             }
 
@@ -216,12 +218,13 @@ class FieldSupervisorController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Inspection submitted successfully',
-                'data'    => $inspection
+                'data' => $inspection,
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('[Inspection] Submit failed: ' . $e->getMessage());
+            Log::error('[Inspection] Submit failed: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Failed to submit inspection'], 500);
         }
     }
@@ -233,9 +236,9 @@ class FieldSupervisorController extends Controller
     public function reportIncident(Request $request): JsonResponse
     {
         $request->validate([
-            'bus_id'      => 'required|exists:buses,id',
-            'type'        => 'required|in:sos,behavioral,health,technical,traffic',
-            'severity'    => 'required|in:low,medium,high,critical',
+            'bus_id' => 'required|exists:buses,id',
+            'type' => 'required|in:sos,behavioral,health,technical,traffic',
+            'severity' => 'required|in:low,medium,high,critical',
             'description' => 'required|string',
             'student_ids' => 'required_if:type,behavioral|array',
             'student_ids.*' => 'exists:students,id',
@@ -252,34 +255,34 @@ class FieldSupervisorController extends Controller
         }
 
         $incident = Incident::create([
-            'bus_id'       => $request->bus_id,
-            'reporter_id'  => $request->user()->id,
-            'type'         => $request->type,
-            'severity'     => $request->severity,
-            'description'  => $request->description,
+            'bus_id' => $request->bus_id,
+            'reporter_id' => $request->user()->id,
+            'type' => $request->type,
+            'severity' => $request->severity,
+            'description' => $request->description,
             'location_lat' => $request->location_lat,
             'location_lng' => $request->location_lng,
-            'student_ids'  => $request->student_ids,
-            'photos'       => $photos,
-            'status'       => 'pending',
+            'student_ids' => $request->student_ids,
+            'photos' => $photos,
+            'status' => 'pending',
         ]);
 
         // ── Notification Routing ──
         $typeLabels = [
-            'sos'        => 'طوارئ SOS',
+            'sos' => 'طوارئ SOS',
             'behavioral' => 'بلاغ سلوكي',
-            'health'     => 'بلاغ صحي',
-            'technical'  => 'بلاغ تقني',
-            'traffic'    => 'حادث مروري',
+            'health' => 'بلاغ صحي',
+            'technical' => 'بلاغ تقني',
+            'traffic' => 'حادث مروري',
         ];
         $typeLabel = $typeLabels[$request->type] ?? 'بلاغ';
         $reporterName = $request->user()->name ?? 'مستخدم';
-        
+
         $details = $request->description;
-        if ($request->type === 'behavioral' && !empty($request->student_ids)) {
+        if ($request->type === 'behavioral' && ! empty($request->student_ids)) {
             $studentNames = \App\Models\Student::whereIn('id', $request->student_ids)->get()->pluck('full_name')->toArray();
-            if (!empty($studentNames)) {
-                $details = "الطلاب: (" . implode('، ', $studentNames) . "). " . $details;
+            if (! empty($studentNames)) {
+                $details = 'الطلاب: ('.implode('، ', $studentNames).'). '.$details;
             }
         }
 
@@ -287,16 +290,16 @@ class FieldSupervisorController extends Controller
             $bus = Bus::with(['school', 'fieldSupervisor'])->find($request->bus_id);
             $busNumber = $bus ? $bus->bus_number : 'غير محدد';
             $schoolId = $bus ? $bus->school_id : null;
-            
+
             $roleNames = [
                 'field_supervisor' => 'المشرف الميداني',
-                'assistant'        => 'مشرفة الحافلة',
-                'driver'           => 'السائق',
-                'school_admin'     => 'إدارة المدرسة',
-                'admin'            => 'الإدارة العامة'
+                'assistant' => 'مشرفة الحافلة',
+                'driver' => 'السائق',
+                'school_admin' => 'إدارة المدرسة',
+                'admin' => 'الإدارة العامة',
             ];
             $reporterRoleName = $roleNames[$request->user()->role] ?? 'مستخدم';
-            
+
             $recipientUserIds = [];
 
             // 1. تحديد المستلمين حسب نوع البلاغ
@@ -308,7 +311,7 @@ class FieldSupervisorController extends Controller
                     $schoolAdmins = \App\Models\User::withRole('school_admin')
                         ->atSchool($schoolId)->pluck('id')->toArray();
                 }
-                
+
                 $recipientUserIds = array_merge($recipientUserIds, $admins, $schoolAdmins);
             } else {
                 // البلاغات الأخرى تذهب للإدارة العامة فقط
@@ -325,69 +328,69 @@ class FieldSupervisorController extends Controller
 
             // إزالة التكرار ومعرف المرسل من القائمة
             $recipientUserIds = array_unique(array_filter($recipientUserIds));
-            $recipientUserIds = array_values(array_filter($recipientUserIds, fn($id) => $id != $request->user()->id));
+            $recipientUserIds = array_values(array_filter($recipientUserIds, fn ($id) => $id != $request->user()->id));
 
-            if (!empty($recipientUserIds)) {
+            if (! empty($recipientUserIds)) {
                 $icon = $request->type === 'sos' ? 'sos' : 'warning';
                 $color = ($request->type === 'sos' || $request->type === 'traffic') ? '#EF4444' : '#F59E0B';
 
                 $typeLabelsEn = [
-                    'sos'        => 'SOS Emergency',
+                    'sos' => 'SOS Emergency',
                     'behavioral' => 'Behavioral Report',
-                    'health'     => 'Health Report',
-                    'technical'  => 'Technical Issue',
-                    'traffic'    => 'Traffic Accident',
+                    'health' => 'Health Report',
+                    'technical' => 'Technical Issue',
+                    'traffic' => 'Traffic Accident',
                 ];
                 $typeLabelEn = $typeLabelsEn[$request->type] ?? 'Report';
-                
+
                 $roleNamesEn = [
                     'field_supervisor' => 'Field Supervisor',
-                    'assistant'        => 'Bus Assistant',
-                    'driver'           => 'Driver',
-                    'school_admin'     => 'School Admin',
-                    'admin'            => 'General Admin'
+                    'assistant' => 'Bus Assistant',
+                    'driver' => 'Driver',
+                    'school_admin' => 'School Admin',
+                    'admin' => 'General Admin',
                 ];
                 $reporterRoleNameEn = $roleNamesEn[$request->user()->role] ?? 'User';
                 $reporterNameEn = $request->user()->name_en ?? $reporterName;
 
                 foreach ($recipientUserIds as $userId) {
                     $this->notificationService->sendTranslatedToUser(
-                        userId: $userId, 
-                        type: 'incident', 
-                        titleKey: 'notifications.incident_title', 
-                        messageKey: 'notifications.incident_message', 
+                        userId: $userId,
+                        type: 'incident',
+                        titleKey: 'notifications.incident_title',
+                        messageKey: 'notifications.incident_message',
                         translationParams: [
-                            'type' => ($request->type === 'sos' ? '🚨 ' : '⚠️ ') . $typeLabel,
+                            'type' => ($request->type === 'sos' ? '🚨 ' : '⚠️ ').$typeLabel,
                             'bus' => $busNumber,
                             'role' => $reporterRoleName,
                             'name' => $reporterName,
-                            'details' => $details
+                            'details' => $details,
                         ],
                         data: [
-                            'incident_id' => $incident->id, 
+                            'incident_id' => $incident->id,
                             'type' => $request->type,
                             'category' => 'incidents',
-                            'target_screen' => 'incident_details'
+                            'target_screen' => 'incident_details',
                         ],
                         fromUserName: $reporterName,
                         translationParamsEn: [
-                            'type' => ($request->type === 'sos' ? '🚨 ' : '⚠️ ') . $typeLabelEn,
+                            'type' => ($request->type === 'sos' ? '🚨 ' : '⚠️ ').$typeLabelEn,
                             'bus' => $busNumber,
                             'role' => $reporterRoleNameEn,
                             'name' => $reporterNameEn,
-                            'details' => $request->description
+                            'details' => $request->description,
                         ]
                     );
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Failed to send incident notification: ' . $e->getMessage());
+            Log::error('Failed to send incident notification: '.$e->getMessage());
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Incident reported and notifications sent',
-            'data'    => $incident
+            'data' => $incident,
         ], 201);
     }
 
@@ -398,8 +401,8 @@ class FieldSupervisorController extends Controller
     public function submitViolation(Request $request): JsonResponse
     {
         $request->validate([
-            'bus_id'      => 'required|exists:buses,id',
-            'type'        => 'required|string',
+            'bus_id' => 'required|exists:buses,id',
+            'type' => 'required|string',
             'description' => 'required|string',
         ]);
 
@@ -411,17 +414,17 @@ class FieldSupervisorController extends Controller
         }
 
         $violation = Violation::create([
-            'bus_id'      => $request->bus_id,
+            'bus_id' => $request->bus_id,
             'reporter_id' => $request->user()->id,
-            'type'        => $request->type,
+            'type' => $request->type,
             'description' => $request->description,
-            'photos'      => $photos,
+            'photos' => $photos,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Violation reported successfully',
-            'data'    => $violation
+            'data' => $violation,
         ], 201);
     }
 
@@ -436,24 +439,24 @@ class FieldSupervisorController extends Controller
             ->get()
             ->map(function ($inc) {
                 return [
-                    'id'          => $inc->id,
-                    'type'        => $inc->type,
-                    'severity'    => $inc->severity,
+                    'id' => $inc->id,
+                    'type' => $inc->type,
+                    'severity' => $inc->severity,
                     'description' => $inc->description,
-                    'status'      => $inc->status ?? 'pending',
-                    'bus_code'    => $inc->bus?->bus_number ?? 'N/A',
-                    'bus_id'      => $inc->bus_id,
-                    'location_lat'=> $inc->location_lat,
-                    'location_lng'=> $inc->location_lng,
-                    'photos'      => $inc->photo_urls,
-                    'student_names'=> $inc->student_names,
-                    'created_at'  => $inc->created_at->toIso8601String(),
+                    'status' => $inc->status ?? 'pending',
+                    'bus_code' => $inc->bus?->bus_number ?? 'N/A',
+                    'bus_id' => $inc->bus_id,
+                    'location_lat' => $inc->location_lat,
+                    'location_lng' => $inc->location_lng,
+                    'photos' => $inc->photo_urls,
+                    'student_names' => $inc->student_names,
+                    'created_at' => $inc->created_at->toIso8601String(),
                 ];
             });
 
         return response()->json([
             'success' => true,
-            'data'    => $incidents,
+            'data' => $incidents,
         ]);
     }
 
@@ -467,24 +470,25 @@ class FieldSupervisorController extends Controller
             ->orderByDesc('created_at')
             ->get()
             ->map(function ($ins) {
-                $totalItems  = $ins->results->count();
+                $totalItems = $ins->results->count();
                 $passedItems = $ins->results->where('is_passed', true)->count();
+
                 return [
-                    'id'             => $ins->id,
-                    'bus_id'         => $ins->bus_id,
-                    'bus_code'       => $ins->bus?->bus_code ?? $ins->bus?->bus_number ?? 'N/A',
+                    'id' => $ins->id,
+                    'bus_id' => $ins->bus_id,
+                    'bus_code' => $ins->bus?->bus_code ?? $ins->bus?->bus_number ?? 'N/A',
                     'overall_status' => $ins->overall_status,
-                    'notes'          => $ins->notes,
-                    'total_items'    => $totalItems,
-                    'passed_items'   => $passedItems,
-                    'date'           => $ins->created_at->toDateString(),
-                    'created_at'     => $ins->created_at->toIso8601String(),
+                    'notes' => $ins->notes,
+                    'total_items' => $totalItems,
+                    'passed_items' => $passedItems,
+                    'date' => $ins->created_at->toDateString(),
+                    'created_at' => $ins->created_at->toIso8601String(),
                 ];
             });
 
         return response()->json([
             'success' => true,
-            'data'    => $inspections,
+            'data' => $inspections,
         ]);
     }
 
@@ -499,24 +503,24 @@ class FieldSupervisorController extends Controller
             ->get()
             ->map(function ($trip) {
                 return [
-                    'id'          => $trip->id,
-                    'trip_name'   => $trip->name,
+                    'id' => $trip->id,
+                    'trip_name' => $trip->name,
                     'description' => $trip->description,
                     'destination' => $trip->destination_address,
-                    'trip_date'   => $trip->date ? $trip->date->toDateString() : null,
-                    'trip_time'   => $trip->departure_time,
-                    'duration'    => $trip->duration_days ?? 1,
-                    'status'      => $trip->status,
-                    'school'      => $trip->school?->name ?? 'N/A',
-                    'bus_code'    => $trip->bus?->bus_code ?? $trip->bus?->bus_number ?? 'N/A',
-                    'students'    => $trip->students()->count(),
-                    'cost'        => $trip->cost,
+                    'trip_date' => $trip->date ? $trip->date->toDateString() : null,
+                    'trip_time' => $trip->departure_time,
+                    'duration' => $trip->duration_days ?? 1,
+                    'status' => $trip->status,
+                    'school' => $trip->school?->name ?? 'N/A',
+                    'bus_code' => $trip->bus?->bus_code ?? $trip->bus?->bus_number ?? 'N/A',
+                    'students' => $trip->students()->count(),
+                    'cost' => $trip->cost,
                 ];
             });
 
         return response()->json([
             'success' => true,
-            'data'    => $trips,
+            'data' => $trips,
         ]);
     }
 
@@ -526,32 +530,32 @@ class FieldSupervisorController extends Controller
      */
     public function getDashboardReport(): JsonResponse
     {
-        $activeBuses    = Bus::where('status', 'active')->count();
-        $totalBuses     = Bus::count();
-        $activeDrivers  = \App\Models\User::whereHas('roles', function($query) {
+        $activeBuses = Bus::where('status', 'active')->count();
+        $totalBuses = Bus::count();
+        $activeDrivers = \App\Models\User::whereHas('roles', function ($query) {
             $query->where('name', 'driver');
-        })->whereHas('driver', function($query) {
+        })->whereHas('driver', function ($query) {
             $query->where('status', 'active');
         })->count();
-        $totalDrivers   = \App\Models\User::whereHas('roles', function($query) {
+        $totalDrivers = \App\Models\User::whereHas('roles', function ($query) {
             $query->where('name', 'driver');
         })->count();
-        $todayTrips     = \App\Models\Trip::whereDate('created_at', today())->count();
+        $todayTrips = \App\Models\Trip::whereDate('created_at', today())->count();
         $todayIncidents = Incident::whereDate('created_at', today())->count();
         $todayInspections = Inspection::whereDate('created_at', today())->count();
         $pendingIncidents = Incident::where('status', 'pending')->count();
 
         return response()->json([
             'success' => true,
-            'data'    => [
-                'active_buses'       => $activeBuses,
-                'total_buses'        => $totalBuses,
-                'active_drivers'     => $activeDrivers,
-                'total_drivers'      => $totalDrivers,
-                'today_trips'        => $todayTrips,
-                'today_incidents'    => $todayIncidents,
-                'today_inspections'  => $todayInspections,
-                'pending_incidents'  => $pendingIncidents,
+            'data' => [
+                'active_buses' => $activeBuses,
+                'total_buses' => $totalBuses,
+                'active_drivers' => $activeDrivers,
+                'total_drivers' => $totalDrivers,
+                'today_trips' => $todayTrips,
+                'today_incidents' => $todayIncidents,
+                'today_inspections' => $todayInspections,
+                'pending_incidents' => $pendingIncidents,
             ],
         ]);
     }
@@ -571,23 +575,23 @@ class FieldSupervisorController extends Controller
 
         $delays = $query->get()->map(function ($delay) {
             return [
-                'id'               => $delay->id,
-                'type'             => $delay->type,
-                'student_name'     => $delay->student?->full_name,
-                'student_id'       => $delay->student_id,
-                'national_id'      => $delay->student?->national_id,
-                'bus_id'           => $delay->bus_id,
-                'bus_code'         => $delay->bus?->bus_code ?? $delay->bus?->bus_number ?? 'N/A',
+                'id' => $delay->id,
+                'type' => $delay->type,
+                'student_name' => $delay->student?->full_name,
+                'student_id' => $delay->student_id,
+                'national_id' => $delay->student?->national_id,
+                'bus_id' => $delay->bus_id,
+                'bus_code' => $delay->bus?->bus_code ?? $delay->bus?->bus_number ?? 'N/A',
                 'duration_minutes' => $delay->duration_minutes,
-                'reason'           => $delay->reason,
-                'notes'            => $delay->notes,
-                'created_at'       => $delay->created_at->toIso8601String(),
+                'reason' => $delay->reason,
+                'notes' => $delay->notes,
+                'created_at' => $delay->created_at->toIso8601String(),
             ];
         });
 
         return response()->json([
             'success' => true,
-            'data'    => $delays,
+            'data' => $delays,
         ]);
     }
 
@@ -598,28 +602,28 @@ class FieldSupervisorController extends Controller
     public function storeDelay(Request $request): JsonResponse
     {
         $request->validate([
-            'type'             => 'required|in:student,bus',
-            'student_id'       => 'nullable|required_if:type,student|exists:students,id',
-            'bus_id'           => 'nullable|required_if:type,bus|exists:buses,id',
+            'type' => 'required|in:student,bus',
+            'student_id' => 'nullable|required_if:type,student|exists:students,id',
+            'bus_id' => 'nullable|required_if:type,bus|exists:buses,id',
             'duration_minutes' => 'required|integer|min:1',
-            'reason'           => 'nullable|string',
-            'notes'            => 'nullable|string',
+            'reason' => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
 
         $delay = Delay::create([
-            'type'             => $request->type,
-            'student_id'       => $request->student_id,
-            'bus_id'           => $request->bus_id,
+            'type' => $request->type,
+            'student_id' => $request->student_id,
+            'bus_id' => $request->bus_id,
             'duration_minutes' => $request->duration_minutes,
-            'reason'           => $request->reason,
-            'notes'            => $request->notes,
-            'reporter_id'      => $request->user()->id,
+            'reason' => $request->reason,
+            'notes' => $request->notes,
+            'reporter_id' => $request->user()->id,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Delay recorded successfully',
-            'data'    => $delay,
+            'data' => $delay,
         ], 201);
     }
 
@@ -635,24 +639,24 @@ class FieldSupervisorController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('full_name', 'like', "%{$search}%")
-                  ->orWhere('national_id', 'like', "%{$search}%")
-                  ->orWhere('student_code', 'like', "%{$search}%");
+                    ->orWhere('national_id', 'like', "%{$search}%")
+                    ->orWhere('student_code', 'like', "%{$search}%");
             });
         }
 
         $students = $query->limit(50)->get()->map(function ($student) {
             return [
-                'id'          => $student->id,
-                'name'        => $student->full_name,
+                'id' => $student->id,
+                'name' => $student->full_name,
                 'national_id' => $student->national_id ?? '',
-                'code'        => $student->student_code ?? '',
-                'school_id'   => $student->school_id,
+                'code' => $student->student_code ?? '',
+                'school_id' => $student->school_id,
             ];
         });
 
         return response()->json([
             'success' => true,
-            'data'    => $students,
+            'data' => $students,
         ]);
     }
 
@@ -663,9 +667,9 @@ class FieldSupervisorController extends Controller
     public function reassignStaff(Request $request): JsonResponse
     {
         $request->validate([
-            'bus_id'  => 'required|exists:buses,id',
+            'bus_id' => 'required|exists:buses,id',
             'user_id' => 'required|exists:users,id',
-            'type'    => 'required|in:driver,assistant',
+            'type' => 'required|in:driver,assistant',
         ]);
 
         $busId = $request->bus_id;
@@ -678,25 +682,25 @@ class FieldSupervisorController extends Controller
             $user = \App\Models\User::findOrFail($userId);
 
             if ($type === 'driver') {
-                if (!$user->hasRole('driver')) {
+                if (! $user->hasRole('driver')) {
                     return response()->json(['success' => false, 'message' => 'User is not a driver'], 400);
                 }
 
                 // فك ارتباط أي سائق قديم بهذا الباص
                 \App\Models\Driver::where('bus_id', $busId)->update(['bus_id' => null]);
-                
+
                 // تعيين السائق الجديد
                 \App\Models\Driver::where('user_id', $userId)->update(['bus_id' => $busId]);
-                
+
                 $message = 'تم إعادة تعيين السائق بنجاح';
             } else {
-                if (!$user->hasRole('assistant')) {
+                if (! $user->hasRole('assistant')) {
                     return response()->json(['success' => false, 'message' => 'User is not an assistant'], 400);
                 }
 
                 // تعيين المشرفة الجديدة للباص (يحل محل القديمة تلقائياً)
                 Bus::where('id', $busId)->update(['assistant_id' => $userId]);
-                
+
                 $message = 'تم إعادة تعيين المشرفة بنجاح';
             }
 
@@ -709,7 +713,8 @@ class FieldSupervisorController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('[Staff Reassignment] failed: ' . $e->getMessage());
+            Log::error('[Staff Reassignment] failed: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'فشل في إعادة التعيين'], 500);
         }
     }

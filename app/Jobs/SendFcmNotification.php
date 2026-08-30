@@ -1,5 +1,5 @@
 <?php
-  
+
 namespace App\Jobs;
 
 use App\Services\NotificationService;
@@ -15,10 +15,15 @@ class SendFcmNotification implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $fcmTokens;
+
     protected $title;
+
     protected $message;
+
     protected $data;
+
     protected $topic;
+
     protected $collapseKey;
 
     /**
@@ -51,11 +56,11 @@ class SendFcmNotification implements ShouldQueue
         } catch (\Throwable $e) {
             Log::error('[FCM Job] Failed to send notification', [
                 'error' => $e->getMessage(),
-                'tokens_count' => count($this->fcmTokens)
+                'tokens_count' => count($this->fcmTokens),
             ]);
-            
+
             // Re-throw if we want to retry, but be careful with FCM limits
-            // throw $e; 
+            // throw $e;
         }
     }
 }

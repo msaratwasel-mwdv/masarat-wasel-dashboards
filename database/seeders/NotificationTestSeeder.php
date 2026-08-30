@@ -2,18 +2,18 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use App\Models\School;
-use App\Models\Guardian;
-use App\Models\Student;
 use App\Models\Bus;
 use App\Models\Classroom;
-use App\Models\Role;
-use App\Models\FieldSupervisor;
 use App\Models\Driver;
+use App\Models\FieldSupervisor;
+use App\Models\Guardian;
+use App\Models\Role;
+use App\Models\School;
+use App\Models\Student;
+use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class NotificationTestSeeder extends Seeder
 {
@@ -34,7 +34,7 @@ class NotificationTestSeeder extends Seeder
             'start_date' => now(),
             'end_date' => now()->addYear(),
         ]);
-        
+
         // 2. Create Classroom
         $classroom = Classroom::first() ?? Classroom::create([
             'name' => 'فصل النخبة (أ)',
@@ -43,7 +43,7 @@ class NotificationTestSeeder extends Seeder
         ]);
 
         // 3. Find or Create Supervisor
-        $supervisor = User::where('national_id', '1002004001')->first() 
+        $supervisor = User::where('national_id', '1002004001')->first()
             ?? User::create([
                 'first_name_ar' => 'مشرف',
                 'last_name_ar' => 'الإخطار',
@@ -54,18 +54,18 @@ class NotificationTestSeeder extends Seeder
                 'national_id' => '1002004001',
                 'phone' => '968519999001',
             ]);
-        
-        if (!$supervisor->roles()->where('name', 'supervisor')->exists()) {
+
+        if (! $supervisor->roles()->where('name', 'supervisor')->exists()) {
             $role = Role::firstOrCreate(['name' => 'supervisor']);
             $supervisor->roles()->attach($role->id);
-            
+
             FieldSupervisor::firstOrCreate([
                 'user_id' => $supervisor->id,
             ]);
         }
 
         // 4. Find or Create Driver
-        $driver = User::where('national_id', '1002005001')->first() 
+        $driver = User::where('national_id', '1002005001')->first()
             ?? User::create([
                 'first_name_ar' => 'سائق',
                 'last_name_ar' => 'الإخطار',
@@ -77,7 +77,7 @@ class NotificationTestSeeder extends Seeder
                 'phone' => '968599999001',
             ]);
 
-        if (!$driver->roles()->where('name', 'driver')->exists()) {
+        if (! $driver->roles()->where('name', 'driver')->exists()) {
             $role = Role::firstOrCreate(['name' => 'driver']);
             $driver->roles()->attach($role->id);
 
@@ -90,12 +90,12 @@ class NotificationTestSeeder extends Seeder
 
         // 5. Find existing bus for supervisor or create new one
         $route = \App\Models\Route::firstOrCreate([
-            'name' => "المسار رقم 99",
-            'code' => "R-99",
+            'name' => 'المسار رقم 99',
+            'code' => 'R-99',
             'school_id' => $school->id ?? null,
         ]);
 
-        $assistant = User::where('national_id', '1002006001')->first() 
+        $assistant = User::where('national_id', '1002006001')->first()
             ?? User::create([
                 'first_name_ar' => 'مساعدة',
                 'last_name_ar' => 'الإخطار',
@@ -107,20 +107,20 @@ class NotificationTestSeeder extends Seeder
                 'phone' => '968589999001',
             ]);
 
-        if (!$assistant->roles()->where('name', 'assistant')->exists()) {
+        if (! $assistant->roles()->where('name', 'assistant')->exists()) {
             $role = Role::firstOrCreate(['name' => 'assistant']);
             $assistant->roles()->attach($role->id);
-            
+
             \App\Models\Assistant::firstOrCreate([
                 'user_id' => $assistant->id,
             ]);
         }
 
         $bus = Bus::updateOrCreate(
-            ['bus_number' => "B-9900"],
+            ['bus_number' => 'B-9900'],
             [
                 'school_id' => $school->id,
-                'plate_number' => "ABC-9999",
+                'plate_number' => 'ABC-9999',
                 'capacity' => 20,
                 'model' => 'Mercedes',
                 'year' => 2024,
@@ -130,7 +130,7 @@ class NotificationTestSeeder extends Seeder
                 'status' => 'active',
             ]
         );
-        
+
         $bus->update(['driver_id' => $driver->id]);
 
         // 7. Create Guardian
@@ -145,10 +145,10 @@ class NotificationTestSeeder extends Seeder
             'national_id' => '1000200030',
         ]);
 
-        if (!$parentUser->roles()->where('name', 'parent')->exists()) {
+        if (! $parentUser->roles()->where('name', 'parent')->exists()) {
             $role = Role::firstOrCreate(['name' => 'parent']);
             $parentUser->roles()->attach($role->id);
-            
+
             \App\Models\Guardian::firstOrCreate([
                 'user_id' => $parentUser->id,
             ]);
@@ -170,7 +170,7 @@ class NotificationTestSeeder extends Seeder
 
         foreach ($studentsData as $index => $data) {
             $student = Student::updateOrCreate(
-                ['student_code' => "TEST-ST-" . (100 + $index)],
+                ['student_code' => 'TEST-ST-'.(100 + $index)],
                 [
                     'first_name_ar' => $data['name'],
                     'last_name_ar' => 'أخير',
@@ -185,7 +185,7 @@ class NotificationTestSeeder extends Seeder
 
             // Sync with parent via Pivot
             $student->guardians()->syncWithoutDetaching([
-                $parentUser->id => ['relationship_type' => 'father']
+                $parentUser->id => ['relationship_type' => 'father'],
             ]);
 
             // Enroll Student in classroom
@@ -198,23 +198,21 @@ class NotificationTestSeeder extends Seeder
             for ($d = 1; $d <= 15; $d++) {
                 $status = rand(0, 10) > 2 ? 'present' : 'absent'; // 80% present, 20% absent
                 $randomDate = \Carbon\Carbon::now()->subDays(rand(0, 30));
-                
+
                 \App\Models\Attendance::firstOrCreate([
                     'student_id' => $student->id,
                     'date' => $randomDate->format('Y-m-d'),
                 ], [
                     'classroom_id' => $classroom->id,
-                    'status' => $status
+                    'status' => $status,
                 ]);
             }
         }
 
         echo "✅ Triple-Linked Test Data Seeded Successfully!\n";
-        echo "   Total Students Created: " . count($studentsData) . "\n";
+        echo '   Total Students Created: '.count($studentsData)."\n";
         echo "   Supervisor ID: {$supervisor->national_id} | Password: password\n";
         echo "   Guardian ID: {$parentUser->national_id} | Password: password\n";
         echo "   Bus: {$bus->bus_number} | Driver: {$driver->name}\n";
     }
 }
-
-

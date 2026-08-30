@@ -17,9 +17,13 @@ class StudentStatusUpdated implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public int $studentId;
+
     public string $studentName;
+
     public ?string $studentNameEn;
+
     public array $guardianIds = [];
+
     public string $busNumber;
 
     public function __construct(
@@ -34,17 +38,17 @@ class StudentStatusUpdated implements ShouldBroadcastNow
         $guardianIds = null,
         $busNumber = null
     ) {
-        $this->studentId = $studentId ?? ($student instanceof \App\Models\Student ? $student->id : (is_numeric($student) ? (int)$student : 0));
+        $this->studentId = $studentId ?? ($student instanceof \App\Models\Student ? $student->id : (is_numeric($student) ? (int) $student : 0));
         $this->studentName = $studentName ?? ($student instanceof \App\Models\Student ? $student->full_name : 'جميع الطلاب');
         $this->studentNameEn = $studentNameEn ?? ($student instanceof \App\Models\Student ? $student->full_name_en : null);
-        
+
         if ($guardianIds) {
             $this->guardianIds = is_array($guardianIds) ? $guardianIds : [$guardianIds];
         } elseif ($student instanceof \App\Models\Student) {
             $this->guardianIds = $student->guardians->pluck('id')->toArray();
         }
-        
-        $this->busNumber = $busNumber ?? ($bus instanceof \App\Models\Bus ? $bus->bus_number : ($bus ? (string)$bus : 'Unknown'));
+
+        $this->busNumber = $busNumber ?? ($bus instanceof \App\Models\Bus ? $bus->bus_number : ($bus ? (string) $bus : 'Unknown'));
     }
 
     /**
@@ -52,8 +56,8 @@ class StudentStatusUpdated implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
-        return array_map(function($id) {
-            return new PrivateChannel('guardian.' . $id);
+        return array_map(function ($id) {
+            return new PrivateChannel('guardian.'.$id);
         }, $this->guardianIds);
     }
 
@@ -71,15 +75,13 @@ class StudentStatusUpdated implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'student_id'   => $this->studentId,
+            'student_id' => $this->studentId,
             'student_name' => $this->studentName,
             'student_name_en' => $this->studentNameEn,
-            'new_status'   => $this->newStatus,
-            'direction'    => $this->direction,
-            'bus_number'   => $this->busNumber,
-            'timestamp'    => now()->toIso8601String(),
+            'new_status' => $this->newStatus,
+            'direction' => $this->direction,
+            'bus_number' => $this->busNumber,
+            'timestamp' => now()->toIso8601String(),
         ];
     }
 }
-
-

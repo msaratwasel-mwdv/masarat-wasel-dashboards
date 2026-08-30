@@ -4,8 +4,6 @@ namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
-use App\Models\Subscription;
-use App\Models\Student;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -22,7 +20,7 @@ class SubscriptionController extends Controller
     public function plans(Request $request)
     {
         $schoolId = $request->user()->getSchoolId();
-        
+
         return Inertia::render('School/Subscriptions/Index', [
             'plans' => Plan::active()->orderBy('sort_order')->get(),
             'billingData' => $this->subscriptionService->getSchoolBillingData($schoolId),
@@ -32,7 +30,7 @@ class SubscriptionController extends Controller
     public function transactions(Request $request)
     {
         $schoolId = $request->user()->getSchoolId();
-        
+
         return Inertia::render('School/Transactions/Index', [
             'billingData' => $this->subscriptionService->getSchoolBillingData($schoolId),
         ]);
@@ -54,7 +52,7 @@ class SubscriptionController extends Controller
             $installment->update([
                 'receipt_path' => $path,
                 'verification_status' => 'pending',
-                'status' => 'pending' // Still pending financial approval
+                'status' => 'pending', // Still pending financial approval
             ]);
         }
 

@@ -4,19 +4,18 @@ namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bus;
-use App\Models\Trip;
-use App\Models\TripAttendance;
-use App\Models\Student;
 use App\Models\Delay;
-use App\Models\Violation;
 use App\Models\Incident;
 use App\Models\Inspection;
-use App\Models\InspectionResult;
+use App\Models\Student;
+use App\Models\Trip;
+use App\Models\TripAttendance;
+use App\Models\Violation;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
-use Carbon\Carbon;
 
 class ReportController extends Controller
 {
@@ -38,14 +37,14 @@ class ReportController extends Controller
         $totalTripsThisWeek = Trip::where('school_id', $schoolId)->where('trip_date', '>=', $weekAgo)->count();
         $totalStudents = Student::inSchool($schoolId)->where('is_active', true)->count();
         $totalBuses = Bus::where('school_id', $schoolId)->where('status', 'active')->count();
-        $totalDelaysThisWeek = Delay::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        $totalDelaysThisWeek = Delay::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->where('created_at', '>=', $weekAgo)->count();
-        $totalIncidents = Incident::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        $totalIncidents = Incident::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->where('created_at', '>=', $weekAgo)->count();
 
         // Attendance rate this week
-        $totalAttRecords = TripAttendance::whereHas('trip', fn($q) => $q->where('school_id', $schoolId)->where('trip_date', '>=', $weekAgo))->count();
-        $presentRecords = TripAttendance::whereHas('trip', fn($q) => $q->where('school_id', $schoolId)->where('trip_date', '>=', $weekAgo))
+        $totalAttRecords = TripAttendance::whereHas('trip', fn ($q) => $q->where('school_id', $schoolId)->where('trip_date', '>=', $weekAgo))->count();
+        $presentRecords = TripAttendance::whereHas('trip', fn ($q) => $q->where('school_id', $schoolId)->where('trip_date', '>=', $weekAgo))
             ->whereNotNull('check_in_time')->count();
         $attendanceRate = $totalAttRecords > 0 ? round(($presentRecords / $totalAttRecords) * 100, 1) : 0;
 
@@ -77,12 +76,14 @@ class ReportController extends Controller
             'trip.bus:id,bus_number,plate_number',
             'trip.driver:id,first_name_ar,last_name_ar,first_name_en,last_name_en',
         ])
-        ->whereHas('trip', function ($q) use ($schoolId, $dateFrom, $dateTo, $busId) {
-            $q->where('school_id', $schoolId)
-              ->whereDate('trip_date', '>=', $dateFrom)
-              ->whereDate('trip_date', '<=', $dateTo);
-            if ($busId) $q->where('bus_id', $busId);
-        });
+            ->whereHas('trip', function ($q) use ($schoolId, $dateFrom, $dateTo, $busId) {
+                $q->where('school_id', $schoolId)
+                    ->whereDate('trip_date', '>=', $dateFrom)
+                    ->whereDate('trip_date', '<=', $dateTo);
+                if ($busId) {
+                    $q->where('bus_id', $busId);
+                }
+            });
 
         $attendances = $query->latest('id')->paginate($request->per_page == 'all' ? 5000 : ($request->per_page ?? 25))->withQueryString();
 
@@ -96,7 +97,7 @@ class ReportController extends Controller
         $trend = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i);
-            $dayQuery = TripAttendance::whereHas('trip', fn($q) => $q->where('school_id', $schoolId)->whereDate('trip_date', $date));
+            $dayQuery = TripAttendance::whereHas('trip', fn ($q) => $q->where('school_id', $schoolId)->whereDate('trip_date', $date));
             $dayTotal = (clone $dayQuery)->count();
             $dayPresent = (clone $dayQuery)->whereNotNull('check_in_time')->count();
             $trend[] = [
@@ -144,11 +145,13 @@ class ReportController extends Controller
             'driver:id,first_name_ar,last_name_ar,first_name_en,last_name_en',
             'route:id,name',
         ])
-        ->where('school_id', $schoolId)
-        ->whereDate('trip_date', '>=', $dateFrom)
-        ->whereDate('trip_date', '<=', $dateTo);
+            ->where('school_id', $schoolId)
+            ->whereDate('trip_date', '>=', $dateFrom)
+            ->whereDate('trip_date', '<=', $dateTo);
 
-        if ($busId) $query->where('bus_id', $busId);
+        if ($busId) {
+            $query->where('bus_id', $busId);
+        }
 
         $trips = $query->latest('trip_date')->paginate($request->per_page == 'all' ? 5000 : ($request->per_page ?? 25))->withQueryString();
 
@@ -165,7 +168,7 @@ class ReportController extends Controller
             ->whereDate('trip_date', '<=', $dateTo)
             ->whereNotNull('departure_time')
             ->whereNotNull('arrival_time')
-            ->selectRaw(DB::getDriverName() === 'pgsql' 
+            ->selectRaw(DB::getDriverName() === 'pgsql'
                 ? 'AVG(EXTRACT(EPOCH FROM (arrival_time - departure_time)) / 60) as avg_min'
                 : 'AVG(TIMESTAMPDIFF(MINUTE, departure_time, arrival_time)) as avg_min')
             ->value('avg_min');
@@ -178,7 +181,7 @@ class ReportController extends Controller
             ->selectRaw('bus_id, COUNT(*) as trip_count')
             ->groupBy('bus_id')
             ->get()
-            ->map(fn($item) => [
+            ->map(fn ($item) => [
                 'bus_number' => $item->bus->bus_number ?? '—',
                 'trip_count' => $item->trip_count,
                 'estimated_km' => $item->trip_count * rand(12, 25), // Mock km
@@ -218,7 +221,7 @@ class ReportController extends Controller
 
         // Incidents
         $incidents = Incident::with(['bus:id,bus_number', 'reporter:id,first_name_ar,last_name_ar'])
-            ->whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+            ->whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
             ->latest()
@@ -227,7 +230,7 @@ class ReportController extends Controller
 
         // Inspections
         $inspections = Inspection::with(['bus:id,bus_number', 'fieldSupervisor:id,first_name_ar,last_name_ar', 'results.item'])
-            ->whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+            ->whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
             ->latest()
@@ -237,20 +240,20 @@ class ReportController extends Controller
         // Stats
         $totalTrips = Trip::where('school_id', $schoolId)
             ->whereDate('trip_date', '>=', $dateFrom)->whereDate('trip_date', '<=', $dateTo)->count();
-        $tripsWithIncidents = Incident::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        $tripsWithIncidents = Incident::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->distinct('trip_id')->count('trip_id');
         $safeTrips = max(0, $totalTrips - $tripsWithIncidents);
         $safetyRate = $totalTrips > 0 ? round(($safeTrips / $totalTrips) * 100, 1) : 100;
 
-        $totalInspections = Inspection::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        $totalInspections = Inspection::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count();
-        $passedInspections = Inspection::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        $passedInspections = Inspection::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->where('overall_status', 'pass')
             ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count();
         $inspectionPassRate = $totalInspections > 0 ? round(($passedInspections / $totalInspections) * 100, 1) : 100;
 
-        $criticalIncidents = Incident::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        $criticalIncidents = Incident::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->where('severity', 'high')
             ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count();
 
@@ -291,7 +294,9 @@ class ReportController extends Controller
         $driverPerformance = [];
 
         foreach ($buses as $bus) {
-            if (!$bus->driver || !$bus->driver->user) continue;
+            if (! $bus->driver || ! $bus->driver->user) {
+                continue;
+            }
 
             $driverId = $bus->driver_id;
             $driverUser = $bus->driver->user;
@@ -347,8 +352,8 @@ class ReportController extends Controller
 
             $driverPerformance[] = [
                 'driver_id' => $driverId,
-                'driver_name' => $driverUser->first_name_ar . ' ' . $driverUser->last_name_ar,
-                'driver_name_en' => ($driverUser->first_name_en ?? '') . ' ' . ($driverUser->last_name_en ?? ''),
+                'driver_name' => $driverUser->first_name_ar.' '.$driverUser->last_name_ar,
+                'driver_name_en' => ($driverUser->first_name_en ?? '').' '.($driverUser->last_name_en ?? ''),
                 'phone' => $driverUser->phone,
                 'bus_number' => $bus->bus_number,
                 'plate_number' => $bus->plate_number,
@@ -363,7 +368,7 @@ class ReportController extends Controller
         }
 
         // Sort by score descending
-        usort($driverPerformance, fn($a, $b) => $b['score'] <=> $a['score']);
+        usort($driverPerformance, fn ($a, $b) => $b['score'] <=> $a['score']);
 
         // Paginate results
         $perPage = $request->per_page == 'all' ? 5000 : ($request->per_page ?? 25);
@@ -407,12 +412,16 @@ class ReportController extends Controller
             'bus:id,bus_number,plate_number',
             'reporter:id,first_name_ar,last_name_ar',
         ])
-        ->whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
-        ->whereDate('created_at', '>=', $dateFrom)
-        ->whereDate('created_at', '<=', $dateTo);
+            ->whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
+            ->whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo);
 
-        if ($type) $query->where('type', $type);
-        if ($busId) $query->where('bus_id', $busId);
+        if ($type) {
+            $query->where('type', $type);
+        }
+        if ($busId) {
+            $query->where('bus_id', $busId);
+        }
 
         $delays = $query->latest()->paginate($request->per_page == 'all' ? 5000 : ($request->per_page ?? 25))->withQueryString();
 
@@ -420,10 +429,10 @@ class ReportController extends Controller
         $totalDelays = (clone $query)->count();
         $totalMinutes = (clone $query)->sum('duration_minutes');
         $avgMinutes = $totalDelays > 0 ? round($totalMinutes / $totalDelays, 1) : 0;
-        $busDelays = Delay::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        $busDelays = Delay::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->where('type', 'bus')
             ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count();
-        $studentDelays = Delay::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        $studentDelays = Delay::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->where('type', 'student')
             ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count();
 
@@ -431,9 +440,9 @@ class ReportController extends Controller
         $trend = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i);
-            $dayCount = Delay::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+            $dayCount = Delay::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
                 ->whereDate('created_at', $date)->count();
-            $dayMinutes = Delay::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+            $dayMinutes = Delay::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
                 ->whereDate('created_at', $date)->sum('duration_minutes');
             $trend[] = [
                 'date' => $date->format('m/d'),
@@ -477,21 +486,21 @@ class ReportController extends Controller
 
         // Violations (real data)
         $violations = Violation::with(['bus:id,bus_number,plate_number', 'fieldSupervisor:id,first_name_ar,last_name_ar'])
-            ->whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+            ->whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
             ->latest()
             ->paginate($request->per_page == 'all' ? 5000 : ($request->per_page ?? 25))
             ->withQueryString();
 
-        $totalViolations = Violation::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        $totalViolations = Violation::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count();
 
         // Mock speed data per bus
         $buses = Bus::where('school_id', $schoolId)->where('status', 'active')
             ->select('id', 'bus_number', 'plate_number')->get();
 
-        $speedData = $buses->map(fn($bus) => [
+        $speedData = $buses->map(fn ($bus) => [
             'bus_number' => $bus->bus_number,
             'plate_number' => $bus->plate_number,
             'avg_speed' => rand(35, 55),
@@ -500,13 +509,13 @@ class ReportController extends Controller
             'compliance_rate' => rand(85, 100),
         ]);
 
-        $violationsByBus = Violation::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        $violationsByBus = Violation::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)
             ->selectRaw('bus_id, COUNT(*) as count')
             ->groupBy('bus_id')
             ->with('bus:id,bus_number')
             ->get()
-            ->map(fn($item) => [
+            ->map(fn ($item) => [
                 'bus_number' => $item->bus->bus_number ?? '—',
                 'count' => $item->count,
             ]);

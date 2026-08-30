@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Driver extends Model
 {
     protected $primaryKey = 'user_id';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -21,7 +22,7 @@ class Driver extends Model
         'id_card_back_image',
         'status',
     ];
-    
+
     protected $appends = ['name', 'name_en'];
 
     // NOTE: 'name' removed from $appends to prevent N+1 reverse-lookup.
@@ -48,7 +49,4 @@ class Driver extends Model
     {
         return $this->hasOne(Bus::class, 'driver_id', 'user_id');
     }
-
 }
-
-

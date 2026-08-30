@@ -3,16 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Storage;
-use App\Models\User;
 use App\Models\Bus;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -24,7 +24,7 @@ class AuthController extends Controller
         // تسجيل الدخول حصرياً عبر "الرقم المدني" و "كلمة السر"
         $request->validate([
             'national_id' => 'required|string',
-            'password'    => 'required|string',
+            'password' => 'required|string',
             'device_name' => 'required|string|max:255',
             'app_context' => 'nullable|string|in:services,parent', // تحديد التطبيق الذي يحاول الدخول
         ]);
@@ -52,24 +52,26 @@ class AuthController extends Controller
             // تطبيق الخدمات ممنوع على أولياء الأمور
             if ($user->role === 'parent') {
                 Log::warning('[Auth] Rejecting Parent from Services app', ['user_id' => $user->id]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'عذراً، حساب ولي الأمر لا يمكنه الدخول لتطبيق الخدمات. يرجى استخدام تطبيق "مسارات واصل" الخاص بك.',
                     'errors' => [
-                        'national_id' => ['عذراً، حساب ولي الأمر لا يمكنه الدخول لتطبيق الخدمات. يرجى استخدام تطبيق "مسارات واصل" الخاص بك.']
-                    ]
+                        'national_id' => ['عذراً، حساب ولي الأمر لا يمكنه الدخول لتطبيق الخدمات. يرجى استخدام تطبيق "مسارات واصل" الخاص بك.'],
+                    ],
                 ], 422);
             }
         } elseif ($appContext === 'parent') {
             // تطبيق ولي الأمر مخصص فقط لأولياء الأمور
             if ($user->role !== 'parent') {
                 Log::warning('[Auth] Rejecting staff from Parent app', ['user_id' => $user->id, 'role' => $user->role]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'عذراً، هذا التطبيق مخصص لأولياء الأمور فقط.',
                     'errors' => [
-                        'national_id' => ['عذراً، هذا التطبيق مخصص لأولياء الأمور فقط.']
-                    ]
+                        'national_id' => ['عذراً، هذا التطبيق مخصص لأولياء الأمور فقط.'],
+                    ],
                 ], 422);
             }
         }
@@ -97,10 +99,11 @@ class AuthController extends Controller
                         Log::warning('[Auth] Rejecting driver login: Active trip with existing session', [
                             'user_id' => $user->id, 'bus_id' => $bus->id,
                         ]);
+
                         return response()->json([
                             'success' => false,
                             'message' => 'لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.',
-                            'errors' => ['national_id' => ['لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.']]
+                            'errors' => ['national_id' => ['لا يمكن تسجيل الدخول من جهاز آخر أثناء الرحلة.']],
                         ], 422);
                     }
                 }
@@ -118,10 +121,11 @@ class AuthController extends Controller
                         Log::warning('[Auth] Rejecting assistant login: Trip already approved and in progress', [
                             'user_id' => $user->id, 'bus_id' => $bus->id,
                         ]);
+
                         return response()->json([
                             'success' => false,
                             'message' => 'لا يمكن تسجيل الدخول من جهاز آخر بعد الموافقة على الرحلة.',
-                            'errors' => ['national_id' => ['لا يمكن تسجيل الدخول من جهاز آخر بعد الموافقة على الرحلة.']]
+                            'errors' => ['national_id' => ['لا يمكن تسجيل الدخول من جهاز آخر بعد الموافقة على الرحلة.']],
                         ], 422);
                     }
                     // إذا الرحلة awaiting_confirmation → يُسمح بالدخول (لتوافق عليها)
@@ -133,10 +137,9 @@ class AuthController extends Controller
             }
         }
 
-
         // ✅ updateFcmToken() تحفظ في الجدول الصحيح حسب دور المستخدم
         // ❌ update(['fcm_token'=>...]) لا تفعل شيئاً لأن fcm_token غير موجود في $fillable
-        if ($request->has('fcm_token') && !empty($request->fcm_token)) {
+        if ($request->has('fcm_token') && ! empty($request->fcm_token)) {
             $user->updateFcmToken(
                 $request->fcm_token,
                 $request->input('device_type', 'android'),
@@ -154,28 +157,28 @@ class AuthController extends Controller
         $token = $user->createToken($request->device_name)->plainTextToken;
 
         $userData = [
-            'id'          => $user->id,
-            'name'        => $user->name,
-            'name_en'     => $user->name_en,
+            'id' => $user->id,
+            'name' => $user->name,
+            'name_en' => $user->name_en,
             'national_id' => $user->national_id,
-            'email'       => $user->email,
-            'phone'       => $user->phone,
-            'role'        => $user->role,
-            'image_url'   => $user->avatar_url,
-            'school_id'   => $user->school_id,
-            'school_name'        => $user->school ? $user->school->name : null,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role' => $user->role,
+            'image_url' => $user->avatar_url,
+            'school_id' => $user->school_id,
+            'school_name' => $user->school ? $user->school->name : null,
             'preferred_language' => $user->preferred_language ?? 'ar',
-            'bus_id'             => $this->getBusId($user),
-            'bus'                => $this->getBusDetails($user),
+            'bus_id' => $this->getBusId($user),
+            'bus' => $this->getBusDetails($user),
         ];
 
         return response()->json([
             'success' => true,
-            'data'    => [
-                'user'  => $userData,
+            'data' => [
+                'user' => $userData,
                 'token' => $token,
             ],
-            'user'  => $userData,
+            'user' => $userData,
             'token' => $token,
         ]);
     }
@@ -214,25 +217,25 @@ class AuthController extends Controller
         $user = $request->user();
 
         $userData = [
-            'id'          => $user->id,
-            'name'        => $user->name,
-            'name_en'     => $user->name_en,
+            'id' => $user->id,
+            'name' => $user->name,
+            'name_en' => $user->name_en,
             'national_id' => $user->national_id,
-            'email'       => $user->email,
-            'phone'       => $user->phone,
-            'role'        => $user->role,
-            'image_url'   => $user->avatar_url,
-            'school_id'   => $user->school_id,
-            'school_name'        => $user->school ? $user->school->name : null,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role' => $user->role,
+            'image_url' => $user->avatar_url,
+            'school_id' => $user->school_id,
+            'school_name' => $user->school ? $user->school->name : null,
             'preferred_language' => $user->preferred_language ?? 'ar',
-            'bus_id'             => $this->getBusId($user),
-            'bus'                => $this->getBusDetails($user),
+            'bus_id' => $this->getBusId($user),
+            'bus' => $this->getBusDetails($user),
         ];
 
         return response()->json([
             'success' => true,
-            'data'    => $userData,
-            'user'    => $userData,
+            'data' => $userData,
+            'user' => $userData,
         ]);
     }
 
@@ -258,13 +261,13 @@ class AuthController extends Controller
                 $request->input('preferred_language')
             );
         } catch (\Throwable $e) {
-            Log::error("[FCM] Failed to register token: " . $e->getMessage());
+            Log::error('[FCM] Failed to register token: '.$e->getMessage());
         }
-        
+
         return response()->json(['success' => true]);
     }
 
-        /**
+    /**
      * إزالة FCM Token يدوياً (مثلاً عند تعطيل التنبيهات)
      * POST /api/auth/fcm-token/delete
      */
@@ -296,11 +299,11 @@ class AuthController extends Controller
             'new_password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
         ], [
             'current_password.required' => 'كلمة السر الحالية مطلوبة.',
-            'new_password.required'     => 'كلمة السر الجديدة مطلوبة.',
-            'new_password.min'          => 'كلمة السر الجديدة يجب أن تكون 8 أحرف على الأقل.',
-            'new_password.confirmed'    => 'تأكيد كلمة السر غير مطابق.',
-            'new_password.mixed'        => 'يجب أن تحتوي كلمة السر الجديدة على حرف كبير وحرف صغير واحد على الأقل.',
-            'new_password.numbers'      => 'يجب أن تحتوي كلمة السر الجديدة على رقم واحد على الأقل.',
+            'new_password.required' => 'كلمة السر الجديدة مطلوبة.',
+            'new_password.min' => 'كلمة السر الجديدة يجب أن تكون 8 أحرف على الأقل.',
+            'new_password.confirmed' => 'تأكيد كلمة السر غير مطابق.',
+            'new_password.mixed' => 'يجب أن تحتوي كلمة السر الجديدة على حرف كبير وحرف صغير واحد على الأقل.',
+            'new_password.numbers' => 'يجب أن تحتوي كلمة السر الجديدة على رقم واحد على الأقل.',
         ]);
 
         $user = $request->user();
@@ -403,7 +406,7 @@ class AuthController extends Controller
         $user = $request->user();
 
         // حذف الصورة القديمة إن وجدت
-        if ($user->image && !str_starts_with($user->image, 'http')) {
+        if ($user->image && ! str_starts_with($user->image, 'http')) {
             Storage::disk('public')->delete($user->image);
         }
 
@@ -413,8 +416,8 @@ class AuthController extends Controller
         $imageUrl = url(Storage::url($path));
 
         return response()->json([
-            'success'   => true,
-            'message'   => 'تم تحديث الصورة بنجاح.',
+            'success' => true,
+            'message' => 'تم تحديث الصورة بنجاح.',
             'image_url' => $imageUrl,
         ]);
     }
@@ -425,6 +428,7 @@ class AuthController extends Controller
     private function getBusId(User $user): ?int
     {
         $bus = $this->getBusForUser($user);
+
         return $bus ? $bus->id : null;
     }
 
@@ -439,6 +443,7 @@ class AuthController extends Controller
                 'capacity' => $bus->capacity,
             ];
         }
+
         return null;
     }
 
@@ -451,6 +456,7 @@ class AuthController extends Controller
         } elseif ($user->hasRole('field_supervisor')) {
             return $user->assignedBusAsFieldSupervisor;
         }
+
         return null;
     }
 
@@ -469,6 +475,7 @@ class AuthController extends Controller
                 return $classroom->school->name;
             }
         }
+
         return null;
     }
 
@@ -496,7 +503,7 @@ class AuthController extends Controller
                 'preferred_language' => $request->language,
             ]);
         } catch (\Throwable $e) {
-            Log::error("[Language] Failed to update preferred language: " . $e->getMessage());
+            Log::error('[Language] Failed to update preferred language: '.$e->getMessage());
         }
 
         return response()->json([
@@ -518,17 +525,17 @@ class AuthController extends Controller
             ->where('status', 'pending')
             ->first();
 
-        if (!$attempt) {
+        if (! $attempt) {
             return response()->json([
                 'success' => false,
-                'message' => 'لم يتم العثور على طلب تسجيل الدخول أو تم معالجته بالفعل.'
+                'message' => 'لم يتم العثور على طلب تسجيل الدخول أو تم معالجته بالفعل.',
             ], 404);
         }
 
-        if ((int)$attempt->user_id !== (int)$request->user()->id) {
+        if ((int) $attempt->user_id !== (int) $request->user()->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'غير مصرح لك بإجراء هذه العملية.'
+                'message' => 'غير مصرح لك بإجراء هذه العملية.',
             ], 403);
         }
 
@@ -548,7 +555,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تمت الموافقة بنجاح وسيتم تسجيل الخروج من هذا الجهاز.'
+            'message' => 'تمت الموافقة بنجاح وسيتم تسجيل الخروج من هذا الجهاز.',
         ]);
     }
 
@@ -565,17 +572,17 @@ class AuthController extends Controller
             ->where('status', 'pending')
             ->first();
 
-        if (!$attempt) {
+        if (! $attempt) {
             return response()->json([
                 'success' => false,
-                'message' => 'لم يتم العثور على طلب تسجيل الدخول أو تم معالجته بالفعل.'
+                'message' => 'لم يتم العثور على طلب تسجيل الدخول أو تم معالجته بالفعل.',
             ], 404);
         }
 
-        if ((int)$attempt->user_id !== (int)$request->user()->id) {
+        if ((int) $attempt->user_id !== (int) $request->user()->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'غير مصرح لك بإجراء هذه العملية.'
+                'message' => 'غير مصرح لك بإجراء هذه العملية.',
             ], 403);
         }
 
@@ -584,7 +591,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم رفض طلب تسجيل الدخول.'
+            'message' => 'تم رفض طلب تسجيل الدخول.',
         ]);
     }
 
@@ -602,10 +609,10 @@ class AuthController extends Controller
             ->where('temp_token', $request->temp_token)
             ->first();
 
-        if (!$attempt) {
+        if (! $attempt) {
             return response()->json([
                 'success' => false,
-                'message' => 'طلب غير صالح أو منتهي الصلاحية.'
+                'message' => 'طلب غير صالح أو منتهي الصلاحية.',
             ], 404);
         }
 
@@ -613,26 +620,27 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'status' => 'pending',
-                'message' => 'بانتظار موافقة الجهاز الآخر.'
+                'message' => 'بانتظار موافقة الجهاز الآخر.',
             ]);
         }
 
         if ($attempt->status === 'rejected') {
             $attempt->delete(); // تنظيف الطلب المرفوض
+
             return response()->json([
                 'success' => false,
                 'status' => 'rejected',
-                'message' => 'تم رفض طلب تسجيل الدخول من الجهاز الآخر.'
+                'message' => 'تم رفض طلب تسجيل الدخول من الجهاز الآخر.',
             ]);
         }
 
         if ($attempt->status === 'approved') {
             // تسجيل دخول المستخدم بنجاح
             $user = User::find($attempt->user_id);
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'المستخدم غير موجود.'
+                    'message' => 'المستخدم غير موجود.',
                 ], 404);
             }
 
@@ -651,19 +659,19 @@ class AuthController extends Controller
             $token = $user->createToken($attempt->device_name)->plainTextToken;
 
             $userData = [
-                'id'          => $user->id,
-                'name'        => $user->name,
-                'name_en'     => $user->name_en,
+                'id' => $user->id,
+                'name' => $user->name,
+                'name_en' => $user->name_en,
                 'national_id' => $user->national_id,
-                'email'       => $user->email,
-                'phone'       => $user->phone,
-                'role'        => $user->role,
-                'image_url'   => $user->avatar_url,
-                'school_id'   => $user->school_id,
-                'school_name'        => $user->school ? $user->school->name : null,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'role' => $user->role,
+                'image_url' => $user->avatar_url,
+                'school_id' => $user->school_id,
+                'school_name' => $user->school ? $user->school->name : null,
                 'preferred_language' => $user->preferred_language ?? 'ar',
-                'bus_id'             => $this->getBusId($user),
-                'bus'                => $this->getBusDetails($user),
+                'bus_id' => $this->getBusId($user),
+                'bus' => $this->getBusDetails($user),
             ];
 
             // مسح الطلب المكتمل
@@ -671,20 +679,18 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data'    => [
-                    'user'  => $userData,
+                'data' => [
+                    'user' => $userData,
                     'token' => $token,
                 ],
-                'user'  => $userData,
+                'user' => $userData,
                 'token' => $token,
             ]);
         }
 
         return response()->json([
             'success' => false,
-            'message' => 'حالة طلب غير صالحة.'
+            'message' => 'حالة طلب غير صالحة.',
         ], 400);
     }
 }
-
-

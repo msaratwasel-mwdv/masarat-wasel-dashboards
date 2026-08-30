@@ -21,7 +21,7 @@ return new class extends Migration
             $table->timestamp('sent_at')->nullable();
             $table->timestamp('read_at')->nullable();
             $table->timestamps();
-            
+
             $table->index(['notification_id', 'status']);
             $table->index(['user_id', 'status']);
         });

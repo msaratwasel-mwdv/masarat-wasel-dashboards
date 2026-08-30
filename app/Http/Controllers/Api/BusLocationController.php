@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\BusLocationUpdated;
+use App\Events\DriverLocationUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Bus;
-use App\Models\Guardian;
-use App\Services\NotificationService;
 use App\Services\GoogleMapsService;
-use App\Events\DriverLocationUpdated;
-use App\Events\BusLocationUpdated;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 
 class BusLocationController extends Controller
@@ -16,6 +15,7 @@ class BusLocationController extends Controller
     use \App\Traits\HasLocation;
 
     protected NotificationService $notificationService;
+
     protected GoogleMapsService $googleMapsService;
 
     public function __construct(NotificationService $notificationService, GoogleMapsService $googleMapsService)
@@ -31,13 +31,13 @@ class BusLocationController extends Controller
     public function update(Request $request, Bus $bus)
     {
         $request->validate([
-            'latitude'  => 'required|numeric',
+            'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'heading'   => 'nullable|numeric',
+            'heading' => 'nullable|numeric',
         ]);
 
         $heading = $request->input('heading', 0);
-        
+
         $targetLat = null;
         $targetLng = null;
 
@@ -60,13 +60,13 @@ class BusLocationController extends Controller
                 ->first();
 
             if ($trip) {
-                $processedStudents = \App\Models\Student::where(function($q) use ($bus) {
-                        $q->where('forth_bus_id', $bus->id)
-                          ->orWhere('back_bus_id', $bus->id);
-                    })
-                    ->whereHas('tripAttendances', function($q) use ($trip) {
+                $processedStudents = \App\Models\Student::where(function ($q) use ($bus) {
+                    $q->where('forth_bus_id', $bus->id)
+                        ->orWhere('back_bus_id', $bus->id);
+                })
+                    ->whereHas('tripAttendances', function ($q) use ($trip) {
                         $q->where('trip_id', $trip->id)
-                          ->whereIn('status', ['boarded', 'dropped', 'absent', 'excused']);
+                            ->whereIn('status', ['boarded', 'dropped', 'absent', 'excused']);
                     })
                     ->get();
 
@@ -78,8 +78,8 @@ class BusLocationController extends Controller
                     ];
                     foreach ($coords as $coord) {
                         if ($coord['lat'] && $coord['lng']) {
-                            $latDiff = abs((double)$coord['lat'] - (double)$tLat);
-                            $lngDiff = abs((double)$coord['lng'] - (double)$tLng);
+                            $latDiff = abs((float) $coord['lat'] - (float) $tLat);
+                            $lngDiff = abs((float) $coord['lng'] - (float) $tLng);
                             if ($latDiff < 0.00015 && $lngDiff < 0.00015) {
                                 $isStaleTarget = true;
                                 break 2;
@@ -102,9 +102,9 @@ class BusLocationController extends Controller
             // Cache and manage active target coordinates
             if ($request->has('target_lat')) {
                 if ($tLat !== null) {
-                    cache()->put('bus_target_lat_'.$bus->id, (double)$tLat, now()->addMinutes(10));
-                    $updateData['target_latitude'] = (double)$tLat;
-                    $targetLat = (double)$tLat;
+                    cache()->put('bus_target_lat_'.$bus->id, (float) $tLat, now()->addMinutes(10));
+                    $updateData['target_latitude'] = (float) $tLat;
+                    $targetLat = (float) $tLat;
                 } else {
                     $updateData['target_latitude'] = null;
                     $targetLat = null;
@@ -115,9 +115,9 @@ class BusLocationController extends Controller
 
             if ($request->has('target_lng')) {
                 if ($tLng !== null) {
-                    cache()->put('bus_target_lng_'.$bus->id, (double)$tLng, now()->addMinutes(10));
-                    $updateData['target_longitude'] = (double)$tLng;
-                    $targetLng = (double)$tLng;
+                    cache()->put('bus_target_lng_'.$bus->id, (float) $tLng, now()->addMinutes(10));
+                    $updateData['target_longitude'] = (float) $tLng;
+                    $targetLng = (float) $tLng;
                 } else {
                     $updateData['target_longitude'] = null;
                     $targetLng = null;
@@ -132,18 +132,18 @@ class BusLocationController extends Controller
             'lng' => $request->longitude,
             'heading' => $heading,
             'target_lat' => $targetLat,
-            'target_lng' => $targetLng
+            'target_lng' => $targetLng,
         ]);
 
         // حماية: السائق المسجل فقط هو من يمكنه تحديث موقع الباص
-        if (!$bus->hasCrewMember($request->user()->id)) {
+        if (! $bus->hasCrewMember($request->user()->id)) {
             return response()->json(['message' => 'غير مصرح لك بتحديث موقع هذا الباص.'], 403);
         }
 
         // حساب السرعة الحقيقية بناءً على المسافة والزمن
         $speedKmh = 0;
         if ($bus->latitude && $bus->longitude && $bus->last_location_update) {
-            $distance = $this->calculateDistance((float)$bus->latitude, (float)$bus->longitude, (float)$request->latitude, (float)$request->longitude);
+            $distance = $this->calculateDistance((float) $bus->latitude, (float) $bus->longitude, (float) $request->latitude, (float) $request->longitude);
             $timeDiff = $bus->last_location_update->diffInSeconds(now());
             // حساب السرعة إذا كان الفارق أقل من 10 دقائق لتجنب القفزات
             if ($timeDiff > 0 && $timeDiff < 600) {
@@ -160,7 +160,7 @@ class BusLocationController extends Controller
         try {
             $today = now()->startOfDay();
             $trip = \App\Models\Trip::where('bus_id', $bus->id)->whereDate('trip_date', $today)->where('status', 'in_progress')->first();
-            
+
             $onBoardCount = 0;
             $etaData = null;
 
@@ -169,7 +169,7 @@ class BusLocationController extends Controller
                     ->where('status', 'boarded')
                     ->with('student.guardians')
                     ->get();
-                
+
                 $onBoardCount = $onBoardStudents->count();
 
                 // حساب الوقت المتوقع للطلاب الموجودين في الباص حالياً
@@ -181,14 +181,14 @@ class BusLocationController extends Controller
                     }
                 }
 
-                if (!empty($destinations)) {
+                if (! empty($destinations)) {
                     $etaData = $this->googleMapsService->getDistanceAndETA("{$request->latitude},{$request->longitude}", $destinations);
                 }
             }
 
             // الحدث القديم للتوافق
             broadcast(new BusLocationUpdated($bus, $request->latitude, $request->longitude, $heading, $onBoardCount, $targetLat, $targetLng));
-            
+
             // الحدث الجديد المطلوب للتتبع اللحظي مع بيانات ETA
             broadcast(new DriverLocationUpdated($bus, $request->latitude, $request->longitude, $heading, $etaData, $targetLat, $targetLng));
 
@@ -196,7 +196,7 @@ class BusLocationController extends Controller
 
         } catch (\Exception $e) {
             report($e);
-            \Illuminate\Support\Facades\Log::error("Location broadcast error: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Location broadcast error: '.$e->getMessage());
         }
 
         // التحقق من اقتراب الباص من بيوت الطلاب (فقط لو الباص في رحلة نشطة)
@@ -222,21 +222,21 @@ class BusLocationController extends Controller
     {
         // التحقق من الصلاحية: السائق أو المشرف أو ولي أمر أحد الطلاب في الباص أو مسؤول المدرسة
         $user = $request->user();
-        
+
         $isCrew = $bus->hasCrewMember($user->id);
         $isGuardian = false;
         $isSchoolStaff = false;
 
-        if (!$isCrew) {
+        if (! $isCrew) {
             // التحقق من ولي الأمر
-            $isGuardian = \App\Models\Student::whereHas('guardians', fn($q) => $q->where('users.id', $user->id))
-                ->where(function($q) use ($bus) {
+            $isGuardian = \App\Models\Student::whereHas('guardians', fn ($q) => $q->where('users.id', $user->id))
+                ->where(function ($q) use ($bus) {
                     $q->where('forth_bus_id', $bus->id)
-                      ->orWhere('back_bus_id', $bus->id);
+                        ->orWhere('back_bus_id', $bus->id);
                 })->exists();
 
             // التحقق من طاقم المدرسة (المشرف الميداني أو مدير المدرسة)
-            if (!$isGuardian) {
+            if (! $isGuardian) {
                 $userSchoolId = $user->getSchoolIdEfficient();
                 if ($userSchoolId && $userSchoolId == $bus->school_id) {
                     $isSchoolStaff = $user->hasRole('field_supervisor') || $user->hasRole('school_admin');
@@ -244,7 +244,7 @@ class BusLocationController extends Controller
             }
         }
 
-        if (!$isCrew && !$isGuardian && !$isSchoolStaff) {
+        if (! $isCrew && ! $isGuardian && ! $isSchoolStaff) {
             if ($user->hasRole('admin') || $user->hasRole('field_supervisor')) {
                 $isSchoolStaff = true;
             } else {
@@ -255,26 +255,29 @@ class BusLocationController extends Controller
         // Fetch Driver Info
         $driver = $bus->driver?->user;
         $activeTrip = $bus->activeTrip;
-        
+
         // Calculate Students on Board
-        $studentsOnBoard = \App\Models\TripAttendance::whereHas('trip', function($q) use ($bus) {
+        $studentsOnBoard = \App\Models\TripAttendance::whereHas('trip', function ($q) use ($bus) {
             $q->where('bus_id', $bus->id)->whereDate('trip_date', today())->where('status', 'in_progress');
         })->where('status', 'boarded')->count();
 
         // Per-student boarding status for this bus
         $guardianStudents = [];
         if ($isGuardian) {
-            $guardianStudentIds = \App\Models\Student::whereHas('guardians', fn($q) => $q->where('users.id', $user->id))->pluck('id');
+            $guardianStudentIds = \App\Models\Student::whereHas('guardians', fn ($q) => $q->where('users.id', $user->id))->pluck('id');
             foreach ($guardianStudentIds as $sid) {
                 $lastAttendance = \App\Models\TripAttendance::where('student_id', $sid)
-                    ->whereHas('trip', fn($q) => $q->where('bus_id', $bus->id)->whereDate('trip_date', today()))
+                    ->whereHas('trip', fn ($q) => $q->where('bus_id', $bus->id)->whereDate('trip_date', today()))
                     ->latest()
                     ->first();
-                
+
                 $status = 'atHome';
                 if ($lastAttendance) {
-                    if ($lastAttendance->status === 'boarded') $status = 'onBus';
-                    elseif ($lastAttendance->status === 'dropped') $status = ($lastAttendance->trip?->type === 'forth') ? 'atSchool' : 'atHome';
+                    if ($lastAttendance->status === 'boarded') {
+                        $status = 'onBus';
+                    } elseif ($lastAttendance->status === 'dropped') {
+                        $status = ($lastAttendance->trip?->type === 'forth') ? 'atSchool' : 'atHome';
+                    }
                 }
                 $guardianStudents[] = ['student_id' => $sid, 'status' => $status];
             }
@@ -282,9 +285,9 @@ class BusLocationController extends Controller
 
         return response()->json([
             'bus_id' => $bus->id,
-            'latitude' => $bus->latitude ? (double) $bus->latitude : null,
-            'longitude' => $bus->longitude ? (double) $bus->longitude : null,
-            'heading' => (double) cache()->get('bus_heading_'.$bus->id, 0),
+            'latitude' => $bus->latitude ? (float) $bus->latitude : null,
+            'longitude' => $bus->longitude ? (float) $bus->longitude : null,
+            'heading' => (float) cache()->get('bus_heading_'.$bus->id, 0),
             'target_lat' => $bus->target_latitude,
             'target_lng' => $bus->target_longitude,
             'trip_status' => $bus->trip_status,
@@ -301,13 +304,13 @@ class BusLocationController extends Controller
                 'id' => $driver->id,
                 'name' => $driver->name,
                 'phone' => $driver->phone,
-                'image_url' => $driver->image_url ? url($driver->image_url) : 'https://i.pravatar.cc/150?u=' . $driver->id,
+                'image_url' => $driver->image_url ? url($driver->image_url) : 'https://i.pravatar.cc/150?u='.$driver->id,
             ] : null,
             'supervisor' => $bus->supervisor ? [
                 'id' => $bus->supervisor->id,
                 'name' => $bus->supervisor->name,
                 'phone' => $bus->supervisor->phone,
-                'image_url' => $bus->supervisor->image_url ? url($bus->supervisor->image_url) : 'https://i.pravatar.cc/150?u=' . $bus->supervisor->id,
+                'image_url' => $bus->supervisor->image_url ? url($bus->supervisor->image_url) : 'https://i.pravatar.cc/150?u='.$bus->supervisor->id,
             ] : null,
         ]);
     }
@@ -338,9 +341,9 @@ class BusLocationController extends Controller
     {
         // جلب الطلاب المسجلين في الباص
         $students = \App\Models\Student::where('is_active', true)
-            ->where(function($q) use ($bus) {
+            ->where(function ($q) use ($bus) {
                 $q->where('forth_bus_id', $bus->id)
-                  ->orWhere('back_bus_id', $bus->id);
+                    ->orWhere('back_bus_id', $bus->id);
             })
             ->with('guardians')
             ->get();
@@ -373,14 +376,14 @@ class BusLocationController extends Controller
                     ->whereDate('trip_date', today())
                     ->where('status', 'in_progress')
                     ->first();
-                
+
                 $direction = ($activeTrip?->type === 'forth') ? 'to_school' : 'to_home';
-                
+
                 // SCRUM-85 & SCRUM-88: التنبيه عند اقتراب الحافلة (مسافة 2 كم + زمن تقديري دقيقتين)
                 $titleKey = $direction === 'to_school' ? 'notifications.bus_proximity_to_school_title' : 'notifications.bus_proximity_to_home_title';
                 $messageKey = $direction === 'to_school' ? 'notifications.bus_proximity_to_school_message' : 'notifications.bus_proximity_to_home_message';
 
-                $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+                $studentNameEn = ! empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
 
                 foreach ($student->guardians as $guardian) {
                     $this->notificationService->sendTranslatedToUser(
@@ -390,7 +393,7 @@ class BusLocationController extends Controller
                         messageKey: $messageKey,
                         translationParams: [
                             'student' => $student->full_name,
-                            'distance' => $distanceText
+                            'distance' => $distanceText,
                         ],
                         data: [
                             'bus_id' => $bus->id,
@@ -406,7 +409,7 @@ class BusLocationController extends Controller
                         ],
                         translationParamsEn: [
                             'student' => $studentNameEn,
-                            'distance' => $distanceText
+                            'distance' => $distanceText,
                         ]
                     );
                 }
@@ -417,5 +420,3 @@ class BusLocationController extends Controller
         }
     }
 }
-
-

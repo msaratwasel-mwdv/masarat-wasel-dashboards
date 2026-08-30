@@ -2,15 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\AbsenceRequest;
+use App\Models\AcademicCalendar;
+use App\Models\Bus;
+use App\Models\Holiday;
+use App\Models\School;
+use App\Models\Student;
 use App\Models\Trip;
 use App\Models\TripAttendance;
-use App\Models\Bus;
-use App\Models\Student;
-use App\Models\School;
-use App\Models\AcademicCalendar;
-use App\Models\Holiday;
-use App\Models\AbsenceRequest;
-use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -44,26 +43,28 @@ class TripService
                 ->where('end_date', '>=', $targetDate)
                 ->first();
 
-            if (!$calendar) {
+            if (! $calendar) {
                 $reasons[] = "School {$school->name} has no active calendar.";
                 $reasonsAr[] = "مدرسة {$school->name}: لا يوجد تقويم نشط.";
                 Log::info("[DailyTrips] School {$school->id} skipped: No active calendar.");
+
                 continue;
             }
 
             $workingDays = is_string($calendar->working_days) ? json_decode($calendar->working_days, true) : $calendar->working_days;
             $workingDays = $workingDays ?? [];
-            if (!in_array($dayName, $workingDays)) {
+            if (! in_array($dayName, $workingDays)) {
                 $dayAr = $dayTranslations[$dayName] ?? $targetDate->englishDayOfWeek;
                 $reasons[] = "{$targetDate->englishDayOfWeek} is an off-day for school {$school->name}.";
                 $reasonsAr[] = "مدرسة {$school->name}: يوم {$dayAr} هو يوم عطلة.";
                 Log::info("[DailyTrips] School {$school->id} skipped: Not a working day ($dayName).");
+
                 continue;
             }
 
-            $isHoliday = Holiday::where(function($q) use ($school) {
-                    $q->where('school_id', $school->id)->orWhereNull('school_id');
-                })
+            $isHoliday = Holiday::where(function ($q) use ($school) {
+                $q->where('school_id', $school->id)->orWhereNull('school_id');
+            })
                 ->where('start_date', '<=', $targetDate)
                 ->where('end_date', '>=', $targetDate)
                 ->exists();
@@ -72,6 +73,7 @@ class TripService
                 $reasons[] = "{$targetDate->toDateString()} is a holiday for school {$school->name}.";
                 $reasonsAr[] = "{$targetDate->toDateString()} هو يوم عطلة رسمية لمدرسة {$school->name}.";
                 Log::info("[DailyTrips] School {$school->id} skipped: Holiday.");
+
                 continue;
             }
 
@@ -80,12 +82,13 @@ class TripService
 
         if (empty($activeSchools)) {
             Log::info('[DailyTrips] No active schools found for this date. Exiting.');
+
             return [
-                'created' => 0, 
-                'skipped' => 0, 
-                'status' => 'skipped', 
+                'created' => 0,
+                'skipped' => 0,
+                'status' => 'skipped',
                 'reason' => count($reasons) > 0 ? implode(' ', array_unique($reasons)) : 'No schools are active for this date.',
-                'reason_ar' => count($reasonsAr) > 0 ? implode(' ', array_unique($reasonsAr)) : 'لا توجد مدارس نشطة في هذا التاريخ.'
+                'reason_ar' => count($reasonsAr) > 0 ? implode(' ', array_unique($reasonsAr)) : 'لا توجد مدارس نشطة في هذا التاريخ.',
             ];
         }
 
@@ -96,21 +99,29 @@ class TripService
                 foreach ($buses as $bus) {
                     DB::transaction(function () use ($bus, $targetDate, &$created, &$skipped) {
                         [$forthResult, $forthReason] = $this->createDailyTrip($bus, 'forth', $targetDate);
-                        [$backResult, $backReason]   = $this->createDailyTrip($bus, 'back', $targetDate);
+                        [$backResult, $backReason] = $this->createDailyTrip($bus, 'back', $targetDate);
 
-                        if ($forthResult) { $created++; } else { $skipped++; }
-                        if ($backResult)  { $created++; } else { $skipped++; }
+                        if ($forthResult) {
+                            $created++;
+                        } else {
+                            $skipped++;
+                        }
+                        if ($backResult) {
+                            $created++;
+                        } else {
+                            $skipped++;
+                        }
 
                         Log::info("[DailyTrips] Bus {$bus->id} ({$bus->bus_number})", [
                             'forth' => $forthResult ? 'created' : "skipped ($forthReason)",
-                            'back'  => $backResult  ? 'created' : "skipped ($backReason)",
+                            'back' => $backResult ? 'created' : "skipped ($backReason)",
                         ]);
                     });
                 }
             });
 
         Log::info('[DailyTrips] Auto-create finished', [
-            'date'    => $targetDate->toDateString(),
+            'date' => $targetDate->toDateString(),
             'created' => $created,
             'skipped' => $skipped,
         ]);
@@ -118,7 +129,7 @@ class TripService
         return [
             'created' => $created,
             'skipped' => $skipped,
-            'status' => 'completed'
+            'status' => 'completed',
         ];
     }
 
@@ -130,13 +141,13 @@ class TripService
     {
         $dayName = strtolower($date->englishDayOfWeek);
         $schools = School::all();
-        
+
         if ($schools->isEmpty()) {
             return [
                 'status' => 'no_schools',
                 'message' => 'No schools found in the system.',
                 'message_ar' => 'لا توجد مدارس في النظام.',
-                'is_working' => false
+                'is_working' => false,
             ];
         }
 
@@ -161,23 +172,25 @@ class TripService
                 ->where('end_date', '>=', $date)
                 ->first();
 
-            if (!$calendar) {
+            if (! $calendar) {
                 $reasons[] = "School {$school->name}: No active calendar.";
                 $reasonsAr[] = "مدرسة {$school->name}: لا يوجد تقويم نشط.";
+
                 continue;
             }
 
             $workingDays = is_string($calendar->working_days) ? json_decode($calendar->working_days, true) : $calendar->working_days;
-            if (!in_array($dayName, $workingDays ?? [])) {
+            if (! in_array($dayName, $workingDays ?? [])) {
                 $dayAr = $dayTranslations[$dayName] ?? $dayName;
                 $reasons[] = "School {$school->name}: {$date->englishDayOfWeek} is an off-day.";
                 $reasonsAr[] = "مدرسة {$school->name}: يوم {$dayAr} هو يوم عطلة.";
+
                 continue;
             }
 
-            $isHoliday = Holiday::where(function($q) use ($school) {
-                    $q->where('school_id', $school->id)->orWhereNull('school_id');
-                })
+            $isHoliday = Holiday::where(function ($q) use ($school) {
+                $q->where('school_id', $school->id)->orWhereNull('school_id');
+            })
                 ->where('start_date', '<=', $date)
                 ->where('end_date', '>=', $date)
                 ->exists();
@@ -185,6 +198,7 @@ class TripService
             if ($isHoliday) {
                 $reasons[] = "School {$school->name}: Today is a holiday.";
                 $reasonsAr[] = "مدرسة {$school->name}: هذا اليوم عطلة رسمية.";
+
                 continue;
             }
 
@@ -196,7 +210,7 @@ class TripService
                 'status' => 'working',
                 'message' => "Confirmed: {$activeCount} school(s) have a working day on this date.",
                 'message_ar' => "تأكيد: {$activeCount} مدرسة لديها دوام في هذا التاريخ.",
-                'is_working' => true
+                'is_working' => true,
             ];
         }
 
@@ -204,7 +218,7 @@ class TripService
             'status' => 'skipped',
             'message' => count($reasons) > 0 ? implode(' ', array_unique($reasons)) : 'This date is not a working day for any school.',
             'message_ar' => count($reasonsAr) > 0 ? implode(' ', array_unique($reasonsAr)) : 'هذا التاريخ ليس يوم عمل لأي مدرسة.',
-            'is_working' => false
+            'is_working' => false,
         ];
     }
 
@@ -223,7 +237,7 @@ class TripService
             return [null, 'already_exists'];
         }
 
-        if (!$bus->driver_id || !$bus->route_id) {
+        if (! $bus->driver_id || ! $bus->route_id) {
             return [null, 'missing_staff_or_route'];
         }
 
@@ -286,7 +300,7 @@ class TripService
         try {
             broadcast(new \App\Events\TripStatusUpdated($trip, $bus, 'pending'));
         } catch (\Exception $e) {
-            Log::error('[TripService] Broadcast error (createDailyTrip): ' . $e->getMessage());
+            Log::error('[TripService] Broadcast error (createDailyTrip): '.$e->getMessage());
         }
 
         return [$trip, 'created'];
@@ -322,7 +336,7 @@ class TripService
         $studentsToRemove = array_diff($existingStudentIds, $assignedStudentIds);
 
         // 1. Remove students who are no longer assigned and haven't active attendance states
-        if (!empty($studentsToRemove)) {
+        if (! empty($studentsToRemove)) {
             TripAttendance::where('trip_id', $trip->id)
                 ->whereIn('student_id', $studentsToRemove)
                 ->whereIn('status', ['absent', 'waiting', 'excused'])
@@ -330,7 +344,7 @@ class TripService
         }
 
         // 2. Add newly assigned students
-        if (!empty($studentsToAdd)) {
+        if (! empty($studentsToAdd)) {
             $students = Student::whereIn('id', $studentsToAdd)->get();
             $absences = AbsenceRequest::whereIn('student_id', $studentsToAdd)
                 ->whereDate('date', $date)
@@ -363,12 +377,11 @@ class TripService
                 ];
             }
 
-            if (!empty($attendances)) {
+            if (! empty($attendances)) {
                 TripAttendance::insert($attendances);
             }
         }
     }
-
 
     /**
      * Initialize a field trip after admin approval.
@@ -399,14 +412,14 @@ class TripService
                 studentId: $studentId,
                 type: 'bus_boarding',
                 title: '🚌 ركب الحافلة',
-                message: 'تم تسجيل ركوب الطالب (' . $studentName . ') في رحلة ' . ($trip->type === 'forth' ? 'الذهاب' : 'العودة'),
+                message: 'تم تسجيل ركوب الطالب ('.$studentName.') في رحلة '.($trip->type === 'forth' ? 'الذهاب' : 'العودة'),
                 data: [
                     'student_id' => (string) $studentId,
                     'direction' => $trip->type === 'forth' ? 'to_school' : 'to_home',
                     'target_screen' => 'children_status',
                 ],
                 titleEn: '🚌 Boarded the bus',
-                messageEn: 'Student (' . ($attendance->student->full_name_en ?? $studentName) . ') has been recorded as boarded for the ' . ($trip->type === 'forth' ? 'forth' : 'back') . ' trip.'
+                messageEn: 'Student ('.($attendance->student->full_name_en ?? $studentName).') has been recorded as boarded for the '.($trip->type === 'forth' ? 'forth' : 'back').' trip.'
             );
         } elseif ($status === 'dropped') {
             $updateData['check_out_time'] = now();
@@ -415,19 +428,17 @@ class TripService
                 studentId: $studentId,
                 type: 'bus_alighting',
                 title: '✅ نزل من الحافلة',
-                message: 'تم تسجيل نزول الطالب (' . $studentName . ') من الرحلة بأمان',
+                message: 'تم تسجيل نزول الطالب ('.$studentName.') من الرحلة بأمان',
                 data: [
                     'student_id' => (string) $studentId,
                     'direction' => $trip->type === 'forth' ? 'to_school' : 'to_home',
                     'target_screen' => 'children_status',
                 ],
                 titleEn: '✅ Alighted from the bus',
-                messageEn: 'Student (' . ($attendance->student->full_name_en ?? $studentName) . ') has been recorded as safely alighted from the trip.'
+                messageEn: 'Student ('.($attendance->student->full_name_en ?? $studentName).') has been recorded as safely alighted from the trip.'
             );
         }
 
         $attendance->update($updateData);
     }
 }
-
-

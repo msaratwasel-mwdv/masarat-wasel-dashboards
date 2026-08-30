@@ -16,8 +16,8 @@ class SchoolSettingsController extends Controller
     public function update(Request $request)
     {
         $schoolId = auth()->user()->getSchoolId();
-        
-        if (!$schoolId) {
+
+        if (! $schoolId) {
             return Redirect::back()->with('error', 'School context not found.');
         }
 

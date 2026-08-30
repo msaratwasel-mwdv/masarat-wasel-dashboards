@@ -17,7 +17,7 @@ class InspectionItemController extends Controller
         $items = InspectionItem::orderBy('order_index')->get();
 
         return Inertia::render('Admin/Reports/InspectionItems', [
-            'items' => $items
+            'items' => $items,
         ]);
     }
 
@@ -29,7 +29,7 @@ class InspectionItemController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'is_active' => 'boolean',
-            'order_index' => 'integer'
+            'order_index' => 'integer',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active', true);
@@ -47,7 +47,7 @@ class InspectionItemController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'is_active' => 'boolean',
-            'order_index' => 'integer'
+            'order_index' => 'integer',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active');
@@ -63,8 +63,7 @@ class InspectionItemController extends Controller
     public function destroy(InspectionItem $inspectionItem)
     {
         $inspectionItem->delete();
+
         return redirect()->back()->with('success', 'تم الحذف بنجاح');
     }
 }
-
-

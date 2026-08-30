@@ -7,9 +7,8 @@ use App\Http\Requests\Admin\StoreSchoolUserRequest;
 use App\Models\School;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class SchoolUserController extends Controller
@@ -27,19 +26,20 @@ class SchoolUserController extends Controller
             'email',
             'phone',
             'national_id',
-            'schoolAdmin.school.name'
+            'schoolAdmin.school.name',
         ], 15);
 
         if ($paginated instanceof \Symfony\Component\HttpFoundation\Response) {
             return $paginated;
         }
 
-        $counts = \Illuminate\Support\Facades\Cache::remember('school_user_counts', 600, function() {
-            $ids = DB::table('user_roles')->join('roles','user_roles.role_id','=','roles.id')
-                ->where('roles.name','school_admin')->pluck('user_roles.user_id');
-            $activeCount = DB::table('school_admins')->whereIn('user_id',$ids)->where('status','active')->count();
+        $counts = \Illuminate\Support\Facades\Cache::remember('school_user_counts', 600, function () {
+            $ids = DB::table('user_roles')->join('roles', 'user_roles.role_id', '=', 'roles.id')
+                ->where('roles.name', 'school_admin')->pluck('user_roles.user_id');
+            $activeCount = DB::table('school_admins')->whereIn('user_id', $ids)->where('status', 'active')->count();
             $total = $ids->count();
-            return ['all'=>$total,'active'=>$activeCount,'inactive'=>$total-$activeCount];
+
+            return ['all' => $total, 'active' => $activeCount, 'inactive' => $total - $activeCount];
         });
 
         return Inertia::render('Admin/SchoolUsers/Index', [
@@ -47,9 +47,9 @@ class SchoolUserController extends Controller
             'counts' => $counts,
             'filters' => [
                 'search' => $request->input('search', ''),
-                'status' => $request->input('status', 'all')
+                'status' => $request->input('status', 'all'),
             ],
-            'schools' => School::select('id', 'name')->orderBy('name')->get()
+            'schools' => School::select('id', 'name')->orderBy('name')->get(),
         ]);
     }
 
@@ -57,7 +57,7 @@ class SchoolUserController extends Controller
     public function create(School $school)
     {
         return Inertia::render('Admin/SchoolUsers/Create', [
-            'school' => $school
+            'school' => $school,
         ]);
     }
 
@@ -66,13 +66,13 @@ class SchoolUserController extends Controller
     {
         $schoolId = $school ? $school->id : $request->school_id;
 
-        if (!$schoolId) {
+        if (! $schoolId) {
             return back()->withErrors(['school_id' => 'يجب تحديد مدرسة لربط المدير بها.']);
         }
 
         // Cache role ID
         static $roleId = null;
-        if (!$roleId) {
+        if (! $roleId) {
             $roleId = \App\Models\Role::where('name', 'school_admin')->value('id')
                    ?? \App\Models\Role::create(['name' => 'school_admin'])->id;
         }
@@ -112,7 +112,7 @@ class SchoolUserController extends Controller
         $ar = User::parseFullName($request->name ?: '');
         $enName = $request->name_en ?: $request->name ?: '';
         $en = User::parseFullName($enName);
-        
+
         $updateData = [
             'first_name_ar' => $request->first_name_ar ?? $ar[0],
             'last_name_ar' => $request->last_name_ar ?? ($ar[3] ?: $ar[0]),
@@ -152,6 +152,7 @@ class SchoolUserController extends Controller
     public function destroy(User $user, ?School $school = null)
     {
         $user->delete();
+
         return back()->with('success', 'تم حذف المدير بنجاح');
     }
 
@@ -171,9 +172,9 @@ class SchoolUserController extends Controller
             'file' => 'required|mimes:xlsx,xls,csv|max:10240',
         ]);
 
-        $import = new \App\Imports\SchoolUsersImport();
+        $import = new \App\Imports\SchoolUsersImport;
         \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
 
-        return redirect()->back()->with('success', "تم استيراد مدراء المدارس بنجاح وتحديث القائمة.");
+        return redirect()->back()->with('success', 'تم استيراد مدراء المدارس بنجاح وتحديث القائمة.');
     }
 }

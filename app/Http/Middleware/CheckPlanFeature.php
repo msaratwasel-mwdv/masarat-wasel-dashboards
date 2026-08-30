@@ -16,9 +16,9 @@ class CheckPlanFeature
     public function handle(Request $request, Closure $next, string $feature): Response
     {
         $user = $request->user();
-        if (!$user) {
-            return $request->wantsJson() || str_starts_with($request->path(), 'api/') 
-                ? response()->json(['error' => 'Unauthenticated.'], 401) 
+        if (! $user) {
+            return $request->wantsJson() || str_starts_with($request->path(), 'api/')
+                ? response()->json(['error' => 'Unauthenticated.'], 401)
                 : redirect()->route('login');
         }
 

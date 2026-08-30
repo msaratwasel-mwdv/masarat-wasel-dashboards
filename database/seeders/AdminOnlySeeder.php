@@ -39,6 +39,6 @@ class AdminOnlySeeder extends Seeder
 
         $admin->roles()->sync([$adminRole->id]);
 
-        $this->command->info("Super Admin seeded successfully: admin@wasel.com / password");
+        $this->command->info('Super Admin seeded successfully: admin@wasel.com / password');
     }
 }

@@ -14,6 +14,7 @@ class PlanController extends Controller
         if ($user->hasRole('admin') || $user->hasRole('super_admin')) {
             return response()->json(Plan::all());
         }
+
         return response()->json(Plan::where('is_active', true)->get());
     }
 
@@ -26,10 +27,11 @@ class PlanController extends Controller
             'price' => 'required|numeric',
             'billing_cycle' => 'required|in:yearly,monthly,trial',
             'trial_days' => 'nullable|integer',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
 
         $plan = Plan::create($validated);
+
         return response()->json($plan, 201);
     }
 
@@ -42,16 +44,18 @@ class PlanController extends Controller
             'price' => 'sometimes|numeric',
             'billing_cycle' => 'sometimes|in:yearly,monthly,trial',
             'trial_days' => 'nullable|integer',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
 
         $plan->update($validated);
+
         return response()->json($plan);
     }
 
     public function destroy(Plan $plan)
     {
         $plan->delete();
+
         return response()->json(['message' => 'Deleted successfully']);
     }
 }

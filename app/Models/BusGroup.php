@@ -37,5 +37,3 @@ class BusGroup extends Model
         return $this->hasMany(Student::class, 'afternoon_group_id');
     }
 }
-
-

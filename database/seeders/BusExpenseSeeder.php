@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class BusExpenseSeeder extends Seeder
@@ -13,7 +12,7 @@ class BusExpenseSeeder extends Seeder
     public function run(): void
     {
         $buses = \App\Models\Bus::all();
-        
+
         foreach ($buses as $bus) {
             // Fuel expense
             \App\Models\BusExpense::create([
@@ -21,7 +20,7 @@ class BusExpenseSeeder extends Seeder
                 'type' => 'fuel',
                 'amount' => rand(50, 200),
                 'date' => now()->subDays(rand(1, 10)),
-                'extra_info' => (string)rand(10000, 50000), // Odometer reading
+                'extra_info' => (string) rand(10000, 50000), // Odometer reading
             ]);
 
             // Maintenance expense

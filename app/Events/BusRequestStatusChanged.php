@@ -13,13 +13,12 @@ class BusRequestStatusChanged implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public BusRequest $busRequest, public int $schoolAdminId)
-    {}
+    public function __construct(public BusRequest $busRequest, public int $schoolAdminId) {}
 
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('App.Models.User.' . $this->schoolAdminId),
+            new PrivateChannel('App.Models.User.'.$this->schoolAdminId),
         ];
     }
 
@@ -31,6 +30,7 @@ class BusRequestStatusChanged implements ShouldBroadcast
     public function broadcastWith(): array
     {
         $bus = $this->busRequest->bus;
+
         return [
             'id' => $this->busRequest->id,
             'status' => $this->busRequest->status,

@@ -13,22 +13,22 @@ return new class extends Migration
             $table->foreignId('student_id')->constrained()->onDelete('cascade');
             $table->foreignId('guardian_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('school_id')->constrained()->onDelete('cascade');
-            
+
             $table->decimal('old_latitude', 10, 8)->nullable();
             $table->decimal('old_longitude', 11, 8)->nullable();
             $table->string('old_address', 500)->nullable();
-            
+
             $table->decimal('new_latitude', 10, 8);
             $table->decimal('new_longitude', 11, 8);
             $table->string('new_address', 500)->nullable();
             $table->string('note', 1000)->nullable();
-            
+
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->string('rejection_reason')->nullable();
-            
+
             $table->timestamp('approved_at')->nullable();
             $table->foreignId('approved_by')->nullable()->constrained('users')->onDelete('set null');
-            
+
             $table->timestamps();
         });
     }

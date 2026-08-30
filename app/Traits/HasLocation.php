@@ -29,9 +29,7 @@ trait HasLocation
     public function formatDistance(float $distanceMeters): string
     {
         return $distanceMeters < 1000
-            ? round($distanceMeters) . ' متر'
-            : round($distanceMeters / 1000, 1) . ' كم';
+            ? round($distanceMeters).' متر'
+            : round($distanceMeters / 1000, 1).' كم';
     }
 }
-
-

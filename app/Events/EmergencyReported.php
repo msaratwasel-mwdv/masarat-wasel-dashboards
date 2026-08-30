@@ -13,8 +13,7 @@ class EmergencyReported implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public Incident $emergency)
-    {}
+    public function __construct(public Incident $emergency) {}
 
     public function broadcastOn(): array
     {
@@ -31,6 +30,7 @@ class EmergencyReported implements ShouldBroadcast
     public function broadcastWith(): array
     {
         $this->emergency->loadMissing(['bus', 'reporter']);
+
         return [
             'id' => $this->emergency->id,
             'type' => $this->emergency->type,

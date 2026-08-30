@@ -3,19 +3,20 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Trip;
 use App\Models\Bus;
 use App\Models\Route;
+use App\Models\Trip;
 use App\Services\TripService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class DailyTripController extends Controller
 {
     public function __construct(protected TripService $tripService) {}
+
     /**
      * Display all auto-generated daily trips (forth & back).
      */
@@ -41,10 +42,10 @@ class DailyTripController extends Controller
         $routes = Route::all();
 
         return Inertia::render('Admin/DailyTrips/Index', [
-            'trips'   => $trips,
+            'trips' => $trips,
             'filters' => $request->only('date', 'status'),
-            'buses'   => $buses,
-            'routes'  => $routes,
+            'buses' => $buses,
+            'routes' => $routes,
         ]);
     }
 
@@ -70,10 +71,10 @@ class DailyTripController extends Controller
     {
         Log::info('[DailyTrips] Manual creation attempt', $request->all());
         $request->validate([
-            'bus_id'   => 'required|exists:buses,id',
+            'bus_id' => 'required|exists:buses,id',
             'route_id' => 'required|exists:routes,id',
-            'type'     => 'required|in:forth,back,both',
-            'date'     => 'required|date_format:Y-m-d',
+            'type' => 'required|in:forth,back,both',
+            'date' => 'required|date_format:Y-m-d',
         ]);
 
         $bus = Bus::findOrFail($request->bus_id);
@@ -88,21 +89,22 @@ class DailyTripController extends Controller
             if ($trip) {
                 $createdCount++;
             } else {
-                $errors[] = ($type === 'forth' ? 'ذهاب: ' : 'إياب: ') . str_replace('_', ' ', $reason);
+                $errors[] = ($type === 'forth' ? 'ذهاب: ' : 'إياب: ').str_replace('_', ' ', $reason);
             }
         }
 
         if ($createdCount === 0) {
             Log::warning('[DailyTrips] Manual creation failed', ['reasons' => $errors, 'bus' => $bus->id]);
-            return back()->with('error', "Could not create trip: " . implode(', ', $errors));
+
+            return back()->with('error', 'Could not create trip: '.implode(', ', $errors));
         }
 
-        $message = $createdCount === 2 
-            ? 'تم إنشاء رحلتي الذهاب والإياب بنجاح.' 
+        $message = $createdCount === 2
+            ? 'تم إنشاء رحلتي الذهاب والإياب بنجاح.'
             : 'تم إنشاء الرحلة بنجاح.';
-        
+
         if (count($errors) > 0) {
-            $message .= " (ملاحظة: " . implode(', ', $errors) . ")";
+            $message .= ' (ملاحظة: '.implode(', ', $errors).')';
         }
 
         return redirect()->route('admin.daily-trips.index')->with('success', $message);
@@ -118,7 +120,7 @@ class DailyTripController extends Controller
         $routes = Route::all();
 
         return Inertia::render('Admin/DailyTrips/Edit', [
-            'trip'  => $trip,
+            'trip' => $trip,
             'buses' => $buses,
             'routes' => $routes,
         ]);
@@ -149,12 +151,12 @@ class DailyTripController extends Controller
     public function update(Request $request, Trip $trip)
     {
         $validated = $request->validate([
-            'route_id'     => 'required|exists:routes,id',
-            'driver_id'    => 'nullable|exists:users,id',
+            'route_id' => 'required|exists:routes,id',
+            'driver_id' => 'nullable|exists:users,id',
             'assistant_id' => 'nullable|exists:users,id',
-            'status'       => 'required|in:pending,in_progress,finished,cancelled,awaiting_confirmation,awaiting_video',
+            'status' => 'required|in:pending,in_progress,finished,cancelled,awaiting_confirmation,awaiting_video',
             'departure_time' => 'required|date',
-            'arrival_time'   => 'nullable|date',
+            'arrival_time' => 'nullable|date',
         ]);
 
         $trip->update($validated);
@@ -203,10 +205,12 @@ class DailyTripController extends Controller
 
         if (isset($result['status']) && $result['status'] === 'skipped') {
             $reason = App::getLocale() === 'ar' ? ($result['reason_ar'] ?? $result['reason']) : ($result['reason'] ?? 'No schools are active for this date.');
+
             return back()->with('error', $reason);
         }
 
         $message = "Auto-creation complete: {$result['created']} trips created, {$result['skipped']} skipped.";
+
         return back()->with('success', $message);
     }
 
@@ -225,5 +229,3 @@ class DailyTripController extends Controller
         return response()->json($result);
     }
 }
-
-

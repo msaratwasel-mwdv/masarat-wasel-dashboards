@@ -34,12 +34,13 @@ class TeacherController extends Controller
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             })
-            ->with(['teacher.grade']) 
+            ->with(['teacher.grade'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($u) {
                 $u->grade_id = $u->teacher?->grade_id;
                 $u->grade_name = $u->teacher?->grade?->name;
+
                 return $u;
             });
 
@@ -57,10 +58,10 @@ class TeacherController extends Controller
                 ->with('teacher.user')
                 ->orderBy('name')
                 ->get()
-                ->map(fn($g) => [
+                ->map(fn ($g) => [
                     'id' => $g->id,
                     'name' => $g->name,
-                    'teacher_name' => $g->teacher?->user?->name
+                    'teacher_name' => $g->teacher?->user?->name,
                 ]),
         ]);
     }
@@ -101,7 +102,7 @@ class TeacherController extends Controller
 
         $schoolId = $user->getSchoolId();
 
-        \DB::transaction(function() use ($validated, $user, $imagePath, $schoolId) {
+        \DB::transaction(function () use ($validated, $imagePath, $schoolId) {
             $teacherUser = User::create([
                 'first_name_ar' => $validated['first_name_ar'],
                 'last_name_ar' => $validated['last_name_ar'],
@@ -146,7 +147,7 @@ class TeacherController extends Controller
 
         if (
             $teacher->getSchoolId() !== $user->getSchoolId() ||
-            !$teacher->hasRole('teacher')
+            ! $teacher->hasRole('teacher')
         ) {
             abort(403);
         }
@@ -187,11 +188,11 @@ class TeacherController extends Controller
             'last_name_ar' => $validated['last_name_ar'],
             'first_name_en' => $validated['first_name_en'] ?? '',
             'last_name_en' => $validated['last_name_en'] ?? '',
-            'national_id'    => $validated['national_id'],
-            'email'          => $validated['email'] ?? null,
-            'phone'          => $validated['phone'],
+            'national_id' => $validated['national_id'],
+            'email' => $validated['email'] ?? null,
+            'phone' => $validated['phone'],
             'preferred_language' => $validated['preferred_language'] ?? 'ar',
-            'address'        => $validated['address'] ?? null,
+            'address' => $validated['address'] ?? null,
         ];
 
         // معالجة رفع الصورة
@@ -210,7 +211,7 @@ class TeacherController extends Controller
         $teacher->update($updateData);
 
         // تحديث كلمة المرور إذا أُدخلت
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $teacher->update(['password' => Hash::make($validated['password'])]);
         }
 
@@ -237,7 +238,7 @@ class TeacherController extends Controller
 
         if (
             $teacher->getSchoolId() !== $user->getSchoolId() ||
-            !$teacher->hasRole('teacher')
+            ! $teacher->hasRole('teacher')
         ) {
             abort(403);
         }
@@ -252,6 +253,7 @@ class TeacherController extends Controller
     public function export()
     {
         $schoolId = Auth::user()->getSchoolId();
+
         return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\TeachersExport(false, $schoolId), 'teachers.xlsx');
     }
 
@@ -262,24 +264,39 @@ class TeacherController extends Controller
 
     public function import(Request $request)
     {
-        $request->validate(['file'=>'required|mimes:xlsx,xls,csv|max:10240']);
+        $request->validate(['file' => 'required|mimes:xlsx,xls,csv|max:10240']);
         $schoolId = Auth::user()->getSchoolId();
         $import = new \App\Imports\TeachersImport($schoolId);
-        try { \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file')); }
-        catch (\Throwable $e) { return redirect()->back()->with('import_errors',["فشل في معالجة ملف الاستيراد: ".$e->getMessage()]); }
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('import_errors', ['فشل في معالجة ملف الاستيراد: '.$e->getMessage()]);
+        }
         $errorsArray = [];
         if ($import->failures()->isNotEmpty()) {
-            $ca = (new \App\Imports\TeachersImport())->customValidationAttributes();
+            $ca = (new \App\Imports\TeachersImport)->customValidationAttributes();
             foreach ($import->failures() as $f) {
-                $ok = array_search($f->attribute(),$ca); $cn = $ok===false?($ca[$f->attribute()]??$f->attribute()):$f->attribute();
-                $bv = $f->values()[$ok===false?$f->attribute():$ok]??'فارغة (Empty)';
-                if (is_scalar($bv)&&trim((string)$bv)==='') $bv='فارغة (Empty)'; if ($bv===null) $bv='فارغة (Empty)';
-                $errorsArray[]="السطر {$f->row()} | العمود: [{$cn}] | القيمة: ({$bv}) | الخطأ: ".implode(' | ',$f->errors());
+                $ok = array_search($f->attribute(), $ca);
+                $cn = $ok === false ? ($ca[$f->attribute()] ?? $f->attribute()) : $f->attribute();
+                $bv = $f->values()[$ok === false ? $f->attribute() : $ok] ?? 'فارغة (Empty)';
+                if (is_scalar($bv) && trim((string) $bv) === '') {
+                    $bv = 'فارغة (Empty)';
+                } if ($bv === null) {
+                    $bv = 'فارغة (Empty)';
+                }
+                $errorsArray[] = "السطر {$f->row()} | العمود: [{$cn}] | القيمة: ({$bv}) | الخطأ: ".implode(' | ', $f->errors());
             }
         }
-        if ($import->errors()->isNotEmpty()) { foreach ($import->errors() as $e) { $errorsArray[]="خطأ: ".$e->getMessage(); } }
-        if (!empty($errorsArray)) return redirect()->back()->with('success',"تم استيراد {$import->successCount} معلم بنجاح.")->with('import_errors',$errorsArray);
-        return redirect()->back()->with('success',"تم استيراد {$import->successCount} معلم بنجاح وتحديث القائمة.");
+        if ($import->errors()->isNotEmpty()) {
+            foreach ($import->errors() as $e) {
+                $errorsArray[] = 'خطأ: '.$e->getMessage();
+            }
+        }
+        if (! empty($errorsArray)) {
+            return redirect()->back()->with('success', "تم استيراد {$import->successCount} معلم بنجاح.")->with('import_errors', $errorsArray);
+        }
+
+        return redirect()->back()->with('success', "تم استيراد {$import->successCount} معلم بنجاح وتحديث القائمة.");
     }
 
     public function printAll(Request $request)
@@ -287,7 +304,7 @@ class TeacherController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
         $schoolId = $user->getSchoolId();
-        
+
         $query = User::query()
             ->atSchool($schoolId)
             ->withRole('teacher')
@@ -302,24 +319,25 @@ class TeacherController extends Controller
             });
         }
 
-        $data = $query->latest()->get()->map(fn($t)=>[
-            'id'=>$t->id,'name'=>$t->name,'name_en'=>$t->name_en,'national_id'=>$t->national_id,
-            'phone'=>$t->phone,'email'=>$t->email,'preferred_language'=>$t->preferred_language,
-            'teacher'=>$t->teacher?['status'=>$t->teacher->status]:null,
+        $data = $query->latest()->get()->map(fn ($t) => [
+            'id' => $t->id, 'name' => $t->name, 'name_en' => $t->name_en, 'national_id' => $t->national_id,
+            'phone' => $t->phone, 'email' => $t->email, 'preferred_language' => $t->preferred_language,
+            'teacher' => $t->teacher ? ['status' => $t->teacher->status] : null,
         ]);
-        $lang = $request->input('lang')??auth()->user()->preferred_language??'ar';
+        $lang = $request->input('lang') ?? auth()->user()->preferred_language ?? 'ar';
+
         return Inertia::render('Print/SharedPrintReport', [
-            'title_ar'=>'تقرير بيانات المعلمين','title_en'=>'Teachers Operational Report',
-            'subtitle_ar'=>'إدارة شركة مسارات واصل','subtitle_en'=>'Masarat Wasel Company',
-            'totalLabel_ar'=>'إجمالي الكادر','totalLabel_en'=>'Total Force',
-            'columns'=>[
-                ['key'=>'name','label_ar'=>'المعلم','label_en'=>'Teacher','bold'=>true],
-                ['key'=>'national_id','label_ar'=>'الرقم المدني','label_en'=>'Civil ID','mono'=>true],
-                ['key'=>'phone','label_ar'=>'الجوال','label_en'=>'Phone'],
-                ['key'=>'email','label_ar'=>'البريد','label_en'=>'Email'],
-                ['key'=>'preferred_language','label_ar'=>'اللغة','label_en'=>'Language'],
+            'title_ar' => 'تقرير بيانات المعلمين', 'title_en' => 'Teachers Operational Report',
+            'subtitle_ar' => 'إدارة شركة مسارات واصل', 'subtitle_en' => 'Masarat Wasel Company',
+            'totalLabel_ar' => 'إجمالي الكادر', 'totalLabel_en' => 'Total Force',
+            'columns' => [
+                ['key' => 'name', 'label_ar' => 'المعلم', 'label_en' => 'Teacher', 'bold' => true],
+                ['key' => 'national_id', 'label_ar' => 'الرقم المدني', 'label_en' => 'Civil ID', 'mono' => true],
+                ['key' => 'phone', 'label_ar' => 'الجوال', 'label_en' => 'Phone'],
+                ['key' => 'email', 'label_ar' => 'البريد', 'label_en' => 'Email'],
+                ['key' => 'preferred_language', 'label_ar' => 'اللغة', 'label_en' => 'Language'],
             ],
-            'data'=>$data,'printDate'=>now()->format('Y-m-d H:i:s'),'isRTL'=>$lang==='ar',
+            'data' => $data, 'printDate' => now()->format('Y-m-d H:i:s'), 'isRTL' => $lang === 'ar',
         ]);
     }
 }

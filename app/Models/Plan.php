@@ -73,24 +73,36 @@ class Plan extends Model
     public function getFeatureListArAttribute()
     {
         $features = [];
-        
+
         if ($this->max_buses) {
-            $features[] = "حتى " . $this->max_buses . " حافلة";
+            $features[] = 'حتى '.$this->max_buses.' حافلة';
         } else {
-            $features[] = "حافلات غير محدودة";
+            $features[] = 'حافلات غير محدودة';
         }
 
-        if ($this->has_driver_app) $features[] = "تطبيق السائق";
-        if ($this->has_parent_app) $features[] = "تطبيق ولي الأمر";
-        if ($this->has_supervisor_app) $features[] = "تطبيق المشرفة";
-        
+        if ($this->has_driver_app) {
+            $features[] = 'تطبيق السائق';
+        }
+        if ($this->has_parent_app) {
+            $features[] = 'تطبيق ولي الأمر';
+        }
+        if ($this->has_supervisor_app) {
+            $features[] = 'تطبيق المشرفة';
+        }
+
         if ($this->notifications_limit) {
-            $features[] = $this->notifications_limit === 'unlimited' ? "إشعارات غير محدودة" : "إشعارات النظام";
+            $features[] = $this->notifications_limit === 'unlimited' ? 'إشعارات غير محدودة' : 'إشعارات النظام';
         }
 
-        if ($this->has_reports) $features[] = "تقارير متقدمة";
-        if ($this->has_api_access) $features[] = "الوصول للـ API";
-        if ($this->has_dedicated_support) $features[] = "دعم فني مخصص 24/7";
+        if ($this->has_reports) {
+            $features[] = 'تقارير متقدمة';
+        }
+        if ($this->has_api_access) {
+            $features[] = 'الوصول للـ API';
+        }
+        if ($this->has_dedicated_support) {
+            $features[] = 'دعم فني مخصص 24/7';
+        }
 
         return $features;
     }
@@ -98,24 +110,36 @@ class Plan extends Model
     public function getFeatureListEnAttribute()
     {
         $features = [];
-        
+
         if ($this->max_buses) {
-            $features[] = "Up to " . $this->max_buses . " buses";
+            $features[] = 'Up to '.$this->max_buses.' buses';
         } else {
-            $features[] = "Unlimited Buses";
+            $features[] = 'Unlimited Buses';
         }
 
-        if ($this->has_driver_app) $features[] = "Driver App";
-        if ($this->has_parent_app) $features[] = "Parent App";
-        if ($this->has_supervisor_app) $features[] = "Supervisor App";
-        
+        if ($this->has_driver_app) {
+            $features[] = 'Driver App';
+        }
+        if ($this->has_parent_app) {
+            $features[] = 'Parent App';
+        }
+        if ($this->has_supervisor_app) {
+            $features[] = 'Supervisor App';
+        }
+
         if ($this->notifications_limit) {
-            $features[] = $this->notifications_limit === 'unlimited' ? "Unlimited Notifications" : "System Notifications";
+            $features[] = $this->notifications_limit === 'unlimited' ? 'Unlimited Notifications' : 'System Notifications';
         }
 
-        if ($this->has_reports) $features[] = "Advanced Reports";
-        if ($this->has_api_access) $features[] = "API Access";
-        if ($this->has_dedicated_support) $features[] = "Dedicated Support 24/7";
+        if ($this->has_reports) {
+            $features[] = 'Advanced Reports';
+        }
+        if ($this->has_api_access) {
+            $features[] = 'API Access';
+        }
+        if ($this->has_dedicated_support) {
+            $features[] = 'Dedicated Support 24/7';
+        }
 
         return $features;
     }

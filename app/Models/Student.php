@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Student extends Model
 {
@@ -55,7 +55,7 @@ class Student extends Model
         'longitude',
         'location_note',
     ];
-    
+
     /**
      * The "booted" method of the model.
      */
@@ -71,7 +71,6 @@ class Student extends Model
             }
         });
     }
-
 
     /**
      * The attributes that should be appended to the model's array form.
@@ -89,7 +88,7 @@ class Student extends Model
 
         if ($isEn) {
             $nameEn = $this->full_name_en;
-            if (!empty(trim($nameEn)) && $nameEn !== $this->student_code) {
+            if (! empty(trim($nameEn)) && $nameEn !== $this->student_code) {
                 return $nameEn;
             }
         }
@@ -104,11 +103,11 @@ class Student extends Model
     {
         $names = [
             $this->first_name_ar,
-            $this->last_name_ar
+            $this->last_name_ar,
         ];
 
         // Ensure each part is UTF-8 or empty
-        $names = array_map(function($n) {
+        $names = array_map(function ($n) {
             return is_string($n) ? mb_convert_encoding($n, 'UTF-8', 'UTF-8') : null;
         }, $names);
 
@@ -124,10 +123,10 @@ class Student extends Model
     {
         $namesEn = [
             $this->first_name_en,
-            $this->last_name_en
+            $this->last_name_en,
         ];
-        
-        $namesEn = array_map(function($n) {
+
+        $namesEn = array_map(function ($n) {
             return is_string($n) ? mb_convert_encoding($n, 'UTF-8', 'UTF-8') : null;
         }, $namesEn);
 
@@ -178,7 +177,6 @@ class Student extends Model
         return $this->currentEnrollment?->classroom?->school();
     }
 
-
     public function forthBus(): BelongsTo
     {
         return $this->belongsTo(Bus::class, 'forth_bus_id');
@@ -222,7 +220,7 @@ class Student extends Model
                 'updated_at' => 'max',
                 'id' => 'max',
             ], function ($relation) {
-                $relation->whereHas('trip', fn($q) => $q->whereDate('trip_date', today()));
+                $relation->whereHas('trip', fn ($q) => $q->whereDate('trip_date', today()));
             });
     }
 
@@ -239,10 +237,8 @@ class Student extends Model
      */
     public function scopeInSchool($query, $schoolId)
     {
-        return $query->whereHas('enrollments.classroom', function($q) use ($schoolId) {
+        return $query->whereHas('enrollments.classroom', function ($q) use ($schoolId) {
             $q->atSchool($schoolId);
         });
     }
 }
-
-

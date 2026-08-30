@@ -47,7 +47,7 @@ class FieldTripController extends Controller
         ]);
 
         $schoolAdmin = \App\Models\User::atSchool($fieldTrip->school_id)
-            ->whereHas('roles', fn($q) => $q->where('roles.name', 'school_admin'))
+            ->whereHas('roles', fn ($q) => $q->where('roles.name', 'school_admin'))
             ->first();
 
         if ($schoolAdmin) {
@@ -60,17 +60,17 @@ class FieldTripController extends Controller
                     messageKey: 'notifications.field_trip_approved_message',
                     translationParams: [
                         'trip' => $fieldTrip->name,
-                        'cost' => $fieldTrip->cost
+                        'cost' => $fieldTrip->cost,
                     ],
                     data: ['trip_id' => $fieldTrip->id, 'category' => 'trips', 'target_screen' => 'trip_details'],
                     translationParamsEn: [
                         'trip' => $fieldTrip->name,
-                        'cost' => $fieldTrip->cost
+                        'cost' => $fieldTrip->cost,
                     ]
                 );
             } catch (\Exception $e) {
                 // Ignore notification failure
-                \Log::error('Failed to send approval notification: ' . $e->getMessage());
+                \Log::error('Failed to send approval notification: '.$e->getMessage());
             }
         }
 
@@ -93,13 +93,13 @@ class FieldTripController extends Controller
         ]);
 
         $schoolAdmin = \App\Models\User::atSchool($fieldTrip->school_id)
-            ->whereHas('roles', fn($q) => $q->where('roles.name', 'school_admin'))
+            ->whereHas('roles', fn ($q) => $q->where('roles.name', 'school_admin'))
             ->first();
 
         if ($schoolAdmin) {
             try {
                 $notificationService = app(NotificationService::class);
-                $messageAddon = ($fieldTrip->rejection_reason) ? " السبب: {$fieldTrip->rejection_reason}" : "";
+                $messageAddon = ($fieldTrip->rejection_reason) ? " السبب: {$fieldTrip->rejection_reason}" : '';
 
                 $notificationService->sendTranslatedToUser(
                     userId: $schoolAdmin->id,
@@ -108,32 +108,30 @@ class FieldTripController extends Controller
                     messageKey: 'notifications.field_trip_rejected_message',
                     translationParams: [
                         'trip' => $fieldTrip->name,
-                        'reason' => $fieldTrip->rejection_reason ?? 'بدون سبب'
+                        'reason' => $fieldTrip->rejection_reason ?? 'بدون سبب',
                     ],
                     data: ['trip_id' => $fieldTrip->id, 'category' => 'trips', 'target_screen' => 'trip_details'],
                     translationParamsEn: [
                         'trip' => $fieldTrip->name,
-                        'reason' => $fieldTrip->rejection_reason ?? 'No reason provided'
+                        'reason' => $fieldTrip->rejection_reason ?? 'No reason provided',
                     ]
                 );
             } catch (\Exception $e) {
                 // Ignore notification failure
-                \Log::error('Failed to send rejection notification: ' . $e->getMessage());
+                \Log::error('Failed to send rejection notification: '.$e->getMessage());
             }
         }
 
         return redirect()->back()->with('success', 'تم إلغاء الرحلة بنجاح.');
     }
+
     /**
      * Display the specified field trip (JSON for modal).
      */
     public function show(FieldTrip $fieldTrip)
     {
         return response()->json([
-            'trip' => $fieldTrip->load(['school', 'students.currentEnrollment.classroom', 'internalTeachers', 'bus.driver', 'bus.assistant'])
+            'trip' => $fieldTrip->load(['school', 'students.currentEnrollment.classroom', 'internalTeachers', 'bus.driver', 'bus.assistant']),
         ]);
     }
 }
-
-
-

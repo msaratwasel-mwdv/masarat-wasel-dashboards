@@ -40,5 +40,3 @@ class StudentSchoolEnrollment extends Model
         return $this->belongsTo(Student::class);
     }
 }
-
-

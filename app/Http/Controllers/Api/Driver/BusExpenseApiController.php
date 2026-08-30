@@ -22,10 +22,10 @@ class BusExpenseApiController extends Controller
             ->orWhere('assistant_id', $user->id)
             ->first();
 
-        if (!$bus) {
+        if (! $bus) {
             return response()->json([
                 'success' => false,
-                'message' => 'User is not assigned to any bus.'
+                'message' => 'User is not assigned to any bus.',
             ], 403);
         }
 
@@ -36,12 +36,12 @@ class BusExpenseApiController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $expenses->items(),
-            'meta'    => [
+            'data' => $expenses->items(),
+            'meta' => [
                 'current_page' => $expenses->currentPage(),
-                'last_page'    => $expenses->lastPage(),
-                'total'        => $expenses->total(),
-            ]
+                'last_page' => $expenses->lastPage(),
+                'total' => $expenses->total(),
+            ],
         ]);
     }
 
@@ -57,18 +57,18 @@ class BusExpenseApiController extends Controller
             ->orWhere('assistant_id', $user->id)
             ->first();
 
-        if (!$bus) {
+        if (! $bus) {
             return response()->json([
                 'success' => false,
-                'message' => 'User is not assigned to any bus.'
+                'message' => 'User is not assigned to any bus.',
             ], 403);
         }
 
         $validator = Validator::make($request->all(), [
-            'type'          => 'required|in:fuel,maintenance',
-            'amount'        => 'required|numeric|min:0',
-            'date'          => 'required|date',
-            'extra_info'    => 'nullable|string',
+            'type' => 'required|in:fuel,maintenance',
+            'amount' => 'required|numeric|min:0',
+            'date' => 'required|date',
+            'extra_info' => 'nullable|string',
             'receipt_photo' => 'nullable|image|max:5120', // Max 5MB
         ]);
 
@@ -76,12 +76,12 @@ class BusExpenseApiController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         // --- Odometer Guard Validation ---
-        if ($request->type === 'fuel' && !empty($request->extra_info)) {
+        if ($request->type === 'fuel' && ! empty($request->extra_info)) {
             $currentOdometer = (int) filter_var($request->extra_info, FILTER_SANITIZE_NUMBER_INT);
             $lastExpense = BusExpense::where('bus_id', $bus->id)
                 ->where('type', 'fuel')
@@ -96,8 +96,8 @@ class BusExpenseApiController extends Controller
                         'success' => false,
                         'message' => 'Validation error',
                         'errors' => [
-                            'extra_info' => ['قراءة العداد لا يمكن أن تكون أقل من القراءة السابقة (' . $lastOdometer . ')']
-                        ]
+                            'extra_info' => ['قراءة العداد لا يمكن أن تكون أقل من القراءة السابقة ('.$lastOdometer.')'],
+                        ],
                     ], 422);
                 }
             }
@@ -112,11 +112,11 @@ class BusExpenseApiController extends Controller
         }
 
         $expense = BusExpense::create([
-            'bus_id'        => $bus->id,
-            'type'          => $request->type,
-            'amount'        => $request->amount,
-            'date'          => $request->date,
-            'extra_info'    => $request->extra_info,
+            'bus_id' => $bus->id,
+            'type' => $request->type,
+            'amount' => $request->amount,
+            'date' => $request->date,
+            'extra_info' => $request->extra_info,
             'receipt_photo' => $photoPath,
         ]);
 
@@ -129,7 +129,7 @@ class BusExpenseApiController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Expense recorded successfully',
-            'data'    => $expense
+            'data' => $expense,
         ]);
     }
 }

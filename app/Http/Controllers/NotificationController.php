@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Notification;
 use App\Models\NotificationRecipient;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class NotificationController extends Controller
@@ -24,7 +23,7 @@ class NotificationController extends Controller
         // Query notifications where user_id matches OR notification is in recipients table
         return Notification::activeOnly()->where(function ($query) use ($userId, $recipientNotificationIds) {
             $query->where('user_id', $userId)
-                  ->orWhereIn('id', $recipientNotificationIds);
+                ->orWhereIn('id', $recipientNotificationIds);
         });
     }
 
@@ -72,9 +71,9 @@ class NotificationController extends Controller
         // Check if user has access (direct or via recipients)
         $notification = Notification::where(function ($q) use ($userId) {
             $q->where('user_id', $userId)
-              ->orWhereHas('recipients', function ($rq) use ($userId) {
-                  $rq->where('user_id', $userId);
-              });
+                ->orWhereHas('recipients', function ($rq) use ($userId) {
+                    $rq->where('user_id', $userId);
+                });
         })->findOrFail($id);
 
         $notification->markAsRead();
@@ -132,9 +131,9 @@ class NotificationController extends Controller
 
         $notification = Notification::where(function ($q) use ($userId) {
             $q->where('user_id', $userId)
-              ->orWhereHas('recipients', function ($rq) use ($userId) {
-                  $rq->where('user_id', $userId);
-              });
+                ->orWhereHas('recipients', function ($rq) use ($userId) {
+                    $rq->where('user_id', $userId);
+                });
         })->findOrFail($id);
 
         // If it's a recipient-based notification, just remove the recipient record

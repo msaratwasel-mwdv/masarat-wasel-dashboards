@@ -20,7 +20,7 @@ class AnalyticsCacheObserver
     {
         $monthKey = now()->format('Y-m');
         Cache::forget("analytics:kpis:{$monthKey}");
-        
+
         // Also affects dashboard safe trips % if relevant
         Cache::forget('admin_dashboard_stats');
     }

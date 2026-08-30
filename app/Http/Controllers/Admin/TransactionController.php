@@ -18,12 +18,12 @@ class TransactionController extends Controller
         $paginated = $this->applyDataTable($query, $request, [
             'reference_number',
             'payment_method',
-            'school.name'
+            'school.name',
         ], 15);
 
         return Inertia::render('Admin/Transactions/Index', [
             'transactions' => $paginated,
-            'filters' => $request->only(['search'])
+            'filters' => $request->only(['search']),
         ]);
     }
 }

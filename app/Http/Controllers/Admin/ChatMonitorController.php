@@ -43,25 +43,25 @@ class ChatMonitorController extends Controller
             ->paginate(20)
             ->through(function ($conversation) {
                 return [
-                    'id'             => $conversation->id,
-                    'type'           => $conversation->type,
-                    'title'          => $conversation->title,
-                    'school'         => $conversation->school ? [
-                        'id'   => $conversation->school->id,
+                    'id' => $conversation->id,
+                    'type' => $conversation->type,
+                    'title' => $conversation->title,
+                    'school' => $conversation->school ? [
+                        'id' => $conversation->school->id,
                         'name' => $conversation->school->name,
                     ] : null,
-                    'participants'   => $conversation->participants->map(fn($p) => [
-                        'id'   => $p->id,
+                    'participants' => $conversation->participants->map(fn ($p) => [
+                        'id' => $p->id,
                         'name' => $p->name,
                         'role' => $p->role,
                     ]),
-                    'last_message'   => $conversation->lastMessage ? [
-                        'body'       => $conversation->lastMessage->body,
-                        'sender'     => $conversation->lastMessage->sender->name ?? '-',
+                    'last_message' => $conversation->lastMessage ? [
+                        'body' => $conversation->lastMessage->body,
+                        'sender' => $conversation->lastMessage->sender->name ?? '-',
                         'created_at' => $conversation->lastMessage->created_at->toISOString(),
                     ] : null,
                     'messages_count' => $conversation->messages_count,
-                    'updated_at'     => $conversation->updated_at->toISOString(),
+                    'updated_at' => $conversation->updated_at->toISOString(),
                 ];
             });
 
@@ -69,8 +69,8 @@ class ChatMonitorController extends Controller
 
         return Inertia::render('Admin/Chat/Index', [
             'conversations' => $conversations,
-            'schools'       => $schools,
-            'filters'       => $request->only(['search', 'school_id']),
+            'schools' => $schools,
+            'filters' => $request->only(['search', 'school_id']),
         ]);
     }
 
@@ -88,11 +88,11 @@ class ChatMonitorController extends Controller
 
         $formattedMessages = $messages->through(function ($msg) {
             return [
-                'id'         => $msg->id,
-                'body'       => $msg->body,
-                'type'       => $msg->type,
-                'sender'     => [
-                    'id'   => $msg->sender->id,
+                'id' => $msg->id,
+                'body' => $msg->body,
+                'type' => $msg->type,
+                'sender' => [
+                    'id' => $msg->sender->id,
                     'name' => $msg->sender->name,
                     'role' => $msg->sender->role,
                 ],
@@ -103,15 +103,15 @@ class ChatMonitorController extends Controller
 
         return Inertia::render('Admin/Chat/Show', [
             'conversation' => [
-                'id'           => $conversation->id,
-                'type'         => $conversation->type,
-                'title'        => $conversation->title,
-                'school'       => $conversation->school ? [
-                    'id'   => $conversation->school->id,
+                'id' => $conversation->id,
+                'type' => $conversation->type,
+                'title' => $conversation->title,
+                'school' => $conversation->school ? [
+                    'id' => $conversation->school->id,
                     'name' => $conversation->school->name,
                 ] : null,
-                'participants' => $conversation->participants->map(fn($p) => [
-                    'id'   => $p->id,
+                'participants' => $conversation->participants->map(fn ($p) => [
+                    'id' => $p->id,
                     'name' => $p->name,
                     'role' => $p->role,
                 ]),
@@ -141,19 +141,17 @@ class ChatMonitorController extends Controller
 
         // إنشاء إشعار للمستخدم
         \App\Models\Notification::create([
-            'title'     => 'تحذير إداري',
-            'message'   => $request->alert_message,
-            'type'      => 'admin_alert',
+            'title' => 'تحذير إداري',
+            'message' => $request->alert_message,
+            'type' => 'admin_alert',
             'sender_id' => $request->user()->id,
-            'user_id'   => $user->id,
-            'status'    => 'unread',
-            'icon'      => 'warning',
-            'color'     => 'red',
-            'data'      => ['from' => 'admin_chat_monitor'],
+            'user_id' => $user->id,
+            'status' => 'unread',
+            'icon' => 'warning',
+            'color' => 'red',
+            'data' => ['from' => 'admin_chat_monitor'],
         ]);
 
         return back()->with('success', 'تم إرسال التنبيه بنجاح.');
     }
 }
-
-

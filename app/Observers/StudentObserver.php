@@ -2,12 +2,12 @@
 
 namespace App\Observers;
 
+use App\Events\StudentLocationUpdated;
 use App\Models\Student;
 use App\Models\SystemEventLog;
-use App\Events\StudentLocationUpdated;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class StudentObserver
 {
@@ -16,8 +16,6 @@ class StudentObserver
         Cache::forget('admin_dashboard_stats');
         $this->notifyBusCrewOnAssignment($student);
     }
-
-
 
     /**
      * Send notifications to the bus crew when a student is assigned to the bus.
@@ -43,7 +41,7 @@ class StudentObserver
             }
         }
 
-        if (!$forthBusAssigned && !$backBusAssigned) {
+        if (! $forthBusAssigned && ! $backBusAssigned) {
             return;
         }
 
@@ -61,7 +59,7 @@ class StudentObserver
                     data: [
                         'student_id' => (string) $student->id,
                         'category' => 'students',
-                        'target_screen' => 'student_details'
+                        'target_screen' => 'student_details',
                     ],
                     titleEn: '👤 New Student Added',
                     messageEn: "A new student has been added to the morning route: {$studentNameEn}"
@@ -77,14 +75,14 @@ class StudentObserver
                     data: [
                         'student_id' => (string) $student->id,
                         'category' => 'students',
-                        'target_screen' => 'student_details'
+                        'target_screen' => 'student_details',
                     ],
                     titleEn: '👤 New Student Added',
                     messageEn: "A new student has been added to the return route: {$studentNameEn}"
                 );
             }
         } catch (\Exception $e) {
-            Log::error('StudentObserver notification failed: ' . $e->getMessage());
+            Log::error('StudentObserver notification failed: '.$e->getMessage());
         }
     }
 
@@ -108,22 +106,22 @@ class StudentObserver
 
         $changed = array_intersect($coordinateFields, array_keys($student->getDirty()));
 
-        if (!empty($changed)) {
+        if (! empty($changed)) {
             $beforeData = [];
-            $afterData  = [];
+            $afterData = [];
             foreach ($changed as $field) {
                 $beforeData[$field] = $student->getOriginal($field);
-                $afterData[$field]  = $student->$field;
+                $afterData[$field] = $student->$field;
             }
 
             SystemEventLog::create([
-                'event_type'  => 'student_location_update',
+                'event_type' => 'student_location_update',
                 'entity_type' => 'Student',
-                'entity_id'   => $student->id,
-                'user_id'     => Auth::id(),
-                'role'        => Auth::user()?->role,
+                'entity_id' => $student->id,
+                'user_id' => Auth::id(),
+                'role' => Auth::user()?->role,
                 'before_data' => $beforeData,
-                'after_data'  => $afterData,
+                'after_data' => $afterData,
             ]);
 
             // ── Broadcast invalidation to the driver's bus channel ──
@@ -136,7 +134,7 @@ class StudentObserver
                 try {
                     broadcast(new StudentLocationUpdated($busId, $student->id));
                 } catch (\Exception $e) {
-                    Log::error("StudentObserver broadcast error: " . $e->getMessage());
+                    Log::error('StudentObserver broadcast error: '.$e->getMessage());
                 }
             }
         }

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class BusExpense extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'bus_id',
         'type',
@@ -26,8 +27,10 @@ class BusExpense extends Model
 
     public function getPhotoUrlAttribute()
     {
-        if (!$this->receipt_photo) return null;
-        
+        if (! $this->receipt_photo) {
+            return null;
+        }
+
         // If it looks like a full URL
         if (filter_var($this->receipt_photo, FILTER_VALIDATE_URL)) {
             return $this->receipt_photo;
@@ -36,9 +39,10 @@ class BusExpense extends Model
         // If it starts with storage/ or /storage/
         if (str_starts_with($this->receipt_photo, 'storage/') || str_starts_with($this->receipt_photo, '/storage/')) {
             $path = ltrim($this->receipt_photo, '/');
+
             return asset($path);
         }
-        
-        return asset('storage/' . $this->receipt_photo);
+
+        return asset('storage/'.$this->receipt_photo);
     }
 }

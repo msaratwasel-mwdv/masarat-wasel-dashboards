@@ -15,8 +15,8 @@ class AssistantController extends Controller
         $schoolId = Auth::user()->school_id;
         $search = $request->input('search');
 
-        $assistants = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
-            ->whereHas('assignedBusAsAssistant', fn($q) => $q->where('school_id', $schoolId))
+        $assistants = User::whereHas('roles', fn ($q) => $q->where('name', 'assistant'))
+            ->whereHas('assignedBusAsAssistant', fn ($q) => $q->where('school_id', $schoolId))
             ->with(['assistant', 'assignedBusAsAssistant'])
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -63,7 +63,7 @@ class AssistantController extends Controller
     {
         $schoolId = Auth::user()->school_id;
         $isAssigned = $assistant->assignedBusAsAssistant()->where('school_id', $schoolId)->exists();
-        if (!$isAssigned) {
+        if (! $isAssigned) {
             abort(403, 'Unauthorized action.');
         }
 

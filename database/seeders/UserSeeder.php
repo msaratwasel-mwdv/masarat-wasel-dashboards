@@ -2,14 +2,14 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
+use App\Models\Driver;
+use App\Models\FieldSupervisor;
+use App\Models\Guardian;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\SchoolAdmin;
-use App\Models\FieldSupervisor;
-use App\Models\Driver;
 use App\Models\Teacher;
-use App\Models\Guardian;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -20,15 +20,17 @@ class UserSeeder extends Seeder
         $fakerAr = \Faker\Factory::create('ar_SA');
         $fakerEn = \Faker\Factory::create('en_US');
 
-        $getNames = function($gender = null) use ($fakerAr, $fakerEn) {
+        $getNames = function ($gender = null) use ($fakerAr, $fakerEn) {
             return [
                 'ar' => [$fakerAr->firstName($gender), $fakerAr->lastName],
-                'en' => [$fakerEn->firstName($gender), $fakerEn->lastName]
+                'en' => [$fakerEn->firstName($gender), $fakerEn->lastName],
             ];
         };
 
         $school = School::first();
-        if (!$school) return;
+        if (! $school) {
+            return;
+        }
 
         // 1. System Admin
         $admin = User::updateOrCreate(

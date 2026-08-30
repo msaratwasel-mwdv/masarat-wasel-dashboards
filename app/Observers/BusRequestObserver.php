@@ -2,11 +2,11 @@
 
 namespace App\Observers;
 
+use App\Events\BusRequestCreated;
+use App\Events\BusRequestStatusChanged;
 use App\Models\BusRequest;
 use App\Models\Notification;
 use App\Models\User;
-use App\Events\BusRequestCreated;
-use App\Events\BusRequestStatusChanged;
 
 class BusRequestObserver
 {
@@ -16,7 +16,7 @@ class BusRequestObserver
     public function created(BusRequest $busRequest): void
     {
         // Get all admin users
-        $admins = User::whereHas('roles', fn($q) => $q->where('name', 'admin'))->get();
+        $admins = User::whereHas('roles', fn ($q) => $q->where('name', 'admin'))->get();
 
         foreach ($admins as $admin) {
             Notification::create([
@@ -39,7 +39,7 @@ class BusRequestObserver
                 'icon' => 'bus',
                 'color' => 'blue',
             ]);
-            
+
             // Broadcast real-time event to admin
             broadcast(new BusRequestCreated($busRequest, $admin->id));
         }
@@ -53,8 +53,8 @@ class BusRequestObserver
         // If status changed to approved/rejected, notify the school
         if ($busRequest->isDirty('status') && in_array($busRequest->status, ['approved', 'rejected'])) {
             // school_id doesn't exist on users table — filter via school_admins extension table
-            $schoolAdmins = User::whereHas('roles', fn($q) => $q->where('name', 'school_admin'))
-                ->whereHas('schoolAdmin', fn($q) => $q->where('school_id', $busRequest->school_id))
+            $schoolAdmins = User::whereHas('roles', fn ($q) => $q->where('name', 'school_admin'))
+                ->whereHas('schoolAdmin', fn ($q) => $q->where('school_id', $busRequest->school_id))
                 ->get();
 
             $statusText = $busRequest->status === 'approved' ? 'تم الموافقة' : 'تم الرفض';
@@ -79,12 +79,10 @@ class BusRequestObserver
                     'icon' => $busRequest->status === 'approved' ? 'check-circle' : 'x-circle',
                     'color' => $color,
                 ]);
-                
+
                 // Broadcast real-time event to school admin
                 broadcast(new BusRequestStatusChanged($busRequest, $schoolAdmin->id));
             }
         }
     }
 }
-
-

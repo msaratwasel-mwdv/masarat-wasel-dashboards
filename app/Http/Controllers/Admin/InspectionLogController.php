@@ -19,13 +19,13 @@ class InspectionLogController extends Controller
         $query = Inspection::query()->with([
             'fieldSupervisor:id,first_name_ar,last_name_ar,first_name_en,last_name_en,phone,email',
             'bus:id,bus_number',
-            'results.item:id,name'
+            'results.item:id,name',
         ]);
 
         $paginated = $this->applyDataTable($query, $request, [
             'overall_status',
             'bus.bus_number',
-            'fieldSupervisor.name'
+            'fieldSupervisor.name',
         ], 15);
 
         return Inertia::render('Admin/Reports/InspectionLogs', [
@@ -40,8 +40,7 @@ class InspectionLogController extends Controller
     public function destroy(Inspection $inspection)
     {
         $inspection->delete();
+
         return redirect()->back()->with('success', 'تم حذف سجل الفحص بنجاح');
     }
 }
-
-

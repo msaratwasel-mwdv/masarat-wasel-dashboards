@@ -25,5 +25,3 @@ class InspectionItem extends Model
         return $this->hasMany(InspectionResult::class);
     }
 }
-
-

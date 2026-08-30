@@ -43,7 +43,6 @@ class Subscription extends Model
         return $this->hasMany(Installment::class);
     }
 
-
     public function scopeActive($query)
     {
         return $query->whereIn('status', ['active', 'trialing']);

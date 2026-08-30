@@ -30,5 +30,3 @@ class CreateDailyTripsCommand extends Command
         $this->info("Finished! Created: {$results['created']}, Skipped: {$results['skipped']}");
     }
 }
-
-

@@ -2,36 +2,37 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\School;
+use App\Models\Attendance;
 use App\Models\Bus;
+use App\Models\Delay;
+use App\Models\FieldTrip;
+use App\Models\School;
 use App\Models\Student;
 use App\Models\Trip;
 use App\Models\TripAttendance;
-use App\Models\Delay;
-use App\Models\FieldTrip;
-use App\Models\Attendance;
 use Carbon\Carbon;
+use Illuminate\Database\Seeder;
 
 class DashboardDemoSeeder extends Seeder
 {
     public function run()
     {
         $school = School::first();
-        if (!$school) {
-            $this->command->info("No school found to seed demo data.");
+        if (! $school) {
+            $this->command->info('No school found to seed demo data.');
+
             return;
         }
 
         $schoolId = $school->id;
         $today = Carbon::today();
-        
+
         // 1. Ensure some active buses exist
         $buses = Bus::where('school_id', $schoolId)->where('status', 'active')->get();
         if ($buses->isEmpty()) {
             $buses = Bus::factory()->count(5)->create([
                 'school_id' => $schoolId,
-                'status' => 'active'
+                'status' => 'active',
             ]);
         }
         $busId = $buses->first()->id;
@@ -39,7 +40,8 @@ class DashboardDemoSeeder extends Seeder
         // 2. Ensure some students exist
         $students = Student::inSchool($schoolId)->get();
         if ($students->isEmpty()) {
-            $this->command->error("No students found in the school! Please seed students first.");
+            $this->command->error('No students found in the school! Please seed students first.');
+
             return;
         }
 
@@ -76,7 +78,7 @@ class DashboardDemoSeeder extends Seeder
         // 4. Create Trips for the past 7 days (Success Rate)
         for ($daysAgo = 1; $daysAgo <= 7; $daysAgo++) {
             $date = $today->copy()->subDays($daysAgo);
-            
+
             // Finished trips
             $dailyBuses = $buses->shuffle()->take(rand(2, 4));
             foreach ($dailyBuses as $bus) {
@@ -92,7 +94,7 @@ class DashboardDemoSeeder extends Seeder
                     ]
                 );
             }
-            
+
             // Cancelled trip (to make success rate < 100%)
             if (rand(1, 10) > 7) {
                 Trip::updateOrCreate(
@@ -111,10 +113,12 @@ class DashboardDemoSeeder extends Seeder
             // School Attendances for trend chart
             $presentCount = rand(85, 95); // High attendance percentage
             $totalStudents = $students->count();
-            
+
             foreach ($students as $index => $student) {
                 $classroomId = $student->currentEnrollment?->classroom_id;
-                if (!$classroomId) continue;
+                if (! $classroomId) {
+                    continue;
+                }
 
                 Attendance::updateOrCreate(
                     [
@@ -132,7 +136,9 @@ class DashboardDemoSeeder extends Seeder
         // 5. Create Today's School Attendance
         foreach ($students as $index => $student) {
             $classroomId = $student->currentEnrollment?->classroom_id;
-            if (!$classroomId) continue;
+            if (! $classroomId) {
+                continue;
+            }
 
             Attendance::updateOrCreate(
                 [

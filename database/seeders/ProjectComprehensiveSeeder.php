@@ -18,7 +18,6 @@ use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class ProjectComprehensiveSeeder extends Seeder
 {
@@ -41,9 +40,9 @@ class ProjectComprehensiveSeeder extends Seeder
         $schoolNames = [
             'مدرسة مسارات الأهلية',
             'مدرسة القمة العالمية',
-            'مدارس الرواد المتميزة'
+            'مدارس الرواد المتميزة',
         ];
-        
+
         $schools = [];
         foreach ($schoolNames as $name) {
             $schools[] = School::updateOrCreate(
@@ -62,7 +61,7 @@ class ProjectComprehensiveSeeder extends Seeder
         foreach ($gradeNames as $name) {
             $grades[] = Grade::firstOrCreate([
                 'name' => $name,
-                'school_id' => $school->id
+                'school_id' => $school->id,
             ]);
         }
 
@@ -71,9 +70,9 @@ class ProjectComprehensiveSeeder extends Seeder
         foreach ($grades as $grade) {
             for ($i = 1; $i <= 3; $i++) {
                 $classrooms[] = Classroom::firstOrCreate([
-                    'name' => $grade->name . ' - فصل ' . $i,
+                    'name' => $grade->name.' - فصل '.$i,
                     'grade_id' => $grade->id,
-                    'school_id' => $school->id
+                    'school_id' => $school->id,
                 ]);
             }
         }
@@ -83,7 +82,7 @@ class ProjectComprehensiveSeeder extends Seeder
         $routeNames = [
             'شمال الرياض 1', 'شمال الرياض 2', 'جنوب الرياض 1', 'جنوب الرياض 2',
             'شرق الرياض 1', 'شرق الرياض 2', 'غرب الرياض 1', 'غرب الرياض 2',
-            'وسط الرياض 1', 'وسط الرياض 2'
+            'وسط الرياض 1', 'وسط الرياض 2',
         ];
         foreach ($schoolNames as $sIndex => $sName) {
             $currentSchool = $schools[$sIndex];
@@ -91,10 +90,10 @@ class ProjectComprehensiveSeeder extends Seeder
                 $routes[] = Route::updateOrCreate(
                     [
                         'school_id' => $currentSchool->id,
-                        'code' => 'SCH' . $currentSchool->id . '-R' . ($index + 1)
+                        'code' => 'SCH'.$currentSchool->id.'-R'.($index + 1),
                     ],
                     [
-                        'name' => $name
+                        'name' => $name,
                     ]
                 );
             }
@@ -102,15 +101,15 @@ class ProjectComprehensiveSeeder extends Seeder
         $school = $schools[0];
 
         // 6. Users creation helper
-        $createSystemUser = function($roleName, $prefix, $index, $nationalId, $customEmail = null) use ($school, $roles, $fakerAr, $fakerEn) {
+        $createSystemUser = function ($roleName, $prefix, $index, $nationalId, $customEmail = null) use ($roles, $fakerAr, $fakerEn) {
             $email = $customEmail ?: "{$prefix}{$index}@demo-wasel.com";
-            $phone = '968' . substr($nationalId, -9);
-            
+            $phone = '968'.substr($nationalId, -9);
+
             // Try finding by National ID first
             $user = User::where('national_id', $nationalId)->first();
-            
+
             // If not found by National ID, check if email or phone is already taken by ANOTHER user
-            if (!$user) {
+            if (! $user) {
                 $existingUser = User::where('email', $email)->orWhere('phone', $phone)->first();
                 if ($existingUser) {
                     // If email/phone exists, we use this user even if National ID is different, to avoid conflict
@@ -118,8 +117,8 @@ class ProjectComprehensiveSeeder extends Seeder
                 }
             }
 
-            if (!$user) {
-                $user = new User();
+            if (! $user) {
+                $user = new User;
                 $user->password = Hash::make('password');
             }
 
@@ -133,17 +132,18 @@ class ProjectComprehensiveSeeder extends Seeder
             ]);
 
             // Only update email/phone if they are not taken by anyone else
-            if (!User::where('email', $email)->where('id', '!=', $user->id)->exists()) {
+            if (! User::where('email', $email)->where('id', '!=', $user->id)->exists()) {
                 $user->email = $email;
             }
-            $cleanPhone = '968' . substr($nationalId, -9);
-            if (!User::where('phone', $cleanPhone)->where('id', '!=', $user->id)->exists()) {
+            $cleanPhone = '968'.substr($nationalId, -9);
+            if (! User::where('phone', $cleanPhone)->where('id', '!=', $user->id)->exists()) {
                 $user->phone = $cleanPhone;
             }
 
             $user->save();
-            
+
             $user->roles()->syncWithoutDetaching([$roles[$roleName]->id]);
+
             return $user;
         };
 
@@ -171,18 +171,20 @@ class ProjectComprehensiveSeeder extends Seeder
         // 8. Assistants (المشرفات)
         $assistants = [];
         for ($i = 1; $i <= 10; $i++) {
-            $nationalId = '12' . str_pad($i, 8, '0', STR_PAD_LEFT);
+            $nationalId = '12'.str_pad($i, 8, '0', STR_PAD_LEFT);
             $email = "assistant_demo{$i}@demo-wasel.com";
-            $phone = '968' . substr($nationalId, -9);
-            
+            $phone = '968'.substr($nationalId, -9);
+
             $user = User::where('national_id', $nationalId)->first();
-            if (!$user) {
+            if (! $user) {
                 $existingUser = User::where('email', $email)->orWhere('phone', $phone)->first();
-                if ($existingUser) $user = $existingUser;
+                if ($existingUser) {
+                    $user = $existingUser;
+                }
             }
 
-            if (!$user) {
-                $user = new User();
+            if (! $user) {
+                $user = new User;
                 $user->password = Hash::make('password');
             }
 
@@ -193,7 +195,7 @@ class ProjectComprehensiveSeeder extends Seeder
                 'first_name_en' => $fakerEn->firstName('female'),
                 'last_name_en' => $fakerEn->lastName,
                 'email' => $email,
-                'phone' => '968' . substr($nationalId, -9),
+                'phone' => '968'.substr($nationalId, -9),
             ]);
             $user->save();
 
@@ -204,23 +206,23 @@ class ProjectComprehensiveSeeder extends Seeder
         // 9. Drivers and Buses
         $drivers = [];
         $buses = [];
-        for ($i = 1; $i <= 10; $index = $i-1, $i++) {
-            $user = $createSystemUser('driver', 'driver', $i, '13' . str_pad($i, 8, '0', STR_PAD_LEFT));
+        for ($i = 1; $i <= 10; $index = $i - 1, $i++) {
+            $user = $createSystemUser('driver', 'driver', $i, '13'.str_pad($i, 8, '0', STR_PAD_LEFT));
             $driver = Driver::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'license_number' => 'L-9000000' . $i,
+                    'license_number' => 'L-9000000'.$i,
                     'license_expiry_date' => now()->addYears(2),
-                    'status' => 'active'
+                    'status' => 'active',
                 ]
             );
             $drivers[] = $driver;
 
             // Create Bus
             $bus = Bus::updateOrCreate(
-                ['bus_number' => 'B-' . str_pad($i, 3, '0', STR_PAD_LEFT)],
+                ['bus_number' => 'B-'.str_pad($i, 3, '0', STR_PAD_LEFT)],
                 [
-                    'plate_number' => 'أ ب ج ' . (1000 + $i),
+                    'plate_number' => 'أ ب ج '.(1000 + $i),
                     'capacity' => 25,
                     'model' => 'Mercedes Sprinter',
                     'year' => 2024,
@@ -233,7 +235,7 @@ class ProjectComprehensiveSeeder extends Seeder
                 ]
             );
             $buses[] = $bus;
-            
+
             // Add some Bus Expenses for each bus
             for ($j = 1; $j <= 5; $j++) {
                 \App\Models\BusExpense::create([
@@ -248,7 +250,7 @@ class ProjectComprehensiveSeeder extends Seeder
 
         // 10. Guardians and Students (At least 10 children per guardian)
         for ($i = 1; $i <= 10; $i++) {
-            $guardianUser = $createSystemUser('parent', 'guardian', $i, '14' . str_pad($i, 8, '0', STR_PAD_LEFT));
+            $guardianUser = $createSystemUser('parent', 'guardian', $i, '14'.str_pad($i, 8, '0', STR_PAD_LEFT));
             $guardian = Guardian::updateOrCreate(['user_id' => $guardianUser->id], ['status' => 'active']);
 
             // Create 10 Students for each guardian
@@ -256,19 +258,19 @@ class ProjectComprehensiveSeeder extends Seeder
                 $gender = ($s % 2 == 0) ? 'female' : 'male';
                 $stFirstNameAr = $fakerAr->firstName($gender);
                 $stFirstNameEn = $fakerEn->firstName($gender);
-                
+
                 $forthBus = $buses[array_rand($buses)];
                 $backBus = (rand(0, 10) > 3) ? $forthBus : $buses[array_rand($buses)];
                 $assignedClass = $classrooms[array_rand($classrooms)];
 
                 $student = Student::updateOrCreate(
-                    ['student_code' => "STU-" . $i . "-" . str_pad($s, 2, '0', STR_PAD_LEFT)],
+                    ['student_code' => 'STU-'.$i.'-'.str_pad($s, 2, '0', STR_PAD_LEFT)],
                     [
                         'first_name_ar' => $stFirstNameAr,
                         'last_name_ar' => $guardianUser->last_name_ar,
                         'first_name_en' => $stFirstNameEn,
                         'last_name_en' => $guardianUser->last_name_en,
-                        'national_id' => '24' . str_pad($i . $s, 8, '0', STR_PAD_LEFT),
+                        'national_id' => '24'.str_pad($i.$s, 8, '0', STR_PAD_LEFT),
                         'gender' => $gender,
                         'forth_bus_id' => $forthBus->id, // Morning bus
                         'back_bus_id' => $backBus->id,   // Evening bus
@@ -278,7 +280,7 @@ class ProjectComprehensiveSeeder extends Seeder
 
                 // Link Student to Guardian
                 $student->guardians()->syncWithoutDetaching([
-                    $guardianUser->id => ['relationship_type' => 'Father']
+                    $guardianUser->id => ['relationship_type' => 'Father'],
                 ]);
 
                 // Enroll student in school and classroom
@@ -292,7 +294,9 @@ class ProjectComprehensiveSeeder extends Seeder
                 // Add Attendance for the last 7 days
                 for ($d = 0; $d < 7; $d++) {
                     $attendanceDate = now()->subDays($d);
-                    if ($attendanceDate->isWeekend()) continue;
+                    if ($attendanceDate->isWeekend()) {
+                        continue;
+                    }
 
                     // Daily Classroom Attendance
                     \App\Models\Attendance::updateOrCreate(
@@ -311,7 +315,7 @@ class ProjectComprehensiveSeeder extends Seeder
                         [
                             'bus_id' => $forthBus->id,
                             'trip_date' => $attendanceDate->format('Y-m-d'),
-                            'type' => 'morning'
+                            'type' => 'morning',
                         ],
                         [
                             'driver_id' => $forthBus->driver->user_id ?? $drivers[0]->user_id,
@@ -340,9 +344,9 @@ class ProjectComprehensiveSeeder extends Seeder
 
         // 11. School Admins (One for each school)
         foreach ($schools as $index => $currentSchool) {
-            $targetEmail = ($index === 0) ? 'school@wasel.com' : "school" . ($index + 1) . "@demo-wasel.com";
-            $schoolAdminUser = $createSystemUser('school_admin', 'school', ($index + 1), '15' . str_pad($index + 1, 8, '0', STR_PAD_LEFT), $targetEmail);
-            
+            $targetEmail = ($index === 0) ? 'school@wasel.com' : 'school'.($index + 1).'@demo-wasel.com';
+            $schoolAdminUser = $createSystemUser('school_admin', 'school', ($index + 1), '15'.str_pad($index + 1, 8, '0', STR_PAD_LEFT), $targetEmail);
+
             SchoolAdmin::updateOrCreate(
                 ['user_id' => $schoolAdminUser->id],
                 ['school_id' => $currentSchool->id, 'status' => 'active']
@@ -351,13 +355,13 @@ class ProjectComprehensiveSeeder extends Seeder
 
         // 12. Teachers (One for each grade)
         foreach ($grades as $index => $grade) {
-            $teacherUser = $createSystemUser('teacher', 'teacher', ($index + 1), '16' . str_pad($index + 1, 8, '0', STR_PAD_LEFT));
+            $teacherUser = $createSystemUser('teacher', 'teacher', ($index + 1), '16'.str_pad($index + 1, 8, '0', STR_PAD_LEFT));
             Teacher::updateOrCreate(
                 ['user_id' => $teacherUser->id],
                 [
                     'school_id' => $school->id,
                     'grade_id' => $grade->id,
-                    'status' => 'active'
+                    'status' => 'active',
                 ]
             );
         }
@@ -365,11 +369,13 @@ class ProjectComprehensiveSeeder extends Seeder
         // 13. Comprehensive Historical Data Generation (Last 30 Days)
         // This ensures the Reports Hub is fully populated with realistic trends
         $allStudents = Student::all();
-        
+
         foreach ($buses as $bus) {
             for ($d = 0; $d < 30; $d++) {
                 $date = now()->subDays($d);
-                if ($date->isWeekend()) continue; // Skip weekends
+                if ($date->isWeekend()) {
+                    continue;
+                } // Skip weekends
 
                 // 13a. Inspections (1 per week per bus roughly)
                 if (rand(1, 100) <= 15) {
@@ -380,16 +386,16 @@ class ProjectComprehensiveSeeder extends Seeder
                         'notes' => 'فحص دوري لسلامة الحافلة.',
                         'created_at' => $date->copy()->setTime(rand(8, 14), rand(0, 59)),
                     ]);
-                    
+
                     // Add some inspection items
                     $items = \App\Models\InspectionItem::all();
-                    if($items->count() > 0) {
-                        foreach($items->random(min(5, $items->count())) as $item) {
+                    if ($items->count() > 0) {
+                        foreach ($items->random(min(5, $items->count())) as $item) {
                             \App\Models\InspectionResult::create([
                                 'inspection_id' => $inspection->id,
                                 'inspection_item_id' => $item->id,
                                 'is_passed' => (rand(1, 100) > 10), // 90% pass rate per item
-                                'notes' => (rand(1, 100) > 90) ? 'يحتاج صيانة خفيفة' : null
+                                'notes' => (rand(1, 100) > 90) ? 'يحتاج صيانة خفيفة' : null,
                             ]);
                         }
                     }
@@ -425,7 +431,7 @@ class ProjectComprehensiveSeeder extends Seeder
                 if (rand(1, 100) <= 25) { // 25% chance of SOME delay
                     $delayType = (rand(1, 100) > 40) ? 'bus' : 'student';
                     $duration = rand(5, 45); // 5 to 45 mins
-                    
+
                     \App\Models\Delay::create([
                         'type' => $delayType,
                         'bus_id' => $bus->id,

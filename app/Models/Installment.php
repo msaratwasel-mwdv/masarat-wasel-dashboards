@@ -63,7 +63,7 @@ class Installment extends Model
 
     public function scopeOverdue($query)
     {
-        return $query->where('status', 'overdue')->orWhere(function($q) {
+        return $query->where('status', 'overdue')->orWhere(function ($q) {
             $q->whereIn('status', ['pending', 'partially_paid'])->where('due_date', '<', now()->toDateString());
         });
     }

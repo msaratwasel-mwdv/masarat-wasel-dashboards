@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use yidas\googleMaps\Client;
 use Illuminate\Support\Facades\Log;
+use yidas\googleMaps\Client;
 
 class GoogleMapsService
 {
@@ -18,7 +18,7 @@ class GoogleMapsService
             try {
                 $this->client = new Client(['key' => $key]);
             } catch (\Exception $e) {
-                Log::error("Google Maps Client Init Error: " . $e->getMessage());
+                Log::error('Google Maps Client Init Error: '.$e->getMessage());
             }
         } else {
             Log::warning("Google Maps API Key missing. Add 'Maps_API_KEY' to .env");
@@ -28,13 +28,12 @@ class GoogleMapsService
     /**
      * حساب المسافة والوقت المتبقي بين نقطة انطلاق ومجموعة من الوجهات
      *
-     * @param string|array $origin "lat,lng"
-     * @param array $destinations ["lat,lng", "lat,lng"]
-     * @return array|null
+     * @param  string|array  $origin  "lat,lng"
+     * @param  array  $destinations  ["lat,lng", "lat,lng"]
      */
     public function getDistanceAndETA($origin, array $destinations): ?array
     {
-        if (!$this->client) {
+        if (! $this->client) {
             return null;
         }
 
@@ -42,7 +41,8 @@ class GoogleMapsService
             $results = $this->client->distanceMatrix($origin, $destinations);
 
             if ($results['status'] !== 'OK') {
-                Log::error("Google Maps Distance Matrix Error: " . $results['status']);
+                Log::error('Google Maps Distance Matrix Error: '.$results['status']);
+
                 return null;
             }
 
@@ -66,7 +66,8 @@ class GoogleMapsService
 
             return $data;
         } catch (\Exception $e) {
-            Log::error("Google Maps Service Exception: " . $e->getMessage());
+            Log::error('Google Maps Service Exception: '.$e->getMessage());
+
             return null;
         }
     }

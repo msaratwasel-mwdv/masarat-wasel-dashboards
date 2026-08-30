@@ -42,5 +42,3 @@ class Inspection extends Model
         return $this->hasMany(InspectionResult::class);
     }
 }
-
-

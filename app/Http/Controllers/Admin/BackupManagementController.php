@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -22,7 +21,7 @@ class BackupManagementController extends Controller
     {
         $backupName = config('backup.backup.name', 'masarat-wasel');
         $diskName = config('backup.backup.destination.disks.0', 'local');
-        
+
         $backupPath = "{$backupName}";
         $disk = Storage::disk($diskName);
 

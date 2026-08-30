@@ -17,12 +17,12 @@ class AbsenceRequestController extends Controller
     {
         $schoolId = Auth::user()->getSchoolId();
 
-        $requests = AbsenceRequest::whereHas('student', function($query) use ($schoolId) {
+        $requests = AbsenceRequest::whereHas('student', function ($query) use ($schoolId) {
             $query->inSchool($schoolId);
         })
-        ->with(['student', 'guardian'])
-        ->latest()
-        ->paginate(15);
+            ->with(['student', 'guardian'])
+            ->latest()
+            ->paginate(15);
 
         return Inertia::render('School/Students/AbsenceRequests', [
             'absenceRequests' => $requests,
@@ -37,7 +37,7 @@ class AbsenceRequestController extends Controller
         $schoolId = Auth::user()->getSchoolId();
 
         // التأكد أن الطالب يتبع لمدرسة المستخدم الحالي بطريقة موثوقة
-        if (!\App\Models\Student::where('id', $absenceRequest->student_id)->inSchool($schoolId)->exists()) {
+        if (! \App\Models\Student::where('id', $absenceRequest->student_id)->inSchool($schoolId)->exists()) {
             abort(403);
         }
 
@@ -56,13 +56,13 @@ class AbsenceRequestController extends Controller
         $service = app(\App\Services\NotificationService::class);
         $studentNameAr = $absenceRequest->student->first_name_ar ?? $absenceRequest->student->full_name;
         $studentNameEn = $absenceRequest->student->full_name_en ?? $absenceRequest->student->full_name;
-        
+
         $titleKey = $validated['status'] === 'approved' ? 'notifications.absence_approved_title' : 'notifications.absence_rejected_title';
         $messageKey = $validated['status'] === 'approved' ? 'notifications.absence_approved_message' : 'notifications.absence_rejected_message';
-        
+
         $translationParams = ['student' => $studentNameAr];
         $translationParamsEn = ['student' => $studentNameEn];
-        
+
         if ($validated['status'] === 'rejected' && $validated['rejection_reason']) {
             $translationParams['reason'] = $validated['rejection_reason'];
             $translationParamsEn['reason'] = $validated['rejection_reason']; // Could be English translated reason if available, but fallback to same
@@ -87,5 +87,3 @@ class AbsenceRequestController extends Controller
         return redirect()->back()->with('success', 'تم تحديث حالة الطلب بنجاح.');
     }
 }
-
-

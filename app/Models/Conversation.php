@@ -67,11 +67,9 @@ class Conversation extends Model
     public static function findBetween(int $userA, int $userB): ?self
     {
         return static::where('type', 'private')
-            ->whereHas('participants', fn($q) => $q->where('users.id', $userA))
-            ->whereHas('participants', fn($q) => $q->where('users.id', $userB))
+            ->whereHas('participants', fn ($q) => $q->where('users.id', $userA))
+            ->whereHas('participants', fn ($q) => $q->where('users.id', $userB))
             ->has('participants', '=', 2)
             ->first();
     }
 }
-
-

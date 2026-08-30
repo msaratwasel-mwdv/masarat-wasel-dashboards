@@ -2,8 +2,8 @@
 
 namespace App\Observers;
 
-use App\Models\Incident;
 use App\Events\EmergencyReported;
+use App\Models\Incident;
 use Illuminate\Support\Facades\Cache;
 
 class IncidentObserver

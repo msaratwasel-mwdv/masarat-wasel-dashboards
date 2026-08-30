@@ -3,7 +3,6 @@
 namespace App\Events;
 
 use App\Models\Bus;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -35,7 +34,7 @@ class DriverLocationUpdated implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('bus.' . $this->bus->id),
+            new PrivateChannel('bus.'.$this->bus->id),
         ];
     }
 
@@ -67,7 +66,7 @@ class DriverLocationUpdated implements ShouldBroadcastNow
             'target_lng' => $this->targetLng ?? $this->bus->target_longitude,
             'trip_status' => $this->bus->trip_status,
             'trip_type' => $activeTrip ? $activeTrip->type : null,
-            'speed_kmh' => cache()->get('bus_speed_' . $this->bus->id, 0),
+            'speed_kmh' => cache()->get('bus_speed_'.$this->bus->id, 0),
             'eta_data' => $this->etaData,
             'total_students' => $this->bus->students_count,
             'departure_time' => $activeTrip ? $activeTrip->departure_time?->toIso8601String() : null,

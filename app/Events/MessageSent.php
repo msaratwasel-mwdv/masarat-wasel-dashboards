@@ -4,7 +4,6 @@ namespace App\Events;
 
 use App\Http\Resources\MessageResource;
 use App\Models\Message;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -28,7 +27,7 @@ class MessageSent implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('chat.conversation.' . $this->message->conversation_id),
+            new PrivateChannel('chat.conversation.'.$this->message->conversation_id),
         ];
     }
 
@@ -48,5 +47,3 @@ class MessageSent implements ShouldBroadcastNow
         return (new MessageResource($this->message))->resolve();
     }
 }
-
-

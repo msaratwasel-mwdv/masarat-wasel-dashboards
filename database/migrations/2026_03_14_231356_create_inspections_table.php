@@ -15,12 +15,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('field_supervisor_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('bus_id')->constrained('buses')->cascadeOnDelete();
-            
+
             $table->enum('overall_status', ['pass', 'fail', 'warning'])->default('pass');
             $table->text('notes')->nullable();
-            
+
             $table->json('photos')->nullable();
-            
+
             $table->timestamps();
         });
     }

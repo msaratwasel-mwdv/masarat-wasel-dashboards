@@ -4,16 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Bus extends Model
 {
     use HasFactory, SoftDeletes;
-
 
     protected $fillable = [
         'bus_number',
@@ -80,9 +78,6 @@ class Bus extends Model
         return $this->belongsTo(User::class, 'field_supervisor_id');
     }
 
-
-
-
     /**
      * Get the users (drivers/supervisors) associated with this bus through a pivot table.
      */
@@ -98,7 +93,6 @@ class Bus extends Model
     {
         return $this->hasMany(BusGroup::class);
     }
-
 
     public function route(): BelongsTo
     {
@@ -128,76 +122,78 @@ class Bus extends Model
         // Use normal dynamic loading for individual model queries to preserve active statuses
         $trip = $this->activeTrip;
 
-        if (!$trip) {
+        if (! $trip) {
             if ($this->relationLoaded('latestTrip')) {
                 $lastTrip = $this->latestTrip;
             } else {
                 return 'idle';
             }
-            
+
             if ($lastTrip && $lastTrip->status === 'finished' && $lastTrip->type === 'forth' && $lastTrip->trip_date->isToday()) {
                 return 'at_school';
             }
+
             return 'idle';
         }
 
         return match ($trip->type) {
             'forth' => $trip->status === 'pending' ? 'pending_to_school' : 'to_school',
-            'back'  => $trip->status === 'pending' ? 'pending_to_home'   : 'to_home',
-            default => $trip->status === 'pending' ? 'pending'           : 'in_progress',
+            'back' => $trip->status === 'pending' ? 'pending_to_home' : 'to_home',
+            default => $trip->status === 'pending' ? 'pending' : 'in_progress',
         };
     }
+
     public function getTargetLatitudeAttribute(): ?float
     {
         // 1. Check database column first (set directly from driver)
         if (isset($this->attributes['target_latitude']) && $this->attributes['target_latitude'] !== null && $this->attributes['target_latitude'] != 0.0) {
-            return (double) $this->attributes['target_latitude'];
+            return (float) $this->attributes['target_latitude'];
         }
 
         // 2. Check cache next
-        if (cache()->has('bus_target_lat_' . $this->id)) {
-            $val = cache()->get('bus_target_lat_' . $this->id);
+        if (cache()->has('bus_target_lat_'.$this->id)) {
+            $val = cache()->get('bus_target_lat_'.$this->id);
             if ($val !== null && $val != 0.0) {
-                return (double) $val;
+                return (float) $val;
             }
         }
 
         // 3. Derive dynamically from active trip
         $trip = $this->activeTrip;
-        if (!$trip) {
+        if (! $trip) {
             return null;
         }
 
         if ($trip->type === 'forth') {
             $nextStudent = \App\Models\Student::where('is_active', true)
                 ->where('forth_bus_id', $this->id)
-                ->whereDoesntHave('tripAttendances', function($q) use ($trip) {
+                ->whereDoesntHave('tripAttendances', function ($q) use ($trip) {
                     $q->where('trip_id', $trip->id)
-                      ->whereIn('status', ['boarded', 'dropped', 'absent', 'excused']);
+                        ->whereIn('status', ['boarded', 'dropped', 'absent', 'excused']);
                 })
-                ->whereDoesntHave('absenceRequests', function($q) {
+                ->whereDoesntHave('absenceRequests', function ($q) {
                     $q->whereDate('date', today())->where('status', '!=', 'rejected');
                 })
                 ->first();
 
             if ($nextStudent) {
-                return (double) ($nextStudent->forth_latitude ?? $nextStudent->latitude ?? ($nextStudent->guardians->first()?->latitude ?? $this->school?->latitude));
+                return (float) ($nextStudent->forth_latitude ?? $nextStudent->latitude ?? ($nextStudent->guardians->first()?->latitude ?? $this->school?->latitude));
             }
 
-            return (double) $this->school?->latitude;
+            return (float) $this->school?->latitude;
         }
 
         if ($trip->type === 'back') {
             $nextStudent = \App\Models\Student::where('is_active', true)
                 ->where('back_bus_id', $this->id)
-                ->whereDoesntHave('tripAttendances', function($q) use ($trip) {
+                ->whereDoesntHave('tripAttendances', function ($q) use ($trip) {
                     $q->where('trip_id', $trip->id)
-                      ->whereIn('status', ['dropped', 'absent', 'excused']);
+                        ->whereIn('status', ['dropped', 'absent', 'excused']);
                 })
                 ->first();
 
             if ($nextStudent) {
-                return (double) ($nextStudent->back_latitude ?? $nextStudent->latitude ?? ($nextStudent->guardians->first()?->latitude ?? $this->school?->latitude));
+                return (float) ($nextStudent->back_latitude ?? $nextStudent->latitude ?? ($nextStudent->guardians->first()?->latitude ?? $this->school?->latitude));
             }
         }
 
@@ -208,53 +204,53 @@ class Bus extends Model
     {
         // 1. Check database column first (set directly from driver)
         if (isset($this->attributes['target_longitude']) && $this->attributes['target_longitude'] !== null && $this->attributes['target_longitude'] != 0.0) {
-            return (double) $this->attributes['target_longitude'];
+            return (float) $this->attributes['target_longitude'];
         }
 
         // 2. Check cache next
-        if (cache()->has('bus_target_lng_' . $this->id)) {
-            $val = cache()->get('bus_target_lng_' . $this->id);
+        if (cache()->has('bus_target_lng_'.$this->id)) {
+            $val = cache()->get('bus_target_lng_'.$this->id);
             if ($val !== null && $val != 0.0) {
-                return (double) $val;
+                return (float) $val;
             }
         }
 
         // 3. Derive dynamically from active trip
         $trip = $this->activeTrip;
-        if (!$trip) {
+        if (! $trip) {
             return null;
         }
 
         if ($trip->type === 'forth') {
             $nextStudent = \App\Models\Student::where('is_active', true)
                 ->where('forth_bus_id', $this->id)
-                ->whereDoesntHave('tripAttendances', function($q) use ($trip) {
+                ->whereDoesntHave('tripAttendances', function ($q) use ($trip) {
                     $q->where('trip_id', $trip->id)
-                      ->whereIn('status', ['boarded', 'dropped', 'absent', 'excused']);
+                        ->whereIn('status', ['boarded', 'dropped', 'absent', 'excused']);
                 })
-                ->whereDoesntHave('absenceRequests', function($q) {
+                ->whereDoesntHave('absenceRequests', function ($q) {
                     $q->whereDate('date', today())->where('status', '!=', 'rejected');
                 })
                 ->first();
 
             if ($nextStudent) {
-                return (double) ($nextStudent->forth_longitude ?? $nextStudent->longitude ?? ($nextStudent->guardians->first()?->longitude ?? $this->school?->longitude));
+                return (float) ($nextStudent->forth_longitude ?? $nextStudent->longitude ?? ($nextStudent->guardians->first()?->longitude ?? $this->school?->longitude));
             }
 
-            return (double) $this->school?->longitude;
+            return (float) $this->school?->longitude;
         }
 
         if ($trip->type === 'back') {
             $nextStudent = \App\Models\Student::where('is_active', true)
                 ->where('back_bus_id', $this->id)
-                ->whereDoesntHave('tripAttendances', function($q) use ($trip) {
+                ->whereDoesntHave('tripAttendances', function ($q) use ($trip) {
                     $q->where('trip_id', $trip->id)
-                      ->whereIn('status', ['dropped', 'absent', 'excused']);
+                        ->whereIn('status', ['dropped', 'absent', 'excused']);
                 })
                 ->first();
 
             if ($nextStudent) {
-                return (double) ($nextStudent->back_longitude ?? $nextStudent->longitude ?? ($nextStudent->guardians->first()?->longitude ?? $this->school?->longitude));
+                return (float) ($nextStudent->back_longitude ?? $nextStudent->longitude ?? ($nextStudent->guardians->first()?->longitude ?? $this->school?->longitude));
             }
         }
 
@@ -283,7 +279,8 @@ class Bus extends Model
     {
         $lastBus = self::withTrashed()->latest('id')->first();
         $nextId = $lastBus ? ($lastBus->id + 1) : 1;
-        return 'BUS-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
+
+        return 'BUS-'.str_pad($nextId, 3, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -307,7 +304,7 @@ class Bus extends Model
      */
     public function isAvailable(): bool
     {
-        return $this->isActive() && !$this->isMaintenance();
+        return $this->isActive() && ! $this->isMaintenance();
     }
 
     /**
@@ -395,8 +392,8 @@ class Bus extends Model
             $query->where('forth_bus_id', $this->id)
                 ->orWhere('back_bus_id', $this->id);
         })
-        ->where('is_active', true)
-        ->count();
+            ->where('is_active', true)
+            ->count();
     }
 
     /**
@@ -426,7 +423,7 @@ class Bus extends Model
 
         $isCrew = ($supervisorId == $userId || $driverId == $userId || $assistantId == $userId);
 
-        if (!$isCrew) {
+        if (! $isCrew) {
             \Illuminate\Support\Facades\Log::warning("Unauthorized access attempt to Bus {$this->id}", [
                 'user_id' => $userId,
                 'assigned_supervisor' => $supervisorId,
@@ -443,7 +440,7 @@ class Bus extends Model
      */
     public function getFrontQrUrlAttribute(): ?string
     {
-        return $this->front_qr ? asset('storage/' . $this->front_qr) : null;
+        return $this->front_qr ? asset('storage/'.$this->front_qr) : null;
     }
 
     /**
@@ -451,8 +448,6 @@ class Bus extends Model
      */
     public function getBackQrUrlAttribute(): ?string
     {
-        return $this->back_qr ? asset('storage/' . $this->back_qr) : null;
+        return $this->back_qr ? asset('storage/'.$this->back_qr) : null;
     }
 }
-
-

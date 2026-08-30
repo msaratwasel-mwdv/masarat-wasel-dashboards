@@ -26,7 +26,7 @@ class Trip extends Model
         'route_id',
         'generation_type',
         'cancellation_reason',
-        'cancelled_by'
+        'cancelled_by',
     ];
 
     protected $casts = [
@@ -100,5 +100,3 @@ class Trip extends Model
         );
     }
 }
-
-

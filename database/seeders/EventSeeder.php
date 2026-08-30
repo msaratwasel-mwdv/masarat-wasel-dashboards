@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class EventSeeder extends Seeder
@@ -84,7 +83,7 @@ class EventSeeder extends Seeder
                 'image' => null,
                 'event_date' => now()->subDays(45),
                 'is_published' => true,
-            ]
+            ],
         ];
 
         foreach ($events as $event) {

@@ -4,8 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Violation;
-use App\Models\Incident;
-use App\Models\Inspection;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -24,7 +22,7 @@ class FieldReportController extends Controller
             'type',
             'status',
             'bus.bus_number',
-            'fieldSupervisor.name'
+            'fieldSupervisor.name',
         ], 15);
 
         return Inertia::render('Admin/Reports/FieldReports', [
@@ -39,8 +37,7 @@ class FieldReportController extends Controller
     public function destroy(Violation $violation)
     {
         $violation->delete();
+
         return redirect()->back()->with('success', 'تم حذف تقرير المخالفة بنجاح');
     }
 }
-
-

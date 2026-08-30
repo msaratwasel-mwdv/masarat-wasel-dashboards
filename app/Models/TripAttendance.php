@@ -48,12 +48,12 @@ class TripAttendance extends Model
 
                         // Broadcast new location to trigger target updates in parent/supervisor maps!
                         try {
-                            $heading = (double) cache()->get('bus_heading_'.$bus->id, 0);
+                            $heading = (float) cache()->get('bus_heading_'.$bus->id, 0);
 
                             // Refresh bus to get latest coordinates from DB
                             $bus->refresh();
-                            $lat = ($bus->latitude && (double)$bus->latitude != 0.0) ? (double) $bus->latitude : null;
-                            $lng = ($bus->longitude && (double)$bus->longitude != 0.0) ? (double) $bus->longitude : null;
+                            $lat = ($bus->latitude && (float) $bus->latitude != 0.0) ? (float) $bus->latitude : null;
+                            $lng = ($bus->longitude && (float) $bus->longitude != 0.0) ? (float) $bus->longitude : null;
 
                             // Only broadcast if we have valid bus coordinates, to avoid corrupting the parent app map
                             if ($lat !== null && $lng !== null) {
@@ -67,7 +67,7 @@ class TripAttendance extends Model
                                     $targetLat,
                                     $targetLng
                                 ));
-                                
+
                                 broadcast(new \App\Events\DriverLocationUpdated(
                                     $bus,
                                     $lat,
@@ -81,7 +81,7 @@ class TripAttendance extends Model
                                 \Illuminate\Support\Facades\Log::warning("Bus {$bus->id} has no valid coordinates, skipping location broadcast on attendance change.");
                             }
                         } catch (\Exception $e) {
-                            \Illuminate\Support\Facades\Log::error("Failed to broadcast location on attendance change: " . $e->getMessage());
+                            \Illuminate\Support\Facades\Log::error('Failed to broadcast location on attendance change: '.$e->getMessage());
                         }
                     }
                 }

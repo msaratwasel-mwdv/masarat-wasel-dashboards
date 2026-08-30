@@ -2,9 +2,8 @@
 
 namespace App\Events;
 
-use App\Models\Trip;
 use App\Models\Bus;
-use Illuminate\Broadcasting\Channel;
+use App\Models\Trip;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -24,8 +23,8 @@ class TripStatusUpdated implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('bus.' . $this->bus->id),
-            new PrivateChannel('trip.' . $this->trip->id),
+            new PrivateChannel('bus.'.$this->bus->id),
+            new PrivateChannel('trip.'.$this->trip->id),
         ];
     }
 

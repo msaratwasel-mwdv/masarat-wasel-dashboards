@@ -30,5 +30,3 @@ class Violation extends Model
         return $this->belongsTo(Bus::class);
     }
 }
-
-

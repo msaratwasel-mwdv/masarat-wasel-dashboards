@@ -37,5 +37,3 @@ class ChatParticipant extends Model
         return $this->belongsTo(User::class);
     }
 }
-
-

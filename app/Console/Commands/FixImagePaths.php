@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Models\User;
 use App\Models\Student;
+use App\Models\User;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
 class FixImagePaths extends Command
@@ -29,19 +29,20 @@ class FixImagePaths extends Command
     public function handle()
     {
         $this->info('Starting image cleanup...');
-        
+
         // 1. Clean Users (Drivers, Supervisors, Parents, etc.)
         $users = User::whereNotNull('image')->get();
         $this->info("Found {$users->count()} users with images.");
-        
+
         $fixedUsers = 0;
         foreach ($users as $user) {
             $imagePath = $user->image;
-            
+
             // If image is '0', 'null', or empty
             if (empty($imagePath) || $imagePath === '0' || $imagePath === 'null') {
                 $user->update(['image' => null]);
                 $fixedUsers++;
+
                 continue;
             }
 
@@ -51,25 +52,26 @@ class FixImagePaths extends Command
             }
 
             // If file does not exist on disk
-            if (!Storage::disk('public')->exists($imagePath)) {
+            if (! Storage::disk('public')->exists($imagePath)) {
                 $user->update(['image' => null]);
                 $fixedUsers++;
             }
         }
-        
+
         $this->info("Fixed {$fixedUsers} broken user images.");
 
         // 2. Clean Students
         $students = Student::whereNotNull('image')->get();
         $this->info("Found {$students->count()} students with images.");
-        
+
         $fixedStudents = 0;
         foreach ($students as $student) {
             $imagePath = $student->image;
-            
+
             if (empty($imagePath) || $imagePath === '0' || $imagePath === 'null') {
                 $student->update(['image' => null]);
                 $fixedStudents++;
+
                 continue;
             }
 
@@ -77,7 +79,7 @@ class FixImagePaths extends Command
                 continue;
             }
 
-            if (!Storage::disk('public')->exists($imagePath)) {
+            if (! Storage::disk('public')->exists($imagePath)) {
                 $student->update(['image' => null]);
                 $fixedStudents++;
             }
@@ -88,5 +90,3 @@ class FixImagePaths extends Command
         $this->info('Done! Broken image references have been nullified.');
     }
 }
-
-

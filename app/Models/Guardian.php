@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Guardian extends Model
 {
     protected $primaryKey = 'user_id';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -28,5 +29,3 @@ class Guardian extends Model
         return $this->belongsTo(User::class);
     }
 }
-
-

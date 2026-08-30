@@ -26,13 +26,13 @@ class SubscriptionController extends Controller
         $paginated = $this->applyDataTable($query, $request, [
             'status',
             'school.name',
-            'plan.name'
+            'plan.name',
         ], 15);
 
         return Inertia::render('Admin/Subscriptions/Index', [
             'subscriptions' => $paginated,
             'filters' => $request->only(['search']),
-            'all_plans' => \App\Models\Plan::where('is_active', true)->get()
+            'all_plans' => \App\Models\Plan::where('is_active', true)->get(),
         ]);
     }
 
@@ -54,6 +54,7 @@ class SubscriptionController extends Controller
     {
         // We might want to check if it has installments before deleting, or use soft deletes
         $subscription->delete();
+
         return redirect()->back()->with('success', 'تم حذف الاشتراك بنجاح');
     }
 
@@ -71,14 +72,14 @@ class SubscriptionController extends Controller
             }
         }
 
-        $schools = \App\Models\School::whereHas('installments', function($q) {
-                $q->whereIn('status', ['pending', 'partially_paid', 'overdue']);
-            })
-            ->with(['installments' => function($q) {
+        $schools = \App\Models\School::whereHas('installments', function ($q) {
+            $q->whereIn('status', ['pending', 'partially_paid', 'overdue']);
+        })
+            ->with(['installments' => function ($q) {
                 $q->whereIn('status', ['pending', 'partially_paid', 'overdue'])->orderBy('due_date');
             }])
             ->get()
-            ->map(function($school) {
+            ->map(function ($school) {
                 return [
                     'id' => $school->id,
                     'name' => $school->name,
@@ -87,7 +88,7 @@ class SubscriptionController extends Controller
                         'id' => $school->installments->first()->id,
                         'amount' => $school->installments->first()->amount,
                         'paid_amount' => $school->installments->first()->paid_amount,
-                        'installment_number' => $school->installments->first()->installment_number
+                        'installment_number' => $school->installments->first()->installment_number,
                     ] : null,
                 ];
             });
@@ -95,7 +96,7 @@ class SubscriptionController extends Controller
         return Inertia::render('Admin/Installments/Index', [
             'installments' => $installments,
             'initialSearch' => $initialSearch,
-            'schools' => $schools
+            'schools' => $schools,
         ]);
     }
 
@@ -103,14 +104,15 @@ class SubscriptionController extends Controller
     {
         $validated = $request->validate([
             'installments_count' => 'required|integer|min:1|max:24',
-            'price_per_student' => 'required|numeric|min:0'
+            'price_per_student' => 'required|numeric|min:0',
         ]);
 
         try {
             $this->subscriptionService->approveSubscription($subscription->id, $validated['installments_count'], $validated['price_per_student']);
+
             return redirect()->back()->with('success', 'تم الموافقة على الاشتراك وإنشاء الدفعات بنجاح');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error: '.$e->getMessage());
         }
     }
 
@@ -118,9 +120,10 @@ class SubscriptionController extends Controller
     {
         try {
             $this->subscriptionService->rejectSubscription($subscription->id);
+
             return redirect()->back()->with('success', 'تم رفض الاشتراك بنجاح');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error: '.$e->getMessage());
         }
     }
 
@@ -134,7 +137,7 @@ class SubscriptionController extends Controller
             'summary' => [
                 'total_owed' => $billing['total_owed'],
                 'total_paid' => $billing['total_paid'],
-            ]
+            ],
         ]);
     }
 
@@ -143,26 +146,29 @@ class SubscriptionController extends Controller
         $validated = $request->validate([
             'payment_method' => 'required|string',
             'amount' => 'required|numeric|min:0.01',
-            'reference_number' => 'nullable|string'
+            'reference_number' => 'nullable|string',
         ]);
 
         try {
             $this->subscriptionService->payInstallment($installment->id, $validated['amount'], $validated['payment_method'], $validated['reference_number']);
+
             return redirect()->back()->with('success', 'تم تسجيل الدفعة بنجاح');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error: '.$e->getMessage());
         }
     }
 
     public function pause(Subscription $subscription)
     {
         $subscription->update(['status' => 'paused']);
+
         return redirect()->back()->with('success', 'تم تجميد الاشتراك بنجاح. لن تتمكن المدرسة من إجراء عمليات جديدة.');
     }
 
     public function resume(Subscription $subscription)
     {
         $subscription->update(['status' => 'active']);
+
         return redirect()->back()->with('success', 'تم إعادة تفعيل الاشتراك.');
     }
 }

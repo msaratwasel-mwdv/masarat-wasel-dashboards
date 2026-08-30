@@ -4,15 +4,15 @@ namespace App\Exports;
 
 use App\Models\User;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithColumnFormatting;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class AssistantsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithColumnFormatting
+class AssistantsExport implements FromCollection, ShouldAutoSize, WithColumnFormatting, WithHeadings, WithMapping, WithStyles
 {
     protected $isTemplate;
 
@@ -26,10 +26,11 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
         if ($this->isTemplate) {
             return collect([[]]); // Return empty row for template
         }
-        return User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))->with('assistant')->get();
+
+        return User::whereHas('roles', fn ($q) => $q->where('name', 'assistant'))->with('assistant')->get();
     }
 
-            public function headings(): array
+    public function headings(): array
     {
         return [
             [__('exports.notices.assistants')],
@@ -44,8 +45,8 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
                 __('exports.columns.address'),
                 __('exports.columns.emergency_contact_name'),
                 __('exports.columns.emergency_contact_phone'),
-                __('exports.columns.preferred_language')
-            ]
+                __('exports.columns.preferred_language'),
+            ],
         ];
     }
 
@@ -60,12 +61,12 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
             $row->last_name_ar,
             $row->first_name_en,
             $row->last_name_en,
-            $row->national_id ? ' ' . $row->national_id : '',
-            $row->phone ? ' ' . $row->phone : '',
+            $row->national_id ? ' '.$row->national_id : '',
+            $row->phone ? ' '.$row->phone : '',
             $row->email,
             $row->address,
             $row->assistant?->emergency_contact_name,
-            $row->assistant?->emergency_contact_phone ? ' ' . $row->assistant?->emergency_contact_phone : '',
+            $row->assistant?->emergency_contact_phone ? ' '.$row->assistant?->emergency_contact_phone : '',
             $row->preferred_language ?? 'ar',
         ];
     }
@@ -91,8 +92,8 @@ class AssistantsExport implements FromCollection, WithHeadings, WithMapping, Sho
         $sheet->getStyle('A:K')->applyFromArray([
             'alignment' => [
                 'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER
-            ]
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            ],
         ]);
 
         // دمج خلايا الصف الأول للملاحظة

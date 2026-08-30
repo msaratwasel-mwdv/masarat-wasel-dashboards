@@ -2,23 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Inertia\Inertia;
 use App\Models\Plan;
 use App\Models\School;
-use App\Models\User;
 use App\Models\Subscription;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use App\Services\SubscriptionService;
+use Inertia\Inertia;
 
 class SubscriptionPageController extends Controller
 {
     public function index()
     {
         return Inertia::render('Subscription', [
-            'plans' => Plan::where('is_active', true)->orderBy('sort_order')->get()
+            'plans' => Plan::where('is_active', true)->orderBy('sort_order')->get(),
         ]);
     }
 
@@ -39,33 +38,33 @@ class SubscriptionPageController extends Controller
     {
         $validated = $request->validate([
             // School Identity
-            'school_ar'         => 'required|string|max:255',
-            'school_en'         => 'required|string|max:255',
-            'city'              => 'required|string|max:255',
-            'district'          => 'required|string|max:255',
+            'school_ar' => 'required|string|max:255',
+            'school_en' => 'required|string|max:255',
+            'city' => 'required|string|max:255',
+            'district' => 'required|string|max:255',
 
             // Contact Person
-            'admin_name'        => 'required|string|max:255',
-            'admin_name_en'     => 'required|string|max:255',
-            'email'             => 'required|email|max:255|unique:users,email',
-            'password'          => 'required|string|min:8|confirmed',
-            'phone'             => 'required|string|max:20|unique:users,phone',
-            'language'          => 'required|in:ar,en',
+            'admin_name' => 'required|string|max:255',
+            'admin_name_en' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
+            'phone' => 'required|string|max:20|unique:users,phone',
+            'language' => 'required|in:ar,en',
 
             // Subscription Preferences
-            'plan_id'           => 'required|exists:plans,id',
-            'billing_type'      => 'required|in:monthly,yearly',
-            'student_count'     => 'required|integer|min:20|max:5000',
-            'bus_count'         => 'nullable|integer|min:0|max:500',
+            'plan_id' => 'required|exists:plans,id',
+            'billing_type' => 'required|in:monthly,yearly',
+            'student_count' => 'required|integer|min:20|max:5000',
+            'bus_count' => 'nullable|integer|min:0|max:500',
 
-            'notes'             => 'nullable|string|max:1000',
+            'notes' => 'nullable|string|max:1000',
         ]);
 
         // Check if this email already submitted a request
         if (School::where('contact_email', $validated['email'])->exists()
             || User::where('email', $validated['email'])->exists()) {
             return back()->withErrors([
-                'email' => __('هذا البريد الإلكتروني مسجل بالفعل في النظام. تواصل مع الدعم الفني.')
+                'email' => __('هذا البريد الإلكتروني مسجل بالفعل في النظام. تواصل مع الدعم الفني.'),
             ]);
         }
 
@@ -74,11 +73,11 @@ class SubscriptionPageController extends Controller
 
             // 1. Create the school record (inactive until admin approves)
             $school = School::create([
-                'name'          => $validated['school_ar'],
-                'name_en'       => $validated['school_en'] ?? $validated['school_ar'],
-                'address'       => $validated['city'] . ' - ' . $validated['district'],
-                'city'          => $validated['city'],
-                'is_active'     => false, // Inactive until admin approves!
+                'name' => $validated['school_ar'],
+                'name_en' => $validated['school_en'] ?? $validated['school_ar'],
+                'address' => $validated['city'].' - '.$validated['district'],
+                'city' => $validated['city'],
+                'is_active' => false, // Inactive until admin approves!
                 'contact_email' => $validated['email'],
                 'contact_phone' => $validated['phone'],
             ]);
@@ -89,13 +88,13 @@ class SubscriptionPageController extends Controller
 
             $adminUser = User::create([
                 'first_name_ar' => $firstAr,
-                'last_name_ar'  => $lastAr,
+                'last_name_ar' => $lastAr,
                 'first_name_en' => $firstEn,
-                'last_name_en'  => $lastEn,
-                'email'         => $validated['email'],
-                'phone'         => $validated['phone'],
-                'password'      => Hash::make($validated['password']),
-                'national_id'   => 'SCH-' . time(), // Temporary filler if required
+                'last_name_en' => $lastEn,
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'password' => Hash::make($validated['password']),
+                'national_id' => 'SCH-'.time(), // Temporary filler if required
             ]);
 
             // Assign role
@@ -106,23 +105,23 @@ class SubscriptionPageController extends Controller
 
             // Link to school
             \App\Models\SchoolAdmin::create([
-                'user_id'   => $adminUser->id,
+                'user_id' => $adminUser->id,
                 'school_id' => $school->id,
             ]);
 
             // 3. Create a "pending" subscription (no installments yet — admin sets price later)
             $subscription = Subscription::create([
-                'school_id'     => $school->id,
-                'plan_id'       => $validated['plan_id'],
-                'status'        => 'pending_approval',
-                'start_date'    => now()->toDateString(),
-                'end_date'      => now()->addYear()->toDateString(),
+                'school_id' => $school->id,
+                'plan_id' => $validated['plan_id'],
+                'status' => 'pending_approval',
+                'start_date' => now()->toDateString(),
+                'end_date' => now()->addYear()->toDateString(),
                 // Store the inquiry metadata in notes
-                'notes'         => [
-                    'billing_type'   => $validated['billing_type'],
-                    'student_count'  => $validated['student_count'],
-                    'bus_count'      => $validated['bus_count'] ?? 0,
-                    'custom_notes'   => $validated['notes'] ?? '',
+                'notes' => [
+                    'billing_type' => $validated['billing_type'],
+                    'student_count' => $validated['student_count'],
+                    'bus_count' => $validated['bus_count'] ?? 0,
+                    'custom_notes' => $validated['notes'] ?? '',
                     'preferred_lang' => $validated['language'],
                 ],
             ]);
@@ -136,9 +135,10 @@ class SubscriptionPageController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Subscription request failed: ' . $e->getMessage());
+            Log::error('Subscription request failed: '.$e->getMessage());
+
             return back()->withErrors([
-                'message' => 'حدث خطأ أثناء تقديم الطلب. يرجى المحاولة مرة أخرى.'
+                'message' => 'حدث خطأ أثناء تقديم الطلب. يرجى المحاولة مرة أخرى.',
             ]);
         }
     }

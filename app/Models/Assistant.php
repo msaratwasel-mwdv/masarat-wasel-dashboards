@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Assistant extends Model
 {
     protected $primaryKey = 'user_id';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -38,5 +39,4 @@ class Assistant extends Model
     {
         return $this->belongsTo(User::class);
     }
-
 }

@@ -15,8 +15,8 @@ class DriverController extends Controller
         $schoolId = Auth::user()->school_id;
         $search = $request->input('search');
 
-        $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
-            ->whereHas('assignedBus', fn($q) => $q->where('school_id', $schoolId))
+        $drivers = User::whereHas('roles', fn ($q) => $q->where('name', 'driver'))
+            ->whereHas('assignedBus', fn ($q) => $q->where('school_id', $schoolId))
             ->with(['driver', 'assignedBus'])
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -65,7 +65,7 @@ class DriverController extends Controller
     {
         $schoolId = Auth::user()->school_id;
         $isAssigned = $driver->assignedBus()->where('school_id', $schoolId)->exists();
-        if (!$isAssigned) {
+        if (! $isAssigned) {
             abort(403, 'Unauthorized action.');
         }
 

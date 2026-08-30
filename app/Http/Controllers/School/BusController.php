@@ -48,8 +48,6 @@ class BusController extends Controller
                 ];
             });
 
-
-
         // 3. School Location for Map Center
         $school = Auth::user()->school;
         $schoolLocation = [
@@ -66,7 +64,6 @@ class BusController extends Controller
         ]);
     }
 
-
     /**
      * Update the bus route assignment.
      */
@@ -78,19 +75,18 @@ class BusController extends Controller
 
         $validated = $request->validate([
             'route_id' => [
-                'nullable', 
-                'integer', 
-                Rule::exists('routes', 'id')->where('school_id', Auth::user()->getSchoolId())
+                'nullable',
+                'integer',
+                Rule::exists('routes', 'id')->where('school_id', Auth::user()->getSchoolId()),
             ],
         ]);
 
         $bus->update([
-            'route_id' => $validated['route_id']
+            'route_id' => $validated['route_id'],
         ]);
 
         return back()->with('success', 'تم تحديث مسار الحافلة بنجاح');
     }
-
 
     /**
      * Show the standalone live tracking page.
@@ -168,33 +164,33 @@ class BusController extends Controller
             ->where('status', 'active')
             ->with(['driver.user', 'assistant', 'route'])
             ->get()
-            ->map(fn($bus) => [
-                'id'           => $bus->id,
-                'bus_number'   => $bus->bus_number,
+            ->map(fn ($bus) => [
+                'id' => $bus->id,
+                'bus_number' => $bus->bus_number,
                 'plate_number' => $bus->plate_number,
-                'capacity'     => $bus->capacity,
-                'route'        => $bus->route ? ['id' => $bus->route->id, 'name' => $bus->route->name] : null,
-                'driver'       => $bus->driver?->user?->name,
-                'assistant'    => $bus->assistant?->name,
+                'capacity' => $bus->capacity,
+                'route' => $bus->route ? ['id' => $bus->route->id, 'name' => $bus->route->name] : null,
+                'driver' => $bus->driver?->user?->name,
+                'assistant' => $bus->assistant?->name,
             ]);
 
         $students = \App\Models\Student::inSchool($schoolId)
             ->where('is_active', true)
             ->orderBy('first_name_ar')
             ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id', 'gender', 'forth_bus_id', 'back_bus_id'])
-            ->map(fn($s) => [
-                'id'           => $s->id,
-                'name'         => $s->full_name,
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'name' => $s->full_name,
                 'student_code' => $s->student_code,
-                'national_id'  => $s->national_id,
-                'gender'       => $s->gender,
+                'national_id' => $s->national_id,
+                'gender' => $s->gender,
                 'forth_bus_id' => $s->forth_bus_id,
-                'back_bus_id'  => $s->back_bus_id,
+                'back_bus_id' => $s->back_bus_id,
             ]);
 
         return Inertia::render('School/Buses/AssignStudents', [
-            'buses'         => $buses,
-            'students'      => $students,
+            'buses' => $buses,
+            'students' => $students,
             'selectedBusId' => $request->query('bus_id'),
         ]);
     }
@@ -205,30 +201,30 @@ class BusController extends Controller
     public function saveAssignedStudents(Request $request)
     {
         $validated = $request->validate([
-            'bus_id'            => 'required|exists:buses,id',
+            'bus_id' => 'required|exists:buses,id',
             'forth_student_ids' => 'array',
             'forth_student_ids.*' => 'exists:students,id',
-            'back_student_ids'  => 'array',
+            'back_student_ids' => 'array',
             'back_student_ids.*' => 'exists:students,id',
         ]);
 
-        $busId    = $validated['bus_id'];
+        $busId = $validated['bus_id'];
         $schoolId = Auth::user()->getSchoolId();
 
         // Ensure the bus belongs to this school
         Bus::where('id', $busId)->where('school_id', $schoolId)->firstOrFail();
 
         $forthIds = collect($validated['forth_student_ids'] ?? [])->unique()->values()->all();
-        $backIds  = collect($validated['back_student_ids']  ?? [])->unique()->values()->all();
+        $backIds = collect($validated['back_student_ids'] ?? [])->unique()->values()->all();
 
         // Identify newly assigned forth students before updating
         $newlyAssignedForthIds = [];
-        if (!empty($forthIds)) {
+        if (! empty($forthIds)) {
             $newlyAssignedForthIds = \App\Models\Student::inSchool($schoolId)
                 ->whereIn('id', $forthIds)
                 ->where(function ($q) use ($busId) {
                     $q->whereNull('forth_bus_id')
-                      ->orWhere('forth_bus_id', '!=', $busId);
+                        ->orWhere('forth_bus_id', '!=', $busId);
                 })
                 ->pluck('id')
                 ->toArray();
@@ -236,12 +232,12 @@ class BusController extends Controller
 
         // Identify newly assigned back students before updating
         $newlyAssignedBackIds = [];
-        if (!empty($backIds)) {
+        if (! empty($backIds)) {
             $newlyAssignedBackIds = \App\Models\Student::inSchool($schoolId)
                 ->whereIn('id', $backIds)
                 ->where(function ($q) use ($busId) {
                     $q->whereNull('back_bus_id')
-                      ->orWhere('back_bus_id', '!=', $busId);
+                        ->orWhere('back_bus_id', '!=', $busId);
                 })
                 ->pluck('id')
                 ->toArray();
@@ -261,14 +257,14 @@ class BusController extends Controller
                 ->update(['back_bus_id' => null]);
 
             // Assign forth students
-            if (!empty($forthIds)) {
+            if (! empty($forthIds)) {
                 \App\Models\Student::inSchool($schoolId)
                     ->whereIn('id', $forthIds)
                     ->update(['forth_bus_id' => $busId]);
             }
 
             // Assign back students
-            if (!empty($backIds)) {
+            if (! empty($backIds)) {
                 \App\Models\Student::inSchool($schoolId)
                     ->whereIn('id', $backIds)
                     ->update(['back_bus_id' => $busId]);
@@ -279,7 +275,7 @@ class BusController extends Controller
         try {
             $notificationService = app(\App\Services\NotificationService::class);
 
-            if (!empty($newlyAssignedForthIds)) {
+            if (! empty($newlyAssignedForthIds)) {
                 $students = \App\Models\Student::whereIn('id', $newlyAssignedForthIds)->get();
                 foreach ($students as $student) {
                     $studentName = $student->full_name;
@@ -293,7 +289,7 @@ class BusController extends Controller
                         data: [
                             'student_id' => (string) $student->id,
                             'category' => 'students',
-                            'target_screen' => 'student_details'
+                            'target_screen' => 'student_details',
                         ],
                         titleEn: '👤 New Student Added',
                         messageEn: "A new student has been added to the morning route: {$studentNameEn}"
@@ -301,7 +297,7 @@ class BusController extends Controller
                 }
             }
 
-            if (!empty($newlyAssignedBackIds)) {
+            if (! empty($newlyAssignedBackIds)) {
                 $students = \App\Models\Student::whereIn('id', $newlyAssignedBackIds)->get();
                 foreach ($students as $student) {
                     $studentName = $student->full_name;
@@ -315,7 +311,7 @@ class BusController extends Controller
                         data: [
                             'student_id' => (string) $student->id,
                             'category' => 'students',
-                            'target_screen' => 'student_details'
+                            'target_screen' => 'student_details',
                         ],
                         titleEn: '👤 New Student Added',
                         messageEn: "A new student has been added to the return route: {$studentNameEn}"
@@ -323,11 +319,9 @@ class BusController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            \Log::error('Bulk student assignment notification failed: ' . $e->getMessage());
+            \Log::error('Bulk student assignment notification failed: '.$e->getMessage());
         }
 
         return redirect()->back()->with('success', 'تم حفظ تعيينات الطلاب بنجاح');
     }
 }
-
-

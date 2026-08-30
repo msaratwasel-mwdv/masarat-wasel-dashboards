@@ -3,18 +3,18 @@
 namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bus;
+use App\Models\Classroom;
+use App\Models\Incident;
 use App\Models\Notification;
 use App\Models\NotificationTemplate;
-use App\Models\Classroom;
-use App\Models\Bus;
+use App\Models\Student;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
-use App\Services\NotificationService;
-use App\Models\Incident;
-use App\Models\Student;
 
 class NotificationController extends Controller
 {
@@ -31,9 +31,9 @@ class NotificationController extends Controller
             ->pluck('notification_id');
 
         $query = Notification::where(function ($q) use ($userId, $receivedNotificationIds) {
-                $q->where('sender_id', $userId)
-                  ->orWhereIn('id', $receivedNotificationIds);
-            })
+            $q->where('sender_id', $userId)
+                ->orWhereIn('id', $receivedNotificationIds);
+        })
             ->with('sender')
             ->latest();
 
@@ -45,7 +45,7 @@ class NotificationController extends Controller
         if ($request->filled('type')) {
             $query->where(function ($q) use ($request) {
                 $q->where('template_type', $request->type)
-                  ->orWhere('type', $request->type);
+                    ->orWhere('type', $request->type);
             });
         }
 
@@ -59,13 +59,13 @@ class NotificationController extends Controller
                     'bus.driver',
                     'bus.fieldSupervisor',
                     'bus',
-                    'reporter' // This might need to be resolved if relationship is missing
+                    'reporter', // This might need to be resolved if relationship is missing
                 ])->find($incidentId);
 
-                if ($incident && !empty($incident->student_ids)) {
+                if ($incident && ! empty($incident->student_ids)) {
                     $incident->students_list = \App\Models\Student::whereIn('id', $incident->student_ids)
                         ->get()
-                        ->map(function($s) {
+                        ->map(function ($s) {
                             return [
                                 'id' => $s->id,
                                 'name' => $s->full_name,
@@ -76,6 +76,7 @@ class NotificationController extends Controller
 
                 $notif->incident = $incident;
             }
+
             return $notif;
         });
 
@@ -137,7 +138,7 @@ class NotificationController extends Controller
         if ($request->filled('type')) {
             $query->where(function ($q) use ($request) {
                 $q->where('template_type', $request->type)
-                  ->orWhere('type', $request->type);
+                    ->orWhere('type', $request->type);
             });
         }
 
@@ -188,9 +189,9 @@ class NotificationController extends Controller
             ->pluck('notification_id');
 
         $query = Notification::where(function ($q) use ($userId, $receivedNotificationIds) {
-                $q->where('user_id', $userId)
-                  ->orWhereIn('id', $receivedNotificationIds);
-            })
+            $q->where('user_id', $userId)
+                ->orWhereIn('id', $receivedNotificationIds);
+        })
             ->with('sender')
             ->latest();
 
@@ -208,13 +209,13 @@ class NotificationController extends Controller
                     'bus.driver',
                     'bus.fieldSupervisor',
                     'bus',
-                    'reporter'
+                    'reporter',
                 ])->find($incidentId);
 
-                if ($incident && !empty($incident->student_ids)) {
+                if ($incident && ! empty($incident->student_ids)) {
                     $incident->students_list = \App\Models\Student::whereIn('id', $incident->student_ids)
                         ->get()
-                        ->map(fn($s) => [
+                        ->map(fn ($s) => [
                             'id' => $s->id,
                             'name' => $s->full_name,
                             'student_code' => $s->student_code ?? null,
@@ -223,12 +224,13 @@ class NotificationController extends Controller
 
                 $notif->incident = $incident;
             }
+
             return $notif;
         });
 
         $receivedBase = Notification::where(function ($q) use ($userId, $receivedNotificationIds) {
             $q->where('user_id', $userId)
-              ->orWhereIn('id', $receivedNotificationIds);
+                ->orWhereIn('id', $receivedNotificationIds);
         });
         $stats = [
             'total' => (clone $receivedBase)->count(),
@@ -281,12 +283,11 @@ class NotificationController extends Controller
             'recipients' => $recipients->take(5)->map(function ($user) {
                 return [
                     'name' => $user->name,
-                    'has_fcm_token' => !empty($user->fcm_token),
+                    'has_fcm_token' => ! empty($user->fcm_token),
                 ];
             }),
         ]);
     }
-
 
     /**
      * Store a newly created notification.
@@ -330,7 +331,7 @@ class NotificationController extends Controller
 
             if (str_contains($finalMessage, '{bus_number}') || str_contains($finalTitle, '{bus_number}')) {
                 $busNumber = '';
-                if (!empty($validated['recipient_filter']['bus_ids'])) {
+                if (! empty($validated['recipient_filter']['bus_ids'])) {
                     $bus = \App\Models\Bus::find($validated['recipient_filter']['bus_ids'][0]);
                     if ($bus) {
                         $busNumber = $bus->bus_number;
@@ -342,7 +343,6 @@ class NotificationController extends Controller
                 $finalTitleEn = str_replace('{bus_number}', $busNumber, $finalTitleEn);
                 $finalMessageEn = str_replace('{bus_number}', $busNumber, $finalMessageEn);
             }
-
 
             // Create the notification
             $notification = Notification::create([
@@ -360,7 +360,7 @@ class NotificationController extends Controller
                 'data' => [
                     'template_id' => $validated['template_id'] ?? null,
                     'correlation_id' => $correlationId,
-                ]
+                ],
             ]);
 
             $tokensAr = [];
@@ -398,7 +398,7 @@ class NotificationController extends Controller
 
             // إرسال الإشعار فعلياً عبر Firebase — مفصول حسب اللغة
             if ($allTokenCount > 0) {
-                \Illuminate\Support\Facades\Log::info("[NotificationController] Sending: AR=" . count($tokensAr) . ", EN=" . count($tokensEn));
+                \Illuminate\Support\Facades\Log::info('[NotificationController] Sending: AR='.count($tokensAr).', EN='.count($tokensEn));
                 try {
                     $notificationService = app(\App\Services\NotificationService::class);
 
@@ -409,12 +409,12 @@ class NotificationController extends Controller
                         'title_en' => $finalTitleEn,
                         'message_en' => $finalMessageEn,
                         'correlation_id' => $correlationId,
-                        'deep_link' => '/notifications/' . $notification->id,
-                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
+                        'deep_link' => '/notifications/'.$notification->id,
+                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
                     ];
 
                     // إرسال النسخة العربية للأجهزة العربية
-                    if (!empty($tokensAr)) {
+                    if (! empty($tokensAr)) {
                         $notificationService->sendMulticast(
                             $tokensAr,
                             $finalTitle,
@@ -424,7 +424,7 @@ class NotificationController extends Controller
                     }
 
                     // إرسال النسخة الإنجليزية للأجهزة الإنجليزية
-                    if (!empty($tokensEn)) {
+                    if (! empty($tokensEn)) {
                         $notificationService->sendMulticast(
                             $tokensEn,
                             $finalTitleEn,
@@ -435,8 +435,9 @@ class NotificationController extends Controller
 
                     $notification->update(['status' => 'sent', 'sent_count' => $allTokenCount]);
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::error('Firebase Notification Error: ' . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::error('Firebase Notification Error: '.$e->getMessage());
                     $notification->update(['status' => 'failed', 'failed_count' => $allTokenCount, 'sent_count' => 0]);
+
                     return redirect()->route('school.notifications.index')
                         ->with('success', 'تم حفظ الإشعار في النظام، ولكن تعذر الإرسال للهواتف (لم يتم إعداد Firebase بعد).');
                 }
@@ -450,10 +451,11 @@ class NotificationController extends Controller
             }
 
             return redirect()->back()
-                ->with('success', 'تم حفظ الإشعار بنجاح لـ ' . $allTokenCount . ' مستخدم');
+                ->with('success', 'تم حفظ الإشعار بنجاح لـ '.$allTokenCount.' مستخدم');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'حدث خطأ أثناء إنشاء الإشعار: ' . $e->getMessage()]);
+
+            return back()->withErrors(['error' => 'حدث خطأ أثناء إنشاء الإشعار: '.$e->getMessage()]);
         }
     }
 
@@ -487,6 +489,7 @@ class NotificationController extends Controller
             case 'by_classroom': // تم تحديث المسمى ليطابق Create.tsx
             case 'class_students':
                 $classroomIds = $filter['classroom_ids'] ?? [];
+
                 // أولياء الأمور الذين لديهم طلاب في هذه الفصول
                 return User::atSchool($schoolId)
                     ->withRole('parent')
@@ -499,6 +502,7 @@ class NotificationController extends Controller
             case 'by_bus': // تم تحديث المسمى ليطابق Create.tsx
             case 'bus_students':
                 $busIds = $filter['bus_ids'] ?? [];
+
                 return User::atSchool($schoolId)
                     ->withRole('parent')
                     ->whereHas('students.buses', function ($q) use ($busIds) {
@@ -508,6 +512,7 @@ class NotificationController extends Controller
             case 'specific_parent': // تم تحديث المسمى ليطابق Create.tsx
             case 'specific_guardian':
                 $guardianId = $filter['guardian_id'] ?? null;
+
                 return User::where('id', $guardianId)->withRole('parent')->get();
 
             default:
@@ -527,14 +532,14 @@ class NotificationController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        if (empty($incident->student_ids) || !is_array($incident->student_ids)) {
+        if (empty($incident->student_ids) || ! is_array($incident->student_ids)) {
             return redirect()->back()->with('error', 'لا يوجد طلاب مرتبطين بهذا البلاغ.');
         }
 
         $sentCount = 0;
         foreach ($incident->student_ids as $studentId) {
             $student = Student::with('guardians')->find($studentId);
-            if (!$student) {
+            if (! $student) {
                 continue;
             }
 
@@ -547,16 +552,16 @@ class NotificationController extends Controller
                 $notificationService->sendToUser(
                     userId: $guardian->id,
                     type: 'schoolAlert',
-                    title: 'تنبيه سلوكي - ' . $student->full_name,
-                    message: 'تنبيه سلوكي من المدرسة بخصوص الطالب: ' . $incident->description,
+                    title: 'تنبيه سلوكي - '.$student->full_name,
+                    message: 'تنبيه سلوكي من المدرسة بخصوص الطالب: '.$incident->description,
                     data: [
                         'incident_id' => (string) $incident->id,
                         'student_id' => (string) $student->id,
                         'category' => 'incidents',
                         'target_screen' => 'incident_details',
                     ],
-                    titleEn: 'Behavioral Alert - ' . ($student->full_name_en ?: $student->full_name),
-                    messageEn: 'School behavioral report regarding student: ' . $incident->description,
+                    titleEn: 'Behavioral Alert - '.($student->full_name_en ?: $student->full_name),
+                    messageEn: 'School behavioral report regarding student: '.$incident->description,
                     fromUserName: 'إدارة المدرسة',
                     fromUserNameEn: 'School Administration'
                 );
@@ -568,6 +573,6 @@ class NotificationController extends Controller
             return redirect()->back()->with('error', 'لم يتم العثور على أولياء أمور مسجلين لهؤلاء الطلاب.');
         }
 
-        return redirect()->back()->with('success', 'تم إعادة إرسال البلاغ بنجاح إلى أولياء الأمور (' . $sentCount . ').');
+        return redirect()->back()->with('success', 'تم إعادة إرسال البلاغ بنجاح إلى أولياء الأمور ('.$sentCount.').');
     }
 }

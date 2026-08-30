@@ -10,6 +10,7 @@ class Teacher extends Model
     protected $table = 'teachers';
 
     protected $primaryKey = 'user_id';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -54,5 +55,3 @@ class Teacher extends Model
         return $this->belongsTo(Grade::class);
     }
 }
-
-

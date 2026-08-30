@@ -23,7 +23,7 @@ class DelayLogController extends Controller
             'reason',
             'bus.bus_number',
             'student.full_name',
-            'reporter.name'
+            'reporter.name',
         ], 15);
 
         return Inertia::render('Admin/Reports/DelayLogs', [
@@ -38,6 +38,7 @@ class DelayLogController extends Controller
     public function destroy(Delay $delay)
     {
         $delay->delete();
+
         return redirect()->back()->with('success', 'تم حذف سجل التأخير بنجاح');
     }
 }

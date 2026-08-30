@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Bus;
 use App\Models\BusExpense;
 use Carbon\Carbon;
-use Mpdf\Mpdf;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Mpdf\Mpdf;
 
 class BusReportController extends Controller
 {
@@ -57,9 +57,9 @@ class BusReportController extends Controller
         // 2. Get Fleet Benchmarks (Same Period)
         // PostgreSQL compatibility: Use INTEGER instead of UNSIGNED
         $fleetData = DB::table('bus_expenses')
-            ->select('bus_id', 
-                DB::raw('SUM(CAST(amount AS NUMERIC)) as total_amount'), 
-                DB::raw('MIN(NULLIF(regexp_replace(extra_info, \'\D\', \'\', \'g\'), \'\')::INTEGER) as min_odom'), 
+            ->select('bus_id',
+                DB::raw('SUM(CAST(amount AS NUMERIC)) as total_amount'),
+                DB::raw('MIN(NULLIF(regexp_replace(extra_info, \'\D\', \'\', \'g\'), \'\')::INTEGER) as min_odom'),
                 DB::raw('MAX(NULLIF(regexp_replace(extra_info, \'\D\', \'\', \'g\'), \'\')::INTEGER) as max_odom')
             )
             ->where('type', 'fuel')
@@ -76,9 +76,9 @@ class BusReportController extends Controller
         }
 
         $fleetAvg = count($fleetEfficiencies) > 0 ? array_sum($fleetEfficiencies) / count($fleetEfficiencies) : 0;
-        
+
         // Static Target (e.g., 1.2 SAR/km for Mercedes)
-        $staticTarget = 1.2; 
+        $staticTarget = 1.2;
 
         // 3. Outlier Check (>15% deviation)
         $isOutlier = false;
@@ -98,11 +98,11 @@ class BusReportController extends Controller
                 'is_outlier' => $isOutlier,
                 'diff_percent' => $fleetAvg > 0 ? round((($efficiency - $fleetAvg) / $fleetAvg) * 100, 1) : 0,
             ],
-            'chart_data' => $expenses->map(fn($e) => [
+            'chart_data' => $expenses->map(fn ($e) => [
                 'date' => $e->date,
                 'amount' => $e->amount,
                 'odometer' => (int) filter_var($e->extra_info, FILTER_SANITIZE_NUMBER_INT),
-            ])
+            ]),
         ]);
     }
 
@@ -112,10 +112,10 @@ class BusReportController extends Controller
     public function exportPdf(Request $request)
     {
         ini_set('memory_limit', '512M');
-        
+
         $data = $this->getConsumptionReport($request)->getData(true);
         $data['logoPath'] = public_path('assets/images/masarat-wasel-logo-rtl.jpg');
-        
+
         $mpdf = new Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4',
@@ -127,8 +127,9 @@ class BusReportController extends Controller
         ]);
 
         $html = view('reports.bus_consumption_pdf', $data)->render();
-        
+
         $mpdf->WriteHTML($html);
+
         return $mpdf->Output('Bus_Consumption_Report.pdf', 'D');
     }
 
@@ -141,36 +142,36 @@ class BusReportController extends Controller
         $bus = $data['bus'];
         $stats = $data['stats'];
 
-        $filename = "Bus_Consumption_" . $bus['bus_number'] . ".csv";
+        $filename = 'Bus_Consumption_'.$bus['bus_number'].'.csv';
         $headers = [
-            "Content-type"        => "text/csv; charset=UTF-8",
-            "Content-Disposition" => "attachment; filename=$filename",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
+            'Content-type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=$filename",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
-        $callback = function() use ($data, $bus, $stats) {
+        $callback = function () use ($data, $bus, $stats) {
             $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM for UTF-8 Excel
 
             // Header
             fputcsv($file, ['تقرير استهلاك الوقود', 'Fuel Consumption Report']);
-            fputcsv($file, ['الحافلة', $bus['bus_number'] . ' (' . $bus['plate_number'] . ')']);
-            
-            if (!empty($data['chart_data'])) {
-                fputcsv($file, ['الفترة', $data['chart_data'][0]['date'] . ' - ' . end($data['chart_data'])['date']]);
+            fputcsv($file, ['الحافلة', $bus['bus_number'].' ('.$bus['plate_number'].')']);
+
+            if (! empty($data['chart_data'])) {
+                fputcsv($file, ['الفترة', $data['chart_data'][0]['date'].' - '.end($data['chart_data'])['date']]);
             } else {
                 fputcsv($file, ['الفترة', 'لا توجد بيانات للفترة المختارة']);
             }
-            
+
             fputcsv($file, []);
 
             // Summary Stats
             fputcsv($file, ['المؤشر', 'القيمة', 'Benchmark']);
-            fputcsv($file, ['إجمالي المبلغ', $stats['total_amount'] . ' SAR', '-']);
-            fputcsv($file, ['المسافة المقطوعة', $stats['distance'] . ' KM', '-']);
-            fputcsv($file, ['معدل الاستهلاك (SAR/KM)', $stats['efficiency'], $stats['fleet_avg'] . ' (Fleet Avg)']);
+            fputcsv($file, ['إجمالي المبلغ', $stats['total_amount'].' SAR', '-']);
+            fputcsv($file, ['المسافة المقطوعة', $stats['distance'].' KM', '-']);
+            fputcsv($file, ['معدل الاستهلاك (SAR/KM)', $stats['efficiency'], $stats['fleet_avg'].' (Fleet Avg)']);
             fputcsv($file, ['الهدف (Target)', $stats['static_target'], '-']);
             fputcsv($file, ['الحالة', $stats['is_outlier'] ? 'تنبيه: استهلاك مرتفع' : 'طبيعي', '-']);
             fputcsv($file, []);

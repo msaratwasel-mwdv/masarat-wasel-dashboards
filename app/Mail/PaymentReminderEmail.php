@@ -2,20 +2,21 @@
 
 namespace App\Mail;
 
+use App\Models\Installment;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Installment;
 
 class PaymentReminderEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $installment;
+
     public $isOverdue;
+
     public $lang;
 
     public function __construct(Installment $installment, bool $isOverdue = false)
@@ -29,11 +30,11 @@ class PaymentReminderEmail extends Mailable
     public function envelope(): Envelope
     {
         if ($this->lang === 'en') {
-            $subject = $this->isOverdue 
+            $subject = $this->isOverdue
                 ? 'Alert: Overdue Payment Installment (Masarat Wasel)'
                 : 'Reminder: Upcoming Payment Installment (Masarat Wasel)';
         } else {
-            $subject = $this->isOverdue 
+            $subject = $this->isOverdue
                 ? 'تنبيه: تأخر سداد الدفعة المالية (مسارات واصل)'
                 : 'تذكير: اقتراب موعد سداد الدفعة المالية (مسارات واصل)';
         }

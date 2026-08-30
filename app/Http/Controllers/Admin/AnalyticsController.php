@@ -3,21 +3,21 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Trip;
 use App\Models\Bus;
 use App\Models\BusExpense;
-use App\Models\Student;
-use App\Models\TripAttendance;
-use App\Models\Violation;
-use App\Models\Incident;
 use App\Models\Delay;
-use App\Models\Inspection;
 use App\Models\Driver;
-use App\Models\User;
+use App\Models\Incident;
+use App\Models\Inspection;
 use App\Models\School;
+use App\Models\Student;
+use App\Models\Trip;
+use App\Models\TripAttendance;
+use App\Models\User;
+use App\Models\Violation;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 use Inertia\Inertia;
 
 class AnalyticsController extends Controller
@@ -29,7 +29,7 @@ class AnalyticsController extends Controller
     {
         $now = Carbon::now();
 
-        $kpis = \Illuminate\Support\Facades\Cache::remember('analytics:kpis:' . $now->format('Y-m'), 300, function () use ($now) {
+        $kpis = \Illuminate\Support\Facades\Cache::remember('analytics:kpis:'.$now->format('Y-m'), 300, function () use ($now) {
             $monthStart = $now->copy()->startOfMonth();
             $monthEnd = $now->copy()->endOfMonth();
 
@@ -111,11 +111,11 @@ class AnalyticsController extends Controller
 
         // ── Daily Safe Trips Trend ──
         $dailyTrips = Trip::select(
-                DB::raw("trip_date::date as date"),
-                DB::raw("COUNT(*) as total"),
-                DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed"),
-                DB::raw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled")
-            )
+            DB::raw('trip_date::date as date'),
+            DB::raw('COUNT(*) as total'),
+            DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed"),
+            DB::raw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled")
+        )
             ->whereBetween('trip_date', [$dateFrom, $dateTo])
             ->groupBy(DB::raw('trip_date::date'))
             ->orderBy('date')
@@ -123,9 +123,9 @@ class AnalyticsController extends Controller
 
         // Incidents per day for safe trip calculation
         $dailyIncidents = Incident::select(
-                DB::raw("created_at::date as date"),
-                DB::raw("COUNT(DISTINCT trip_id) as incident_trips")
-            )
+            DB::raw('created_at::date as date'),
+            DB::raw('COUNT(DISTINCT trip_id) as incident_trips')
+        )
             ->whereBetween('created_at', [$dateFrom, $dateTo])
             ->groupBy(DB::raw('created_at::date'))
             ->pluck('incident_trips', 'date');
@@ -133,6 +133,7 @@ class AnalyticsController extends Controller
         $safeTripsTrend = $dailyTrips->map(function ($day) use ($dailyIncidents) {
             $incidents = $dailyIncidents[$day->date] ?? 0;
             $safe = max(0, $day->completed - $incidents);
+
             return [
                 'date' => $day->date,
                 'total' => $day->total,
@@ -153,7 +154,7 @@ class AnalyticsController extends Controller
         $forthCounts = Student::select('forth_bus_id', DB::raw('COUNT(*) as count'))
             ->where('is_active', true)->whereNotNull('forth_bus_id')
             ->groupBy('forth_bus_id')->pluck('count', 'forth_bus_id');
-            
+
         $backCounts = Student::select('back_bus_id', DB::raw('COUNT(*) as count'))
             ->where('is_active', true)->whereNotNull('back_bus_id')
             ->groupBy('back_bus_id')->pluck('count', 'back_bus_id');
@@ -169,7 +170,7 @@ class AnalyticsController extends Controller
                 $totalAssigned = $forthCount + $backCount;
                 $totalCapacity = $bus->capacity * 2;
                 $utilization = $totalCapacity > 0 ? round(($totalAssigned / $totalCapacity) * 100, 1) : 0;
-                
+
                 return [
                     'id' => $bus->id,
                     'bus_number' => $bus->bus_number,
@@ -192,8 +193,8 @@ class AnalyticsController extends Controller
         $onTimePerBus = Trip::with('bus:id,bus_number')
             ->select(
                 'bus_id',
-                DB::raw("COUNT(*) as total"),
-                DB::raw("SUM(CASE WHEN EXTRACT(EPOCH FROM (arrival_time - departure_time)) / 60 <= 60 THEN 1 ELSE 0 END) as on_time")
+                DB::raw('COUNT(*) as total'),
+                DB::raw('SUM(CASE WHEN EXTRACT(EPOCH FROM (arrival_time - departure_time)) / 60 <= 60 THEN 1 ELSE 0 END) as on_time')
             )
             ->whereBetween('trip_date', [$dateFrom, $dateTo])
             ->where('status', 'completed')
@@ -276,22 +277,22 @@ class AnalyticsController extends Controller
             ->whereIn('bus_id', $busIdsList)->where('overall_status', 'pass')
             ->whereBetween('created_at', [$dateFrom, $dateTo])
             ->groupBy('bus_id')->pluck('count', 'bus_id');
-            
+
         $busesWithNumbers = Bus::whereNotNull('driver_id')->pluck('bus_number', 'driver_id');
 
         // Get all drivers with their user data
         $drivers = Driver::with('user')
             ->get()
             ->map(function ($driver) use (
-                $completedTrips, $totalTrips, $onTimeTrips, $buses, 
+                $completedTrips, $totalTrips, $onTimeTrips, $buses,
                 $violations, $delays, $inspections, $inspectionsPassed, $busesWithNumbers
             ) {
                 $userId = $driver->user_id;
-                
+
                 $cTrips = $completedTrips[$userId] ?? 0;
                 $tTrips = $totalTrips[$userId] ?? 0;
                 $oTimeTrips = $onTimeTrips[$userId] ?? 0;
-                
+
                 $busId = $buses[$userId] ?? null;
                 $v = $busId ? ($violations[$busId] ?? 0) : 0;
                 $d = $busId ? ($delays[$busId] ?? 0) : 0;
@@ -333,6 +334,7 @@ class AnalyticsController extends Controller
             ->get()
             ->map(function ($v) {
                 $driverUser = $v->bus ? User::find($v->bus->driver_id) : null;
+
                 return [
                     'id' => $v->id,
                     'type' => $v->type,
@@ -398,8 +400,8 @@ class AnalyticsController extends Controller
                 DB::raw("SUM(CASE WHEN type = 'fuel' THEN amount ELSE 0 END) as fuel_cost"),
                 DB::raw("SUM(CASE WHEN type = 'maintenance' THEN amount ELSE 0 END) as maintenance_cost"),
                 DB::raw("SUM(CASE WHEN type NOT IN ('fuel', 'maintenance') THEN amount ELSE 0 END) as other_cost"),
-                DB::raw("SUM(amount) as total_cost"),
-                DB::raw("COUNT(*) as entries")
+                DB::raw('SUM(amount) as total_cost'),
+                DB::raw('COUNT(*) as entries')
             )
             ->groupBy('bus_id')
             ->get()
@@ -423,12 +425,12 @@ class AnalyticsController extends Controller
         }
 
         $monthlyTrend = $historicalBaseQuery->select(
-                DB::raw("TO_CHAR(date, 'YYYY-MM') as month"),
-                DB::raw("SUM(CASE WHEN type = 'fuel' THEN amount ELSE 0 END) as fuel"),
-                DB::raw("SUM(CASE WHEN type = 'maintenance' THEN amount ELSE 0 END) as maintenance"),
-                DB::raw("SUM(CASE WHEN type NOT IN ('fuel', 'maintenance') THEN amount ELSE 0 END) as other"),
-                DB::raw("SUM(amount) as total")
-            )
+            DB::raw("TO_CHAR(date, 'YYYY-MM') as month"),
+            DB::raw("SUM(CASE WHEN type = 'fuel' THEN amount ELSE 0 END) as fuel"),
+            DB::raw("SUM(CASE WHEN type = 'maintenance' THEN amount ELSE 0 END) as maintenance"),
+            DB::raw("SUM(CASE WHEN type NOT IN ('fuel', 'maintenance') THEN amount ELSE 0 END) as other"),
+            DB::raw('SUM(amount) as total')
+        )
             ->groupBy(DB::raw("TO_CHAR(date, 'YYYY-MM')"))
             ->orderBy('month')
             ->get();
@@ -437,7 +439,7 @@ class AnalyticsController extends Controller
         $totalExpenses = (clone $baseQuery)->sum('amount');
         $fuelTotal = clone $baseQuery;
         $fuelTotal = $typeFilter === 'fuel' || $typeFilter === 'all' ? $fuelTotal->where('type', 'fuel')->sum('amount') : 0;
-        
+
         $maintenanceTotal = clone $baseQuery;
         $maintenanceTotal = $typeFilter === 'maintenance' || $typeFilter === 'all' ? $maintenanceTotal->where('type', 'maintenance')->sum('amount') : 0;
 
@@ -480,9 +482,9 @@ class AnalyticsController extends Controller
         }
 
         $absenceByDay = $absenceByDayQuery->select(
-                DB::raw("EXTRACT(DOW FROM trips.trip_date) as day_num"),
-                DB::raw("COUNT(*) as absent_count")
-            )
+            DB::raw('EXTRACT(DOW FROM trips.trip_date) as day_num'),
+            DB::raw('COUNT(*) as absent_count')
+        )
             ->groupBy(DB::raw('EXTRACT(DOW FROM trips.trip_date)'))
             ->orderBy('day_num')
             ->get()
@@ -491,6 +493,7 @@ class AnalyticsController extends Controller
                 $days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
                 $daysEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 $idx = (int) $row->day_num;
+
                 return [
                     'day_num' => $idx,
                     'day_ar' => $days[$idx] ?? '',
@@ -516,7 +519,7 @@ class AnalyticsController extends Controller
                 'students.first_name_ar',
                 'students.last_name_ar',
                 'students.student_code',
-                DB::raw("COUNT(*) as absent_count")
+                DB::raw('COUNT(*) as absent_count')
             )
             ->groupBy('schools.id', 'schools.name', 'students.id', 'students.first_name_ar', 'students.last_name_ar', 'students.student_code')
             ->orderBy('schools.name')
@@ -527,26 +530,26 @@ class AnalyticsController extends Controller
         }
 
         $absentStudentsData = $absenceQuery->get();
-        
+
         $groupedAbsencesAssoc = [];
         foreach ($absentStudentsData as $row) {
             $sId = $row->school_id;
-            if (!isset($groupedAbsencesAssoc[$sId])) {
+            if (! isset($groupedAbsencesAssoc[$sId])) {
                 $groupedAbsencesAssoc[$sId] = [
                     'school_id' => $sId,
                     'school_name' => $row->school_name,
                     'total_absences' => 0,
                     'total_students_absent' => 0,
-                    'students' => []
+                    'students' => [],
                 ];
             }
             $groupedAbsencesAssoc[$sId]['total_absences'] += $row->absent_count;
             $groupedAbsencesAssoc[$sId]['total_students_absent'] += 1;
             $groupedAbsencesAssoc[$sId]['students'][] = [
                 'id' => $row->student_id,
-                'name' => $row->first_name_ar . ' ' . $row->last_name_ar,
+                'name' => $row->first_name_ar.' '.$row->last_name_ar,
                 'code' => $row->student_code,
-                'absent_count' => $row->absent_count
+                'absent_count' => $row->absent_count,
             ];
         }
         $groupedAbsences = array_values($groupedAbsencesAssoc);
@@ -562,10 +565,10 @@ class AnalyticsController extends Controller
         }
 
         $absenceByRoute = $absenceByRouteQuery->select(
-                'routes.id as route_id',
-                'routes.name as route_name',
-                DB::raw("COUNT(*) as absent_count")
-            )
+            'routes.id as route_id',
+            'routes.name as route_name',
+            DB::raw('COUNT(*) as absent_count')
+        )
             ->groupBy('routes.id', 'routes.name')
             ->orderByDesc('absent_count')
             ->limit(10)
@@ -581,12 +584,12 @@ class AnalyticsController extends Controller
         }
 
         $weeklyTrend = $weeklyTrendQuery->select(
-                DB::raw("EXTRACT(WEEK FROM trips.trip_date) as week"),
-                DB::raw("MIN(trips.trip_date) as week_start"),
-                DB::raw("SUM(CASE WHEN trip_attendances.status = 'boarded' THEN 1 ELSE 0 END) as present"),
-                DB::raw("SUM(CASE WHEN trip_attendances.status = 'absent' THEN 1 ELSE 0 END) as absent"),
-                DB::raw("COUNT(*) as total")
-            )
+            DB::raw('EXTRACT(WEEK FROM trips.trip_date) as week'),
+            DB::raw('MIN(trips.trip_date) as week_start'),
+            DB::raw("SUM(CASE WHEN trip_attendances.status = 'boarded' THEN 1 ELSE 0 END) as present"),
+            DB::raw("SUM(CASE WHEN trip_attendances.status = 'absent' THEN 1 ELSE 0 END) as absent"),
+            DB::raw('COUNT(*) as total')
+        )
             ->groupBy(DB::raw('EXTRACT(WEEK FROM trips.trip_date)'))
             ->orderBy('week')
             ->get();

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SchoolAdmin extends Model
 {
     protected $primaryKey = 'user_id';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -26,5 +27,3 @@ class SchoolAdmin extends Model
         return $this->belongsTo(School::class);
     }
 }
-
-

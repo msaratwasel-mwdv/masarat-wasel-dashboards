@@ -2,22 +2,24 @@
 
 namespace App\Mail;
 
+use App\Models\PaymentTransaction;
+use App\Models\School;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\PaymentTransaction;
-use App\Models\School;
 
 class PaymentReceiptEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $transaction;
+
     public $school;
+
     public $remainingBalance;
+
     public $lang;
 
     public function __construct(PaymentTransaction $transaction, School $school, float $remainingBalance)

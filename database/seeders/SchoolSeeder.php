@@ -14,9 +14,9 @@ class SchoolSeeder extends Seeder
         $school1 = School::firstOrCreate(
             ['name' => 'مدرسة الأفق العالمية'],
             [
-                'latitude'       => 24.7136,
-                'longitude'      => 46.6753,
-                'status'         => 'Active',
+                'latitude' => 24.7136,
+                'longitude' => 46.6753,
+                'status' => 'Active',
             ]
         );
 
@@ -31,9 +31,9 @@ class SchoolSeeder extends Seeder
         $school2 = School::firstOrCreate(
             ['name' => 'مدرسة الرواد النموذجية'],
             [
-                'latitude'       => 24.7743,
-                'longitude'      => 46.7386,
-                'status'         => 'Active',
+                'latitude' => 24.7743,
+                'longitude' => 46.7386,
+                'status' => 'Active',
             ]
         );
 

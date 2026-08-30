@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class FieldSupervisor extends Model
 {
     protected $primaryKey = 'user_id';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -34,7 +35,4 @@ class FieldSupervisor extends Model
     {
         return $this->belongsTo(User::class);
     }
-
 }
-
-

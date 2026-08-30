@@ -13,6 +13,7 @@ class StudentLocationUpdated implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public int $busId;
+
     public int $studentId;
 
     public function __construct(int $busId, int $studentId)
@@ -24,7 +25,7 @@ class StudentLocationUpdated implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('bus.' . $this->busId),
+            new PrivateChannel('bus.'.$this->busId),
         ];
     }
 
@@ -36,8 +37,8 @@ class StudentLocationUpdated implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'student_id'   => $this->studentId,
-            'timestamp'    => now()->toIso8601String(),
+            'student_id' => $this->studentId,
+            'timestamp' => now()->toIso8601String(),
         ];
     }
 }

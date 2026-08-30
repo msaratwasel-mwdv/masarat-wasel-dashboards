@@ -50,7 +50,7 @@ return [
     // Trip Finished
     'trip_finished_title' => 'انتهت الرحلة',
     'trip_finished_message' => 'قام السائق بإنهاء الرحلة بنجاح وتوثيق خلو الحافلة.',
-    
+
     // Alighted (Arrived)
     'student_alighted_school_title' => 'وصل طالبك للمدرسة',
     'student_alighted_school_message' => 'لقد وصل الطالب :student إلى المدرسة الآن بسلام.',

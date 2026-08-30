@@ -4,15 +4,15 @@ namespace App\Exports;
 
 use App\Models\User;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithColumnFormatting;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class SchoolUsersExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithColumnFormatting
+class SchoolUsersExport implements FromCollection, ShouldAutoSize, WithColumnFormatting, WithHeadings, WithMapping, WithStyles
 {
     protected $isTemplate;
 
@@ -26,10 +26,11 @@ class SchoolUsersExport implements FromCollection, WithHeadings, WithMapping, Sh
         if ($this->isTemplate) {
             return collect([[]]);
         }
-        return User::whereHas('roles', fn($q) => $q->where('name', 'school_admin'))->with('schoolAdmin.school')->get();
+
+        return User::whereHas('roles', fn ($q) => $q->where('name', 'school_admin'))->with('schoolAdmin.school')->get();
     }
 
-            public function headings(): array
+    public function headings(): array
     {
         return [
             [__('exports.notices.school_users')],
@@ -46,8 +47,8 @@ class SchoolUsersExport implements FromCollection, WithHeadings, WithMapping, Sh
                 __('exports.columns.phone'),
                 __('exports.columns.email'),
                 __('exports.columns.address'),
-                __('exports.columns.school_id')
-            ]
+                __('exports.columns.school_id'),
+            ],
         ];
     }
 
@@ -62,8 +63,8 @@ class SchoolUsersExport implements FromCollection, WithHeadings, WithMapping, Sh
             $row->last_name_ar,
             $row->first_name_en,
             $row->last_name_en,
-            $row->national_id ? ' ' . $row->national_id : '',
-            $row->phone ? ' ' . $row->phone : '',
+            $row->national_id ? ' '.$row->national_id : '',
+            $row->phone ? ' '.$row->phone : '',
             $row->email,
             $row->address,
             $row->schoolAdmin?->school_id,
@@ -90,8 +91,8 @@ class SchoolUsersExport implements FromCollection, WithHeadings, WithMapping, Sh
         $sheet->getStyle('A:M')->applyFromArray([
             'alignment' => [
                 'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER
-            ]
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            ],
         ]);
 
         // دمج خلايا الصف الأول للملاحظة

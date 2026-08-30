@@ -103,5 +103,3 @@ class BusRequestController extends Controller
             ->with('success', 'تم إلغاء الطلب بنجاح');
     }
 }
-
-

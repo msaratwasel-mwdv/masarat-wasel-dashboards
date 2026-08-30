@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('model');
             $table->year('year');
             $table->string('color')->nullable();
-            
+
             // العلاقات
             $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('assistant_id')->nullable();
@@ -31,7 +31,7 @@ return new class extends Migration
             $table->enum('status', ['active', 'maintenance', 'inactive', 'out_of_service'])->default('active');
             $table->string('front_qr')->nullable();
             $table->string('back_qr')->nullable();
-            
+
             // حقول التتبع
             $table->decimal('latitude', 10, 7)->nullable();
             $table->decimal('longitude', 10, 7)->nullable();

@@ -35,28 +35,29 @@ class Grade extends Model
     public function getNameAttribute($value): string
     {
         $acceptLanguage = request()->header('Accept-Language') ?? '';
-        if (!empty($acceptLanguage)) {
+        if (! empty($acceptLanguage)) {
             $isEn = str_starts_with($acceptLanguage, 'en');
         } else {
-            $isEn = (request()->input('lang') === 'en' 
+            $isEn = (request()->input('lang') === 'en'
                 || (auth()->check() && auth()->user()->preferred_language === 'en')
                 || app()->getLocale() === 'en');
         }
 
         if ($isEn) {
             $map = [
-                'الصف الأول'  => 'First Grade',
+                'الصف الأول' => 'First Grade',
                 'الصف الثاني' => 'Second Grade',
                 'الصف الثالث' => 'Third Grade',
-                'أول ثانوي'   => 'First Secondary',
-                'ثاني ثانوي'  => 'Second Secondary',
-                'ثالث ثانوي'  => 'Third Secondary',
-                'الروضة'      => 'Kindergarten',
-                'الابتدائي'   => 'Primary',
-                'المتوسط'     => 'Intermediate',
-                'غير محدد'    => 'Undetermined',
+                'أول ثانوي' => 'First Secondary',
+                'ثاني ثانوي' => 'Second Secondary',
+                'ثالث ثانوي' => 'Third Secondary',
+                'الروضة' => 'Kindergarten',
+                'الابتدائي' => 'Primary',
+                'المتوسط' => 'Intermediate',
+                'غير محدد' => 'Undetermined',
             ];
             $trimmed = trim($value);
+
             return $map[$trimmed] ?? $value;
         }
 

@@ -4,10 +4,10 @@ namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bus;
-use App\Models\TripAttendance;
-use App\Models\Trip;
 use App\Models\BusGroup;
 use App\Models\Student;
+use App\Models\Trip;
+use App\Models\TripAttendance;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -96,7 +96,7 @@ class TripReportController extends Controller
                 // Get students in this group
                 $students = Student::where(function ($q) use ($group) {
                     $q->where('morning_group_id', $group->id)
-                      ->orWhere('afternoon_group_id', $group->id);
+                        ->orWhere('afternoon_group_id', $group->id);
                 })->where('is_active', true)->get();
 
                 // Determine directions to query
@@ -112,11 +112,11 @@ class TripReportController extends Controller
                     $tripType = ($direction === 'to_school') ? 'forth' : 'back';
 
                     // Get trip attendances for this bus, type, and date range
-                    $attendances = TripAttendance::whereHas('trip', function($q) use ($bus, $tripType, $dateFrom, $dateTo) {
+                    $attendances = TripAttendance::whereHas('trip', function ($q) use ($bus, $tripType, $dateFrom, $dateTo) {
                         $q->where('bus_id', $bus->id)
-                          ->where('type', $tripType)
-                          ->whereDate('trip_date', '>=', $dateFrom)
-                          ->whereDate('trip_date', '<=', $dateTo);
+                            ->where('type', $tripType)
+                            ->whereDate('trip_date', '>=', $dateFrom)
+                            ->whereDate('trip_date', '<=', $dateTo);
                     })->with('trip')->get()->groupBy('student_id');
 
                     // Calculate trip start and end times from the Trip model
@@ -137,7 +137,7 @@ class TripReportController extends Controller
                         $attendance = $studentAttendances->first();
 
                         $busAtDoor = $attendance?->check_in_time?->format('h:i:s A');
-                        $busNearby = null; 
+                        $busNearby = null;
                         $boardingTime = $attendance?->check_in_time?->format('h:i:s A');
                         $alightingTime = $attendance?->check_out_time?->format('h:i:s A');
 
@@ -177,6 +177,4 @@ class TripReportController extends Controller
             'school' => Auth::user()->school,
         ]);
     }
-
-
 }

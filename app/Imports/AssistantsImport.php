@@ -1,29 +1,27 @@
 <?php
+
 // app/Imports/AssistantsImport.php
 
 namespace App\Imports;
 
+use App\Models\Role;
 use App\Models\User;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Maatwebsite\Excel\Concerns\ToModel;
+use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
-use Maatwebsite\Excel\Concerns\WithStartRow;
-use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\SkipsErrors;
+use Maatwebsite\Excel\Concerns\SkipsFailures;
+use Maatwebsite\Excel\Concerns\SkipsOnError;
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
+use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\WithUpserts;
 use Maatwebsite\Excel\Concerns\WithValidation;
-use Maatwebsite\Excel\Concerns\SkipsOnFailure;
-use Maatwebsite\Excel\Concerns\SkipsOnError;
-use Maatwebsite\Excel\Concerns\SkipsFailures;
-use Maatwebsite\Excel\Concerns\SkipsErrors;
-use Illuminate\Support\Facades\Hash;
-use App\Models\Role;
 
-class AssistantsImport implements ToModel, SkipsEmptyRows, WithStartRow, WithChunkReading, WithBatchInserts, WithUpserts, WithValidation, SkipsOnFailure, SkipsOnError
+class AssistantsImport implements SkipsEmptyRows, SkipsOnError, SkipsOnFailure, ToModel, WithBatchInserts, WithChunkReading, WithStartRow, WithUpserts, WithValidation
 {
-    use SkipsFailures, SkipsErrors;
+    use SkipsErrors, SkipsFailures;
 
     public $successCount = 0;
 
@@ -37,10 +35,11 @@ class AssistantsImport implements ToModel, SkipsEmptyRows, WithStartRow, WithChu
         foreach ($row as $value) {
             if (is_string($value) && trim($value) !== '') {
                 return false;
-            } elseif (!is_string($value) && $value !== null) {
+            } elseif (! is_string($value) && $value !== null) {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -66,7 +65,7 @@ class AssistantsImport implements ToModel, SkipsEmptyRows, WithStartRow, WithChu
         // Sanitize, trim strings and convert empty strings to null
         foreach ($row as $key => $value) {
             if (is_scalar($value)) {
-                $trimmed = trim((string)$value);
+                $trimmed = trim((string) $value);
                 $row[$key] = $trimmed === '' ? null : $trimmed;
             }
         }
@@ -136,7 +135,7 @@ class AssistantsImport implements ToModel, SkipsEmptyRows, WithStartRow, WithChu
         $user = User::updateOrCreate(
             ['national_id' => $data['national_id']],
             [
-                'name' => trim(($data['first_name_ar'] ?: $data['first_name_en']) . ' ' . ($data['last_name_ar'] ?: $data['last_name_en'])),
+                'name' => trim(($data['first_name_ar'] ?: $data['first_name_en']).' '.($data['last_name_ar'] ?: $data['last_name_en'])),
                 'first_name_ar' => $data['first_name_ar'] ?: '',
                 'last_name_ar' => $data['last_name_ar'] ?: '',
                 'first_name_en' => $data['first_name_en'] ?: '',
@@ -162,6 +161,7 @@ class AssistantsImport implements ToModel, SkipsEmptyRows, WithStartRow, WithChu
         );
 
         $this->successCount++;
+
         return null; // Return null since we save manually to update relations correctly
     }
 

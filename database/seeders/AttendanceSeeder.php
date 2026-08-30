@@ -15,18 +15,20 @@ class AttendanceSeeder extends Seeder
 
         foreach ($students as $student) {
             $classroom = $student->currentEnrollment?->classroom;
-            if (!$classroom) continue;
+            if (! $classroom) {
+                continue;
+            }
 
             for ($d = 1; $d <= 10; $d++) {
                 $status = rand(0, 10) > 2 ? 'present' : 'absent';
                 $date = Carbon::now()->subDays(rand(0, 20));
-                
+
                 Attendance::firstOrCreate([
                     'student_id' => $student->id,
                     'date' => $date->format('Y-m-d'),
                 ], [
                     'classroom_id' => $classroom->id,
-                    'status' => $status
+                    'status' => $status,
                 ]);
             }
         }

@@ -4,9 +4,9 @@ namespace App\Http\Controllers\School;
 
 // 1. استيراد كل الأدوات التي نحتاجها
 use App\Http\Controllers\Controller;
+use App\Models\Attendance;
 use App\Models\Classroom;
 use App\Models\Student;
-use App\Models\Attendance;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +30,7 @@ class StudentController extends Controller
         $students = Student::inSchool($schoolId)
             ->with([
                 'guardians:id,first_name_ar,last_name_ar,first_name_en,last_name_en,phone,national_id,address,image,email',
-                'currentEnrollment.classroom:id,name'
+                'currentEnrollment.classroom:id,name',
             ])
             ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id']);
         // Note: classroom_id is not in students table, it's in enrollments.
@@ -40,7 +40,7 @@ class StudentController extends Controller
             $student->classroom_id = $student->currentEnrollment?->classroom_id;
             $student->name = $student->full_name_ar ?? current(array_filter([$student->first_name_ar, $student->last_name_ar])) ?? 'Unknown';
             $student->student_national_id = $student->national_id;
-            
+
             $firstGuardian = $student->guardians->first();
             if ($firstGuardian) {
                 // Ensure array shape matches UI `guardian?: { name: string, phone: string, national_id: string }`
@@ -73,7 +73,7 @@ class StudentController extends Controller
 
         // Base query for counts (before filtering)
         $baseQuery = Student::inSchool($schoolId)
-            ->whereHas('enrollments', function($q) {
+            ->whereHas('enrollments', function ($q) {
                 $q->where('is_active', true);
             });
 
@@ -83,7 +83,7 @@ class StudentController extends Controller
             'inactive' => (clone $baseQuery)->where('is_active', false)->count(),
             'male' => (clone $baseQuery)->where('gender', 'male')->count(),
             'female' => (clone $baseQuery)->where('gender', 'female')->count(),
-            'with_bus' => (clone $baseQuery)->where(function($q) {
+            'with_bus' => (clone $baseQuery)->where(function ($q) {
                 $q->whereNotNull('forth_bus_id')->orWhereNotNull('back_bus_id');
             })->count(),
             'no_bus' => (clone $baseQuery)->whereNull('forth_bus_id')->whereNull('back_bus_id')->count(),
@@ -91,18 +91,18 @@ class StudentController extends Controller
 
         // ⬅️ أضف where لفلترة حسب المدرسة
         $query = Student::inSchool($schoolId)
-            ->whereHas('enrollments', function($q) {
+            ->whereHas('enrollments', function ($q) {
                 $q->where('is_active', true);
             })
             ->with([
                 'guardians:id,first_name_ar,last_name_ar,first_name_en,last_name_en,phone,national_id,address,image,email',
                 'currentEnrollment.classroom:id,name',
-                'forthBus.route', 'backBus.route'
+                'forthBus.route', 'backBus.route',
             ])
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('first_name_ar', 'like', "%{$search}%")
-                      ->orWhere('last_name_ar', 'like', "%{$search}%")
+                        ->orWhere('last_name_ar', 'like', "%{$search}%")
                         ->orWhere('student_code', 'like', "%{$search}%")
                         ->orWhere('national_id', 'like', "%{$search}%")
                         ->orWhereHas('guardians', function ($q) use ($search) {
@@ -126,12 +126,12 @@ class StudentController extends Controller
 
         $buses = \App\Models\Bus::where('school_id', $schoolId)->orderBy('bus_number')->get(['id', 'bus_number', 'plate_number']);
 
-        $guardiansList = User::whereHas('roles', fn($q) => $q->whereIn('name', ['parent', 'guardian']))
+        $guardiansList = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['parent', 'guardian']))
             ->where(function ($query) use ($schoolId) {
                 $query->whereHas('students.enrollments.classroom', function ($q) use ($schoolId) {
                     $q->atSchool($schoolId);
                 })
-                ->orWhereDoesntHave('students');
+                    ->orWhereDoesntHave('students');
             })
             ->orderBy('first_name_ar')
             ->get(['id', 'first_name_ar', 'last_name_ar', 'first_name_en', 'last_name_en', 'national_id', 'phone', 'email', 'address']);
@@ -150,6 +150,7 @@ class StudentController extends Controller
             'guardianResult' => session('guardianResult'),
         ]);
     }
+
     /**
      * [Create] عرض صفحة إنشاء طالب جديد
      */
@@ -162,7 +163,7 @@ class StudentController extends Controller
 
         // جلب المشرفين المتاحين في نفس المدرسة
         $supervisors = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->whereIn('name', ['assistant', 'teacher', 'school_admin']))
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['assistant', 'teacher', 'school_admin']))
             ->orderBy('first_name_ar')
             ->get(['id', 'first_name_ar', 'last_name_ar', 'email']);
 
@@ -185,7 +186,7 @@ class StudentController extends Controller
         ]);
 
         // Support both 'parent' and 'guardian' roles in case legacy records exist
-        $guardian = User::whereHas('roles', fn($q) => $q->whereIn('name', ['parent', 'guardian']))
+        $guardian = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['parent', 'guardian']))
             ->where('national_id', $validated['national_id'])
             ->first();
 
@@ -242,13 +243,13 @@ class StudentController extends Controller
             $enNameParts = User::parseFullName($validated['name_en'] ?? '');
 
             $guardianData = [
-                'first_name_ar'  => $nameParts[0],
-                'last_name_ar'   => $nameParts[3],
-                'first_name_en'  => $enNameParts[0],
-                'last_name_en'   => $enNameParts[3],
-                'national_id'    => $validated['national_id'],
-                'phone'          => $validated['phone'],
-                'email'          => $validated['email'] ?? null,
+                'first_name_ar' => $nameParts[0],
+                'last_name_ar' => $nameParts[3],
+                'first_name_en' => $enNameParts[0],
+                'last_name_en' => $enNameParts[3],
+                'national_id' => $validated['national_id'],
+                'phone' => $validated['phone'],
+                'email' => $validated['email'] ?? null,
             ];
 
             if ($request->hasFile('image')) {
@@ -265,11 +266,11 @@ class StudentController extends Controller
 
             // التأكد من منح صلاحية parent وإضافة سجل Guardian
             $role = \App\Models\Role::firstOrCreate(['name' => 'parent']);
-            if (!$guardian->roles->contains($role->id)) {
+            if (! $guardian->roles->contains($role->id)) {
                 $guardian->roles()->attach($role->id);
             }
 
-            if (!$guardian->guardian) {
+            if (! $guardian->guardian) {
                 \App\Models\Guardian::create(['user_id' => $guardian->id]);
             }
 
@@ -283,6 +284,7 @@ class StudentController extends Controller
             ],
         ]);
     }
+
     /**
      * [Create] تخزين الطالب الجديد
      */
@@ -303,12 +305,12 @@ class StudentController extends Controller
             'national_id' => 'required|string|max:50|unique:students,national_id',
             'gender' => 'required|in:male,female',
             'classroom_id' => [
-                'required', 
-                Rule::exists('classrooms', 'id')->where(function($q) use ($schoolId) {
-                    $q->whereIn('grade_id', function($sub) use ($schoolId) {
+                'required',
+                Rule::exists('classrooms', 'id')->where(function ($q) use ($schoolId) {
+                    $q->whereIn('grade_id', function ($sub) use ($schoolId) {
                         $sub->select('id')->from('grades')->where('school_id', $schoolId);
                     });
-                })
+                }),
             ],
             'forth_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
             'back_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
@@ -328,7 +330,7 @@ class StudentController extends Controller
                 'last_name_ar' => $validated['last_name_ar'],
                 'first_name_en' => $validated['first_name_en'],
                 'last_name_en' => $validated['last_name_en'],
-                'student_code' => $validated['student_code'] ?? 'ST-' . $validated['national_id'],
+                'student_code' => $validated['student_code'] ?? 'ST-'.$validated['national_id'],
                 'national_id' => $validated['national_id'],
                 'gender' => $validated['gender'],
                 'forth_bus_id' => $validated['forth_bus_id'] ?? null,
@@ -358,19 +360,19 @@ class StudentController extends Controller
             try {
                 app(\App\Services\SubscriptionService::class)->recalculatePendingInstallments($schoolId);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to recalculate installments on student creation: ' . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error('Failed to recalculate installments on student creation: '.$e->getMessage());
             }
 
             // Notify Company Admins about new student
             try {
                 app(\App\Services\NotificationService::class)->notifyCompanyAdmins(
                     'student_added',
-                    "👤 تسجيل طالب جديد",
+                    '👤 تسجيل طالب جديد',
                     "تم تسجيل الطالب ({$student->first_name_ar} {$student->last_name_ar}) في مدرسة: {$school->name}",
                     ['school_id' => $schoolId, 'student_id' => $student->id]
                 );
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to notify admins on student creation: ' . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error('Failed to notify admins on student creation: '.$e->getMessage());
             }
         });
 
@@ -387,8 +389,6 @@ class StudentController extends Controller
 
         $schoolId = Auth::user()->getSchoolId();
 
-
-
         return Inertia::render('School/Students/AttendanceHistory', [
             'student' => $student->only(['id', 'first_name_ar', 'last_name_ar', 'student_code']),
         ]);
@@ -403,7 +403,7 @@ class StudentController extends Controller
         $this->authorize('update', $student);
 
         $schoolId = Auth::user()->getSchoolId();
-        
+
         $buses = \App\Models\Bus::where('school_id', $schoolId)->orderBy('bus_number')->get(['id', 'bus_number', 'plate_number']);
 
         return Inertia::render('School/Students/EditStudent', [
@@ -433,12 +433,12 @@ class StudentController extends Controller
             'national_id' => ['nullable', 'string', 'max:50', Rule::unique('students')->ignore($student->id)],
             'gender' => 'required|in:male,female',
             'classroom_id' => [
-                'required', 
-                Rule::exists('classrooms', 'id')->where(function($q) use ($schoolId) {
-                    $q->whereIn('grade_id', function($sub) use ($schoolId) {
+                'required',
+                Rule::exists('classrooms', 'id')->where(function ($q) use ($schoolId) {
+                    $q->whereIn('grade_id', function ($sub) use ($schoolId) {
                         $sub->select('id')->from('grades')->where('school_id', $schoolId);
                     });
-                })
+                }),
             ],
             'forth_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
             'back_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
@@ -500,10 +500,10 @@ class StudentController extends Controller
                     $enParts = \App\Models\User::parseFullName($g['name_en'] ?? '');
 
                     $guardianUser->update([
-                        'first_name_ar'  => $arParts[0],
-                        'last_name_ar'   => $arParts[3],
-                        'first_name_en'  => $enParts[0],
-                        'last_name_en'   => $enParts[3],
+                        'first_name_ar' => $arParts[0],
+                        'last_name_ar' => $arParts[3],
+                        'first_name_en' => $enParts[0],
+                        'last_name_en' => $enParts[3],
                         'phone' => $g['phone'],
                         'address' => $g['address'],
                         'home_number' => $g['home_number'],
@@ -540,19 +540,19 @@ class StudentController extends Controller
             try {
                 if ($studentSchoolId) {
                     app(\App\Services\SubscriptionService::class)->recalculatePendingInstallments($studentSchoolId);
-                    
+
                     $school = \App\Models\School::find($studentSchoolId);
                     if ($school) {
                         app(\App\Services\NotificationService::class)->notifyCompanyAdmins(
                             'student_deleted',
-                            "👤 حذف طالب",
+                            '👤 حذف طالب',
                             "تم حذف طالب من مدرسة: {$school->name}",
                             ['school_id' => $studentSchoolId, 'student_id' => $student->id]
                         );
                     }
                 }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to recalculate installments or notify on student deletion: ' . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error('Failed to recalculate installments or notify on student deletion: '.$e->getMessage());
             }
         });
 
@@ -598,16 +598,13 @@ class StudentController extends Controller
             'file' => 'required|mimes:xlsx,xls,csv|max:10240',
         ]);
 
-        $import = new \App\Imports\StudentsImport();
+        $import = new \App\Imports\StudentsImport;
         \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
 
-        if (!empty($import->errors()) || !empty($import->failures())) {
+        if (! empty($import->errors()) || ! empty($import->failures())) {
             return redirect()->back()->with('error', "تم استيراد {$import->successCount} بنجاح، وحدثت أخطاء في بعض الصفوف.");
         }
 
         return redirect()->back()->with('success', "تم استيراد {$import->successCount} طالب بنجاح وتحديث القائمة.");
     }
 }
-
-
-

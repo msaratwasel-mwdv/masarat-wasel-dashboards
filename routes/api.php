@@ -88,6 +88,7 @@ Route::middleware(['auth:sanctum', app()->environment('local') ? 'throttle:300,1
         // ✅ throttle:30,1 — يسمح بـ 30 طلب في الدقيقة (طالب واحد لكل ضغطة)
         Route::post('/bus/{bus}/notify-near-house', [DailyTripApiController::class, 'notifyNearHouse'])->middleware('throttle:30,1');
         Route::post('/bus/{bus}/mark-absent', [DailyTripApiController::class, 'markAbsent']);
+        Route::get('/bus/{bus}/check-trip-readiness', [DailyTripApiController::class, 'checkTripReadiness']);
         Route::post('/bus/{bus}/end-trip', [DailyTripApiController::class, 'endTrip']);
         Route::post('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'store']);
         Route::get('/driver/expenses', [\App\Http\Controllers\Api\Driver\BusExpenseApiController::class, 'index']);

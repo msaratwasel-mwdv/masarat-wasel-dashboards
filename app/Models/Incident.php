@@ -39,7 +39,7 @@ class Incident extends Model
      */
     public function getStudentNamesAttribute()
     {
-        if (empty($this->student_ids) || !is_array($this->student_ids)) {
+        if (empty($this->student_ids) || ! is_array($this->student_ids)) {
             return [];
         }
 
@@ -54,9 +54,10 @@ class Incident extends Model
         $urls = [];
         if (is_array($this->photos)) {
             foreach ($this->photos as $photo) {
-                $urls[] = asset('storage/' . $photo);
+                $urls[] = asset('storage/'.$photo);
             }
         }
+
         return $urls;
     }
 
@@ -80,5 +81,3 @@ class Incident extends Model
         return $this->belongsTo(User::class, 'resolved_by');
     }
 }
-
-

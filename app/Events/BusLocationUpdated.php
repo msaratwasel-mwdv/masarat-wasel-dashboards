@@ -1,10 +1,10 @@
 <?php
+
 // c:\laragon\www\masarat-wasel-dashboards-new\app\Events\BusLocationUpdated.php
 
 namespace App\Events;
 
 use App\Models\Bus;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -29,7 +29,7 @@ class BusLocationUpdated implements ShouldBroadcastNow
     {
         // بث الموقع لكل المتابعين لهذا الباص (سائقين، مشرفين، أولياء أمور)
         return [
-            new PrivateChannel('bus.' . $this->bus->id),
+            new PrivateChannel('bus.'.$this->bus->id),
         ];
     }
 
@@ -38,37 +38,34 @@ class BusLocationUpdated implements ShouldBroadcastNow
         return 'bus.location.updated';
     }
 
-
     public function broadcastWith(): array
     {
         $driver = $this->bus->driver?->user;
         $activeTrip = $this->bus->activeTrip;
 
         return [
-            'bus_id'            => $this->bus->id,
-            'bus_number'        => $this->bus->bus_number,
-            'plate_number'      => $this->bus->plate_number,
-            'latitude'          => $this->latitude,
-            'longitude'         => $this->longitude,
-            'heading'           => $this->heading,
-            'target_lat'        => $this->targetLat ?? $this->bus->target_latitude,
-            'target_lng'        => $this->targetLng ?? $this->bus->target_longitude,
-            'trip_status'       => $this->bus->trip_status,
-            'trip_type'         => $activeTrip ? $activeTrip->type : null,
-            'speed_kmh'         => cache()->get('bus_speed_'.$this->bus->id, 0),
+            'bus_id' => $this->bus->id,
+            'bus_number' => $this->bus->bus_number,
+            'plate_number' => $this->bus->plate_number,
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
+            'heading' => $this->heading,
+            'target_lat' => $this->targetLat ?? $this->bus->target_latitude,
+            'target_lng' => $this->targetLng ?? $this->bus->target_longitude,
+            'trip_status' => $this->bus->trip_status,
+            'trip_type' => $activeTrip ? $activeTrip->type : null,
+            'speed_kmh' => cache()->get('bus_speed_'.$this->bus->id, 0),
             'students_on_board' => $this->studentsOnBoard,
-            'total_students'    => $this->bus->students_count,
-            'departure_time'    => $activeTrip ? $activeTrip->departure_time?->toIso8601String() : null,
-            'eta_minutes'       => cache()->get('bus_eta_'.$this->bus->id),
+            'total_students' => $this->bus->students_count,
+            'departure_time' => $activeTrip ? $activeTrip->departure_time?->toIso8601String() : null,
+            'eta_minutes' => cache()->get('bus_eta_'.$this->bus->id),
             'driver' => $driver ? [
-                'id'        => $driver->id,
-                'name'      => $driver->name,
-                'phone'     => $driver->phone,
-                'image_url' => $driver->image_url ? url($driver->image_url) : 'https://i.pravatar.cc/150?u=' . $driver->id,
+                'id' => $driver->id,
+                'name' => $driver->name,
+                'phone' => $driver->phone,
+                'image_url' => $driver->image_url ? url($driver->image_url) : 'https://i.pravatar.cc/150?u='.$driver->id,
             ] : null,
-            'timestamp'         => now()->toIso8601String(),
+            'timestamp' => now()->toIso8601String(),
         ];
     }
 }
-
-

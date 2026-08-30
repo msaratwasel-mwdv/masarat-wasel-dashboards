@@ -5,15 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
-use App\Models\Student;
-use App\Models\StudentSchoolEnrollment;
-use App\Models\Grade;
-use App\Models\Teacher;
-use App\Models\User;
-use App\Models\Attendance;
-use App\Models\School;
 
 class Classroom extends Model
 {
@@ -95,20 +87,18 @@ class Classroom extends Model
     public function getNameAttribute($value): string
     {
         $acceptLanguage = request()->header('Accept-Language') ?? '';
-        if (!empty($acceptLanguage)) {
+        if (! empty($acceptLanguage)) {
             $isEn = str_starts_with($acceptLanguage, 'en');
         } else {
-            $isEn = (request()->input('lang') === 'en' 
+            $isEn = (request()->input('lang') === 'en'
                 || (auth()->check() && auth()->user()->preferred_language === 'en')
                 || app()->getLocale() === 'en');
         }
 
-        if ($isEn && !empty(trim($this->name_en))) {
+        if ($isEn && ! empty(trim($this->name_en))) {
             return $this->name_en;
         }
 
         return $value ?? '';
     }
 }
-
-

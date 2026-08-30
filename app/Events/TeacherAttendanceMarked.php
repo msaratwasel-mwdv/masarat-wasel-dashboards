@@ -2,12 +2,12 @@
 
 namespace App\Events;
 
+use App\Models\Student;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Student;
 
 /**
  * يُبث فورياً عبر Reverb عند تسجيل غياب/حضور الطالب من قبل المعلم المدرسي
@@ -18,7 +18,9 @@ class TeacherAttendanceMarked implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $student;
+
     public $status;
+
     public $date;
 
     public function __construct(Student $student, string $status, string $date)
@@ -34,14 +36,14 @@ class TeacherAttendanceMarked implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         $channels = [];
-        
+
         // Load guardians if not loaded
-        if (!$this->student->relationLoaded('guardians')) {
+        if (! $this->student->relationLoaded('guardians')) {
             $this->student->load('guardians');
         }
 
         foreach ($this->student->guardians as $guardian) {
-            $channels[] = new PrivateChannel('guardian.' . $guardian->id);
+            $channels[] = new PrivateChannel('guardian.'.$guardian->id);
         }
 
         return $channels;
@@ -61,14 +63,12 @@ class TeacherAttendanceMarked implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'student_id'      => $this->student->id,
-            'student_name'    => $this->student->full_name,
+            'student_id' => $this->student->id,
+            'student_name' => $this->student->full_name,
             'student_name_en' => $this->student->full_name_en,
-            'status'          => $this->status, // 'present' or 'absent'
-            'date'            => $this->date,
-            'timestamp'       => now()->toIso8601String(),
+            'status' => $this->status, // 'present' or 'absent'
+            'date' => $this->date,
+            'timestamp' => now()->toIso8601String(),
         ];
     }
 }
-
-

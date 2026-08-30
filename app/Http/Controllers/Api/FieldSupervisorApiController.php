@@ -4,12 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bus;
+use App\Models\Incident;
 use App\Models\Inspection;
 use App\Models\InspectionItem;
-use App\Models\Incident;
 use App\Models\Violation;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class FieldSupervisorApiController extends Controller
 {
@@ -22,18 +22,18 @@ class FieldSupervisorApiController extends Controller
             ->active()
             ->get()
             ->map(function ($bus) {
-                $lat = (double) $bus->current_latitude;
-                $lng = (double) $bus->current_longitude;
+                $lat = (float) $bus->current_latitude;
+                $lng = (float) $bus->current_longitude;
                 $isFallback = false;
 
                 if ($lat == 0.0 || $lng == 0.0) {
                     $isFallback = true;
-                    if ($bus->latitude && $bus->longitude && (double)$bus->latitude != 0.0 && (double)$bus->longitude != 0.0) {
-                        $lat = (double) $bus->latitude;
-                        $lng = (double) $bus->longitude;
+                    if ($bus->latitude && $bus->longitude && (float) $bus->latitude != 0.0 && (float) $bus->longitude != 0.0) {
+                        $lat = (float) $bus->latitude;
+                        $lng = (float) $bus->longitude;
                     } else {
-                        $lat = (double) ($bus->school && $bus->school->latitude ? $bus->school->latitude : 23.5880);
-                        $lng = (double) ($bus->school && $bus->school->longitude ? $bus->school->longitude : 58.3829);
+                        $lat = (float) ($bus->school && $bus->school->latitude ? $bus->school->latitude : 23.5880);
+                        $lng = (float) ($bus->school && $bus->school->longitude ? $bus->school->longitude : 58.3829);
                     }
                 }
 
@@ -46,7 +46,7 @@ class FieldSupervisorApiController extends Controller
                     $lng += $offsetDistance * sin($offsetAngle);
                 }
 
-                 return [
+                return [
                     'id' => $bus->id,
                     'bus_number' => $bus->bus_number,
                     'school' => $bus->school ? $bus->school->name : null,
@@ -54,8 +54,8 @@ class FieldSupervisorApiController extends Controller
                     'assistant' => $bus->assistant ? $bus->assistant->name : null,
                     'supervisor' => $bus->assistant ? $bus->assistant->name : null,
                     'field_supervisor' => $bus->fieldSupervisor ? $bus->fieldSupervisor->name : null,
-                    'front_qr' => $bus->front_qr ? asset('storage/' . $bus->front_qr) : null,
-                    'back_qr' => $bus->back_qr ? asset('storage/' . $bus->back_qr) : null,
+                    'front_qr' => $bus->front_qr ? asset('storage/'.$bus->front_qr) : null,
+                    'back_qr' => $bus->back_qr ? asset('storage/'.$bus->back_qr) : null,
                     'location_lat' => $lat,
                     'location_lng' => $lng,
                     'target_lat' => $bus->target_latitude,
@@ -213,5 +213,3 @@ class FieldSupervisorApiController extends Controller
         ], 201);
     }
 }
-
-

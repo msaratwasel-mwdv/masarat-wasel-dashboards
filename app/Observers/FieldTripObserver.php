@@ -49,13 +49,13 @@ class FieldTripObserver
                 data: [
                     'field_trip_id' => (string) $fieldTrip->id,
                     'category' => 'field_trips',
-                    'target_screen' => 'field_trip_details'
+                    'target_screen' => 'field_trip_details',
                 ],
                 titleEn: '🚌 New Field Trip Assigned',
                 messageEn: "A new field trip has been assigned to your bus: {$fieldTrip->name} on {$dateStr}"
             );
         } catch (\Exception $e) {
-            Log::error('FieldTripObserver notification failed: ' . $e->getMessage());
+            Log::error('FieldTripObserver notification failed: '.$e->getMessage());
         }
     }
 }

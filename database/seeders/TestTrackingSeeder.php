@@ -3,13 +3,13 @@
 namespace Database\Seeders;
 
 use App\Models\Bus;
+use App\Models\Role;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
-use App\Models\Role;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class TestTrackingSeeder extends Seeder
 {
@@ -76,7 +76,7 @@ class TestTrackingSeeder extends Seeder
             'national_id' => '1002003001',
         ]);
         $driverUser->roles()->syncWithoutDetaching([$driverRole->id]);
-        
+
         DB::table('drivers')->updateOrInsert(
             ['user_id' => $driverUser->id],
             [
@@ -136,7 +136,7 @@ class TestTrackingSeeder extends Seeder
         ];
 
         $classroom = DB::table('classrooms')->where('school_id', $school->id)->first();
-        if (!$classroom) {
+        if (! $classroom) {
             $classroomId = DB::table('classrooms')->insertGetId([
                 'name' => 'فصل تجريبي',
                 'school_id' => $school->id,
@@ -149,20 +149,20 @@ class TestTrackingSeeder extends Seeder
 
         for ($i = 1; $i <= 5; $i++) {
             $loc = $locations[$i - 1];
-            $phone = '77990000' . $i;
-            
+            $phone = '77990000'.$i;
+
             // Re-create parent to ensure clean IDs
             User::where('phone', $phone)->delete();
-            User::where('email', 'test_parent' . $i . '@masarat.com')->delete();
+            User::where('email', 'test_parent'.$i.'@masarat.com')->delete();
 
             $parent = User::create([
                 'first_name_ar' => 'ولي أمر',
-                'last_name_ar' => (string)$i,
+                'last_name_ar' => (string) $i,
                 'first_name_en' => 'Parent',
-                'last_name_en' => (string)$i,
+                'last_name_en' => (string) $i,
                 'phone' => $phone,
-                'national_id' => '200300400' . $i,
-                'email' => 'test_parent' . $i . '@masarat.com',
+                'national_id' => '200300400'.$i,
+                'email' => 'test_parent'.$i.'@masarat.com',
                 'password' => Hash::make('password'),
                 'address' => $loc['address'],
                 'latitude' => $loc['lat'],
@@ -180,12 +180,12 @@ class TestTrackingSeeder extends Seeder
 
             for ($j = 1; $j <= 3; $j++) {
                 $student = Student::create([
-                    'first_name_ar' => 'طالب ' . $j,
+                    'first_name_ar' => 'طالب '.$j,
                     'last_name_ar' => 'الأفق',
-                    'first_name_en' => 'Student ' . $j,
+                    'first_name_en' => 'Student '.$j,
                     'last_name_en' => 'Al-Ufuq',
-                    'student_code' => 'ALU-' . $i . '-' . $j . '-' . rand(100, 999),
-                    'national_id' => '300400500' . $i . $j,
+                    'student_code' => 'ALU-'.$i.'-'.$j.'-'.rand(100, 999),
+                    'national_id' => '300400500'.$i.$j,
                     'gender' => ($j % 2 == 0) ? 'female' : 'male',
                     'is_active' => true,
                     'forth_bus_id' => $bus->id,
@@ -200,7 +200,7 @@ class TestTrackingSeeder extends Seeder
                 ]);
 
                 $parent->students()->attach($student->id, ['relationship_type' => 'father']);
-                
+
                 DB::table('student_school_enrollments')->insert([
                     'student_id' => $student->id,
                     'classroom_id' => $classroomId,

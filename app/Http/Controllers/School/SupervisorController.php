@@ -3,16 +3,16 @@
 namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Bus;
 use App\Models\SupervisorProfile;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class SupervisorController extends Controller
 {
@@ -54,13 +54,13 @@ class SupervisorController extends Controller
                     'phone' => $supervisor->phone,
                     'address' => $supervisor->address,
                     'preferred_language' => $supervisor->preferred_language,
-                    'is_active' => (bool)$supervisor->is_active,
+                    'is_active' => (bool) $supervisor->is_active,
                     'image' => $supervisor->image,
-                    
+
                     // بيانات البروفايل
                     'supervisor_type' => $profile ? $profile->supervisor_type : 'bus', // افتراضي
                     'tracking_type' => $profile ? $profile->tracking_type : 'phone', // افتراضي
-                    
+
                     // الباص المرتبط
                     'bus_id' => $bus ? $bus->id : null,
                     'bus_number' => $bus ? $bus->bus_number : null,
@@ -95,7 +95,7 @@ class SupervisorController extends Controller
             'preferred_language' => 'nullable|in:ar,en',
             'password' => 'nullable|string|min:6',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            
+
             // حقول المشرف
             'supervisor_type' => 'required|in:bus,class,both',
             'tracking_type' => 'required|in:phone,vehicle',
@@ -132,7 +132,7 @@ class SupervisorController extends Controller
                 ),
                 'is_active' => $validated['is_active'],
                 'image' => $imagePath,
-                'user_code' => 'SUP-' . strtoupper(uniqid()),
+                'user_code' => 'SUP-'.strtoupper(uniqid()),
             ]);
 
             // Attach role
@@ -148,7 +148,7 @@ class SupervisorController extends Controller
             ]);
 
             // ربط الباص إذا تم اختياره
-            if (!empty($validated['bus_id'])) {
+            if (! empty($validated['bus_id'])) {
                 $bus = Bus::where('id', $validated['bus_id'])->where('school_id', $user->school_id)->first();
                 if ($bus) {
                     $bus->update(['supervisor_id' => $newSupervisor->id]);
@@ -156,16 +156,17 @@ class SupervisorController extends Controller
             }
 
             DB::commit();
+
             return redirect()
                 ->back()
                 ->with('success', 'Supervisor created successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withErrors(['error' => 'An error occurred while creating the supervisor: ' . $e->getMessage()]);
+
+            return redirect()->back()->withErrors(['error' => 'An error occurred while creating the supervisor: '.$e->getMessage()]);
         }
     }
-
 
     /**
      * تحديث بيانات مشرف
@@ -178,7 +179,7 @@ class SupervisorController extends Controller
         // 🔐 حماية: لا تعدّل مشرف من مدرسة ثانية
         if (
             $supervisor->school_id !== $user->school_id ||
-            !$supervisor->hasRole('supervisor')
+            ! $supervisor->hasRole('supervisor')
         ) {
             abort(403);
         }
@@ -203,7 +204,7 @@ class SupervisorController extends Controller
             'preferred_language' => 'nullable|in:ar,en',
             'password' => 'nullable|string|min:6',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            
+
             // حقول المشرف
             'supervisor_type' => 'required|in:bus,class,both',
             'tracking_type' => 'required|in:phone,vehicle',
@@ -228,21 +229,21 @@ class SupervisorController extends Controller
 
             // تحديث المستخدم
             $supervisor->update([
-                'first_name_ar'  => $nameParts[0],
-                'last_name_ar'   => $nameParts[3],
-                'first_name_en'  => $enNameParts[0],
-                'last_name_en'   => $enNameParts[3],
+                'first_name_ar' => $nameParts[0],
+                'last_name_ar' => $nameParts[3],
+                'first_name_en' => $enNameParts[0],
+                'last_name_en' => $enNameParts[3],
                 'national_id' => $validated['national_id'],
-                'email'       => $validated['email'] ?? null,
-                'phone'       => $validated['phone'],
-                'address'     => $validated['address'] ?? null,
+                'email' => $validated['email'] ?? null,
+                'phone' => $validated['phone'],
+                'address' => $validated['address'] ?? null,
                 'preferred_language' => $validated['preferred_language'] ?? 'ar',
-                'is_active'   => (bool)$validated['is_active'],
-                'image'       => $imagePath,
+                'is_active' => (bool) $validated['is_active'],
+                'image' => $imagePath,
             ]);
 
             // تحديث كلمة المرور إذا أُدخلت
-            if (!empty($validated['password'])) {
+            if (! empty($validated['password'])) {
                 $supervisor->update(['password' => Hash::make($validated['password'])]);
             }
 
@@ -251,7 +252,7 @@ class SupervisorController extends Controller
                 ['user_id' => $supervisor->id],
                 ['status' => 'Active']
             );
-            
+
             $profile->update([
                 'supervisor_type' => $validated['supervisor_type'],
                 'tracking_type' => $validated['tracking_type'],
@@ -259,8 +260,8 @@ class SupervisorController extends Controller
 
             // تحديث الباص
             Bus::where('supervisor_id', $supervisor->id)->update(['supervisor_id' => null]);
-            
-            if (!empty($validated['bus_id'])) {
+
+            if (! empty($validated['bus_id'])) {
                 $bus = Bus::where('id', $validated['bus_id'])->where('school_id', $user->school_id)->first();
                 if ($bus) {
                     $bus->update(['supervisor_id' => $supervisor->id]);
@@ -268,13 +269,14 @@ class SupervisorController extends Controller
             }
 
             DB::commit();
-            
+
             return redirect()
                 ->route('school.supervisors.index')
                 ->with('success', 'Supervisor updated successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()->withErrors(['error' => 'An error occurred while updating the supervisor.']);
         }
     }
@@ -289,7 +291,7 @@ class SupervisorController extends Controller
 
         if (
             $supervisor->school_id !== $user->school_id ||
-            !$supervisor->hasRole('supervisor')
+            ! $supervisor->hasRole('supervisor')
         ) {
             abort(403);
         }

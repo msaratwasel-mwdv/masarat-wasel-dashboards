@@ -4,16 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Student;
-use App\Models\StudentLocationRequest;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Services\NotificationService;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ParentController extends Controller
 {
     public function __construct(protected NotificationService $notificationService) {}
+
     /**
      * GET /api/parent/profile
      * يعيد بيانات الملف الشخصي لولي الأمر
@@ -31,16 +31,16 @@ class ParentController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => [
-                'id'          => $user->id,
-                'name'        => $user->name,
-                'name_en'     => $user->name_en,
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'name_en' => $user->name_en,
                 'national_id' => $user->national_id,
-                'email'       => $user->email,
-                'phone'       => $user->phone,
-                'role'        => $user->role,
-                'image_url'   => $imageUrl,
-                'address'     => $user->address,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'role' => $user->role,
+                'image_url' => $imageUrl,
+                'address' => $user->address,
             ],
         ]);
     }
@@ -78,7 +78,7 @@ class ParentController extends Controller
         $user = $request->user();
 
         // حذف الصورة القديمة إن وجدت
-        if ($user->image && !str_starts_with($user->image, 'http')) {
+        if ($user->image && ! str_starts_with($user->image, 'http')) {
             Storage::disk('public')->delete($user->image);
         }
 
@@ -88,8 +88,8 @@ class ParentController extends Controller
         $imageUrl = url(Storage::url($path));
 
         return response()->json([
-            'success'   => true,
-            'message'   => 'تم تحديث الصورة بنجاح.',
+            'success' => true,
+            'message' => 'تم تحديث الصورة بنجاح.',
             'image_url' => $imageUrl,
         ]);
     }
@@ -108,7 +108,7 @@ class ParentController extends Controller
             ->withCount('trips')
             ->with([
                 'todayTripAttendances.trip',
-                'forthBus.route', 
+                'forthBus.route',
                 'backBus.route',
                 'forthBus.driver.user',
                 'backBus.driver.user',
@@ -119,8 +119,8 @@ class ParentController extends Controller
                 'lastTripAttendance',
                 'currentEnrollment.classroom.school',
                 'currentEnrollment.classroom.grade',
-                'locationRequests' => fn($q) => $q->where('status', 'pending')->latest(),
-                'guardians'
+                'locationRequests' => fn ($q) => $q->where('status', 'pending')->latest(),
+                'guardians',
             ])
             ->get();
 
@@ -155,8 +155,8 @@ class ParentController extends Controller
             // نسبة الحضور
             $totalAttendances = $student->tripAttendances->count();
             $presentCount = $student->tripAttendances->whereIn('status', ['present', 'boarded'])->count();
-            $attendancePercentage = $totalAttendances > 0 
-                ? round(($presentCount / $totalAttendances) * 100) 
+            $attendancePercentage = $totalAttendances > 0
+                ? round(($presentCount / $totalAttendances) * 100)
                 : 0;
 
             // تحديد سجل الحضور اليومي النشط والمناسب للطالب بناءً على أولويات الرحلة والحالة
@@ -168,17 +168,17 @@ class ParentController extends Controller
                 });
 
                 // 2. إذا لم توجد رحلة نشطة، نأخذ السجل الأخير الذي تغيرت فيه حالة الطالب بالفعل (أي ليست غائب وليست معذور)
-                if (!$lastLog) {
+                if (! $lastLog) {
                     $lastLog = $student->todayTripAttendances
                         ->filter(function ($att) {
-                            return $att->status && !in_array($att->status, ['absent', 'excused']);
+                            return $att->status && ! in_array($att->status, ['absent', 'excused']);
                         })
                         ->sortByDesc('id')
                         ->first();
                 }
 
                 // 3. إذا لم يوجد، نأخذ آخر رحلة منتهية (finished أو completed أو awaiting_video)
-                if (!$lastLog) {
+                if (! $lastLog) {
                     $lastLog = $student->todayTripAttendances
                         ->filter(function ($att) {
                             return $att->trip && in_array($att->trip->status, ['finished', 'completed', 'awaiting_video']);
@@ -188,7 +188,7 @@ class ParentController extends Controller
                 }
 
                 // 4. كخيار أخير، نعتمد الرحلة الأولى لليوم
-                if (!$lastLog) {
+                if (! $lastLog) {
                     $lastLog = $student->todayTripAttendances->sortBy('id')->first();
                 }
             }
@@ -261,103 +261,107 @@ class ParentController extends Controller
             }
 
             return [
-                'id'           => $student->id,
-                'name'         => $student->full_name,
-                'name_en'      => $student->full_name_en,
-                'national_id'  => $student->national_id,
-                'gender'       => $student->gender,
+                'id' => $student->id,
+                'name' => $student->full_name,
+                'name_en' => $student->full_name_en,
+                'national_id' => $student->national_id,
+                'gender' => $student->gender,
                 'student_code' => $student->student_code,
-                'status'       => $studentStatus,
+                'status' => $studentStatus,
                 'suggested_direction' => $suggestedDirection,
                 'waiting_at_home_time' => $waitingAtHomeTime,
                 'on_bus_to_school_time' => $onBusToSchoolTime,
                 'at_school_time' => $atSchoolTime,
                 'on_bus_to_home_time' => $onBusToHomeTime,
                 'arrived_home_time' => $arrivedHomeTime,
-                'grade'                  => (function() use ($student) {
+                'grade' => (function () use ($student) {
                     $classroom = $student->currentEnrollment?->classroom;
                     $gradeNameAr = $classroom?->grade ? ($classroom->grade->getAttributes()['name'] ?? null) : null;
                     $classroomNameAr = $classroom ? ($classroom->getAttributes()['name'] ?? null) : null;
                     if ($gradeNameAr && $classroomNameAr) {
                         return "{$gradeNameAr} - {$classroomNameAr}";
                     }
+
                     return $gradeNameAr ?? $classroomNameAr ?? 'غير محدد';
                 })(),
-                'grade_en'               => (function() use ($student) {
+                'grade_en' => (function () use ($student) {
                     $classroom = $student->currentEnrollment?->classroom;
-                    if (!$classroom) return 'Not specified';
+                    if (! $classroom) {
+                        return 'Not specified';
+                    }
 
                     $gradeRaw = trim($classroom->grade ? ($classroom->grade->getAttributes()['name'] ?? '') : '');
                     $gradeMap = [
-                        'الصف الأول'  => 'First Grade',
+                        'الصف الأول' => 'First Grade',
                         'الصف الثاني' => 'Second Grade',
                         'الصف الثالث' => 'Third Grade',
-                        'أول ثانوي'   => 'First Secondary',
-                        'ثاني ثانوي'  => 'Second Secondary',
-                        'ثالث ثانوي'  => 'Third Secondary',
-                        'الروضة'      => 'Kindergarten',
-                        'الابتدائي'   => 'Primary',
-                        'المتوسط'     => 'Intermediate',
-                        'غير محدد'    => 'Undetermined',
+                        'أول ثانوي' => 'First Secondary',
+                        'ثاني ثانوي' => 'Second Secondary',
+                        'ثالث ثانوي' => 'Third Secondary',
+                        'الروضة' => 'Kindergarten',
+                        'الابتدائي' => 'Primary',
+                        'المتوسط' => 'Intermediate',
+                        'غير محدد' => 'Undetermined',
                     ];
                     $gradeEn = $gradeMap[$gradeRaw] ?? $gradeRaw;
 
-                    $classroomEn = !empty(trim($classroom->getAttributes()['name_en'] ?? ''))
+                    $classroomEn = ! empty(trim($classroom->getAttributes()['name_en'] ?? ''))
                         ? $classroom->getAttributes()['name_en']
                         : ($classroom->getAttributes()['name'] ?? '');
 
                     if ($gradeEn && $classroomEn) {
                         return "{$gradeEn} - {$classroomEn}";
                     }
+
                     return $gradeEn ?: $classroomEn ?: 'Not specified';
                 })(),
-                'trip_count'             => $student->trips_count ?? 0,
-                'attendance_percentage'  => $attendancePercentage,
-                'image_url'              => $imageUrl,
-                'home_lat'               => $student->latitude ?? ($student->guardians->first(fn($g) => $g->latitude && $g->longitude) ?? $user)->latitude,
-                'home_lng'               => $student->longitude ?? ($student->guardians->first(fn($g) => $g->latitude && $g->longitude) ?? $user)->longitude,
-                'forth_lat'              => $student->forth_latitude ?? $student->latitude ?? ($student->guardians->first(fn($g) => $g->latitude && $g->longitude) ?? $user)->latitude,
-                'forth_lng'              => $student->forth_longitude ?? $student->longitude ?? ($student->guardians->first(fn($g) => $g->latitude && $g->longitude) ?? $user)->longitude,
-                'back_lat'               => $student->back_latitude ?? $student->latitude ?? ($student->guardians->first(fn($g) => $g->latitude && $g->longitude) ?? $user)->latitude,
-                'back_lng'               => $student->back_longitude ?? $student->longitude ?? ($student->guardians->first(fn($g) => $g->latitude && $g->longitude) ?? $user)->longitude,
-                'home_address'           => $student->address ?? $user->address,
-                'location_note'          => $student->location_note,
+                'trip_count' => $student->trips_count ?? 0,
+                'attendance_percentage' => $attendancePercentage,
+                'image_url' => $imageUrl,
+                'home_lat' => $student->latitude ?? ($student->guardians->first(fn ($g) => $g->latitude && $g->longitude) ?? $user)->latitude,
+                'home_lng' => $student->longitude ?? ($student->guardians->first(fn ($g) => $g->latitude && $g->longitude) ?? $user)->longitude,
+                'forth_lat' => $student->forth_latitude ?? $student->latitude ?? ($student->guardians->first(fn ($g) => $g->latitude && $g->longitude) ?? $user)->latitude,
+                'forth_lng' => $student->forth_longitude ?? $student->longitude ?? ($student->guardians->first(fn ($g) => $g->latitude && $g->longitude) ?? $user)->longitude,
+                'back_lat' => $student->back_latitude ?? $student->latitude ?? ($student->guardians->first(fn ($g) => $g->latitude && $g->longitude) ?? $user)->latitude,
+                'back_lng' => $student->back_longitude ?? $student->longitude ?? ($student->guardians->first(fn ($g) => $g->latitude && $g->longitude) ?? $user)->longitude,
+                'home_address' => $student->address ?? $user->address,
+                'location_note' => $student->location_note,
                 'pending_location' => $pendingReq ? [
                     'latitude' => $pendingReq->new_latitude,
                     'longitude' => $pendingReq->new_longitude,
                     'address' => $pendingReq->new_address,
                     'created_at' => $pendingReq->created_at->toIso8601String(),
                 ] : null,
-                'school'      => $student->currentEnrollment?->classroom?->school ? [
-                    'id'      => $student->currentEnrollment->classroom->school->id,
-                    'name'    => $student->currentEnrollment->classroom->school->name,
+                'school' => $student->currentEnrollment?->classroom?->school ? [
+                    'id' => $student->currentEnrollment->classroom->school->id,
+                    'name' => $student->currentEnrollment->classroom->school->name,
                     'address' => $student->currentEnrollment->classroom->school->address,
                     'latitude' => $student->currentEnrollment->classroom->school->latitude,
                     'longitude' => $student->currentEnrollment->classroom->school->longitude,
                     'location' => $student->currentEnrollment->classroom->school->address, // Keep for backward compatibility
                 ] : null,
                 'bus' => $activeBus ? [
-                    'id'           => $activeBus->id,
-                    'bus_number'   => $activeBus->bus_number,
+                    'id' => $activeBus->id,
+                    'bus_number' => $activeBus->bus_number,
                     'plate_number' => $activeBus->plate_number,
-                    'trip_status'  => $activeBus->trip_status,
+                    'trip_status' => $activeBus->trip_status,
                     'total_students' => $activeBus->students_count,
-                    'latitude'     => $activeBus->latitude,
-                    'longitude'    => $activeBus->longitude,
-                    'target_lat'   => $activeBus->target_latitude,
-                    'target_lng'   => $activeBus->target_longitude,
+                    'latitude' => $activeBus->latitude,
+                    'longitude' => $activeBus->longitude,
+                    'target_lat' => $activeBus->target_latitude,
+                    'target_lng' => $activeBus->target_longitude,
                     'departure_time' => $activeBus->activeTrip?->departure_time?->toIso8601String(),
-                    'speed_kmh'      => cache()->get('bus_speed_'.$activeBus->id, 0),
-                    'eta_minutes'    => cache()->get('bus_eta_'.$activeBus->id),
+                    'speed_kmh' => cache()->get('bus_speed_'.$activeBus->id, 0),
+                    'eta_minutes' => cache()->get('bus_eta_'.$activeBus->id),
                     'driver' => $activeBus->driver && $activeBus->driver->user ? [
-                        'id'    => $activeBus->driver->user->id,
-                        'name'  => $activeBus->driver->user->name,
+                        'id' => $activeBus->driver->user->id,
+                        'name' => $activeBus->driver->user->name,
                         'phone' => $activeBus->driver->user->phone,
                         'image_url' => $activeBus->driver->user->avatar_url,
                     ] : null,
                     'supervisor' => $activeBus->assistant ? [
-                        'id'    => $activeBus->assistant->id,
-                        'name'  => $activeBus->assistant->name,
+                        'id' => $activeBus->assistant->id,
+                        'name' => $activeBus->assistant->name,
                         'phone' => $activeBus->assistant->phone,
                         'image_url' => $activeBus->assistant->avatar_url,
                     ] : null,
@@ -367,7 +371,7 @@ class ParentController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $data,
+            'data' => $data,
         ]);
     }
 
@@ -384,7 +388,7 @@ class ParentController extends Controller
             ->where('student_id', $id)
             ->first();
 
-        if (!$student) {
+        if (! $student) {
             return response()->json([
                 'success' => false,
                 'message' => 'الطالب غير موجود أو لا يتبع لك.',
@@ -424,7 +428,7 @@ class ParentController extends Controller
                     'absent_days' => $absentCount,
                 ],
                 'logs' => $logs,
-            ]
+            ],
         ]);
     }
 
@@ -436,9 +440,9 @@ class ParentController extends Controller
     {
         $request->validate([
             'student_id' => 'required|exists:students,id',
-            'date'       => 'required|date|after_or_equal:today',
-            'type'       => 'required|in:full_day,morning,afternoon',
-            'reason'     => 'nullable|string|max:1000',
+            'date' => 'required|date|after_or_equal:today',
+            'type' => 'required|in:full_day,morning,afternoon',
+            'reason' => 'nullable|string|max:1000',
         ]);
 
         $user = $request->user();
@@ -448,7 +452,7 @@ class ParentController extends Controller
             ->where('student_id', $request->student_id)
             ->first();
 
-        if (!$student) {
+        if (! $student) {
             return response()->json([
                 'success' => false,
                 'message' => 'الطالب غير موجود أو لا يتبع لك.',
@@ -469,12 +473,12 @@ class ParentController extends Controller
         }
 
         $absenceRequest = \App\Models\AbsenceRequest::create([
-            'student_id'  => $student->id,
+            'student_id' => $student->id,
             'guardian_id' => $user->id,
-            'date'        => $request->date,
-            'type'        => $request->type,
-            'reason'      => $request->reason,
-            'status'      => 'pending',
+            'date' => $request->date,
+            'type' => $request->type,
+            'reason' => $request->reason,
+            'status' => 'pending',
         ]);
 
         // ── إرسال إشعار فوري وتفصيلي (إدارة + طاقم) ──
@@ -484,40 +488,48 @@ class ParentController extends Controller
 
             // 1. جلب مديري المدرسة (School Admins)
             $schoolAdmins = \App\Models\User::withRole('school_admin')
-                ->whereHas('schoolAdmin', function($q) use ($student) {
+                ->whereHas('schoolAdmin', function ($q) use ($student) {
                     $q->where('school_id', $student->school_id);
                 })->pluck('id')->toArray();
-            
+
             $staffUserIds = array_merge($staffUserIds, $schoolAdmins);
 
             // 2. جلب طاقم الحافلة (سائق ومساعدة) حسب نوع الرحلة
             if ($request->type === 'full_day' || $request->type === 'morning') {
                 if ($student->forthBus) {
-                    if ($student->forthBus->driver) $staffUserIds[] = $student->forthBus->driver->user_id;
-                    if ($student->forthBus->assistant) $staffUserIds[] = $student->forthBus->assistant->id;
+                    if ($student->forthBus->driver) {
+                        $staffUserIds[] = $student->forthBus->driver->user_id;
+                    }
+                    if ($student->forthBus->assistant) {
+                        $staffUserIds[] = $student->forthBus->assistant->id;
+                    }
                 }
             }
 
             if ($request->type === 'full_day' || $request->type === 'afternoon') {
                 if ($student->backBus) {
-                    if ($student->backBus->driver) $staffUserIds[] = $student->backBus->driver->user_id;
-                    if ($student->backBus->assistant) $staffUserIds[] = $student->backBus->assistant->id;
+                    if ($student->backBus->driver) {
+                        $staffUserIds[] = $student->backBus->driver->user_id;
+                    }
+                    if ($student->backBus->assistant) {
+                        $staffUserIds[] = $student->backBus->assistant->id;
+                    }
                 }
             }
 
             $staffUserIds = array_unique(array_filter($staffUserIds));
 
             $typeKeys = [
-                'morning'   => 'ذهاب فقط',
+                'morning' => 'ذهاب فقط',
                 'afternoon' => 'عودة فقط',
-                'full_day'  => 'يوم كامل',
+                'full_day' => 'يوم كامل',
             ];
             $typeName = $typeKeys[$request->type] ?? 'يوم كامل';
 
             $typeKeysEn = [
-                'morning'   => 'Morning only',
+                'morning' => 'Morning only',
                 'afternoon' => 'Afternoon only',
-                'full_day'  => 'Full day',
+                'full_day' => 'Full day',
             ];
             $typeNameEn = $typeKeysEn[$request->type] ?? 'Full day';
 
@@ -533,12 +545,12 @@ class ParentController extends Controller
                         'date' => $absenceRequest->date->format('Y-m-d'),
                     ],
                     data: [
-                        'type'         => 'student_absence',
-                        'student_id'   => (string) $student->id,
+                        'type' => 'student_absence',
+                        'student_id' => (string) $student->id,
                         'student_name' => $student->full_name,
                         'absence_type' => $request->type,
-                        'date'         => $absenceRequest->date->format('Y-m-d'),
-                        'category'     => 'absence',
+                        'date' => $absenceRequest->date->format('Y-m-d'),
+                        'category' => 'absence',
                         'target_screen' => 'absence_history',
                     ],
                     translationParamsEn: [
@@ -549,13 +561,13 @@ class ParentController extends Controller
                 );
             }
         } catch (\Exception $e) {
-            Log::error('[Absence Notification] Detail Error: ' . $e->getMessage());
+            Log::error('[Absence Notification] Detail Error: '.$e->getMessage());
         }
 
         return response()->json([
             'success' => true,
             'message' => 'تم إرسال طلب الغياب بنجاح، وتم إبلاغ السائق فورياً.',
-            'data'    => $absenceRequest,
+            'data' => $absenceRequest,
         ], 201);
     }
 
@@ -587,7 +599,7 @@ class ParentController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $data,
+            'data' => $data,
         ]);
     }
 
@@ -621,7 +633,7 @@ class ParentController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $data,
+            'data' => $data,
         ]);
     }
 
@@ -632,15 +644,15 @@ class ParentController extends Controller
     public function updateLocation(Request $request): JsonResponse
     {
         $request->validate([
-            'latitude'  => 'required|numeric|between:-90,90',
+            'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
         ]);
 
         $user = $request->user();
         Log::info("📍 Location Update: User ID {$user->id} set location to Lat: {$request->latitude}, Lng: {$request->longitude}");
-        
+
         $user->update([
-            'latitude'  => $request->latitude,
+            'latitude' => $request->latitude,
             'longitude' => $request->longitude,
         ]);
 
@@ -656,11 +668,11 @@ class ParentController extends Controller
      */
     public function updateStudentLocation(Request $request): JsonResponse
     {
-        Log::debug("🚀 updateStudentLocation API hit", ['data' => $request->all()]);
-        
+        Log::debug('🚀 updateStudentLocation API hit', ['data' => $request->all()]);
+
         $user = $request->user();
         $studentId = $request->student_id;
-        
+
         // 🔒 Race condition guard: Prevent processing multiple requests for the same student within 5 seconds
         $cacheKey = "location_update_lock_{$user->id}_{$studentId}";
         if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
@@ -673,21 +685,21 @@ class ParentController extends Controller
 
         $request->validate([
             'student_id' => 'required|exists:students,id',
-            'latitude'   => 'required|numeric|between:-90,90',
-            'longitude'  => 'required|numeric|between:-180,180',
-            'address'    => 'nullable|string|max:500',
-            'note'       => 'nullable|string|max:1000',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'address' => 'nullable|string|max:500',
+            'note' => 'nullable|string|max:1000',
         ]);
 
         $user = $request->user();
-        
+
         // التحقق من أن الطالب يتبع لولي الأمر مع تحميل بيانات المدرسة
         $student = $user->students()
             ->where('students.id', $request->student_id)
             ->with(['currentEnrollment.classroom.grade', 'forthBus', 'backBus'])
             ->first();
 
-        if (!$student) {
+        if (! $student) {
             return response()->json([
                 'success' => false,
                 'message' => 'الطالب غير موجود أو لا يتبع لك.',
@@ -711,17 +723,17 @@ class ParentController extends Controller
         $hasValidCoordinates = ($student->latitude && floatval($student->latitude) != 0)
             || ($user->latitude && floatval($user->latitude) != 0);
 
-        $isInitialSetup = !$hasValidCoordinates;
-        
+        $isInitialSetup = ! $hasValidCoordinates;
+
         if ($isInitialSetup) {
             Log::info("🆕 Initial Location Setup: Direct update for student ID {$student->id}");
-            
+
             \Illuminate\Support\Facades\DB::transaction(function () use ($student, $request) {
                 // 1. Update student coordinates directly (أول مرة - بدون موافقة)
                 $student->update([
-                    'latitude'  => $request->latitude,
+                    'latitude' => $request->latitude,
                     'longitude' => $request->longitude,
-                    'address'   => $request->address,
+                    'address' => $request->address,
                     'location_note' => $request->note,
                 ]);
 
@@ -730,7 +742,7 @@ class ParentController extends Controller
                     ->where('status', 'pending')
                     ->update([
                         'status' => 'rejected',
-                        'rejection_reason' => 'تم تحديد الموقع بنجاح من خلال الإعداد الأولي.'
+                        'rejection_reason' => 'تم تحديد الموقع بنجاح من خلال الإعداد الأولي.',
                     ]);
             });
 
@@ -740,31 +752,34 @@ class ParentController extends Controller
             ]);
         }
 
-
         // تحديد معرف المدرسة بشكل أكثر دقة مع بدائل (Fallbacks)
         $schoolId = $student->school_id;
         if ($schoolId) {
             Log::info("✅ Found school_id from student accessor: $schoolId");
         }
-        
+
         // 1. Try Enrollment chain (Preferred)
-        if (!$schoolId) {
+        if (! $schoolId) {
             $schoolId = $student->currentEnrollment?->classroom?->grade?->school_id;
-            if ($schoolId) Log::info("✅ Found school_id from enrollment chain: $schoolId");
-        }
-        
-        // 2. Try Bus associations (Fallback)
-        if (!$schoolId) {
-            $schoolId = $student->forthBus?->school_id ?? $student->backBus?->school_id;
-            if ($schoolId) Log::info("✅ Found school_id from bus association: $schoolId");
+            if ($schoolId) {
+                Log::info("✅ Found school_id from enrollment chain: $schoolId");
+            }
         }
 
-        if (!$schoolId) {
+        // 2. Try Bus associations (Fallback)
+        if (! $schoolId) {
+            $schoolId = $student->forthBus?->school_id ?? $student->backBus?->school_id;
+            if ($schoolId) {
+                Log::info("✅ Found school_id from bus association: $schoolId");
+            }
+        }
+
+        if (! $schoolId) {
             Log::warning("⚠️ Could not determine school_id for student ID {$student->id} in location request.");
         }
 
         Log::info("📍 Student Location Change Request: Guardian ID {$user->id} for Student ID {$student->id} (School: {$schoolId}) to Lat: {$request->latitude}, Lng: {$request->longitude}");
-        
+
         // إنشاء طلب تغيير الموقع مع منطق "البحث الذكي" عن الموقع القديم (Fallback)
         $oldLat = ($student->latitude && $student->latitude != 0) ? $student->latitude : $user->latitude;
         $oldLng = ($student->longitude && $student->longitude != 0) ? $student->longitude : $user->longitude;
@@ -772,21 +787,22 @@ class ParentController extends Controller
 
         try {
             $locationRequest = \App\Models\StudentLocationRequest::create([
-                'student_id'   => $student->id,
-                'guardian_id'  => $user->id,
-                'school_id'    => $schoolId,
+                'student_id' => $student->id,
+                'guardian_id' => $user->id,
+                'school_id' => $schoolId,
                 'old_latitude' => $oldLat,
-                'old_longitude'=> $oldLng,
-                'old_address'  => $oldAddr,
+                'old_longitude' => $oldLng,
+                'old_address' => $oldAddr,
                 'new_latitude' => $request->latitude,
-                'new_longitude'=> $request->longitude,
-                'new_address'  => $request->address,
-                'note'         => $request->note,
-                'status'       => 'pending',
+                'new_longitude' => $request->longitude,
+                'new_address' => $request->address,
+                'note' => $request->note,
+                'status' => 'pending',
             ]);
             Log::info("✅ StudentLocationRequest created successfully: ID {$locationRequest->id}");
         } catch (\Exception $e) {
-            Log::error("❌ Failed to create StudentLocationRequest: " . $e->getMessage());
+            Log::error('❌ Failed to create StudentLocationRequest: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ أثناء حفظ الطلب.',
@@ -798,11 +814,11 @@ class ParentController extends Controller
             if ($schoolId) {
                 $notificationService = app(\App\Services\NotificationService::class);
                 $adminIds = \App\Models\User::atSchool($schoolId)
-                    ->whereHas('roles', fn($q) => $q->where('name', 'school_admin'))
+                    ->whereHas('roles', fn ($q) => $q->where('name', 'school_admin'))
                     ->where('id', '!=', $user->id)
                     ->pluck('id');
-                    
-                Log::info("🔔 Notifying " . count($adminIds) . " school admins for location request ID {$locationRequest->id}");
+
+                Log::info('🔔 Notifying '.count($adminIds)." school admins for location request ID {$locationRequest->id}");
 
                 foreach ($adminIds as $adminId) {
                     $notificationService->sendTranslatedToUser(
@@ -819,7 +835,7 @@ class ParentController extends Controller
                             'location_request_id' => $locationRequest->id,
                             'student_id' => $student->id,
                             'category' => 'location_requests',
-                            'target_screen' => 'location_request_details'
+                            'target_screen' => 'location_request_details',
                         ],
                         fromUserName: $user->name,
                         translationParamsEn: [
@@ -832,7 +848,7 @@ class ParentController extends Controller
                 Log::error("❌ Cannot notify admins: School ID is null for student {$student->id}");
             }
         } catch (\Exception $e) {
-            Log::error("❌ Failed to notify admins about location request: " . $e->getMessage());
+            Log::error('❌ Failed to notify admins about location request: '.$e->getMessage());
         }
 
         return response()->json([
@@ -841,6 +857,3 @@ class ParentController extends Controller
         ]);
     }
 }
-
-
-

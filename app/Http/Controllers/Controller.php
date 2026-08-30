@@ -32,5 +32,3 @@ abstract class Controller
     // هو يضيف قدرة "التحقق من الصلاحيات" لكل المتحكمات في مشروعك
     use AuthorizesRequests;
 }
-
-

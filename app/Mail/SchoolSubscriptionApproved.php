@@ -2,20 +2,21 @@
 
 namespace App\Mail;
 
+use App\Models\School;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\School;
 
 class SchoolSubscriptionApproved extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $school;
+
     public $subscription;
+
     public $lang;
 
     public function __construct(School $school, $subscription)
@@ -27,7 +28,7 @@ class SchoolSubscriptionApproved extends Mailable
 
     public function envelope(): Envelope
     {
-        $subject = $this->lang === 'en' 
+        $subject = $this->lang === 'en'
             ? 'Your school subscription has been approved - Masarat Wasel'
             : 'تمت الموافقة على اشتراك مدرستك - مسارات واصل';
 

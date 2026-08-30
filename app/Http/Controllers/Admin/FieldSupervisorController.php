@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use Inertia\Inertia;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class FieldSupervisorController extends Controller
 {
@@ -19,13 +19,13 @@ class FieldSupervisorController extends Controller
     {
         $statusFilter = $request->input('status', 'all');
 
-        $query = User::whereHas('roles', fn($q) => $q->where('name', 'field_supervisor'))
+        $query = User::whereHas('roles', fn ($q) => $q->where('name', 'field_supervisor'))
             ->with(['roles', 'fieldSupervisor']);
 
         if ($statusFilter === 'active') {
-            $query->whereHas('fieldSupervisor', fn($q) => $q->where('status', 'active'));
+            $query->whereHas('fieldSupervisor', fn ($q) => $q->where('status', 'active'));
         } elseif ($statusFilter === 'inactive') {
-            $query->whereHas('fieldSupervisor', fn($q) => $q->where('status', 'inactive'));
+            $query->whereHas('fieldSupervisor', fn ($q) => $q->where('status', 'inactive'));
         }
 
         $paginated = $this->applyDataTable($query, $request, [
@@ -33,7 +33,7 @@ class FieldSupervisorController extends Controller
             'national_id',
             'phone',
             'email',
-        ], 15, function($supervisor) {
+        ], 15, function ($supervisor) {
             return [
                 'الاسم' => $supervisor->name,
                 'الاسم (EN)' => $supervisor->name_en,
@@ -41,7 +41,7 @@ class FieldSupervisorController extends Controller
                 'الهوية' => $supervisor->national_id,
                 'رقم الجوال' => $supervisor->phone,
                 'البريد الإلكتروني' => $supervisor->email,
-                'الحالة' => match($supervisor->fieldSupervisor?->status ?? '') {
+                'الحالة' => match ($supervisor->fieldSupervisor?->status ?? '') {
                     'active' => 'نشط',
                     'inactive' => 'غير نشط',
                     default => $supervisor->fieldSupervisor?->status ?? 'نشط',
@@ -53,7 +53,7 @@ class FieldSupervisorController extends Controller
             return $paginated;
         }
 
-        $counts = \Illuminate\Support\Facades\Cache::remember('field_supervisor_counts', 600, function() {
+        $counts = \Illuminate\Support\Facades\Cache::remember('field_supervisor_counts', 600, function () {
             $supervisorUserIds = DB::table('user_roles')
                 ->join('roles', 'user_roles.role_id', '=', 'roles.id')
                 ->where('roles.name', 'field_supervisor')
@@ -75,11 +75,11 @@ class FieldSupervisorController extends Controller
 
         return Inertia::render('Admin/FieldSupervisors/Index', [
             'supervisors' => $paginated,
-            'counts'      => $counts,
-            'filters'     => [
+            'counts' => $counts,
+            'filters' => [
                 'search' => $request->input('search', ''),
                 'status' => $statusFilter,
-            ]
+            ],
         ]);
     }
 
@@ -188,6 +188,7 @@ class FieldSupervisorController extends Controller
     public function destroy(User $field_supervisor)
     {
         $field_supervisor->delete();
+
         return redirect()->back()->with('success', 'Field Supervisor deleted successfully');
     }
 
@@ -207,19 +208,20 @@ class FieldSupervisorController extends Controller
             'file' => 'required|mimes:xlsx,xls,csv|max:10240',
         ]);
 
-        $import = new \App\Imports\FieldSupervisorsImport();
+        $import = new \App\Imports\FieldSupervisorsImport;
 
         try {
             \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
         } catch (\Throwable $e) {
-            $errorMsg = "فشل في معالجة ملف الاستيراد: " . $e->getMessage() . " / Excel Import file processing failed: " . $e->getMessage();
+            $errorMsg = 'فشل في معالجة ملف الاستيراد: '.$e->getMessage().' / Excel Import file processing failed: '.$e->getMessage();
+
             return redirect()->back()->with('import_errors', [$errorMsg]);
         }
 
         $errorsArray = [];
 
         if ($import->failures()->isNotEmpty()) {
-            $customAttributes = (new \App\Imports\FieldSupervisorsImport())->customValidationAttributes();
+            $customAttributes = (new \App\Imports\FieldSupervisorsImport)->customValidationAttributes();
             foreach ($import->failures() as $failure) {
                 $row = $failure->row();
                 $attributeKey = $failure->attribute();
@@ -233,8 +235,12 @@ class FieldSupervisorController extends Controller
                 }
 
                 $badValue = $failure->values()[$originalKey] ?? 'فارغة (Empty)';
-                if (is_scalar($badValue) && trim((string)$badValue) === '') $badValue = 'فارغة (Empty)';
-                if ($badValue === null) $badValue = 'فارغة (Empty)';
+                if (is_scalar($badValue) && trim((string) $badValue) === '') {
+                    $badValue = 'فارغة (Empty)';
+                }
+                if ($badValue === null) {
+                    $badValue = 'فارغة (Empty)';
+                }
 
                 $errors = implode(' | ', $failure->errors());
 
@@ -246,15 +252,16 @@ class FieldSupervisorController extends Controller
             foreach ($import->errors() as $error) {
                 $msg = $error->getMessage();
                 if (str_contains($msg, 'Duplicate entry') && str_contains($msg, 'users_email_unique')) {
-                    $errorsArray[] = "خطأ قاعدة بيانات: البريد الإلكتروني مكرر ومسجل مسبقاً لدى مستخدم آخر / Database Error: Email address is already taken by another user.";
+                    $errorsArray[] = 'خطأ قاعدة بيانات: البريد الإلكتروني مكرر ومسجل مسبقاً لدى مستخدم آخر / Database Error: Email address is already taken by another user.';
                 } else {
-                    $errorsArray[] = "السطر خطأ: " . $msg . " / Skipped row processing error: " . $msg;
+                    $errorsArray[] = 'السطر خطأ: '.$msg.' / Skipped row processing error: '.$msg;
                 }
             }
         }
 
-        if (!empty($errorsArray)) {
+        if (! empty($errorsArray)) {
             $msg = "تم استيراد {$import->successCount} مشرف ميداني بنجاح. وتم تخطي بعض الأسطر بسبب وجود أخطاء.";
+
             return redirect()->back()
                 ->with('success', $msg)
                 ->with('import_errors', $errorsArray);
@@ -268,30 +275,30 @@ class FieldSupervisorController extends Controller
         $statusFilter = $request->input('status', 'all');
         $search = $request->input('search');
 
-        $query = User::whereHas('roles', fn($q) => $q->where('name', 'field_supervisor'))
+        $query = User::whereHas('roles', fn ($q) => $q->where('name', 'field_supervisor'))
             ->with(['roles', 'fieldSupervisor']);
 
         if ($statusFilter === 'active') {
-            $query->whereHas('fieldSupervisor', fn($q) => $q->where('status', 'active'));
+            $query->whereHas('fieldSupervisor', fn ($q) => $q->where('status', 'active'));
         } elseif ($statusFilter === 'inactive') {
-            $query->whereHas('fieldSupervisor', fn($q) => $q->where('status', 'inactive'));
+            $query->whereHas('fieldSupervisor', fn ($q) => $q->where('status', 'inactive'));
         }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('first_name_ar', 'like', "%{$search}%")
-                  ->orWhere('last_name_ar', 'like', "%{$search}%")
-                  ->orWhere('first_name_en', 'like', "%{$search}%")
-                  ->orWhere('last_name_en', 'like', "%{$search}%")
-                  ->orWhere('national_id', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('last_name_ar', 'like', "%{$search}%")
+                    ->orWhere('first_name_en', 'like', "%{$search}%")
+                    ->orWhere('last_name_en', 'like', "%{$search}%")
+                    ->orWhere('national_id', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
         $query->latest();
 
-        $supervisors = $query->get()->map(function($supervisor) {
+        $supervisors = $query->get()->map(function ($supervisor) {
             return [
                 'id' => $supervisor->id,
                 'name' => $supervisor->name,

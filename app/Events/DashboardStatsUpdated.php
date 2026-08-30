@@ -12,12 +12,11 @@ class DashboardStatsUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public string $key, public array $channels)
-    {}
+    public function __construct(public string $key, public array $channels) {}
 
     public function broadcastOn(): array
     {
-        return array_map(fn($ch) => new PrivateChannel($ch), $this->channels);
+        return array_map(fn ($ch) => new PrivateChannel($ch), $this->channels);
     }
 
     public function broadcastAs(): string

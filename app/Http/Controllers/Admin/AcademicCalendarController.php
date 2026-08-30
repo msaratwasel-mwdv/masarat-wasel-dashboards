@@ -14,9 +14,10 @@ class AcademicCalendarController extends Controller
     {
         $calendars = AcademicCalendar::with('school')->latest()->get();
         $schools = School::select('id', 'name')->get();
+
         return Inertia::render('Admin/AcademicCalendars/Index', [
             'calendars' => $calendars,
-            'schools' => $schools
+            'schools' => $schools,
         ]);
     }
 
@@ -52,6 +53,7 @@ class AcademicCalendarController extends Controller
         }
 
         AcademicCalendar::create($validated);
+
         return redirect()->back()->with('success', 'تم إنشاء التقويم الدراسي بنجاح');
     }
 
@@ -90,12 +92,14 @@ class AcademicCalendarController extends Controller
         }
 
         $academic_calendar->update($validated);
+
         return redirect()->back()->with('success', 'تم تحديث التقويم بنجاح');
     }
 
     public function destroy(AcademicCalendar $academic_calendar)
     {
         $academic_calendar->delete();
+
         return redirect()->back()->with('success', 'تم حذف التقويم بنجاح');
     }
 }

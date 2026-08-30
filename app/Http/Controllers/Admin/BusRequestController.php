@@ -3,13 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\BusRequest;
 use App\Models\Bus;
-use App\Models\User;
+use App\Models\BusRequest;
 use App\Traits\DataTableTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class BusRequestController extends Controller
@@ -34,19 +32,19 @@ class BusRequestController extends Controller
             'purpose',
             'school.name',
             'request_type',
-        ], 15, function($busReq) {
+        ], 15, function ($busReq) {
             return [
                 'المدرسة' => $busReq->school ? $busReq->school->name : 'غير محدد',
-                'نوع الطلب' => match($busReq->request_type) {
+                'نوع الطلب' => match ($busReq->request_type) {
                     'permanent' => 'دائم',
                     'temporary' => 'مؤقت',
                     default => $busReq->request_type
                 },
                 'المقاعد المطلوبة' => $busReq->seats,
-                'التكلفة الإجمالية' => $busReq->cost ? number_format($busReq->cost, 2) . ' ريال' : 'غير محدد',
+                'التكلفة الإجمالية' => $busReq->cost ? number_format($busReq->cost, 2).' ريال' : 'غير محدد',
                 'السبب' => $busReq->purpose,
                 'تاريخ الإنشاء' => $busReq->created_at->format('Y-m-d H:i'),
-                'الحالة' => match($busReq->status) {
+                'الحالة' => match ($busReq->status) {
                     'pending' => 'قيد الانتظار',
                     'approved' => 'مقبول',
                     'rejected' => 'مرفوض',
@@ -62,8 +60,8 @@ class BusRequestController extends Controller
 
         // Counts for filter tabs (unfiltered)
         $counts = [
-            'all'      => BusRequest::count(),
-            'pending'  => BusRequest::where('status', 'pending')->count(),
+            'all' => BusRequest::count(),
+            'pending' => BusRequest::where('status', 'pending')->count(),
             'approved' => BusRequest::where('status', 'approved')->count(),
             'rejected' => BusRequest::where('status', 'rejected')->count(),
         ];
@@ -76,8 +74,8 @@ class BusRequestController extends Controller
 
         return Inertia::render('Admin/BusRequests/Index', [
             'requests' => $paginated,
-            'counts'   => $counts,
-            'filters'  => [
+            'counts' => $counts,
+            'filters' => [
                 'search' => $request->input('search', ''),
                 'status' => $status ?? 'all',
             ],
@@ -131,5 +129,3 @@ class BusRequestController extends Controller
             ->with('success', 'تم رفض الطلب');
     }
 }
-
-

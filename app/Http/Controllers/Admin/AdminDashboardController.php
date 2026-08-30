@@ -4,15 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bus;
-use App\Models\User; // Driver & Supervisor
-use Inertia\Inertia;
+// Driver & Supervisor
 use Carbon\Carbon;
+use Inertia\Inertia;
 
 class AdminDashboardController extends Controller
 {
     public function index()
     {
-        $stats = \Illuminate\Support\Facades\Cache::remember('admin_dashboard_stats', 300, function() {
+        $stats = \Illuminate\Support\Facades\Cache::remember('admin_dashboard_stats', 300, function () {
             // --- 1. Bus Stats ---
             $busTotal = Bus::count();
             $busMaintenance = Bus::where('status', 'maintenance')->count();
@@ -82,14 +82,14 @@ class AdminDashboardController extends Controller
 
         // --- 5. Trends & Charts (US-REP-002) ---
         $sevenDaysAgo = Carbon::now()->subDays(6)->startOfDay();
-        
+
         // Trips Trend (Last 7 Days)
         $tripsTrend = \App\Models\Trip::where('trip_date', '>=', $sevenDaysAgo)
             ->selectRaw('trip_date, count(*) as count')
             ->groupBy('trip_date')
             ->orderBy('trip_date')
             ->get()
-            ->map(function($item) {
+            ->map(function ($item) {
                 return [
                     'date' => Carbon::parse($item->trip_date)->format('m/d'),
                     'count' => $item->count,
@@ -98,7 +98,7 @@ class AdminDashboardController extends Controller
 
         // Ensure we have 7 points even if database is empty (Mock fallback for WOW factor)
         if ($tripsTrend->count() < 7) {
-            $tripsTrend = collect(range(0, 6))->map(function($days) {
+            $tripsTrend = collect(range(0, 6))->map(function ($days) {
                 return [
                     'date' => Carbon::now()->subDays(6 - $days)->format('m/d'),
                     'count' => rand(15, 60), // Mock data for empty systems
@@ -114,8 +114,9 @@ class AdminDashboardController extends Controller
         ];
 
         // --- 6. Recent Activities Feed ---
-        $recentViolations = \App\Models\Violation::with('bus')->latest()->take(3)->get()->map(function($item) {
+        $recentViolations = \App\Models\Violation::with('bus')->latest()->take(3)->get()->map(function ($item) {
             $busPlate = $item->bus ? $item->bus->plate_number : 'باص غير معرّف';
+
             return [
                 'id' => $item->id,
                 'type' => 'violation',
@@ -129,7 +130,7 @@ class AdminDashboardController extends Controller
         });
 
         // Fetch actual recent bus requests
-        $recentRequests = \App\Models\BusRequest::with('school')->latest()->take(3)->get()->map(function($item) {
+        $recentRequests = \App\Models\BusRequest::with('school')->latest()->take(3)->get()->map(function ($item) {
             return [
                 'id' => $item->id,
                 'type' => 'bus_request',
@@ -174,7 +175,7 @@ class AdminDashboardController extends Controller
             $expiryDate = Carbon::parse($profile->license_expiry_date);
             $daysLeft = (int) ceil(Carbon::now()->floatDiffInDays($expiryDate, false));
             $driverName = $profile->user
-                ? ($profile->user->first_name_ar . ' ' . $profile->user->last_name_ar)
+                ? ($profile->user->first_name_ar.' '.$profile->user->last_name_ar)
                 : 'Unknown';
             $formattedDate = $expiryDate->format('Y-m-d');
 
@@ -193,7 +194,7 @@ class AdminDashboardController extends Controller
         foreach ($expiredLicenses as $profile) {
             $expiryDate = Carbon::parse($profile->license_expiry_date);
             $driverName = $profile->user
-                ? ($profile->user->first_name_ar . ' ' . $profile->user->last_name_ar)
+                ? ($profile->user->first_name_ar.' '.$profile->user->last_name_ar)
                 : 'Unknown';
             $formattedDate = $expiryDate->format('Y-m-d');
 
@@ -203,7 +204,6 @@ class AdminDashboardController extends Controller
                 'message' => "خطر: رخصة السائق ({$driverName}) منتهية منذ تاريخ {$formattedDate}!",
             ];
         }
-
 
         // 3. بيانات الخريطة الوهمية (US-REP-001)
         // سنفترض وجود 3 باصات تتحرك في "مسقط" مثلاً
@@ -215,7 +215,7 @@ class AdminDashboardController extends Controller
                 'lng' => 58.4059,
                 'status' => 'moving',
                 'speed' => '45 km/h',
-                'school_id' => 1 // Demo
+                'school_id' => 1, // Demo
             ],
             [
                 'id' => 102,
@@ -224,7 +224,7 @@ class AdminDashboardController extends Controller
                 'lng' => 58.4200,
                 'status' => 'stopped',
                 'speed' => '0 km/h',
-                'school_id' => 1 // Demo
+                'school_id' => 1, // Demo
             ],
             [
                 'id' => 103,
@@ -233,8 +233,8 @@ class AdminDashboardController extends Controller
                 'lng' => 58.3900,
                 'status' => 'moving',
                 'speed' => '60 km/h',
-                'school_id' => 2 // Demo different school
-            ]
+                'school_id' => 2, // Demo different school
+            ],
         ];
 
         // 4. Data for Filters
@@ -262,5 +262,3 @@ class AdminDashboardController extends Controller
         ]);
     }
 }
-
-

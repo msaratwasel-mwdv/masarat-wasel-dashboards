@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Attendance;
 use App\Models\Classroom;
 use App\Models\Student;
-use App\Models\Attendance;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,18 +18,19 @@ class TeacherController extends Controller
     {
         $this->notificationService = $notificationService;
     }
+
     /**
      * Get all classes assigned to the authenticated teacher.
      */
     public function getClasses(Request $request)
     {
         $teacher = $request->user()->teacher;
-        if (!$teacher || !$teacher->grade_id) {
+        if (! $teacher || ! $teacher->grade_id) {
             return response()->json([]);
         }
-        
+
         $classes = Classroom::where('grade_id', $teacher->grade_id)->withCount('students')->get();
-        
+
         $result = $classes->map(function ($cls) use ($teacher) {
             return [
                 'id' => (string) $cls->id,
@@ -52,7 +53,7 @@ class TeacherController extends Controller
         $students = Student::with('guardian')->whereHas('enrollments', function ($q) use ($classId) {
             $q->where('classroom_id', $classId)->where('is_active', true);
         })->get();
-        
+
         $students = $students->map(function ($student) use ($classId) {
             // Find today's attendance if exists
             $attendance = Attendance::where('student_id', $student->id)
@@ -62,13 +63,13 @@ class TeacherController extends Controller
 
             $photoUrl = null;
             if ($student->image) {
-                $photoUrl = url('storage/' . ltrim($student->image, '/'));
-            } 
-            
+                $photoUrl = url('storage/'.ltrim($student->image, '/'));
+            }
+
             $parentPhotoUrl = null;
             $guardian = $student->guardian instanceof \Illuminate\Database\Eloquent\Collection ? $student->guardian->first() : $student->guardian;
             if ($guardian && $guardian->image) {
-                $parentPhotoUrl = url('storage/' . ltrim($guardian->image, '/'));
+                $parentPhotoUrl = url('storage/'.ltrim($guardian->image, '/'));
             }
 
             return [
@@ -111,36 +112,39 @@ class TeacherController extends Controller
             'all' => $request->all(),
         ]);
 
-        $isEn = ($request->header('Accept-Language') === 'en' 
-            || $request->input('lang') === 'en' 
+        $isEn = ($request->header('Accept-Language') === 'en'
+            || $request->input('lang') === 'en'
             || ($request->user() && $request->user()->preferred_language === 'en'));
 
         $teacher = $request->user()->teacher;
-        if (!$teacher || !$teacher->grade_id) {
+        if (! $teacher || ! $teacher->grade_id) {
             $msg = $isEn ? 'Unauthorized or teacher not assigned to a grade' : 'غير مصرح أو المعلم غير مسند لمرحلة دراسية';
+
             return response()->json(['message' => $msg], 403);
         }
 
         // Find student by ID, code, or national ID to support various QR/card formats
         $student = Student::with('enrollments')
-            ->where(function($query) use ($studentId) {
+            ->where(function ($query) use ($studentId) {
                 if (is_numeric($studentId)) {
                     $query->where('id', $studentId);
                 }
                 $query->orWhere('student_code', $studentId)
-                      ->orWhere('national_id', $studentId);
+                    ->orWhere('national_id', $studentId);
             })
             ->firstOrFail();
 
         $enrollment = $student->currentEnrollment;
-        if (!$enrollment) {
+        if (! $enrollment) {
             $msg = $isEn ? 'Student not enrolled in any active class' : 'الطالب غير مسجل في أي فصل نشط حالياً';
+
             return response()->json(['message' => $msg], 400);
         }
 
         $classroom = $enrollment->classroom;
-        if (!$classroom || $classroom->grade_id !== $teacher->grade_id) {
+        if (! $classroom || $classroom->grade_id !== $teacher->grade_id) {
             $msg = $isEn ? 'Student does not belong to your assigned grade' : 'هذا الطالب غير مسجل في فصولك أو مرحلتك الدراسية';
+
             return response()->json(['message' => $msg], 403);
         }
 
@@ -151,9 +155,10 @@ class TeacherController extends Controller
             ->first();
 
         if ($existingAttendance && $existingAttendance->is_notified && $existingAttendance->status !== 'unknown') {
-            $msg = $isEn 
-                ? 'Attendance is already confirmed and cannot be modified except by administration.' 
+            $msg = $isEn
+                ? 'Attendance is already confirmed and cannot be modified except by administration.'
                 : 'تم تأكيد تحضير هذا الطالب مسبقاً ولا يمكن تعديله إلا من خلال الإدارة';
+
             return response()->json(['message' => $msg], 403);
         }
 
@@ -180,18 +185,18 @@ class TeacherController extends Controller
             if ($viaQr) {
                 $statusAr = match ($request->status) {
                     'present' => 'حاضراً',
-                    'absent'  => 'غائباً',
-                    'late'    => 'متأخراً',
+                    'absent' => 'غائباً',
+                    'late' => 'متأخراً',
                     'excused' => 'معذوراً',
-                    default   => $request->status,
+                    default => $request->status,
                 };
 
                 $statusEn = match ($request->status) {
                     'present' => 'present',
-                    'absent'  => 'absent',
-                    'late'    => 'late',
+                    'absent' => 'absent',
+                    'late' => 'late',
                     'excused' => 'excused',
-                    default   => $request->status,
+                    default => $request->status,
                 };
 
                 foreach ($student->guardians as $guardian) {
@@ -205,12 +210,12 @@ class TeacherController extends Controller
                             'status' => $statusAr,
                         ],
                         data: [
-                            'student_id'   => (string) $student->id,
+                            'student_id' => (string) $student->id,
                             'student_name' => $student->full_name,
                             'student_name_en' => $student->full_name_en,
-                            'status'       => $request->status,
-                            'date'         => today()->toDateString(),
-                            'category'     => 'attendance',
+                            'status' => $request->status,
+                            'date' => today()->toDateString(),
+                            'category' => 'attendance',
                             'target_screen' => 'attendance_details',
                         ],
                         translationParamsEn: [
@@ -223,6 +228,7 @@ class TeacherController extends Controller
         }
 
         $msg = $isEn ? 'Attendance marked successfully' : 'تم تسجيل الحضور بنجاح';
+
         return response()->json(['message' => $msg, 'attendance' => $attendance]);
     }
 
@@ -232,7 +238,7 @@ class TeacherController extends Controller
     public function confirmAttendance(Request $request, $classId)
     {
         $classroom = Classroom::findOrFail($classId);
-        
+
         $notifiedCount = 0;
 
         DB::transaction(function () use ($classId, &$notifiedCount) {
@@ -255,58 +261,60 @@ class TeacherController extends Controller
             // 3. Process notifications (can be done inside or outside, but here inside for atomicity)
             foreach ($attendances as $attendance) {
                 $student = $attendance->student;
-                if (!$student || $student->guardians->isEmpty()) continue;
+                if (! $student || $student->guardians->isEmpty()) {
+                    continue;
+                }
 
-            $statusAr = match ($attendance->status) {
-                'present' => 'حاضراً',
-                'absent'  => 'غائباً',
-                'late'    => 'متأخراً',
-                'excused' => 'معذوراً',
-                default   => $attendance->status,
-            };
+                $statusAr = match ($attendance->status) {
+                    'present' => 'حاضراً',
+                    'absent' => 'غائباً',
+                    'late' => 'متأخراً',
+                    'excused' => 'معذوراً',
+                    default => $attendance->status,
+                };
 
-            $statusEn = match ($attendance->status) {
-                'present' => 'present',
-                'absent'  => 'absent',
-                'late'    => 'late',
-                'excused' => 'excused',
-                default   => $attendance->status,
-            };
+                $statusEn = match ($attendance->status) {
+                    'present' => 'present',
+                    'absent' => 'absent',
+                    'late' => 'late',
+                    'excused' => 'excused',
+                    default => $attendance->status,
+                };
 
-            foreach ($student->guardians as $guardian) {
-                $this->notificationService->sendTranslatedToUser(
-                    userId: $guardian->id,
-                    type: 'school_attendance',
-                    titleKey: 'notifications.school_attendance_title',
-                    messageKey: 'notifications.school_attendance_message',
-                    translationParams: [
-                        'student' => $student->full_name,
-                        'status' => $statusAr,
-                    ],
-                    data: [
-                        'student_id'   => (string) $student->id,
-                        'student_name' => $student->full_name,
-                        'student_name_en' => $student->full_name_en,
-                        'status'       => $attendance->status,
-                        'date'         => today()->toDateString(),
-                        'category'     => 'attendance',
-                        'target_screen' => 'attendance_details',
-                    ],
-                    translationParamsEn: [
-                        'student' => $student->full_name_en ?: $student->full_name,
-                        'status' => $statusEn,
-                    ]
-                );
-            }
+                foreach ($student->guardians as $guardian) {
+                    $this->notificationService->sendTranslatedToUser(
+                        userId: $guardian->id,
+                        type: 'school_attendance',
+                        titleKey: 'notifications.school_attendance_title',
+                        messageKey: 'notifications.school_attendance_message',
+                        translationParams: [
+                            'student' => $student->full_name,
+                            'status' => $statusAr,
+                        ],
+                        data: [
+                            'student_id' => (string) $student->id,
+                            'student_name' => $student->full_name,
+                            'student_name_en' => $student->full_name_en,
+                            'status' => $attendance->status,
+                            'date' => today()->toDateString(),
+                            'category' => 'attendance',
+                            'target_screen' => 'attendance_details',
+                        ],
+                        translationParamsEn: [
+                            'student' => $student->full_name_en ?: $student->full_name,
+                            'status' => $statusEn,
+                        ]
+                    );
+                }
 
-            $attendance->update(['is_notified' => true]);
-            $notifiedCount++;
+                $attendance->update(['is_notified' => true]);
+                $notifiedCount++;
             }
         });
 
         return response()->json([
             'message' => "تم إرسال إشعارات الحضور لعدد $notifiedCount طلاب بنجاح.",
-            'notified_count' => $notifiedCount
+            'notified_count' => $notifiedCount,
         ]);
     }
 
@@ -338,26 +346,26 @@ class TeacherController extends Controller
 
         $dailyRecords = [];
 
-        $groupedByDate = $attendances->groupBy(function($item) {
+        $groupedByDate = $attendances->groupBy(function ($item) {
             return \Carbon\Carbon::parse($item->date)->format('Y-m-d');
         });
 
         foreach ($groupedByDate as $date => $records) {
             $presentCount = $records->whereIn('status', ['present', 'late'])->count();
             $absentCount = $records->whereIn('status', ['absent', 'excused'])->count();
-            
-            $attendedStudents = $records->map(function($record) {
+
+            $attendedStudents = $records->map(function ($record) {
                 $student = $record->student;
-                
+
                 $photoUrl = null;
                 $parentPhotoUrl = null;
                 if ($student) {
                     if ($student->image) {
-                        $photoUrl = url('storage/' . ltrim($student->image, '/'));
-                    } 
+                        $photoUrl = url('storage/'.ltrim($student->image, '/'));
+                    }
                     $guardian = $student->guardian instanceof \Illuminate\Database\Eloquent\Collection ? $student->guardian->first() : $student->guardian;
                     if ($guardian && $guardian->image) {
-                        $parentPhotoUrl = url('storage/' . ltrim($guardian->image, '/'));
+                        $parentPhotoUrl = url('storage/'.ltrim($guardian->image, '/'));
                     }
                 }
 
@@ -377,14 +385,14 @@ class TeacherController extends Controller
                 'totalStudents' => $totalStudents,
                 'presentCount' => $presentCount,
                 'absentCount' => $absentCount,
-                'attendedStudents' => $attendedStudents
+                'attendedStudents' => $attendedStudents,
             ];
         }
 
         return response()->json([
             'classId' => (string) $classId,
             'className' => $classroom->name ?? 'غير معروف',
-            'dailyRecords' => $dailyRecords
+            'dailyRecords' => $dailyRecords,
         ]);
     }
 
@@ -394,11 +402,11 @@ class TeacherController extends Controller
     public function getTeacherAttendanceHistory(Request $request)
     {
         $teacher = $request->user()->teacher;
-        if (!$teacher || !$teacher->grade_id) {
+        if (! $teacher || ! $teacher->grade_id) {
             return response()->json([]);
         }
 
-        $year  = $request->input('year', now()->year);
+        $year = $request->input('year', now()->year);
         $month = $request->input('month', now()->month);
 
         $classes = Classroom::where('grade_id', $teacher->grade_id)->with('students.guardian')->get();
@@ -416,26 +424,26 @@ class TeacherController extends Controller
                 ->get();
 
             $dailyRecords = [];
-            $groupedByDate = $attendances->groupBy(function($item) {
+            $groupedByDate = $attendances->groupBy(function ($item) {
                 return \Carbon\Carbon::parse($item->date)->format('Y-m-d');
             });
 
             foreach ($groupedByDate as $date => $records) {
                 $presentCount = $records->whereIn('status', ['present', 'late'])->count();
                 $absentCount = $records->whereIn('status', ['absent', 'excused'])->count();
-                
-                $attendedStudents = $records->map(function($record) {
+
+                $attendedStudents = $records->map(function ($record) {
                     $student = $record->student;
-                    
+
                     $photoUrl = null;
                     $parentPhotoUrl = null;
                     if ($student) {
                         if ($student->image) {
-                            $photoUrl = url('storage/' . ltrim($student->image, '/'));
-                        } 
+                            $photoUrl = url('storage/'.ltrim($student->image, '/'));
+                        }
                         $guardian = $student->guardian instanceof \Illuminate\Database\Eloquent\Collection ? $student->guardian->first() : $student->guardian;
                         if ($guardian && $guardian->image) {
-                            $parentPhotoUrl = url('storage/' . ltrim($guardian->image, '/'));
+                            $parentPhotoUrl = url('storage/'.ltrim($guardian->image, '/'));
                         }
                     }
 
@@ -455,14 +463,14 @@ class TeacherController extends Controller
                     'totalStudents' => $totalStudents,
                     'presentCount' => $presentCount,
                     'absentCount' => $absentCount,
-                    'attendedStudents' => $attendedStudents
+                    'attendedStudents' => $attendedStudents,
                 ];
             }
 
             $result[] = [
                 'classId' => (string) $classroom->id,
                 'className' => $classroom->name ?? 'غير معروف',
-                'dailyRecords' => $dailyRecords
+                'dailyRecords' => $dailyRecords,
             ];
         }
 
@@ -475,7 +483,7 @@ class TeacherController extends Controller
     public function getAttendanceStats(Request $request)
     {
         $teacher = $request->user()->teacher;
-        if (!$teacher || !$teacher->grade_id) {
+        if (! $teacher || ! $teacher->grade_id) {
             return response()->json([
                 'totalStudents' => 0,
                 'presentToday' => 0,
@@ -487,12 +495,12 @@ class TeacherController extends Controller
             ]);
         }
         $classes = Classroom::where('grade_id', $teacher->grade_id)->with('students')->get();
-        
+
         $totalStudents = 0;
         $presentToday = 0;
         $absentToday = 0;
         $unmarkedToday = 0;
-        
+
         $studentReports = [];
 
         foreach ($classes as $classroom) {
@@ -525,7 +533,7 @@ class TeacherController extends Controller
 
                 $photoUrl = null;
                 if ($student->image) {
-                    $photoUrl = url('storage/' . ltrim($student->image, '/'));
+                    $photoUrl = url('storage/'.ltrim($student->image, '/'));
                 }
 
                 $studentReports[] = [

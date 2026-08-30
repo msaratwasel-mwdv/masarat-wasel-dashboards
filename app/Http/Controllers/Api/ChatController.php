@@ -31,6 +31,7 @@ class ChatController extends Controller
     public function getContacts(Request $request): JsonResponse
     {
         $contacts = $this->getValidContactsList($request->user());
+
         return $this->success(ContactResource::collection($contacts));
     }
 
@@ -55,10 +56,12 @@ class ChatController extends Controller
                 $myStudents = $user->students()
                     ->where('is_active', true)
                     ->with(['forthBus.assistant', 'forthBus.fieldSupervisor', 'forthBus.driver.user',
-                            'backBus.assistant', 'backBus.fieldSupervisor', 'backBus.driver.user'])
+                        'backBus.assistant', 'backBus.fieldSupervisor', 'backBus.driver.user'])
                     ->get();
 
-                if ($myStudents->isEmpty()) return collect();
+                if ($myStudents->isEmpty()) {
+                    return collect();
+                }
 
                 foreach ($myStudents as $student) {
                     $buses = array_filter([$student->forthBus, $student->backBus]);
@@ -70,8 +73,8 @@ class ChatController extends Controller
                         if ($driverUser) {
                             $driverContact = clone $driverUser;
                             $driverContact->chat_description = $isEn
-                                ? "Bus Driver ({$bus->bus_number}) - Student: " . $studentsNames
-                                : "سائق الحافلة ({$bus->bus_number}) - الطالب: " . $studentsNames;
+                                ? "Bus Driver ({$bus->bus_number}) - Student: ".$studentsNames
+                                : "سائق الحافلة ({$bus->bus_number}) - الطالب: ".$studentsNames;
                             $contacts->push($driverContact);
                         }
 
@@ -79,8 +82,8 @@ class ChatController extends Controller
                         if ($bus->assistant) {
                             $assistant = clone $bus->assistant;
                             $assistant->chat_description = $isEn
-                                ? "Bus Assistant ({$bus->bus_number}) - Student: " . $studentsNames
-                                : "مشرفة الحافلة ({$bus->bus_number}) - الطالب: " . $studentsNames;
+                                ? "Bus Assistant ({$bus->bus_number}) - Student: ".$studentsNames
+                                : "مشرفة الحافلة ({$bus->bus_number}) - الطالب: ".$studentsNames;
                             $contacts->push($assistant);
                         }
 
@@ -96,7 +99,7 @@ class ChatController extends Controller
 
             case 'driver':
                 // السائق يرى أولياء أمور الطلاب في حافلته
-                $bus = \App\Models\Bus::whereHas('driver', fn($q) => $q->where('user_id', $user->id))->first();
+                $bus = \App\Models\Bus::whereHas('driver', fn ($q) => $q->where('user_id', $user->id))->first();
                 if ($bus) {
                     $contacts = $contacts->merge($this->getGuardianUsersForBus($bus));
                 }
@@ -124,22 +127,22 @@ class ChatController extends Controller
             case 'school_admin':
                 // الأدمن يرى الجميع (مع تصفية المدرسة لأدمن المدرسة)
                 $query = User::where('id', '!=', $user->id);
-                
+
                 if ($user->role === 'school_admin') {
                     $schoolId = $user->getSchoolId();
-                    $query->where(function($q) use ($schoolId) {
-                        $q->whereHas('schoolAdmin', fn($s) => $s->where('school_id', $schoolId))
-                          ->orWhereHas('teacher', fn($t) => $t->where('school_id', $schoolId))
-                          ->orWhereHas('driver', fn($d) => $d->where('school_id', $schoolId));
+                    $query->where(function ($q) use ($schoolId) {
+                        $q->whereHas('schoolAdmin', fn ($s) => $s->where('school_id', $schoolId))
+                            ->orWhereHas('teacher', fn ($t) => $t->where('school_id', $schoolId))
+                            ->orWhereHas('driver', fn ($d) => $d->where('school_id', $schoolId));
                         // ملاحظة: المساعدات والمشرفين الميدانيين ليسوا مرتبطين بمدرسة مباشرة حسب الطلب الأخير
                         // ولكن يمكن رؤيتهم إذا كانوا مرتبطين بباصات المدرسة
-                        $q->orWhereHas('assignedBusAsAssistant', fn($b) => $b->where('school_id', $schoolId))
-                          ->orWhereHas('assignedBusAsFieldSupervisor', fn($b) => $b->where('school_id', $schoolId));
+                        $q->orWhereHas('assignedBusAsAssistant', fn ($b) => $b->where('school_id', $schoolId))
+                            ->orWhereHas('assignedBusAsFieldSupervisor', fn ($b) => $b->where('school_id', $schoolId));
                     });
                 }
 
                 $allContacts = $query->get();
-                foreach($allContacts as $contact) {
+                foreach ($allContacts as $contact) {
                     if ($isEn) {
                         $roleNames = [
                             'driver' => 'Driver',
@@ -151,9 +154,9 @@ class ChatController extends Controller
                             'school_admin' => 'School Administrator',
                         ];
                         $roleDisp = $roleNames[$contact->role] ?? $contact->role ?? 'unspecified';
-                        $contact->chat_description = "System User - Role: " . $roleDisp;
+                        $contact->chat_description = 'System User - Role: '.$roleDisp;
                     } else {
-                        $contact->chat_description = "مستخدم النظام - دور: " . ($contact->role ?? 'غير محدد');
+                        $contact->chat_description = 'مستخدم النظام - دور: '.($contact->role ?? 'غير محدد');
                     }
                     $contacts->push($contact);
                 }
@@ -172,7 +175,7 @@ class ChatController extends Controller
         $studentsViaBus = \App\Models\Student::where('is_active', true)
             ->where(function ($q) use ($bus) {
                 $q->where('forth_bus_id', $bus->id)
-                  ->orWhere('back_bus_id', $bus->id);
+                    ->orWhere('back_bus_id', $bus->id);
             })->with('guardian')->get();
 
         return $this->processStudentsToContacts($studentsViaBus);
@@ -185,10 +188,10 @@ class ChatController extends Controller
         $isEn = str_starts_with($acceptLanguage, 'en') || request()->input('lang') === 'en';
 
         foreach ($students as $student) {
-            $guardianUser = $student->guardian->first(); // استخراج ولي الأمر الأول من الحزمة 
+            $guardianUser = $student->guardian->first(); // استخراج ولي الأمر الأول من الحزمة
             if ($guardianUser) {
                 $userId = $guardianUser->id;
-                if (!isset($usersMap[$userId])) {
+                if (! isset($usersMap[$userId])) {
                     $usersMap[$userId] = clone $guardianUser;
                     $usersMap[$userId]->student_names = [];
                 }
@@ -196,10 +199,11 @@ class ChatController extends Controller
                 $names[] = $student->full_name;
                 $usersMap[$userId]->student_names = $names;
                 $usersMap[$userId]->chat_description = $isEn
-                    ? "Guardian of: " . implode(', ', array_unique($names))
-                    : "ولي أمر: " . implode('، ', array_unique($names));
+                    ? 'Guardian of: '.implode(', ', array_unique($names))
+                    : 'ولي أمر: '.implode('، ', array_unique($names));
             }
         }
+
         return collect(array_values($usersMap));
     }
 
@@ -261,7 +265,7 @@ class ChatController extends Controller
 
         // الحماية: لا يمكنه التحدث إلا مع من هم مسموحون له (في نفس الباص الحالي)
         $validContactIds = $this->getValidContactsList($user)->pluck('id')->toArray();
-        if (!in_array($receiverId, $validContactIds)) {
+        if (! in_array($receiverId, $validContactIds)) {
             return response()->json([
                 'success' => false,
                 'message' => 'عذراً لا يمكنك محادثة هذا المستخدم، لأنه لم يعد مرتبطاً بمسار الرحلة الحالي.',
@@ -276,12 +280,12 @@ class ChatController extends Controller
             $conversation = DB::transaction(function () use ($user, $receiver, $receiverId) {
                 $conv = Conversation::create([
                     'school_id' => $user->getSchoolId() ?? $receiver->getSchoolId(),
-                    'type'      => 'private',
+                    'type' => 'private',
                 ]);
 
                 $conv->participants()->attach([
-                    $user->id       => ['role' => $user->role],
-                    $receiverId     => ['role' => $receiver->role],
+                    $user->id => ['role' => $user->role],
+                    $receiverId => ['role' => $receiver->role],
                 ]);
 
                 return $conv;
@@ -300,9 +304,9 @@ class ChatController extends Controller
     public function sendMessage(Request $request, Conversation $conversation): JsonResponse
     {
         $request->validate([
-            'body'            => 'required|string|max:5000',
-            'type'            => 'sometimes|in:text,image,file',
-            'attachment_url'  => 'nullable|string|max:2048',
+            'body' => 'required|string|max:5000',
+            'type' => 'sometimes|in:text,image,file',
+            'attachment_url' => 'nullable|string|max:2048',
         ]);
 
         $user = $request->user();
@@ -323,7 +327,7 @@ class ChatController extends Controller
         $otherParticipant = $conversation->participants()->where('users.id', '!=', $user->id)->first();
         if ($otherParticipant) {
             $validContactIds = $this->getValidContactsList($user)->pluck('id')->toArray();
-            if (!in_array($otherParticipant->id, $validContactIds)) {
+            if (! in_array($otherParticipant->id, $validContactIds)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'لا يمكنك إرسال رسائل لهذه المحادثة، لأن الارتباط بمسار الرحلة قد انتهى.',
@@ -333,10 +337,10 @@ class ChatController extends Controller
 
         $message = Message::create([
             'conversation_id' => $conversation->id,
-            'sender_id'       => $user->id,
-            'body'            => $request->body,
-            'type'            => $request->type ?? 'text',
-            'attachment_url'  => $request->attachment_url,
+            'sender_id' => $user->id,
+            'body' => $request->body,
+            'type' => $request->type ?? 'text',
+            'attachment_url' => $request->attachment_url,
         ]);
 
         // تحديث وقت المحادثة
@@ -354,7 +358,7 @@ class ChatController extends Controller
                 unset($broadcast);
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Chat broadcast error: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Chat broadcast error: '.$e->getMessage());
         }
 
         // إرسال إشعار Push للمستلم
@@ -366,10 +370,10 @@ class ChatController extends Controller
             if ($otherParticipant) {
                 $senderNameEn = $user->name_en ?: $user->name;
                 $senderAvatarUrl = $user->avatar_url ?: url('/images/default_avatar.png');
-                
+
                 $messageText = $message->body ?: 'أرسل لك مرفقاً';
                 $messageTextEn = $message->body ?: 'Sent you an attachment';
-                
+
                 $this->notificationService->sendTranslatedToUser(
                     userId: $otherParticipant->id,
                     type: 'chat_message',
@@ -377,30 +381,30 @@ class ChatController extends Controller
                     messageKey: 'notifications.chat_message_message',
                     translationParams: [
                         'name' => $user->name,
-                        'message' => $messageText
+                        'message' => $messageText,
                     ],
                     data: [
                         'conversation_id' => (string) $conversation->id,
-                        'sender_id'       => (string) $user->id,
-                        'sender_name'     => $user->name,
-                        'sender_name_en'  => $senderNameEn,
-                        'sender_avatar'   => $senderAvatarUrl,
-                        'message_id'      => (string) $message->id,
+                        'sender_id' => (string) $user->id,
+                        'sender_name' => $user->name,
+                        'sender_name_en' => $senderNameEn,
+                        'sender_avatar' => $senderAvatarUrl,
+                        'message_id' => (string) $message->id,
                         'notification_id' => (string) $message->id, // For Flutter deduplication
-                        'message'         => $messageText,
-                        'message_en'      => $messageTextEn,
-                        'click_action'    => 'FLUTTER_NOTIFICATION_CLICK',
-                        'category'        => 'chat',
-                        'target_screen'   => 'chat_details'
+                        'message' => $messageText,
+                        'message_en' => $messageTextEn,
+                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+                        'category' => 'chat',
+                        'target_screen' => 'chat_details',
                     ],
                     translationParamsEn: [
                         'name' => $senderNameEn,
-                        'message' => $messageTextEn
+                        'message' => $messageTextEn,
                     ]
                 );
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('[FCM] Chat Notification Error: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('[FCM] Chat Notification Error: '.$e->getMessage());
         }
 
         return $this->success(new MessageResource($message->load('sender')), null, 201);
@@ -432,7 +436,7 @@ class ChatController extends Controller
             $otherParticipant = $conversation->participants()->where('users.id', '!=', $user->id)->first();
             if ($otherParticipant) {
                 $validContactIds = $this->getValidContactsList($user)->pluck('id')->toArray();
-                if (!in_array($otherParticipant->id, $validContactIds)) {
+                if (! in_array($otherParticipant->id, $validContactIds)) {
                     return response()->json([
                         'success' => false,
                         'message' => 'هذه المحادثة غير متاحة لأن الارتباط بمسار الرحلة قد انتهى.',
@@ -472,7 +476,7 @@ class ChatController extends Controller
     //  Helpers
     // ═══════════════════════════════════════════════════════════
 
-    private function success($data = null, $paginator = null, int $status = 200, string $message = null): JsonResponse
+    private function success($data = null, $paginator = null, int $status = 200, ?string $message = null): JsonResponse
     {
         $response = ['success' => true];
 
@@ -488,15 +492,12 @@ class ChatController extends Controller
         if ($paginator) {
             $response['meta'] = [
                 'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'per_page'     => $paginator->perPage(),
-                'total'        => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
             ];
         }
 
         return response()->json($response, $status);
     }
 }
-
-
-

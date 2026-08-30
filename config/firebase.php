@@ -6,7 +6,7 @@ return [
     | Firebase Configuration
     |--------------------------------------------------------------------------
     */
-    
+
     'default' => env('FIREBASE_PROJECT', 'app'),
 
     'projects' => [

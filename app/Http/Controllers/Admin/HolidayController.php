@@ -8,7 +8,6 @@ use App\Models\School;
 use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class HolidayController extends Controller
@@ -24,9 +23,10 @@ class HolidayController extends Controller
     {
         $holidays = Holiday::with(['school', 'creator'])->latest()->get();
         $schools = School::select('id', 'name')->get();
+
         return Inertia::render('Admin/Holidays/Index', [
             'holidays' => $holidays,
-            'schools' => $schools
+            'schools' => $schools,
         ]);
     }
 
@@ -42,7 +42,7 @@ class HolidayController extends Controller
         ]);
 
         $validated['created_by'] = auth()->id();
-        
+
         $holiday = Holiday::create($validated);
 
         // إرسال الإشعارات
@@ -60,17 +60,17 @@ class HolidayController extends Controller
         if ($holiday->school_id) {
             // تنبيه مدرسة محددة
             $adminIds = User::atSchool($holiday->school_id)
-                ->whereHas('roles', fn($q) => $q->where('name', 'school_admin'))
+                ->whereHas('roles', fn ($q) => $q->where('name', 'school_admin'))
                 ->pluck('id')
                 ->toArray();
         } else {
             // تنبيه جميع مديري المدارس
-            $adminIds = User::whereHas('roles', fn($q) => $q->where('name', 'school_admin'))
+            $adminIds = User::whereHas('roles', fn ($q) => $q->where('name', 'school_admin'))
                 ->pluck('id')
                 ->toArray();
         }
 
-        if (!empty($adminIds)) {
+        if (! empty($adminIds)) {
             foreach ($adminIds as $adminId) {
                 $this->notificationService->sendTranslatedToUser(
                     userId: $adminId,
@@ -110,12 +110,14 @@ class HolidayController extends Controller
 
         $holiday->update($validated);
         $this->sendHolidayNotifications($holiday);
+
         return redirect()->back()->with('success', 'تم تحديث العطلة بنجاح وإرسال الإشعارات');
     }
 
     public function destroy(Holiday $holiday)
     {
         $holiday->delete();
+
         return redirect()->back()->with('success', 'تم حذف العطلة بنجاح');
     }
 }

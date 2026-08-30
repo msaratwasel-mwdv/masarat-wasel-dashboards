@@ -16,16 +16,17 @@ class CheckTransportAccess
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return $this->errorResponse($request, 'Unauthenticated.', 401);
         }
 
         $school = $user->school;
 
-        if (!$school) {
+        if (! $school) {
             if ($user->hasRole('field_supervisor') || $user->hasRole('admin')) {
                 return $next($request);
             }
+
             return $this->errorResponse($request, 'School not found.', 403);
         }
 
@@ -37,7 +38,7 @@ class CheckTransportAccess
                 if ($subscription->status === 'paused') {
                     return $this->errorResponse($request, 'اشتراك المدرسة مجمد حالياً. لا يمكنك إجراء عمليات جديدة.', 403);
                 }
-                
+
                 if ($subscription->grace_period_ends_at && \Carbon\Carbon::now()->isAfter($subscription->grace_period_ends_at)) {
                     return $this->errorResponse($request, 'انتهت فترة السماح للسداد. يرجى تسديد الأقساط المتأخرة لتفعيل الخدمة مجدداً.', 403);
                 }
@@ -52,6 +53,7 @@ class CheckTransportAccess
         if ($request->wantsJson() || str_starts_with($request->path(), 'api/')) {
             return response()->json(['error' => $message], $status);
         }
+
         return redirect()->back()->with('error', $message);
     }
 }

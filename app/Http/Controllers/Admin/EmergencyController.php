@@ -59,6 +59,7 @@ class EmergencyController extends Controller
     public function destroy(Incident $incident)
     {
         $incident->delete();
+
         return redirect()->back()->with('success', 'تم حذف البلاغ بنجاح');
     }
 }

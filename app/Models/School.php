@@ -38,7 +38,7 @@ class School extends Model
      */
     public function getLogoUrlAttribute(): ?string
     {
-        if (!$this->logo) {
+        if (! $this->logo) {
             return null;
         }
 
@@ -83,11 +83,10 @@ class School extends Model
         return $this->belongsToMany(User::class, 'school_admins', 'school_id', 'user_id');
     }
 
-
     public function enrollments()
     {
         // School -> Grades -> Classrooms -> Enrollments
-        // Since Laravel doesn't support 3 levels of HasManyThrough easily, 
+        // Since Laravel doesn't support 3 levels of HasManyThrough easily,
         // we can return a query or use a custom relationship if needed.
         // For simplicity, let's just make it return a query for now or keep it as Classroom based if we can filter it correctly.
         return $this->hasManyThrough(
@@ -97,7 +96,7 @@ class School extends Model
             'classroom_id',
             'id',
             'grade_id'
-        )->whereHas('classroom.grade', fn($q) => $q->where('school_id', $this->id));
+        )->whereHas('classroom.grade', fn ($q) => $q->where('school_id', $this->id));
     }
 
     public function buses(): HasMany
@@ -143,8 +142,10 @@ class School extends Model
     public function maxBuses(): ?int
     {
         $subscription = $this->currentSubscription;
-        if (!$subscription || !$subscription->plan) return 0;
-        
+        if (! $subscription || ! $subscription->plan) {
+            return 0;
+        }
+
         return $subscription->plan->max_buses;
     }
 
@@ -161,5 +162,3 @@ class School extends Model
         return $this->hasMany(Installment::class);
     }
 }
-
-

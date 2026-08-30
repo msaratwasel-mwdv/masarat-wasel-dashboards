@@ -10,12 +10,12 @@ use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Inertia\Inertia;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
-use Illuminate\Support\Facades\Http;
 
 class BusController extends Controller
 {
@@ -53,7 +53,7 @@ class BusController extends Controller
             'school.name',
             'driver.user.name',
             'route.name',
-        ], 15, function($bus) {
+        ], 15, function ($bus) {
             return [
                 'رقم الباص' => $bus->bus_number,
                 'رقم اللوحة' => $bus->plate_number,
@@ -64,7 +64,7 @@ class BusController extends Controller
                 'المسار' => $bus->route ? $bus->route->name : 'غير محدد',
                 'السائق' => $bus->driver?->user?->name ?? 'متاح',
                 'مشرفة الحافلة' => $bus->assistant ? $bus->assistant->name : 'متاح',
-                'الحالة' => match($bus->status) {
+                'الحالة' => match ($bus->status) {
                     'active' => 'نشط',
                     'maintenance' => 'صيانة',
                     'out_of_service' => 'خارج الخدمة',
@@ -89,15 +89,14 @@ class BusController extends Controller
 
         // 3. جلب السائقين المتاحين
         $assignedDriverIds = Bus::whereNotNull('driver_id')->pluck('driver_id')->toArray();
-        $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
+        $drivers = User::whereHas('roles', fn ($q) => $q->where('name', 'driver'))
             ->whereNotIn('id', $assignedDriverIds)
             ->select('id', 'first_name_ar', 'last_name_ar', 'national_id')
             ->get();
 
-
         // 5. جلب مساعدات الباص المتاحات (المشرفات سابقاً)
         $assignedAssistantIds = Bus::whereNotNull('assistant_id')->pluck('assistant_id')->toArray();
-        $assistants = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
+        $assistants = User::whereHas('roles', fn ($q) => $q->where('name', 'assistant'))
             ->whereNotIn('id', $assignedAssistantIds)
             ->select('id', 'first_name_ar', 'last_name_ar', 'national_id')
             ->get();
@@ -116,51 +115,52 @@ class BusController extends Controller
                 // Replace the driver relationship with the driver's user model
                 $bus->setRelation('driver', $bus->driver->user);
             }
+
             return $bus;
         });
 
         return Inertia::render('Admin/Buses/Index', [
-            'buses'                => $paginated,
-            'counts'               => $counts,
-            'filters'              => [
+            'buses' => $paginated,
+            'counts' => $counts,
+            'filters' => [
                 'search' => $request->input('search', ''),
                 'status' => $statusFilter,
             ],
-            'availableDrivers'     => $drivers,
-            'availableAssistants'  => $assistants,
-            'schools'              => $schools,
-            'routes'               => $routes,
+            'availableDrivers' => $drivers,
+            'availableAssistants' => $assistants,
+            'schools' => $schools,
+            'routes' => $routes,
         ]);
     }
 
-/*     public function create()
-    {
-        $schools = School::where('status', 'Active')->get();
-        // NOTE: school_id does NOT exist on users table — filter via extension tables
-        $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
-            ->whereDoesntHave('driver', fn($q) => $q->whereNotNull('school_id'))
-            ->get();
-        $assistants = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
-            ->get();
+    /*     public function create()
+        {
+            $schools = School::where('status', 'Active')->get();
+            // NOTE: school_id does NOT exist on users table — filter via extension tables
+            $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
+                ->whereDoesntHave('driver', fn($q) => $q->whereNotNull('school_id'))
+                ->get();
+            $assistants = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
+                ->get();
 
-        return Inertia::render('Admin/Buses/Create', [
-            'schools' => $schools,
-            'drivers' => $drivers,
-            'assistants' => $assistants,
-        ]);
-    } */
+            return Inertia::render('Admin/Buses/Create', [
+                'schools' => $schools,
+                'drivers' => $drivers,
+                'assistants' => $assistants,
+            ]);
+        } */
 
     public function store(Request $request)
     {
         $request->validate([
-            'school_id'         => 'nullable|exists:schools,id',
-            'route_id'          => 'nullable|exists:routes,id',
-            'plate_number'      => 'required|string|unique:buses,plate_number',
-            'model'             => 'required|string|max:100',
-            'year'              => 'required|integer|min:2000|max:' . (date('Y') + 1),
-            'capacity'          => 'required|integer|min:5|max:100',
-            'color'             => 'nullable|string|max:50',
-            'driver_id'         => [
+            'school_id' => 'nullable|exists:schools,id',
+            'route_id' => 'nullable|exists:routes,id',
+            'plate_number' => 'required|string|unique:buses,plate_number',
+            'model' => 'required|string|max:100',
+            'year' => 'required|integer|min:2000|max:'.(date('Y') + 1),
+            'capacity' => 'required|integer|min:5|max:100',
+            'color' => 'nullable|string|max:50',
+            'driver_id' => [
                 'nullable',
                 'exists:users,id',
                 // يمنع تعيين سائق مرتبط بباص آخر
@@ -181,7 +181,7 @@ class BusController extends Controller
                     }
                 },
             ],
-            'photos.*'          => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'photos.*' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'registration_file' => 'nullable|mimes:pdf,jpg,png|max:2048',
         ]);
 
@@ -189,18 +189,18 @@ class BusController extends Controller
             $busNumber = Bus::generateNextCode();
 
             $bus = Bus::create([
-                'bus_number'    => $busNumber,
-                'plate_number'  => $request->plate_number,
-                'model'         => $request->model,
-                'year'          => $request->year,
-                'capacity'      => $request->capacity,
-                'status'        => 'active',
-                'school_id'           => $request->school_id,
-                'route_id'            => $request->route_id,
-                'driver_id'           => $request->driver_id,
+                'bus_number' => $busNumber,
+                'plate_number' => $request->plate_number,
+                'model' => $request->model,
+                'year' => $request->year,
+                'capacity' => $request->capacity,
+                'status' => 'active',
+                'school_id' => $request->school_id,
+                'route_id' => $request->route_id,
+                'driver_id' => $request->driver_id,
 
-                'assistant_id'        => $request->assistant_id,
-                'color'               => $request->color,
+                'assistant_id' => $request->assistant_id,
+                'color' => $request->color,
             ]);
 
             $this->generateQRCodes($bus);
@@ -241,19 +241,19 @@ class BusController extends Controller
         ]);
 
         // Capture values before transaction for use in post-commit logging
-        $busId     = $bus->id;
+        $busId = $bus->id;
         $busNumber = $bus->bus_number;
         $archivedBy = auth()->id();
 
         $result = DB::transaction(function () use ($bus, $request) {
             // 1. فصل الطلاب المرتبطين بهذا الباص (atomic)
             $detachedForth = Student::where('forth_bus_id', $bus->id)->update(['forth_bus_id' => null]);
-            $detachedBack  = Student::where('back_bus_id',  $bus->id)->update(['back_bus_id'  => null]);
+            $detachedBack = Student::where('back_bus_id', $bus->id)->update(['back_bus_id' => null]);
 
             // 2. تحديث حالة الباص وأرشفته
             $bus->update([
-                'status'               => 'out_of_service',
-                'deactivation_reason'  => $request->deactivation_reason,
+                'status' => 'out_of_service',
+                'deactivation_reason' => $request->deactivation_reason,
             ]);
             $bus->delete(); // Soft Delete
 
@@ -262,70 +262,70 @@ class BusController extends Controller
 
         // Log AFTER successful transaction — side effects must not be inside transactions
         Log::info('[BusArchive] Bus archived with student cleanup', [
-            'bus_id'         => $busId,
-            'bus_number'     => $busNumber,
+            'bus_id' => $busId,
+            'bus_number' => $busNumber,
             'detached_forth' => $result['forth'],
-            'detached_back'  => $result['back'],
-            'archived_by'    => $archivedBy,
+            'detached_back' => $result['back'],
+            'archived_by' => $archivedBy,
         ]);
 
         return redirect()->back()->with('success', 'Bus archived successfully');
     }
 
-/*     public function edit(Bus $bus)
-    {
-        $schools = School::where('status', 'active')->get();
+    /*     public function edit(Bus $bus)
+        {
+            $schools = School::where('status', 'active')->get();
 
-        // السائقون المتاحون: غير مُعيَّنين لأي باص + السائق الحالي لهذا الباص
-        $assignedDriverIds = Bus::whereNotNull('driver_id')
-            ->where('id', '!=', $bus->id)
-            ->pluck('driver_id')
-            ->toArray();
-        $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
-            ->whereNotIn('id', $assignedDriverIds)
-            ->get();
+            // السائقون المتاحون: غير مُعيَّنين لأي باص + السائق الحالي لهذا الباص
+            $assignedDriverIds = Bus::whereNotNull('driver_id')
+                ->where('id', '!=', $bus->id)
+                ->pluck('driver_id')
+                ->toArray();
+            $drivers = User::whereHas('roles', fn($q) => $q->where('name', 'driver'))
+                ->whereNotIn('id', $assignedDriverIds)
+                ->get();
 
-        // المشرفون الميدانيون المتاحون: غير مُعيَّنين لأي باص + المشرف الحالي لهذا الباص
-        $assignedFieldSupervisorIds = Bus::whereNotNull('field_supervisor_id')
-            ->where('id', '!=', $bus->id)
-            ->pluck('field_supervisor_id')
-            ->toArray();
-        $fieldSupervisors = User::whereHas('roles', fn($q) => $q->where('name', 'field_supervisor'))
-            ->whereNotIn('id', $assignedFieldSupervisorIds)
-            ->get();
+            // المشرفون الميدانيون المتاحون: غير مُعيَّنين لأي باص + المشرف الحالي لهذا الباص
+            $assignedFieldSupervisorIds = Bus::whereNotNull('field_supervisor_id')
+                ->where('id', '!=', $bus->id)
+                ->pluck('field_supervisor_id')
+                ->toArray();
+            $fieldSupervisors = User::whereHas('roles', fn($q) => $q->where('name', 'field_supervisor'))
+                ->whereNotIn('id', $assignedFieldSupervisorIds)
+                ->get();
 
-        // مساعدات الباص المتاحات: غير مُعيَّنات لأي باص + المساعدة الحالية لهذا الباص
-        $assignedAssistantIds = Bus::whereNotNull('assistant_id')
-            ->where('id', '!=', $bus->id)
-            ->pluck('assistant_id')
-            ->toArray();
-        $assistants = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
-            ->whereNotIn('id', $assignedAssistantIds)
-            ->get();
+            // مساعدات الباص المتاحات: غير مُعيَّنات لأي باص + المساعدة الحالية لهذا الباص
+            $assignedAssistantIds = Bus::whereNotNull('assistant_id')
+                ->where('id', '!=', $bus->id)
+                ->pluck('assistant_id')
+                ->toArray();
+            $assistants = User::whereHas('roles', fn($q) => $q->where('name', 'assistant'))
+                ->whereNotIn('id', $assignedAssistantIds)
+                ->get();
 
-        return Inertia::render('Admin/Buses/Edit', [
-            'bus' => $bus->load(['school', 'driver.user', 'fieldSupervisor', 'assistant']),
-            'schools' => $schools,
-            'drivers' => $drivers,
-            'fieldSupervisors' => $fieldSupervisors,
-            'assistants' => $assistants,
-        ]);
-    } */
+            return Inertia::render('Admin/Buses/Edit', [
+                'bus' => $bus->load(['school', 'driver.user', 'fieldSupervisor', 'assistant']),
+                'schools' => $schools,
+                'drivers' => $drivers,
+                'fieldSupervisors' => $fieldSupervisors,
+                'assistants' => $assistants,
+            ]);
+        } */
 
     public function update(Request $request, Bus $bus)
     {
         $busId = $bus->id;
 
         $validated = $request->validate([
-            'school_id'    => 'nullable|exists:schools,id',
-            'route_id'     => 'nullable|exists:routes,id',
+            'school_id' => 'nullable|exists:schools,id',
+            'route_id' => 'nullable|exists:routes,id',
             'plate_number' => ['required', 'string', Rule::unique('buses')->ignore($bus->id)],
-            'model'        => 'required|string|max:100',
-            'year'         => 'required|integer|min:2000|max:' . (date('Y') + 1),
-            'capacity'     => 'required|integer|min:5|max:100',
-            'color'        => 'nullable|string|max:50',
-            'status'       => 'required|in:active,maintenance,inactive,out_of_service',
-            'driver_id'    => [
+            'model' => 'required|string|max:100',
+            'year' => 'required|integer|min:2000|max:'.(date('Y') + 1),
+            'capacity' => 'required|integer|min:5|max:100',
+            'color' => 'nullable|string|max:50',
+            'status' => 'required|in:active,maintenance,inactive,out_of_service',
+            'driver_id' => [
                 'nullable',
                 'exists:users,id',
                 // يمنع تعيين سائق مرتبط بباص آخر (غير هذا الباص)
@@ -358,7 +358,7 @@ class BusController extends Controller
             $this->uploadFiles(request(), $bus);
 
             // Regnerate QRs if missing
-            if (!$bus->front_qr || !$bus->back_qr) {
+            if (! $bus->front_qr || ! $bus->back_qr) {
                 $this->generateQRCodes($bus);
             }
         });
@@ -371,26 +371,27 @@ class BusController extends Controller
     {
         Storage::disk('public')->delete($document->file_path);
         $document->delete();
+
         return redirect()->back()->with('success', 'Document deleted');
     }
 
     public function destroy(Bus $bus)
     {
         // Capture before transaction — values may not be accessible post soft-delete
-        $busId     = $bus->id;
+        $busId = $bus->id;
         $deletedBy = auth()->id();
 
         DB::transaction(function () use ($bus) {
             // فصل الطلاب المرتبطين أولاً (atomic)
             Student::where('forth_bus_id', $bus->id)->update(['forth_bus_id' => null]);
-            Student::where('back_bus_id',  $bus->id)->update(['back_bus_id'  => null]);
+            Student::where('back_bus_id', $bus->id)->update(['back_bus_id' => null]);
 
             $bus->delete(); // Soft Delete
         });
 
         // Log AFTER successful transaction — side effects outside transaction
         Log::info('[BusDelete] Bus soft-deleted with student cleanup', [
-            'bus_id'     => $busId,
+            'bus_id' => $busId,
             'deleted_by' => $deletedBy,
         ]);
 
@@ -409,7 +410,7 @@ class BusController extends Controller
         if ($schoolId) {
             $school = School::findOrFail($schoolId);
             $maxBuses = $school->maxBuses();
-            
+
             // If maxBuses is null, it's unlimited. If it's an int, check count.
             if ($maxBuses !== null) {
                 $currentBusesCount = Bus::where('school_id', $schoolId)->where('id', '!=', $bus->id)->count();
@@ -425,6 +426,7 @@ class BusController extends Controller
         });
 
         $message = $schoolId ? 'تم إسناد الحافلة للمدرسة بنجاح' : 'تم سحب الحافلة للمقر الرئيسي بنجاح';
+
         return redirect()->back()->with('success', $message);
     }
 
@@ -461,18 +463,18 @@ class BusController extends Controller
     private function generateQRCodes(Bus $bus)
     {
         $busNumber = $bus->bus_number;
-        $frontData = "FRONT-" . $bus->id;
-        $backData = "BACK-" . $bus->id;
+        $frontData = 'FRONT-'.$bus->id;
+        $backData = 'BACK-'.$bus->id;
 
-        $frontFileName = 'qrcodes/' . $busNumber . '_front.png';
-        $backFileName = 'qrcodes/' . $busNumber . '_back.png';
+        $frontFileName = 'qrcodes/'.$busNumber.'_front.png';
+        $backFileName = 'qrcodes/'.$busNumber.'_back.png';
 
         Storage::disk('public')->makeDirectory('qrcodes');
 
         try {
             // Using external API for PNG generation
-            $qrApiUrlFront = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=" . urlencode($frontData) . "&margin=10&format=png";
-            $qrApiUrlBack = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=" . urlencode($backData) . "&margin=10&format=png";
+            $qrApiUrlFront = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data='.urlencode($frontData).'&margin=10&format=png';
+            $qrApiUrlBack = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data='.urlencode($backData).'&margin=10&format=png';
 
             $respFront = Http::timeout(10)->get($qrApiUrlFront);
             $respBack = Http::timeout(10)->get($qrApiUrlBack);
@@ -483,8 +485,9 @@ class BusController extends Controller
 
                 $bus->update([
                     'front_qr' => $frontFileName,
-                    'back_qr' => $backFileName
+                    'back_qr' => $backFileName,
                 ]);
+
                 return;
             }
         } catch (\Exception $e) {
@@ -492,8 +495,8 @@ class BusController extends Controller
         }
 
         // Fallback to local SVG generation
-        $frontFileNameSvg = 'qrcodes/' . $busNumber . '_front.svg';
-        $backFileNameSvg = 'qrcodes/' . $busNumber . '_back.svg';
+        $frontFileNameSvg = 'qrcodes/'.$busNumber.'_front.svg';
+        $backFileNameSvg = 'qrcodes/'.$busNumber.'_back.svg';
 
         $qrImageFront = QrCode::format('svg')->size(400)->margin(2)->generate($frontData);
         $qrImageBack = QrCode::format('svg')->size(400)->margin(2)->generate($backData);
@@ -503,9 +506,7 @@ class BusController extends Controller
 
         $bus->update([
             'front_qr' => $frontFileNameSvg,
-            'back_qr' => $backFileNameSvg
+            'back_qr' => $backFileNameSvg,
         ]);
     }
 }
-
-

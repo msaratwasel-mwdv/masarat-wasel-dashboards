@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Trip;
 use App\Models\TripAttendance;
 use App\Services\NotificationService;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -50,7 +50,7 @@ class AutoCloseAwaitingVideoTrips extends Command
                         ->where('status', 'boarded')
                         ->update([
                             'status' => 'dropped',
-                            'check_out_time' => now()
+                            'check_out_time' => now(),
                         ]);
                 }
 
@@ -74,7 +74,7 @@ class AutoCloseAwaitingVideoTrips extends Command
                     broadcast(new \App\Events\TripStatusUpdated($trip, $trip->bus, 'finished'));
                 }
             } catch (\Exception $e) {
-                Log::error("Broadcast error in auto-close command: " . $e->getMessage());
+                Log::error('Broadcast error in auto-close command: '.$e->getMessage());
             }
 
             // Notify all company administrators that the driver failed to record the required video
@@ -88,15 +88,15 @@ class AutoCloseAwaitingVideoTrips extends Command
                     title: 'تنبيه: عدم توثيق رحلة بالفيديو',
                     message: "السائق لم يقم بتصوير فيديو التوثيق لرحلة الحافلة رقم {$busNumber} (نوع الرحلة: {$directionText}) بعد مرور 30 دقيقة من نزول الطلاب.",
                     data: [
-                        'trip_id' => (string)$trip->id,
-                        'bus_id' => (string)$trip->bus_id,
+                        'trip_id' => (string) $trip->id,
+                        'bus_id' => (string) $trip->bus_id,
                         'category' => 'compliance_alert',
                     ],
                     titleEn: 'Compliance Alert: No Trip Video Verification',
                     messageEn: "The driver failed to record the verification video for bus {$busNumber} ({$directionTextEn} trip) within 30 minutes after arrival."
                 );
             } catch (\Exception $e) {
-                Log::error("FCM Admin notification error in auto-close command: " . $e->getMessage());
+                Log::error('FCM Admin notification error in auto-close command: '.$e->getMessage());
             }
 
             $count++;

@@ -2,23 +2,24 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use App\Models\Trip;
-use App\Models\TripAttendance;
-use App\Models\Student;
-use App\Models\Bus;
-use App\Services\NotificationService;
 use App\Events\StudentStatusUpdated;
 use App\Events\TripStatusUpdated;
+use App\Http\Controllers\Controller;
+use App\Models\Bus;
+use App\Models\Student;
+use App\Models\Trip;
+use App\Models\TripAttendance;
+use App\Services\NotificationService;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class DailyTripApiController extends Controller
 {
     protected NotificationService $notificationService;
+
     protected \App\Services\TripService $tripService;
 
     public function __construct(NotificationService $notificationService, \App\Services\TripService $tripService)
@@ -36,21 +37,21 @@ class DailyTripApiController extends Controller
         /** @var Bus $bus */
         $request->validate([
             'student_id' => 'required|exists:students,id',
-            'latitude'   => 'nullable|numeric',
-            'longitude'  => 'nullable|numeric',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
         ]);
 
         $student = Student::findOrFail($request->student_id);
         $user = $request->user();
 
         // ① التحقق من صلاحية المستخدم (المشرفة فقط هي من تحضر الطلاب)
-        if (!$bus->hasCrewMember($user->id)) {
+        if (! $bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'عذراً، يحق للمشرفة فقط تسجيل ركوب الطلاب.'], 403);
         }
 
         // ② الحصول على الرحلة النشطة واشتقاق الاتجاه منها
         $trip = $this->getActiveTrip($bus);
-        if (!$trip) {
+        if (! $trip) {
             return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
         }
 
@@ -61,7 +62,7 @@ class DailyTripApiController extends Controller
         // ══════════════════════════════════════════════════════════
         $tripType = $direction === 'to_school' ? 'morning' : 'afternoon';
         $isAssigned = false;
-        if ((bool)$student->is_active) {
+        if ((bool) $student->is_active) {
             if ($tripType === 'morning' && $student->forth_bus_id === $bus->id) {
                 $isAssigned = true;
             } elseif ($tripType === 'afternoon' && $student->back_bus_id === $bus->id) {
@@ -69,11 +70,12 @@ class DailyTripApiController extends Controller
             }
         }
 
-        if (!$isAssigned) {
+        if (! $isAssigned) {
             Log::warning('board: Student not assigned for this trip type', [
                 'bus_id' => $bus->id, 'student_id' => $student->id, 'trip_type' => $tripType,
             ]);
             $tripLabel = $tripType === 'morning' ? 'الذهاب' : 'العودة';
+
             return response()->json([
                 'message' => "الطالب غير مخصص لهذا الباص في رحلة {$tripLabel}.",
                 'error_code' => 'not_assigned',
@@ -111,7 +113,7 @@ class DailyTripApiController extends Controller
             ->exists();
 
         if ($isAlreadyBoarded) {
-             return response()->json([
+            return response()->json([
                 'message' => 'الطالب مسجّل ركوب بالفعل.',
                 'current_status' => 'onBus',
             ], 200);
@@ -143,7 +145,7 @@ class DailyTripApiController extends Controller
         try {
             broadcast(new StudentStatusUpdated($student, $bus, 'boarding', $direction));
         } catch (\Exception $e) {
-            Log::error("Broadcast error (board): " . $e->getMessage());
+            Log::error('Broadcast error (board): '.$e->getMessage());
         }
 
         // ═══════════════════════════════════════════════════
@@ -151,9 +153,9 @@ class DailyTripApiController extends Controller
         // ═══════════════════════════════════════════════════
         $student->loadMissing('guardians');
         $notificationType = $direction === 'to_school' ? 'bus_boarding_morning' : 'bus_boarding_afternoon';
-        
+
         foreach ($student->guardians as $guardian) {
-            $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+            $studentNameEn = ! empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
 
             $notification = $this->notificationService->sendTranslatedToUser(
                 userId: $guardian->id,
@@ -163,16 +165,16 @@ class DailyTripApiController extends Controller
                 translationParams: ['student' => $student->full_name],
                 data: [
                     'notification_type' => $notificationType,
-                    'attendance_id'     => $attendance->id,
-                    'bus_id'            => $bus->id,
-                    'bus_number'        => $bus->bus_number,
-                    'student_id'        => $student->id,
-                    'student_name'      => $student->full_name,
-                    'student_name_en'   => $student->full_name_en,
-                    'direction'         => $direction,
-                    'boarded_at'        => $boardedAt->toIso8601String(),
+                    'attendance_id' => $attendance->id,
+                    'bus_id' => $bus->id,
+                    'bus_number' => $bus->bus_number,
+                    'student_id' => $student->id,
+                    'student_name' => $student->full_name,
+                    'student_name_en' => $student->full_name_en,
+                    'direction' => $direction,
+                    'boarded_at' => $boardedAt->toIso8601String(),
                     'category' => 'bus_tracking',
-                    'target_screen'     => 'children_status',
+                    'target_screen' => 'children_status',
                 ],
                 fromUserName: 'نظام النقل',
                 translationParamsEn: ['student' => $studentNameEn]
@@ -200,12 +202,12 @@ class DailyTripApiController extends Controller
         ]);
 
         $user = $request->user();
-        if (!$bus->hasCrewMember($user->id)) {
+        if (! $bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'عذراً، يحق للمشرفة فقط تسجيل الطلاب.'], 403);
         }
 
         $trip = $this->getActiveTrip($bus);
-        if (!$trip) {
+        if (! $trip) {
             return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
         }
 
@@ -215,10 +217,10 @@ class DailyTripApiController extends Controller
         $code = trim($code);
         $student = Student::where('student_code', $code)->orWhere('national_id', $code)->first();
 
-        if (!$student) {
+        if (! $student) {
             return response()->json([
                 'message' => 'الطالب غير مسجل في النظام.',
-                'error_code' => 'not_found'
+                'error_code' => 'not_found',
             ], 404);
         }
 
@@ -232,7 +234,7 @@ class DailyTripApiController extends Controller
         // ══════════════════════════════════════════════════════════
         $tripType = $direction === 'to_school' ? 'morning' : 'afternoon';
         $isAssigned = false;
-        if ((bool)$student->is_active) {
+        if ((bool) $student->is_active) {
             if ($tripType === 'morning' && $student->forth_bus_id === $bus->id) {
                 $isAssigned = true;
             } elseif ($tripType === 'afternoon' && $student->back_bus_id === $bus->id) {
@@ -240,8 +242,9 @@ class DailyTripApiController extends Controller
             }
         }
 
-        if (!$isAssigned) {
+        if (! $isAssigned) {
             $tripLabel = $tripType === 'morning' ? 'الذهاب' : 'العودة';
+
             return response()->json([
                 'message' => "الطالب غير مخصص لهذا الباص في رحلة {$tripLabel}.",
                 'error_code' => 'not_assigned',
@@ -258,12 +261,12 @@ class DailyTripApiController extends Controller
             ->first();
 
         if ($lastAttendance && (int) abs($lastAttendance->updated_at->diffInSeconds(now(), false)) < 60) {
-             return response()->json([
-                 'message' => 'تم مسح الكود مسبقاً، يرجى الانتظار.',
-                 'error_code' => 'cooldown',
-                 'current_status' => $currentStatus,
-                 'student_name' => $student->full_name,
-             ], 429);
+            return response()->json([
+                'message' => 'تم مسح الكود مسبقاً، يرجى الانتظار.',
+                'error_code' => 'cooldown',
+                'current_status' => $currentStatus,
+                'student_name' => $student->full_name,
+            ], 429);
         }
 
         // ══════════════════════════════════════════════════════════
@@ -297,6 +300,7 @@ class DailyTripApiController extends Controller
             } else {
                 // ⛔ لا يزال هناك طلاب لم يركبوا
                 $remaining = $totalAssigned - $processedCount;
+
                 return response()->json([
                     'message' => "الطالب راكب في الحافلة بالفعل. لا يزال هناك {$remaining} طالب لم يتم تحضيرهم.",
                     'error_code' => 'already_boarded',
@@ -320,7 +324,7 @@ class DailyTripApiController extends Controller
         $responseData = json_decode($response->getContent(), true);
         $responseData['student_name'] = $student->full_name;
         $responseData['student_id'] = (string) $student->id;
-        
+
         return response()->json($responseData, $response->getStatusCode());
     }
 
@@ -337,12 +341,12 @@ class DailyTripApiController extends Controller
         ]);
 
         $user = $request->user();
-        if (!$bus->hasCrewMember($user->id)) {
+        if (! $bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'عذراً، يحق للمشرفة فقط تسجيل ركوب الطلاب.'], 403);
         }
 
         $trip = $this->getActiveTrip($bus);
-        if (!$trip) {
+        if (! $trip) {
             return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
         }
 
@@ -366,10 +370,10 @@ class DailyTripApiController extends Controller
                     ->where('student_id', $studentId)
                     ->where('status', 'boarded')
                     ->exists();
-                
-                if (!$alreadyBoarded) {
+
+                if (! $alreadyBoarded) {
                     $newlyBoardedStudentIds[] = $studentId;
-                    
+
                     $existing = TripAttendance::where('trip_id', $trip->id)->where('student_id', $studentId)->first();
                     $extraWaitTime = 0;
                     if ($existing && $existing->status === 'waiting' && $existing->waiting_start_time) {
@@ -394,10 +398,12 @@ class DailyTripApiController extends Controller
         // Notifications & broadcasts only for newly boarded students
         foreach ($newlyBoardedStudentIds as $studentId) {
             $student = Student::find($studentId);
-            if (!$student) continue;
+            if (! $student) {
+                continue;
+            }
 
             $notificationType = $direction === 'to_home' ? 'bus_boarding_afternoon' : 'bus_boarding_morning';
-            $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+            $studentNameEn = ! empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
 
             foreach ($student->guardians as $guardian) {
                 $notification = $this->notificationService->sendTranslatedToUser(
@@ -425,12 +431,13 @@ class DailyTripApiController extends Controller
 
             try {
                 broadcast(new StudentStatusUpdated($student, $bus, 'boarding', $direction));
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
         }
 
         return response()->json([
             'message' => 'تم تسجيل ركوب مجموعة الطلاب بنجاح.',
-            'count' => count($request->student_ids)
+            'count' => count($request->student_ids),
         ], 201);
     }
 
@@ -443,21 +450,21 @@ class DailyTripApiController extends Controller
         /** @var Bus $bus */
         $request->validate([
             'student_id' => 'required|exists:students,id',
-            'latitude'   => 'nullable|numeric',
-            'longitude'  => 'nullable|numeric',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
         ]);
 
         $student = Student::findOrFail($request->student_id);
         $user = $request->user();
 
         // ① التحقق من الصلاحية (المشرفة فقط)
-        if (!$bus->hasCrewMember($user->id)) {
+        if (! $bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'عذراً، يحق للمشرفة فقط تسجيل نزول الطلاب.'], 403);
         }
 
         // ② الحصول على الرحلة النشطة واشتقاق الاتجاه منها
         $trip = $this->getActiveTrip($bus);
-        if (!$trip) {
+        if (! $trip) {
             return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
         }
 
@@ -466,7 +473,7 @@ class DailyTripApiController extends Controller
         // ③ التحقق من التخصيص
         $tripType = $direction === 'to_school' ? 'morning' : 'afternoon';
         $isAssigned = false;
-        if ((bool)$student->is_active) {
+        if ((bool) $student->is_active) {
             if ($tripType === 'morning' && $student->forth_bus_id === $bus->id) {
                 $isAssigned = true;
             } elseif ($tripType === 'afternoon' && $student->back_bus_id === $bus->id) {
@@ -474,8 +481,9 @@ class DailyTripApiController extends Controller
             }
         }
 
-        if (!$isAssigned) {
+        if (! $isAssigned) {
             $tripLabel = $tripType === 'morning' ? 'الذهاب' : 'العودة';
+
             return response()->json([
                 'message' => "الطالب غير مخصص لهذا الباص في رحلة {$tripLabel}.",
                 'error_code' => 'not_assigned',
@@ -493,7 +501,7 @@ class DailyTripApiController extends Controller
                     'message' => 'تم تسجيل النزول بالفعل لهذه الرحلة.',
                     'current_status' => $currentStatus,
                     'error_code' => 'already_alighted',
-                ], 200); 
+                ], 200);
             }
 
             Log::warning('alight: Invalid transition handled gracefully', ['status' => $currentStatus]);
@@ -526,13 +534,13 @@ class DailyTripApiController extends Controller
         try {
             broadcast(new StudentStatusUpdated($student, $bus, 'alight', $direction));
         } catch (\Exception $e) {
-            Log::error("Broadcast error (alight): " . $e->getMessage());
+            Log::error('Broadcast error (alight): '.$e->getMessage());
         }
 
         // 📱 إشعار Push
         $student->loadMissing('guardians');
         foreach ($student->guardians as $guardian) {
-            $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+            $studentNameEn = ! empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
 
             $this->notificationService->sendTranslatedToUser(
                 userId: $guardian->id,
@@ -541,14 +549,14 @@ class DailyTripApiController extends Controller
                 messageKey: 'notifications.student_dropped_off',
                 translationParams: ['student' => $student->full_name],
                 data: [
-                    'attendance_id'   => $attendance->id,
-                    'bus_id'          => $bus->id,
-                    'student_id'      => $student->id,
+                    'attendance_id' => $attendance->id,
+                    'bus_id' => $bus->id,
+                    'student_id' => $student->id,
                     'student_name_en' => $studentNameEn,
-                    'direction'       => $direction,
-                    'type'            => 'student_alighted',
+                    'direction' => $direction,
+                    'type' => 'student_alighted',
                     'category' => 'student_tracking',
-                    'target_screen'   => 'children_status',
+                    'target_screen' => 'children_status',
                 ],
                 fromUserName: 'نظام النقل',
                 translationParamsEn: ['student' => $studentNameEn]
@@ -572,17 +580,17 @@ class DailyTripApiController extends Controller
         $request->validate([
             'student_ids' => 'required|array',
             'student_ids.*' => 'exists:students,id',
-            'latitude'    => 'nullable|numeric',
-            'longitude'   => 'nullable|numeric',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
         ]);
 
         $user = $request->user();
-        if (!$bus->hasCrewMember($user->id)) {
+        if (! $bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'عذراً، يحق للمشرفة فقط تسجيل نزول الطلاب.'], 403);
         }
 
         $trip = $this->getActiveTrip($bus);
-        if (!$trip) {
+        if (! $trip) {
             return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
         }
 
@@ -598,7 +606,7 @@ class DailyTripApiController extends Controller
                     ->where('status', 'dropped')
                     ->exists();
 
-                if (!$alreadyDropped) {
+                if (! $alreadyDropped) {
                     $newlyDroppedStudentIds[] = $studentId;
                     TripAttendance::updateOrCreate(
                         ['trip_id' => $trip->id, 'student_id' => $studentId],
@@ -614,9 +622,11 @@ class DailyTripApiController extends Controller
         // Notifications & broadcasts only for newly dropped students
         foreach ($newlyDroppedStudentIds as $studentId) {
             $student = Student::find($studentId);
-            if (!$student) continue;
+            if (! $student) {
+                continue;
+            }
 
-            $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+            $studentNameEn = ! empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
 
             foreach ($student->guardians as $guardian) {
                 $this->notificationService->sendTranslatedToUser(
@@ -640,13 +650,13 @@ class DailyTripApiController extends Controller
             try {
                 broadcast(new StudentStatusUpdated($student, $bus, 'alight', $direction));
             } catch (\Exception $e) {
-                Log::error("Broadcast error (groupAlight): " . $e->getMessage());
+                Log::error('Broadcast error (groupAlight): '.$e->getMessage());
             }
         }
 
         return response()->json([
             'message' => 'تم تسجيل نزول الطلاب بنجاح.',
-            'count' => count($request->student_ids)
+            'count' => count($request->student_ids),
         ], 201);
     }
 
@@ -658,12 +668,12 @@ class DailyTripApiController extends Controller
     {
         /** @var Bus $bus */
         $user = $request->user();
-        if (!$bus->hasCrewMember($user->id)) {
+        if (! $bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
         $trip = $this->getActiveTrip($bus);
-        if (!$trip) {
+        if (! $trip) {
             return response()->json(['message' => 'لا توجد رحلة قيد التنفيذ حالياً لهذا الباص.'], 404);
         }
 
@@ -679,7 +689,7 @@ class DailyTripApiController extends Controller
             foreach ($attendances as $attendance) {
                 $attendance->update([
                     'check_out_time' => $recordedAt,
-                    'status' => 'dropped'
+                    'status' => 'dropped',
                 ]);
             }
 
@@ -692,7 +702,7 @@ class DailyTripApiController extends Controller
                 'status' => 'awaiting_video',
                 'arrival_time' => $recordedAt,
             ]);
-            
+
             $bus->update([
                 'trip_status' => 'idle',
                 'target_latitude' => null,
@@ -703,15 +713,17 @@ class DailyTripApiController extends Controller
         try {
             broadcast(new TripStatusUpdated($trip, $bus, 'awaiting_video'));
         } catch (\Exception $e) {
-            Log::error("Broadcast error (arrive trip status): " . $e->getMessage());
+            Log::error('Broadcast error (arrive trip status): '.$e->getMessage());
         }
 
         // الإشعارات والبث خارج الـ Transaction (لا يجب أن تمنع الحفظ)
         foreach ($attendances as $attendance) {
             $student = $attendance->student; // The relation should be loaded or accessible, let me check if student relation is used here. Wait! $attendance->student is not loaded explicitly in this view.
-            if (!$student) continue;
+            if (! $student) {
+                continue;
+            }
 
-            $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+            $studentNameEn = ! empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
 
             $titleKey = $direction === 'to_school' ? 'notifications.student_alighted_school_title' : 'notifications.student_alighted_home_title';
             $messageKey = $direction === 'to_school' ? 'notifications.student_alighted_school_message' : 'notifications.student_alighted_home_message';
@@ -743,7 +755,7 @@ class DailyTripApiController extends Controller
                     Student::find($attendance->student_id), $bus, 'alight', $direction
                 ));
             } catch (\Exception $e) {
-                Log::error("Broadcast error (arrive): " . $e->getMessage());
+                Log::error('Broadcast error (arrive): '.$e->getMessage());
             }
         }
 
@@ -773,7 +785,7 @@ class DailyTripApiController extends Controller
             ->latest('updated_at')
             ->first();
 
-        if (!$activeTrip) {
+        if (! $activeTrip) {
             $date = today();
             $activeTrip = Trip::where('bus_id', $bus->id)
                 ->whereDate('trip_date', $date)
@@ -783,7 +795,7 @@ class DailyTripApiController extends Controller
                 ->first();
         }
 
-        if (!$activeTrip) {
+        if (! $activeTrip) {
             $date = \Carbon\Carbon::tomorrow();
             $activeTrip = Trip::where('bus_id', $bus->id)
                 ->whereDate('trip_date', $date)
@@ -803,7 +815,7 @@ class DailyTripApiController extends Controller
         $filterTripType = $request->query('trip_type', $suggestedTripType);
 
         $query = Student::where('is_active', true)
-            ->with(['lastTripAttendance.trip', 'tripAttendances', 'guardian', 'absenceRequests' => function($q) {
+            ->with(['lastTripAttendance.trip', 'tripAttendances', 'guardian', 'absenceRequests' => function ($q) {
                 $q->whereDate('date', today())->where('status', '!=', 'rejected');
             }]);
 
@@ -813,9 +825,9 @@ class DailyTripApiController extends Controller
         } elseif ($filterTripType === 'afternoon') {
             $query->where('back_bus_id', $bus->id);
         } else {
-            $query->where(function($q) use ($bus) {
+            $query->where(function ($q) use ($bus) {
                 $q->where('forth_bus_id', $bus->id)
-                  ->orWhere('back_bus_id', $bus->id);
+                    ->orWhere('back_bus_id', $bus->id);
             });
         }
 
@@ -877,13 +889,13 @@ class DailyTripApiController extends Controller
             }
 
             // Fallback chain for student coordinates
-            $parent = $student->guardian->first(fn($g) => $g->latitude && $g->longitude) ?? $student->guardian->first();
-            
+            $parent = $student->guardian->first(fn ($g) => $g->latitude && $g->longitude) ?? $student->guardian->first();
+
             $forthLat = $student->forth_latitude ?? $student->latitude ?? $parent?->latitude;
             $forthLng = $student->forth_longitude ?? $student->longitude ?? $parent?->longitude;
             $backLat = $student->back_latitude ?? $student->latitude ?? $parent?->latitude;
             $backLng = $student->back_longitude ?? $student->longitude ?? $parent?->longitude;
-            
+
             $generalLat = $student->latitude ?? $parent?->latitude;
             $generalLng = $student->longitude ?? $parent?->longitude;
 
@@ -914,7 +926,7 @@ class DailyTripApiController extends Controller
                 'waitingSince' => ($studentStatus === 'waiting') ? ($lastAttendance->waiting_start_time ? $lastAttendance->waiting_start_time->toIso8601String() : $lastAttendance->updated_at->toIso8601String()) : null,
                 'waitingElapsedSeconds' => ($studentStatus === 'waiting') ? (int) abs(now()->diffInSeconds($lastAttendance->waiting_start_time ?? $lastAttendance->updated_at, false)) : 0,
                 'has_absence_request' => $student->absenceRequests->isNotEmpty(),
-                'behavioralNote' => null, 
+                'behavioralNote' => null,
                 'lastEvent' => ($lastAttendance && in_array($lastAttendance->status, ['boarded', 'waiting', 'dropped'])) ? [
                     'type' => $lastAttendance->status === 'boarded' ? 'boarding' : ($lastAttendance->status === 'waiting' ? 'proximity' : 'alighting'),
                     'direction' => $lastAttendance->trip?->type === 'forth' ? 'to_school' : 'to_home',
@@ -924,7 +936,7 @@ class DailyTripApiController extends Controller
         });
 
         // Load driver info with user relation to get real name/phone/photo
-        $driver     = $bus->driver()->with('user')->first();
+        $driver = $bus->driver()->with('user')->first();
         $driverUser = $driver?->user;
         $driverPhotoUrl = null;
         if ($driverUser && $driverUser->image) {
@@ -946,9 +958,9 @@ class DailyTripApiController extends Controller
                 'school_lng' => $bus->school?->longitude,
             ],
             'driver' => [
-                'id'    => $driverUser?->id,
-                'name'  => $driverUser?->first_name_ar
-                            ? trim(($driverUser->first_name_ar ?? '') . ' ' . ($driverUser->last_name_ar ?? ''))
+                'id' => $driverUser?->id,
+                'name' => $driverUser?->first_name_ar
+                            ? trim(($driverUser->first_name_ar ?? '').' '.($driverUser->last_name_ar ?? ''))
                             : ($driverUser?->name ?? '-'),
                 'phone' => $driverUser?->phone ?? '-',
                 'photo' => $driverPhotoUrl,
@@ -966,28 +978,29 @@ class DailyTripApiController extends Controller
     public function myTrips(Request $request)
     {
         $user = $request->user();
-        
-        Log::info('myTrips: starting for user ' . $user->id);
-        
+
+        Log::info('myTrips: starting for user '.$user->id);
+
         // Find the bus the user is assigned to (driver or assistant)
         $bus = Bus::where('driver_id', $user->id)
-                  ->orWhere('assistant_id', $user->id)
-                  ->first();
+            ->orWhere('assistant_id', $user->id)
+            ->first();
 
-        if (!$bus) {
+        if (! $bus) {
             Log::info('myTrips: no bus found');
+
             return response()->json(['message' => 'لا يوجد حافلة معينة لك.'], 404);
         }
 
-        Log::info('myTrips: found bus ' . $bus->id);
+        Log::info('myTrips: found bus '.$bus->id);
 
         // تنظيف وإلغاء أي رحلات قديمة معلقة أو غير مكتملة من الأيام السابقة تلقائياً لضمان عدم تراكمها
         $this->cleanupStaleTrips($bus, $user);
 
         // We fetch today's trips, or tomorrow's if none exist for today (in case of night generation)
         $date = today();
-        Log::info('myTrips: fetching trips for date ' . $date->toDateString());
-        
+        Log::info('myTrips: fetching trips for date '.$date->toDateString());
+
         $trips = Trip::where('bus_id', $bus->id)
             ->whereDate('trip_date', $date)
             ->get();
@@ -1016,8 +1029,8 @@ class DailyTripApiController extends Controller
             ->get();
 
         $acceptLanguage = $request->header('Accept-Language') ?? '';
-        $isEn = (str_starts_with($acceptLanguage, 'en') 
-            || $request->input('lang') === 'en' 
+        $isEn = (str_starts_with($acceptLanguage, 'en')
+            || $request->input('lang') === 'en'
             || app()->getLocale() === 'en'
             || ($user && $user->preferred_language === 'en'));
 
@@ -1053,7 +1066,7 @@ class DailyTripApiController extends Controller
                 'bus_number' => $bus->bus_number,
                 'plate_number' => $bus->plate_number,
             ],
-            'trips' => $formattedTrips
+            'trips' => $formattedTrips,
         ]);
     }
 
@@ -1064,12 +1077,12 @@ class DailyTripApiController extends Controller
     public function tripsHistory(Request $request)
     {
         $user = $request->user();
-        
-        $bus = Bus::where('driver_id', $user->id)
-                  ->orWhere('assistant_id', $user->id)
-                  ->first();
 
-        if (!$bus) {
+        $bus = Bus::where('driver_id', $user->id)
+            ->orWhere('assistant_id', $user->id)
+            ->first();
+
+        if (! $bus) {
             return response()->json(['message' => 'لا يوجد حافلة معينة لك.'], 404);
         }
 
@@ -1089,10 +1102,10 @@ class DailyTripApiController extends Controller
         }
 
         $trips = $query->paginate(20);
-        
+
         $acceptLanguage = $request->header('Accept-Language') ?? '';
-        $isEn = (str_starts_with($acceptLanguage, 'en') 
-            || $request->input('lang') === 'en' 
+        $isEn = (str_starts_with($acceptLanguage, 'en')
+            || $request->input('lang') === 'en'
             || app()->getLocale() === 'en'
             || ($user && $user->preferred_language === 'en'));
 
@@ -1128,11 +1141,10 @@ class DailyTripApiController extends Controller
             'filters' => [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
-                'status' => $status
-            ]
+                'status' => $status,
+            ],
         ]);
     }
-
 
     /**
      * بدء رحلة الحافلة
@@ -1142,18 +1154,18 @@ class DailyTripApiController extends Controller
     {
         /** @var Bus $bus */
         $user = $request->user();
-        if (!$bus->hasCrewMember($user->id)) {
+        if (! $bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
         $request->validate([
-            'latitude'  => 'nullable|numeric',
+            'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
         ]);
 
         if ($request->filled('latitude') && $request->filled('longitude')) {
             $bus->update([
-                'latitude'  => $request->latitude,
+                'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
                 'last_location_update' => now(),
             ]);
@@ -1175,7 +1187,7 @@ class DailyTripApiController extends Controller
 
         if ($activeTrip) {
             return response()->json([
-                'message' => 'هناك رحلة نشطة بالفعل أو بانتظار التأكيد/الفيديو اليوم. يرجى إنهاء الرحلة السابقة أولاً.'
+                'message' => 'هناك رحلة نشطة بالفعل أو بانتظار التأكيد/الفيديو اليوم. يرجى إنهاء الرحلة السابقة أولاً.',
             ], 422);
         }
 
@@ -1186,7 +1198,7 @@ class DailyTripApiController extends Controller
             ->orderByRaw("CASE WHEN type = 'forth' THEN 1 WHEN type = 'back' THEN 2 ELSE 3 END")
             ->first();
 
-        if (!$trip) {
+        if (! $trip) {
             return response()->json(['message' => 'لا توجد رحلة معلقة لبدءها اليوم.'], 404);
         }
 
@@ -1227,7 +1239,7 @@ class DailyTripApiController extends Controller
     {
         /** @var Bus $bus */
         $user = $request->user();
-        if (!$bus->hasCrewMember($user->id)) {
+        if (! $bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
@@ -1241,8 +1253,8 @@ class DailyTripApiController extends Controller
             $trip = Trip::where('bus_id', $bus->id)
                 ->where('status', 'awaiting_confirmation')
                 ->first();
-            
-            if (!$trip) {
+
+            if (! $trip) {
                 return response()->json(['message' => 'لا توجد رحلة بانتظار التأكيد.'], 404);
             }
         }
@@ -1274,7 +1286,7 @@ class DailyTripApiController extends Controller
         try {
             broadcast(new TripStatusUpdated($trip, $bus, 'in_progress'));
         } catch (\Exception $e) {
-            Log::error("Broadcast error (confirm trip status): " . $e->getMessage());
+            Log::error('Broadcast error (confirm trip status): '.$e->getMessage());
         }
 
         $this->notifyGuardiansTripStarted($bus, $trip);
@@ -1297,7 +1309,7 @@ class DailyTripApiController extends Controller
         // ✅ T-07: إشعار جميع أولياء أمور طلاب الحافلة ببدء الرحلة
         $students = Student::with('guardians')
             ->where('is_active', true)
-            ->where(function($q) use ($bus, $trip) {
+            ->where(function ($q) use ($bus, $trip) {
                 if ($trip->type === 'forth') {
                     $q->where('forth_bus_id', $bus->id);
                 } else {
@@ -1306,7 +1318,7 @@ class DailyTripApiController extends Controller
             })
             ->get();
 
-        Log::info("🚌 Trip Started: Bus ID {$bus->id}, Type {$trip->type}. Found " . $students->count() . " active students assigned to this bus.");
+        Log::info("🚌 Trip Started: Bus ID {$bus->id}, Type {$trip->type}. Found ".$students->count().' active students assigned to this bus.');
 
         // Group by guardian to send one notification per parent
         $guardianData = [];
@@ -1325,8 +1337,8 @@ class DailyTripApiController extends Controller
             $guardianStudents = collect($data['students']);
 
             // تحديد أسماء الطلاب باللغتين
-            $studentNamesAr = $guardianStudents->map(fn($s) => $s->full_name)->implode('، ');
-            $studentNamesEn = $guardianStudents->map(fn($s) => $s->full_name_en)->implode(', ');
+            $studentNamesAr = $guardianStudents->map(fn ($s) => $s->full_name)->implode('، ');
+            $studentNamesEn = $guardianStudents->map(fn ($s) => $s->full_name_en)->implode(', ');
 
             $this->notificationService->sendTranslatedToUser(
                 userId: $guardianId,
@@ -1346,6 +1358,7 @@ class DailyTripApiController extends Controller
             );
         }
     }
+
     /**
      * إرسال إشعار "بجوار المنزل" لولي الأمر
      * POST /api/bus/{bus}/notify-near-house
@@ -1361,7 +1374,7 @@ class DailyTripApiController extends Controller
         $user = $request->user();
 
         // التحقق من الصلاحية (يسمح للسائق والمشرفة بإرسال تنبيه الاقتراب)
-        if (!$bus->hasCrewMember($user->id)) {
+        if (! $bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك بإرسال تنبيهات الاقتراب لهذا الباص.'], 403);
         }
 
@@ -1380,7 +1393,7 @@ class DailyTripApiController extends Controller
             });
         }
 
-        $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+        $studentNameEn = ! empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
 
         // 2. إرسال الإشعار لولي الأمر (Push Notification)
         $isBack = $trip && $trip->type === 'back';
@@ -1394,14 +1407,14 @@ class DailyTripApiController extends Controller
                 messageKey: $messageKey,
                 translationParams: ['student' => $student->full_name],
                 data: [
-                    'type'              => 'bus_approaching',
+                    'type' => 'bus_approaching',
                     'notification_type' => 'bus_approaching',
-                    'bus_id'            => $bus->id,
-                    'bus_number'        => $bus->bus_number,
-                    'student_id'        => $student->id,
-                    'student_name_en'   => $studentNameEn,
+                    'bus_id' => $bus->id,
+                    'bus_number' => $bus->bus_number,
+                    'student_id' => $student->id,
+                    'student_name_en' => $studentNameEn,
                     'category' => 'bus_tracking',
-                    'target_screen'     => 'map_page',
+                    'target_screen' => 'map_page',
                 ],
                 fromUserName: 'نظام النقل',
                 translationParamsEn: ['student' => $studentNameEn]
@@ -1413,7 +1426,7 @@ class DailyTripApiController extends Controller
             $direction = $trip ? ($trip->type === 'forth' ? 'to_school' : 'to_home') : 'none';
             broadcast(new StudentStatusUpdated($student, $bus, 'waiting', $direction));
         } catch (\Exception $e) {
-            Log::error("Broadcast error (nearHouse): " . $e->getMessage());
+            Log::error('Broadcast error (nearHouse): '.$e->getMessage());
         }
 
         Log::info('notifyNearHouse: Notification sent & status updated to waiting', [
@@ -1438,12 +1451,12 @@ class DailyTripApiController extends Controller
         ]);
 
         $user = $request->user();
-        if (!$bus->hasCrewMember($user->id)) {
+        if (! $bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'عذراً، يحق للمشرفة فقط تسجيل غياب الطلاب.'], 403);
         }
 
         $trip = $this->getActiveTrip($bus);
-        if (!$trip) {
+        if (! $trip) {
             return response()->json(['message' => 'يجب بدء الرحلة أولاً.'], 422);
         }
 
@@ -1468,8 +1481,8 @@ class DailyTripApiController extends Controller
         });
 
         $student = Student::find($request->student_id);
-        
-        $studentNameEn = !empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
+
+        $studentNameEn = ! empty($student->full_name_en) ? $student->full_name_en : $student->full_name;
 
         // Notify parent
         foreach ($student->guardians as $guardian) {
@@ -1480,8 +1493,8 @@ class DailyTripApiController extends Controller
                 messageKey: 'notifications.student_absent_message',
                 translationParams: ['student' => $student->full_name],
                 data: [
-                    'type'          => 'student_absent',
-                    'student_id'    => $student->id,
+                    'type' => 'student_absent',
+                    'student_id' => $student->id,
                     'category' => 'bus_tracking',
                     'target_screen' => 'map_page',
                 ],
@@ -1493,12 +1506,79 @@ class DailyTripApiController extends Controller
         try {
             broadcast(new StudentStatusUpdated($student, $bus, 'absent', $trip->type === 'forth' ? 'to_school' : 'to_home'));
         } catch (\Exception $e) {
-            Log::error("Broadcast error (absent): " . $e->getMessage());
+            Log::error('Broadcast error (absent): '.$e->getMessage());
         }
 
         return response()->json([
             'message' => 'تم تسجيل غياب الطالب بنجاح.',
             'status' => 'absent',
+        ]);
+    }
+
+    /**
+     * التحقق من إمكانية إنهاء الرحلة قبل بدء تصوير الفيديو
+     * GET /api/bus/{bus}/check-trip-readiness
+     */
+    public function checkTripReadiness(Request $request, Bus $bus)
+    {
+        $user = $request->user();
+        if (! $bus->hasCrewMember($user->id)) {
+            return response()->json(['message' => 'غير مصرح لك.'], 403);
+        }
+
+        // Only the driver can end the trip
+        if ($bus->driver_id != $user->id) {
+            return response()->json([
+                'message' => 'عذراً، يحق للسائق فقط إنهاء الرحلة وتصوير فيديو التحقق.',
+            ], 403);
+        }
+
+        /** @var Trip|null $trip */
+        $trip = Trip::where('bus_id', $bus->id)
+            ->whereIn('status', ['awaiting_video', 'in_progress'])
+            ->latest()
+            ->first();
+
+        if (! $trip) {
+            return response()->json(['message' => 'لا توجد رحلة نشطة يمكن إنهاؤها حالياً.'], 404);
+        }
+
+        $tripType = $trip->type; // 'forth' or 'back'
+
+        // 1. فحص الطلاب الذين ما زالوا في الحافلة (boarded)
+        $onBoardCount = TripAttendance::where('trip_id', $trip->id)
+            ->where('status', 'boarded')
+            ->count();
+
+        if ($onBoardCount > 0) {
+            $destination = $tripType === 'forth' ? 'المدرسة' : 'منازلهم';
+
+            return response()->json([
+                'can_end' => false,
+                'message' => "لا يمكن بدء توثيق إنهاء الرحلة وهناك $onBoardCount طلاب لا يزالون في الحافلة ولم يتم تسجيل نزولهم في $destination.",
+                'on_board_count' => $onBoardCount,
+            ], 422);
+        }
+
+        // 2. فحص اكتمال تحضير جميع الطلاب
+        $totalAssigned = TripAttendance::where('trip_id', $trip->id)->count();
+        $accountedFor = TripAttendance::where('trip_id', $trip->id)
+            ->whereIn('status', ['dropped', 'absent', 'excused'])
+            ->count();
+
+        if ($accountedFor < $totalAssigned) {
+            $missing = $totalAssigned - $accountedFor;
+
+            return response()->json([
+                'can_end' => false,
+                'message' => "لم يتم إكمال التحضير لجميع الطلاب. يرجى التأكد من تحضير جميع الطلاب ($missing طالب متبقي لم يتم تسجيل حالته).",
+                'missing_count' => $missing,
+            ], 422);
+        }
+
+        return response()->json([
+            'can_end' => true,
+            'message' => 'جميع الطلاب تم تسجيل نزولهم، يمكنك بدء التوثيق.',
         ]);
     }
 
@@ -1510,7 +1590,7 @@ class DailyTripApiController extends Controller
     {
         /** @var Bus $bus */
         $user = $request->user();
-        if (!$bus->hasCrewMember($user->id)) {
+        if (! $bus->hasCrewMember($user->id)) {
             return response()->json(['message' => 'غير مصرح لك.'], 403);
         }
 
@@ -1525,16 +1605,16 @@ class DailyTripApiController extends Controller
         // Validation of QR data - Case-insensitive and trimmed
         $startQr = strtoupper(trim($request->start_qr_data));
         $endQr = strtoupper(trim($request->end_qr_data));
-        $expectedStart = "FRONT-" . $bus->id;
-        $expectedEnd = "BACK-" . $bus->id;
+        $expectedStart = 'FRONT-'.$bus->id;
+        $expectedEnd = 'BACK-'.$bus->id;
 
-        $startValid = ($startQr === $expectedStart) || 
-                      ($bus->bus_number && $startQr === "FRONT-" . strtoupper(trim($bus->bus_number))) ||
-                      ($bus->plate_number && $startQr === "FRONT-" . strtoupper(trim($bus->plate_number)));
+        $startValid = ($startQr === $expectedStart) ||
+                      ($bus->bus_number && $startQr === 'FRONT-'.strtoupper(trim($bus->bus_number))) ||
+                      ($bus->plate_number && $startQr === 'FRONT-'.strtoupper(trim($bus->plate_number)));
 
-        $endValid = ($endQr === $expectedEnd) || 
-                    ($bus->bus_number && $endQr === "BACK-" . strtoupper(trim($bus->bus_number))) ||
-                    ($bus->plate_number && $endQr === "BACK-" . strtoupper(trim($bus->plate_number))) ||
+        $endValid = ($endQr === $expectedEnd) ||
+                    ($bus->bus_number && $endQr === 'BACK-'.strtoupper(trim($bus->bus_number))) ||
+                    ($bus->plate_number && $endQr === 'BACK-'.strtoupper(trim($bus->plate_number))) ||
                     str_contains($endQr, 'MANUAL');
 
         Log::info('QR Validation Debug:', [
@@ -1547,7 +1627,7 @@ class DailyTripApiController extends Controller
             'expected_end' => $expectedEnd,
         ]);
 
-        if (!$startValid || !$endValid) {
+        if (! $startValid || ! $endValid) {
             if (app()->environment('production')) {
                 // ⛔ في الإنتاج: رفض قاطع
                 return response()->json(['message' => 'بيانات كود QR غير صحيحة لهذه الحافلة.'], 422);
@@ -1561,7 +1641,7 @@ class DailyTripApiController extends Controller
 
         Log::info('endTrip: Security verification passed, processing video', [
             'bus_id' => $bus->id,
-            'driver_id' => $user->id
+            'driver_id' => $user->id,
         ]);
 
         // Find the latest trip for this bus that needs video verification
@@ -1571,14 +1651,14 @@ class DailyTripApiController extends Controller
             ->latest()
             ->first();
 
-        if (!$trip) {
+        if (! $trip) {
             return response()->json(['message' => 'لا توجد رحلة يمكن إنهاؤها حالياً.'], 404);
         }
 
         // ✅ REQUIREMENT: Only the DRIVER can end the trip
         if ($bus->driver_id != $user->id) {
             return response()->json([
-                'message' => 'عذراً، يحق للسائق فقط إنهاء الرحلة وتصوير فيديو التحقق.'
+                'message' => 'عذراً، يحق للسائق فقط إنهاء الرحلة وتصوير فيديو التحقق.',
             ], 403);
         }
 
@@ -1591,9 +1671,10 @@ class DailyTripApiController extends Controller
 
         if ($onBoardCount > 0) {
             $destination = $tripType === 'forth' ? 'المدرسة' : 'منازلهم';
+
             return response()->json([
                 'message' => "لا يمكن إنهاء الرحلة وهناك $onBoardCount طلاب لا يزالون في الحافلة ولم يتم تسجيل نزولهم في $destination.",
-                'on_board_count' => $onBoardCount
+                'on_board_count' => $onBoardCount,
             ], 422);
         }
 
@@ -1606,9 +1687,10 @@ class DailyTripApiController extends Controller
 
         if ($accountedFor < $totalAssigned) {
             $missing = $totalAssigned - $accountedFor;
+
             return response()->json([
                 'message' => "لم يتم إكمال التحضير لجميع الطلاب. يرجى التأكد من تحضير جميع الطلاب ($missing طالب متبقي لم يتم تسجيل حالته).",
-                'missing_count' => $missing
+                'missing_count' => $missing,
             ], 422);
         }
 
@@ -1631,7 +1713,7 @@ class DailyTripApiController extends Controller
                             try {
                                 broadcast(new StudentStatusUpdated($attendance->student, $bus, 'alight', 'to_school'));
                             } catch (\Exception $e) {
-                                Log::error("Broadcast error (end trip student alight): " . $e->getMessage());
+                                Log::error('Broadcast error (end trip student alight): '.$e->getMessage());
                             }
                         }
                     }
@@ -1640,7 +1722,7 @@ class DailyTripApiController extends Controller
                         ->where('status', 'boarded')
                         ->update([
                             'status' => 'dropped',
-                            'check_out_time' => now()
+                            'check_out_time' => now(),
                         ]);
                 }
 
@@ -1655,7 +1737,7 @@ class DailyTripApiController extends Controller
                         try {
                             broadcast(new StudentStatusUpdated($attendance->student, $bus, 'absent', $tripType === 'forth' ? 'to_school' : 'to_home'));
                         } catch (\Exception $e) {
-                            Log::error("Broadcast error (end trip student absent): " . $e->getMessage());
+                            Log::error('Broadcast error (end trip student absent): '.$e->getMessage());
                         }
                     }
                 }
@@ -1677,11 +1759,11 @@ class DailyTripApiController extends Controller
                     'target_latitude' => null,
                     'target_longitude' => null,
                 ]);
-                
+
                 try {
                     broadcast(new TripStatusUpdated($trip, $bus, 'finished'));
                 } catch (\Exception $e) {
-                    Log::error("Broadcast error (end trip status): " . $e->getMessage());
+                    Log::error('Broadcast error (end trip status): '.$e->getMessage());
                 }
 
                 // Notify assistant to trigger app refresh/close trip view
@@ -1692,8 +1774,8 @@ class DailyTripApiController extends Controller
                         titleKey: 'notifications.trip_finished_title',
                         messageKey: 'notifications.trip_finished_message',
                         data: [
-                            'trip_id' => (string)$trip->id,
-                            'bus_id' => (string)$bus->id,
+                            'trip_id' => (string) $trip->id,
+                            'bus_id' => (string) $bus->id,
                             'status' => 'finished',
                             'type' => 'trip_finished',
                             'category' => 'bus_tracking',
@@ -1709,7 +1791,7 @@ class DailyTripApiController extends Controller
         return response()->json([
             'message' => 'تم إنهاء الرحلة وتوثيقها بنجاح.',
             'trip_status' => 'idle',
-            'video_path' => isset($path) ? asset('storage/' . $path) : null,
+            'video_path' => isset($path) ? asset('storage/'.$path) : null,
         ]);
     }
 
@@ -1720,7 +1802,7 @@ class DailyTripApiController extends Controller
     /**
      * تحديد حالة الطالب الحالية من آخر سجل تحضير اليوم
      */
-    private function getStudentCurrentStatus(Student $student, Trip $activeTrip = null): string
+    private function getStudentCurrentStatus(Student $student, ?Trip $activeTrip = null): string
     {
         // إذا كانت هناك رحلة نشطة، نبحث فقط في سجلات هذه الرحلة
         if ($activeTrip) {
@@ -1728,7 +1810,7 @@ class DailyTripApiController extends Controller
                 ->where('student_id', $student->id)
                 ->first();
 
-            if (!$attendance) {
+            if (! $attendance) {
                 // لا يوجد سجل في الرحلة الحالية → الطالب في حالته الابتدائية
                 return $activeTrip->type === 'forth' ? 'atHome' : 'atSchool';
             }
@@ -1753,7 +1835,7 @@ class DailyTripApiController extends Controller
         // لا توجد رحلة نشطة → نستخدم آخر سجل عام (للعرض في القوائم فقط)
         $lastAttendance = $student->lastTripAttendance;
 
-        if (!$lastAttendance) {
+        if (! $lastAttendance) {
             return 'atHome';
         }
 
@@ -1789,7 +1871,7 @@ class DailyTripApiController extends Controller
 
         if ($staleTripsCount > 0) {
             Log::info("cleanupStaleTrips: Found $staleTripsCount stale trips for bus {$bus->id}. Cleaning up.");
-            
+
             // 1. الرحلات التي بدأت ولكن لم يتم إنهاؤها أو تصويرها للتأكد من خلوها من الطلاب (in_progress, awaiting_video)
             Trip::where('bus_id', $bus->id)
                 ->whereDate('trip_date', '<', today())
@@ -1816,4 +1898,3 @@ class DailyTripApiController extends Controller
         }
     }
 }
-

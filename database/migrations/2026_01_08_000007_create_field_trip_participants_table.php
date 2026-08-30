@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('field_trip_participants', function (Blueprint $table) {
             $table->id();
             $table->foreignId('field_trip_id')->constrained()->onDelete('cascade');
-            $table->string('national_id'); 
-            $table->enum('type', ['student', 'user', 'external'])->default('student'); 
+            $table->string('national_id');
+            $table->enum('type', ['student', 'user', 'external'])->default('student');
             $table->timestamps();
 
             // Unique constraints to prevent duplicate entries of the same person

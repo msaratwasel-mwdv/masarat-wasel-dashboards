@@ -12,7 +12,7 @@ class PlanController extends Controller
     public function index()
     {
         return Inertia::render('Admin/Plans/Index', [
-            'plans' => Plan::withCount('subscriptions')->get()
+            'plans' => Plan::withCount('subscriptions')->get(),
         ]);
     }
 
@@ -38,10 +38,11 @@ class PlanController extends Controller
             'badge' => 'nullable|string',
             'badge_ar' => 'nullable|string',
             'badge_en' => 'nullable|string',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
 
         Plan::create($validated);
+
         return redirect()->back()->with('success', 'تم إضافة الخطة بنجاح');
     }
 
@@ -67,22 +68,25 @@ class PlanController extends Controller
             'badge' => 'nullable|string',
             'badge_ar' => 'nullable|string',
             'badge_en' => 'nullable|string',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
 
         $plan->update($validated);
+
         return redirect()->back()->with('success', 'تم تحديث الخطة بنجاح');
     }
 
     public function destroy(Plan $plan)
     {
         $plan->delete();
+
         return redirect()->back()->with('success', 'تم حذف الخطة بنجاح');
     }
 
     public function toggle(Plan $plan)
     {
-        $plan->update(['is_active' => !$plan->is_active]);
+        $plan->update(['is_active' => ! $plan->is_active]);
+
         return redirect()->back()->with('success', 'تم تغيير حالة الخطة بنجاح');
     }
 }

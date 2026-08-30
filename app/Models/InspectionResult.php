@@ -30,5 +30,3 @@ class InspectionResult extends Model
         return $this->belongsTo(InspectionItem::class, 'inspection_item_id');
     }
 }
-
-

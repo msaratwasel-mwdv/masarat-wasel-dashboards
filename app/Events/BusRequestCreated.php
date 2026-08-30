@@ -13,13 +13,12 @@ class BusRequestCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public BusRequest $busRequest, public int $adminId)
-    {}
+    public function __construct(public BusRequest $busRequest, public int $adminId) {}
 
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('App.Models.User.' . $this->adminId),
+            new PrivateChannel('App.Models.User.'.$this->adminId),
             new PrivateChannel('admin.bus-requests'),
         ];
     }

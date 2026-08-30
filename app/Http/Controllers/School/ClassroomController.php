@@ -21,18 +21,18 @@ class ClassroomController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'grade_id']);
 
-        $classrooms->transform(function($c) {
-            $mappedTeachers = $c->teachers->map(function($t) {
+        $classrooms->transform(function ($c) {
+            $mappedTeachers = $c->teachers->map(function ($t) {
                 return [
                     'id' => $t->user_id,
                     'name' => $t->name,
                     'national_id' => $t->user ? $t->user->national_id : null,
                 ];
             });
-            
+
             $c->setRelation('teachers', $mappedTeachers);
             $c->supervisor = $mappedTeachers->first();
-            
+
             return $c;
         });
 
@@ -49,15 +49,15 @@ class ClassroomController extends Controller
 
         $classrooms = Classroom::atSchool($schoolId)
             ->when($search, function ($query, $search) {
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%");
                 });
             })
             ->latest()
-            ->with(['grade', 'teachers.user']) 
+            ->with(['grade', 'teachers.user'])
             ->withCount('students')
             ->get()
-            ->map(function($c) {
+            ->map(function ($c) {
                 return [
                     'id' => $c->id,
                     'name' => $c->name,
@@ -65,13 +65,13 @@ class ClassroomController extends Controller
                     'grade_name' => $c->grade?->name,
                     'school_id' => $c->grade?->school_id,
                     'students_count' => $c->students_count,
-                    'teachers' => $c->teachers->map(function($t) {
+                    'teachers' => $c->teachers->map(function ($t) {
                         return [
                             'user_id' => $t->user_id,
                             'name' => $t->name,
                             'name_en' => $t->name_en,
                         ];
-                    })
+                    }),
 
                 ];
             });
@@ -81,7 +81,7 @@ class ClassroomController extends Controller
             ->withCount('classrooms')
             ->orderBy('name')
             ->get()
-            ->map(function($g) {
+            ->map(function ($g) {
                 return [
                     'id' => $g->id,
                     'name' => $g->name,
@@ -89,7 +89,7 @@ class ClassroomController extends Controller
                     'teacher_name' => $g->teacher?->name,
                     'teacher_name_en' => $g->teacher?->name_en,
                     'classrooms_count' => $g->classrooms_count,
-                    'students_count' => $g->classrooms->sum(function($c) {
+                    'students_count' => $g->classrooms->sum(function ($c) {
                         return $c->students->count();
                     }),
                 ];
@@ -100,7 +100,7 @@ class ClassroomController extends Controller
             ->withRole('teacher')
             ->orderBy('first_name_ar')
             ->get()
-            ->map(function($u) {
+            ->map(function ($u) {
                 return [
                     'id' => $u->id,
                     'name' => $u->name,
@@ -135,7 +135,7 @@ class ClassroomController extends Controller
             ->where('is_active', true)
             ->orderBy('first_name_ar')
             ->get()
-            ->map(function($u) {
+            ->map(function ($u) {
                 return [
                     'id' => $u->id,
                     'name' => $u->name,
@@ -148,12 +148,12 @@ class ClassroomController extends Controller
                 'id' => $classroom->id,
                 'name' => $classroom->name,
                 'grade_level' => $classroom->grade_level,
-                'teachers' => $classroom->teachers->map(function($t) {
+                'teachers' => $classroom->teachers->map(function ($t) {
                     return [
                         'user_id' => $t->user_id,
                         'name' => $t->name,
                     ];
-                })
+                }),
             ],
             'teachers' => $teachers,
         ]);
@@ -214,7 +214,7 @@ class ClassroomController extends Controller
             'school_id' => $schoolId,
         ]);
 
-        if (!empty($validated['teacher_id'])) {
+        if (! empty($validated['teacher_id'])) {
             // Because it's 1:1, we must ensure the teacher is not assigned to another grade
             // and the grade doesn't have another teacher (handled by Grade creation here)
             \App\Models\Teacher::updateOrCreate(
@@ -246,7 +246,7 @@ class ClassroomController extends Controller
         // Reset existing teacher for this grade
         \App\Models\Teacher::where('grade_id', $grade->id)->update(['grade_id' => null]);
 
-        if (!empty($validated['teacher_id'])) {
+        if (! empty($validated['teacher_id'])) {
             \App\Models\Teacher::updateOrCreate(
                 ['user_id' => $validated['teacher_id']],
                 ['grade_id' => $grade->id, 'school_id' => $schoolId]
@@ -282,6 +282,3 @@ class ClassroomController extends Controller
         return redirect()->back()->with('success', 'تم حذف الفصل بنجاح');
     }
 }
-
-
-

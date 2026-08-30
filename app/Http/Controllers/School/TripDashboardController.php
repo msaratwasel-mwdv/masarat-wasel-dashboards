@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
-use App\Models\Trip;
-use App\Models\FieldTrip;
 use App\Models\Bus;
+use App\Models\FieldTrip;
 use App\Models\Route;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Trip;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class TripDashboardController extends Controller
 {
@@ -24,7 +24,7 @@ class TripDashboardController extends Controller
         $routeId = $request->input('route_id');
 
         // Fetch today's trips first to sync them
-        $rawTrips = Trip::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        $rawTrips = Trip::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->whereDate('trip_date', $date)
             ->get();
 
@@ -33,13 +33,13 @@ class TripDashboardController extends Controller
         }
 
         // Fetch today's trips
-        $query = Trip::whereHas('bus', fn($q) => $q->where('school_id', $schoolId))
+        $query = Trip::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
             ->whereDate('trip_date', $date)
             ->with(['bus.driver.user', 'bus.assistant', 'bus.route', 'attendances.student'])
             ->withCount('attendances');
 
         if ($routeId) {
-            $query->whereHas('bus', fn($q) => $q->where('route_id', $routeId));
+            $query->whereHas('bus', fn ($q) => $q->where('route_id', $routeId));
         }
 
         $dailyTrips = $query->get();
@@ -86,7 +86,7 @@ class TripDashboardController extends Controller
     public function show(Trip $trip)
     {
         $schoolId = Auth::user()->getSchoolId();
-        if (!$trip->bus || $trip->bus->school_id !== $schoolId) {
+        if (! $trip->bus || $trip->bus->school_id !== $schoolId) {
             abort(403);
         }
 
@@ -95,9 +95,7 @@ class TripDashboardController extends Controller
         $trip->load(['bus.driver.user', 'bus.assistant', 'route', 'attendances.student']);
 
         return Inertia::render('School/Trips/TripDetails', [
-            'trip' => $trip
+            'trip' => $trip,
         ]);
     }
 }
-
-

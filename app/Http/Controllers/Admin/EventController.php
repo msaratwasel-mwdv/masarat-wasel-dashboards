@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class EventController extends Controller
 {
@@ -16,18 +16,18 @@ class EventController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search', '');
-        
+
         $query = Event::query();
-        
+
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('title_ar', 'like', "%{$search}%")
-                  ->orWhere('title_en', 'like', "%{$search}%");
+                    ->orWhere('title_en', 'like', "%{$search}%");
             });
         }
 
         $events = $query->latest()->paginate(10);
-        
+
         $counts = [
             'all' => Event::count(),
             'published' => Event::where('is_published', true)->count(),
@@ -38,7 +38,7 @@ class EventController extends Controller
         return Inertia::render('Admin/Events/Index', [
             'events' => $events,
             'counts' => $counts,
-            'filters' => ['search' => $search]
+            'filters' => ['search' => $search],
         ]);
     }
 
@@ -65,12 +65,12 @@ class EventController extends Controller
             'tag_en' => 'nullable|string|max:255',
             'event_date' => 'nullable|date',
             'is_published' => 'boolean',
-            'image' => 'nullable|image|max:2048'
+            'image' => 'nullable|image|max:2048',
         ]);
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('events', 'public');
-            $validated['image'] = '/storage/' . $path;
+            $validated['image'] = '/storage/'.$path;
         }
 
         Event::create($validated);
@@ -84,7 +84,7 @@ class EventController extends Controller
     public function edit(Event $event)
     {
         return Inertia::render('Admin/Events/Edit', [
-            'event' => $event
+            'event' => $event,
         ]);
     }
 
@@ -103,7 +103,7 @@ class EventController extends Controller
             'tag_en' => 'nullable|string|max:255',
             'event_date' => 'nullable|date',
             'is_published' => 'boolean',
-            'image' => 'nullable|image|max:2048'
+            'image' => 'nullable|image|max:2048',
         ]);
 
         if ($request->hasFile('image')) {
@@ -111,7 +111,7 @@ class EventController extends Controller
                 Storage::disk('public')->delete(str_replace('/storage/', '', $event->image));
             }
             $path = $request->file('image')->store('events', 'public');
-            $validated['image'] = '/storage/' . $path;
+            $validated['image'] = '/storage/'.$path;
         }
 
         $event->update($validated);
@@ -127,7 +127,7 @@ class EventController extends Controller
         if ($event->image) {
             Storage::disk('public')->delete(str_replace('/storage/', '', $event->image));
         }
-        
+
         $event->delete();
 
         return redirect()->route('admin.events.index')->with('success', 'تم حذف الفعالية بنجاح');

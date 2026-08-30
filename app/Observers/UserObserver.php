@@ -39,7 +39,7 @@ class UserObserver
         if ($user->role === 'assistant') {
             Cache::forget('assistant_counts');
         }
-        
+
         // 3. If school admin, we might need to clear school-specific caches if we had any,
         // but currently we have global counts.
     }

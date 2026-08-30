@@ -4,8 +4,6 @@ namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
 use App\Models\Route;
-use App\Models\Student;
-use App\Models\Bus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -16,7 +14,7 @@ class RouteController extends Controller
     public function index()
     {
         $schoolId = Auth::user()->getSchoolId();
-        
+
         $routes = Route::where('school_id', $schoolId)
             ->withCount(['morningStudents', 'afternoonStudents', 'buses'])
             ->latest()
@@ -75,5 +73,3 @@ class RouteController extends Controller
         return redirect()->back()->with('success', 'تم حذف المسار بنجاح');
     }
 }
-
-

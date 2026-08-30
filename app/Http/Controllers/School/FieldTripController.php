@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
-use App\Models\FieldTrip;
 use App\Models\Bus;
-use App\Models\User;
 use App\Models\Classroom;
+use App\Models\FieldTrip;
 use App\Models\Student;
-use App\Services\NotificationService;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +39,7 @@ class FieldTripController extends Controller
 
         // Fetch Teachers for selection
         $teachers = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->where('roles.name', 'teacher'))
+            ->whereHas('roles', fn ($q) => $q->where('roles.name', 'teacher'))
             ->select('id', 'first_name_ar', 'last_name_ar', 'phone')
             ->get();
 
@@ -60,7 +59,7 @@ class FieldTripController extends Controller
         \Illuminate\Support\Facades\Log::info('FieldTripController@store BEGIN', [
             'request_all' => $request->all(),
             'user_id' => Auth::id(),
-            'school_id' => Auth::user()->getSchoolId() ?? 'NULL'
+            'school_id' => Auth::user()->getSchoolId() ?? 'NULL',
         ]);
 
         try {
@@ -86,7 +85,7 @@ class FieldTripController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Illuminate\Support\Facades\Log::error('FieldTrip Validation FAILED', [
                 'errors' => $e->errors(),
-                'data' => $request->all()
+                'data' => $request->all(),
             ]);
             throw $e;
         }
@@ -115,23 +114,23 @@ class FieldTripController extends Controller
                 ->pluck('national_id')
                 ->filter()
                 ->toArray();
-            
+
             $fieldTrip->students()->sync($studentNationalIds);
 
             // Resolve National IDs for Internal Teachers
-            if (!empty($validated['teacher_ids'])) {
+            if (! empty($validated['teacher_ids'])) {
                 $teacherNationalIds = User::whereIn('id', $validated['teacher_ids'])
                     ->pluck('national_id')
                     ->filter()
                     ->toArray();
-                    
+
                 $fieldTrip->internalTeachers()->sync($teacherNationalIds);
             }
 
             // Save External Members to the participants table (ignoring name/phone as they are removed from migration)
-            if (!empty($validated['external_members'])) {
+            if (! empty($validated['external_members'])) {
                 foreach ($validated['external_members'] as $external) {
-                    if (!empty($external['national_id'])) {
+                    if (! empty($external['national_id'])) {
                         $fieldTrip->participants()->create([
                             'national_id' => $external['national_id'],
                             'type' => 'external',
@@ -151,7 +150,7 @@ class FieldTripController extends Controller
                 $notificationService->notifyCompanyAdmins(
                     'field_trip_request',
                     '🆕 طلب رحلة ميدانية جديد',
-                    'قامت مدرسة ' . Auth::user()->school->name . ' بتقديم طلب لرحلة: ' . $fieldTrip->name,
+                    'قامت مدرسة '.Auth::user()->school->name.' بتقديم طلب لرحلة: '.$fieldTrip->name,
                     ['trip_id' => $fieldTrip->id]
                 );
                 \Illuminate\Support\Facades\Log::info('Notification sent to admins');
@@ -167,11 +166,12 @@ class FieldTripController extends Controller
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('FieldTrip storage EXCEPTION', [
                 'msg' => $e->getMessage(),
-                'trace' => substr($e->getTraceAsString(), 0, 500)
+                'trace' => substr($e->getTraceAsString(), 0, 500),
             ]);
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء إنشاء الرحلة: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء إنشاء الرحلة: '.$e->getMessage());
         }
     }
 
@@ -190,8 +190,8 @@ class FieldTripController extends Controller
                 'internalTeachers',
                 'externalParticipants',
                 'bus.driver',
-                'bus.assistant'
-            ])
+                'bus.assistant',
+            ]),
         ]);
     }
 

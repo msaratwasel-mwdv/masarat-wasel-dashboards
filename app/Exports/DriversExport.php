@@ -4,15 +4,15 @@ namespace App\Exports;
 
 use App\Models\User;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithColumnFormatting;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class DriversExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithColumnFormatting
+class DriversExport implements FromCollection, ShouldAutoSize, WithColumnFormatting, WithHeadings, WithMapping, WithStyles
 {
     protected $isTemplate;
 
@@ -26,10 +26,11 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
         if ($this->isTemplate) {
             return collect([[]]); // Return empty row for template
         }
-        return User::whereHas('roles', fn($q) => $q->where('name', 'driver'))->with('driver')->get();
+
+        return User::whereHas('roles', fn ($q) => $q->where('name', 'driver'))->with('driver')->get();
     }
 
-            public function headings(): array
+    public function headings(): array
     {
         return [
             [__('exports.notices.drivers')],
@@ -44,7 +45,7 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
                 __('exports.columns.address'),
                 __('exports.columns.license_number'),
                 __('exports.columns.license_expiry'),
-            ]
+            ],
         ];
     }
 
@@ -60,8 +61,8 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
             $row->last_name_ar,
             $row->first_name_en,
             $row->last_name_en,
-            $row->national_id ? ' ' . $row->national_id : '',
-            $row->phone ? ' ' . $row->phone : '',
+            $row->national_id ? ' '.$row->national_id : '',
+            $row->phone ? ' '.$row->phone : '',
             $row->email,
             $row->address,
             $row->driver?->license_number,
@@ -89,8 +90,8 @@ class DriversExport implements FromCollection, WithHeadings, WithMapping, Should
         $sheet->getStyle('A:K')->applyFromArray([
             'alignment' => [
                 'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER
-            ]
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            ],
         ]);
 
         // دمج خلايا الصف الأول للملاحظة (حتى العمود K)

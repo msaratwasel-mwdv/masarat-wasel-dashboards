@@ -12,17 +12,17 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('student_id')
-                  ->constrained('students')
-                  ->onDelete('cascade');
+                ->constrained('students')
+                ->onDelete('cascade');
 
             $table->foreignId('classroom_id')
-                  ->constrained('classrooms')
-                  ->onDelete('cascade');
+                ->constrained('classrooms')
+                ->onDelete('cascade');
 
             $table->foreignId('recorded_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->onDelete('set null');
+                ->nullable()
+                ->constrained('users')
+                ->onDelete('set null');
 
             $table->date('date');
             $table->enum('status', ['present', 'absent', 'late', 'excused']);

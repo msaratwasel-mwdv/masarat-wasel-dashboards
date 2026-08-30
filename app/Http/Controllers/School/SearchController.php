@@ -18,7 +18,7 @@ class SearchController extends Controller
         $schoolId = Auth::user()->getSchoolId();
         $query = $request->q;
 
-        if (!$query || strlen($query) < 2) {
+        if (! $query || strlen($query) < 2) {
             return response()->json([]);
         }
 
@@ -28,7 +28,7 @@ class SearchController extends Controller
         $students = Student::inSchool($schoolId)
             ->where(function ($q) use ($query) {
                 $q->where('first_name_ar', 'like', "%{$query}%")
-                  ->orWhere('last_name_ar', 'like', "%{$query}%")
+                    ->orWhere('last_name_ar', 'like', "%{$query}%")
                     ->orWhere('national_id', 'like', "%{$query}%")
                     ->orWhere('student_code', 'like', "%{$query}%");
             })
@@ -45,8 +45,8 @@ class SearchController extends Controller
                     'national_id' => $student->national_id,
                     'student_code' => $student->student_code,
                     'guardian' => $student->guardians->first(),
-                    'classroom' => $student->currentEnrollment?->classroom
-                ]
+                    'classroom' => $student->currentEnrollment?->classroom,
+                ],
             ];
         }
 
@@ -66,13 +66,13 @@ class SearchController extends Controller
         foreach ($guardians as $guardian) {
             $results[] = [
                 'type' => 'guardian',
-                'data' => $guardian
+                'data' => $guardian,
             ];
         }
 
         // 3. البحث في المساعدين
         $assistants = User::atSchool($schoolId)
-            ->whereHas('roles', fn($q) => $q->whereIn('roles.name', ['assistant', 'teacher', 'school_admin']))
+            ->whereHas('roles', fn ($q) => $q->whereIn('roles.name', ['assistant', 'teacher', 'school_admin']))
             ->where(function ($q) use ($query) {
                 $q->where('first_name_ar', 'like', "%{$query}%")
                     ->orWhere('last_name_ar', 'like', "%{$query}%")
@@ -85,14 +85,10 @@ class SearchController extends Controller
         foreach ($assistants as $assistant) {
             $results[] = [
                 'type' => 'assistant',
-                'data' => $assistant
+                'data' => $assistant,
             ];
         }
 
         return response()->json($results);
     }
 }
-
-
-
-

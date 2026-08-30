@@ -2,8 +2,8 @@
 
 namespace App\Observers;
 
-use App\Models\Bus;
 use App\Events\DashboardStatsUpdated;
+use App\Models\Bus;
 use Illuminate\Support\Facades\Cache;
 
 class BusObserver
@@ -22,15 +22,15 @@ class BusObserver
     {
         // Bus changes affect dashboard stats (total, maintenance, booked/available)
         Cache::forget('admin_dashboard_stats');
-        
+
         // Also affects staff assignment counts
         Cache::forget('driver_counts');
         Cache::forget('assistant_counts');
-        
+
         // Affects analytics (fleet utilization)
         $monthKey = now()->format('Y-m');
         Cache::forget("analytics:kpis:{$monthKey}");
-        
+
         broadcast(new DashboardStatsUpdated('buses', ['admin.dashboard']));
     }
 }

@@ -89,7 +89,7 @@ class UserFactory extends Factory
 
             Driver::create(array_merge([
                 'user_id' => $user->id,
-                'license_number' => 'LIC-' . fake()->unique()->numerify('########'),
+                'license_number' => 'LIC-'.fake()->unique()->numerify('########'),
                 'license_expiry_date' => now()->addYears(2)->toDateString(),
                 'status' => 'active',
             ], $attributes));
