@@ -707,12 +707,12 @@ export default function SchoolUsersIndex({
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1">
                                             <label className={DS_label}>{isRTL ? "الرقم المدني / الإقامة" : "Civil ID / Iqama"} <span className="text-rose-500">*</span></label>
-                                            <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" required />
+                                            <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value.replace(/\D/g, ''))} minLength={7} maxLength={20} pattern="\d+" className={`${DS_input} font-mono`} dir="ltr" required />
                                             <InputError message={errors.national_id} />
                                         </div>
                                         <div className="space-y-1">
                                             <label className={DS_label}>{isRTL ? "رقم الجوال" : "Phone Number"} <span className="text-rose-500">*</span></label>
-                                            <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} className={`${DS_input} font-mono`} dir="ltr" placeholder="5XXXXXXXX" required />
+                                            <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value.replace(/\D/g, ''))} minLength={8} maxLength={20} pattern="\d+" className={`${DS_input} font-mono`} dir="ltr" placeholder="5XXXXXXXX" required />
                                             <InputError message={errors.phone} />
                                         </div>
                                         <div className="space-y-1 col-span-2">

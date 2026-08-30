@@ -52,8 +52,8 @@ class DriversImport implements SkipsEmptyRows, SkipsOnError, SkipsOnFailure, ToM
             '1' => 'required_with:0|nullable|string|max:255',
             '2' => 'required_without:0|nullable|string|max:255',
             '3' => 'required_with:2|nullable|string|max:255',
-            '4' => 'required|string|max:20', // National ID / Civil ID is required
-            '5' => 'required|string|max:20', // Phone is required
+            '4' => 'required|string|regex:/^[0-9]+$/|min:7|max:20', // National ID / Civil ID is required
+            '5' => 'required|string|regex:/^[0-9]+$/|min:8|max:20', // Phone is required
             '6' => 'nullable|email|max:255', // Email is optional
             '7' => 'nullable|string|max:255',
             '8' => 'nullable|string|max:255',

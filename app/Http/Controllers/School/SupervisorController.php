@@ -88,9 +88,9 @@ class SupervisorController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'name_en' => 'nullable|string|max:255',
-            'national_id' => ['required', 'string', 'max:20', Rule::unique('users', 'national_id')],
+            'national_id' => ['required', 'string', 'regex:/^[0-9]+$/', 'min:7', 'max:20', Rule::unique('users', 'national_id')],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')],
-            'phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')],
+            'phone' => ['required', 'string', 'regex:/^[0-9]+$/', 'min:8', 'max:20', Rule::unique('users', 'phone')],
             'address' => 'nullable|string|max:500',
             'preferred_language' => 'nullable|in:ar,en',
             'password' => 'nullable|string|min:6',
@@ -187,10 +187,8 @@ class SupervisorController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'name_en' => 'nullable|string|max:255',
-            'national_id' => [
-                'required',
-                'string',
-                'max:20',
+            'national_id' => ['required',
+                'string', 'regex:/^[0-9]+$/', 'min:7', 'max:20',
                 Rule::unique('users', 'national_id')->ignore($supervisor->id),
             ],
             'email' => [
@@ -199,7 +197,7 @@ class SupervisorController extends Controller
                 'max:255',
                 Rule::unique('users', 'email')->ignore($supervisor->id),
             ],
-            'phone' => ['required', 'string', 'max:50', Rule::unique('users', 'phone')->ignore($supervisor->id)],
+            'phone' => ['required', 'string', 'regex:/^[0-9]+$/', 'min:8', 'max:20', Rule::unique('users', 'phone')->ignore($supervisor->id)],
             'address' => 'nullable|string|max:500',
             'preferred_language' => 'nullable|in:ar,en',
             'password' => 'nullable|string|min:6',

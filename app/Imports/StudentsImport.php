@@ -74,13 +74,13 @@ class StudentsImport implements SkipsEmptyRows, SkipsOnError, SkipsOnFailure, To
             '1' => 'required|string|max:255', // last_name_ar
             '2' => 'nullable|string|max:255', // first_name_en
             '3' => 'nullable|string|max:255', // last_name_en
-            '4' => 'required|string|max:50',  // national_id student
+            '4' => 'required|string|regex:/^[0-9]+$/|min:7|max:20',  // national_id student
             '5' => 'required|string|in:male,female,ذكر,انثى,أنثى', // gender
 
             // Guardian
-            '6' => 'required|string|max:50', // national_id guardian
+            '6' => 'required|string|regex:/^[0-9]+$/|min:7|max:20', // national_id guardian
             '7' => 'nullable|string|max:255', // guardian name
-            '8' => 'nullable|string|max:50', // guardian phone
+            '8' => 'nullable|string|regex:/^[0-9]+$/|min:8|max:20', // guardian phone
             '9' => 'nullable|string|max:255', // relationship
         ];
     }

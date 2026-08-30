@@ -34,8 +34,8 @@ class StoreSchoolRequest extends FormRequest
             'create_admin' => ['nullable', 'boolean'],
             'admin_name' => ['nullable', 'required_if:create_admin,true', 'string', 'max:255'],
             'admin_email' => ['nullable', 'required_if:create_admin,true', 'email', 'max:255', 'unique:users,email'],
-            'admin_phone' => ['nullable', 'required_if:create_admin,true', 'string', 'max:20', 'unique:users,phone'],
-            'admin_national_id' => ['nullable', 'string', 'max:255'],
+            'admin_phone' => ['nullable', 'required_if:create_admin,true', 'string', 'regex:/^[0-9]+$/', 'min:8', 'max:20', 'unique:users,phone'],
+            'admin_national_id' => ['nullable', 'string', 'regex:/^[0-9]+$/', 'min:7', 'max:20'],
             'admin_password' => ['nullable', 'required_if:create_admin,true', 'string', 'min:8', 'confirmed'],
 
             // Subscription & Installments

@@ -1,5 +1,5 @@
 import { useState, PropsWithChildren, ReactNode, useEffect, useRef } from "react";
-import { Link, usePage } from "@inertiajs/react";
+import { Link, usePage, router } from "@inertiajs/react";
 import ApplicationLogo from "@/Components/ApplicationLogo";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { User } from "@/types";
@@ -9,8 +9,10 @@ import { useEchoEvent } from "@/hooks/useEcho";
 import { useRealtimeToast } from "@/hooks/useRealtimeToast";
 import useTranslation from "@/hooks/useTranslation";
 import { motion, AnimatePresence } from "framer-motion";
+import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import {
   ChevronRight,
+  ChevronsUpDown,
   Menu,
   X,
   LayoutDashboard,
@@ -198,7 +200,8 @@ export default function SchoolAuthenticatedLayout({
   user: defaultUser,
   header,
   children,
-}: PropsWithChildren<{ user?: User; header?: ReactNode }>) {
+  isLiveTracking,
+}: PropsWithChildren<{ user?: User; header?: ReactNode; isLiveTracking?: boolean }>) {
   const user = defaultUser || (usePage().props.auth as any).user;
 
   // Sidebar states
@@ -233,7 +236,6 @@ export default function SchoolAuthenticatedLayout({
   const { theme, language, toggleTheme, toggleLanguage, isRTL } = useTheme();
   const { notifyEvent } = useRealtimeToast();
   const { t } = useTranslation();
-  const isLiveTracking = route().current('school.live-tracking.*');
 
   useEffect(() => {
     if (flash?.success) {
@@ -278,8 +280,7 @@ export default function SchoolAuthenticatedLayout({
           'pending_absence_requests_count', 
           'received_incidents_count', 
           'notifications_count'
-        ],
-        preserveScroll: true
+        ]
       });
     }
   );
@@ -331,11 +332,11 @@ export default function SchoolAuthenticatedLayout({
   // Animation Variants
   const sidebarVariants = {
     expanded: {
-      width: 260,
+      width: 256,
       transition: { type: "spring" as const, stiffness: 300, damping: 30 }
     },
     collapsed: {
-      width: 80,
+      width: 64,
       transition: { type: "spring" as const, stiffness: 300, damping: 30 }
     }
   };
@@ -345,8 +346,8 @@ export default function SchoolAuthenticatedLayout({
   // Icon renderer (using modern Lucide icons)
   const renderIcon = (name: string, isActive: boolean) => {
     const baseClass = `w-5 h-5 transition-colors duration-200 ${isActive
-      ? "text-brand-yellow scale-110"
-      : "text-gray-400 group-hover:text-white dark:group-hover:text-gray-200"
+      ? "text-white"
+      : "text-slate-400 group-hover:text-slate-200"
       }`;
 
     switch (name) {
@@ -372,7 +373,7 @@ export default function SchoolAuthenticatedLayout({
 
   return (
     <div
-      className={`min-h-screen bg-gray-50 dark:bg-gray-900 flex font-sans overflow-x-hidden relative w-full ${rtlClasses}`}
+      className={`min-h-screen bg-[#0A101D] flex font-sans overflow-x-hidden relative w-full ${rtlClasses}`}
       dir={isRTL ? "rtl" : "ltr"}
     >
       {/* Mobile Backdrop */}
@@ -395,21 +396,20 @@ export default function SchoolAuthenticatedLayout({
         animate={isMobile ? "expanded" : (isCollapsed ? "collapsed" : "expanded")}
         className={`
           force-print-hide print:hidden
-          bg-gradient-to-b from-brand-dark to-brand-navy dark:from-gray-900 dark:to-gray-800
-          text-white flex flex-col fixed inset-y-0 h-full z-50 shadow-sidebar overflow-hidden
+          bg-transparent
+          text-white flex flex-col fixed inset-y-0 h-full z-50 overflow-hidden
           ${sidebarPosition}
           ${isMobileMenuOpen ? "translate-x-0" : isRTL ? "translate-x-full md:translate-x-0" : "-translate-x-full md:translate-x-0"}
           transition-transform duration-300 md:transition-none
         `}
       >
-        {/* Logo Section */}
-        <div className={`h-20 flex items-center border-b border-white/10 dark:border-gray-700 overflow-hidden ${isCollapsed ? "justify-center px-0" : "px-8"}`}>
+        <div className={`h-14 flex items-center overflow-hidden ${isCollapsed ? "justify-center px-0" : "px-4"}`}>
           <Link
             href={route("school.dashboard")}
-            className={`flex items-center gap-3 group ${flexDirection}`}
+            className={`flex items-center gap-2 group ${flexDirection}`}
           >
-            <div className={`rounded-xl flex items-center justify-center bg-white shadow-lg group-hover:scale-105 transition-transform ${isCollapsed ? "w-11 h-11" : "w-16 h-16"} p-1`}>
-              <ApplicationLogo className="w-full h-full" />
+            <div className={`rounded-md flex items-center justify-center bg-white text-black shadow-sm ${isCollapsed ? "w-8 h-8" : "w-8 h-8"} p-1`}>
+              <ApplicationLogo className="w-full h-full fill-current" />
             </div>
 
             {!isCollapsed && (
@@ -418,11 +418,8 @@ export default function SchoolAuthenticatedLayout({
                 animate={{ opacity: 1, x: 0 }}
                 className={`flex flex-col ${isRTL ? "text-right" : "text-left"}`}
               >
-                <span className="text-lg font-bold tracking-wider text-white whitespace-nowrap">
+                <span className="text-[15px] font-semibold text-white whitespace-nowrap">
                   {isRTL ? "مسارات واصل" : "Masarat Wasel"}
-                </span>
-                <span className="text-[9px] text-gray-400 uppercase tracking-widest font-medium whitespace-nowrap">
-                  {isRTL ? "لوحة المدرسة" : "School Panel"}
                 </span>
               </motion.div>
             )}
@@ -433,88 +430,86 @@ export default function SchoolAuthenticatedLayout({
         <nav
           ref={sidebarNavRef}
           onScroll={handleSidebarScroll}
-          className="flex-1 px-3 space-y-1.5 mt-8 overflow-y-auto custom-scrollbar"
+          className="flex-1 px-3 space-y-0.5 mt-2 overflow-y-auto custom-scrollbar"
         >
 
           {menuItems.map((item) => {
             const hasActiveChild = item.subItems?.some(sub => sub.route && route().current(sub.route));
             const isActive = !!(item.route && route().current(item.route)) || !!hasActiveChild;
-            const isExpanded = expandedMenus.includes(item.label) || !!hasActiveChild;
 
             if (item.subItems) {
               return (
-                <div key={item.label} className="space-y-1">
-                  <button
-                    onClick={() => {
-                      if (isCollapsed) {
-                        setIsCollapsed(false);
-                      }
-                      toggleMenu(item.label);
-                    }}
-                    title={isCollapsed ? item.label : ""}
-                    className={`
-                      w-full relative group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200
-                      ${flexDirection}
-                      ${isActive || isExpanded
-                        ? "bg-brand-yellow/10 text-brand-yellow"
-                        : "text-gray-400 hover:bg-white/5 hover:text-white"
-                      }
-                      ${isCollapsed ? "justify-center" : ""}
-                    `}
-                  >
-                    <span className={`${!isCollapsed ? (isRTL ? "ml-4" : "mr-4") : ""} ${isActive ? "scale-110 text-brand-yellow" : "group-hover:scale-110"} transition-transform duration-300`}>
-                      {item.icon && renderIcon(item.icon, isActive)}
-                    </span>
-
-                    {!isCollapsed && (
-                      <>
-                        <span className={`flex-1 text-sm font-medium ${isRTL ? "text-right" : "text-left"} whitespace-nowrap`}>
-                          {item.label}
+                <Popover key={item.label} className="w-full">
+                  {({ open }) => (
+                    <>
+                      <PopoverButton
+                        onClick={() => {
+                          if (isCollapsed) {
+                            setIsCollapsed(false);
+                          }
+                        }}
+                        title={isCollapsed ? item.label : ""}
+                        className={`
+                          w-full relative group flex items-center p-2 text-sm font-medium rounded-md transition-all duration-200 outline-none
+                          ${flexDirection}
+                          ${isActive || open
+                            ? "bg-white/10 text-white"
+                            : "text-slate-400 hover:bg-white/5 hover:text-white"
+                          }
+                          ${isCollapsed ? "justify-center" : ""}
+                        `}
+                      >
+                        <span className={`${!isCollapsed ? (isRTL ? "ml-2" : "mr-2") : ""} flex items-center shrink-0`}>
+                          {item.icon && renderIcon(item.icon, isActive)}
                         </span>
-                        <ChevronRight className={`w-4 h-4 transition-all duration-300 ${isExpanded ? "rotate-90 text-brand-yellow" : `opacity-40 group-hover:opacity-100 ${isRTL ? "rotate-180" : ""}`}`} />
-                      </>
-                    )}
 
-                    {isActive && (
-                      <motion.div
-                        layoutId="active-indicator"
-                        className={`absolute w-1 h-6 bg-brand-yellow rounded-full ${isRTL ? "left-0" : "right-0"}`}
-                      />
-                    )}
-                  </button>
+                        {!isCollapsed && (
+                          <>
+                            <span className={`flex-1 text-sm font-medium ${isRTL ? "text-right" : "text-left"} whitespace-nowrap`}>
+                              {item.label}
+                            </span>
+                            <ChevronRight className={`w-4 h-4 transition-all duration-300 ${open ? "rotate-90 text-white" : `opacity-40 group-hover:opacity-100 ${isRTL ? "rotate-180" : ""}`}`} />
+                          </>
+                        )}
+                      </PopoverButton>
 
-                  {!isCollapsed && isExpanded && (
-                    <div className={`mt-1 space-y-1 ${isRTL ? "pr-12" : "pl-12"}`}>
-                      {item.subItems.map((sub) => {
-                        const isSubActive = route().current(sub.route);
-                        return (
-                          <Link
-                            key={sub.label}
-                            href={route(sub.route)}
-                            className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
-                              isSubActive
-                                ? "text-brand-yellow font-bold"
-                                : "text-gray-400 hover:text-white"
-                            } ${isRTL ? "text-right" : "text-left"}`}
-                          >
-                            <div className="flex items-center justify-between w-full">
-                              <span>{sub.label}</span>
+                      <PopoverPanel
+                        anchor={isMobile ? (isRTL ? "bottom end" : "bottom start") : (isRTL ? "left start" : "right start")}
+                        className={`
+                          z-[9999] flex flex-col gap-0.5 min-w-[180px] p-1.5 rounded-lg bg-slate-800 border border-slate-700 shadow-2xl outline-none relative
+                          ${isMobile ? "mt-2" : (isRTL ? "mr-4" : "ml-4")}
+                        `}
+                      >
+                        {/* Caret pointing to the button (only on desktop where it opens sideways) */}
+                        {!isMobile && (
+                          <div className={`absolute top-4 w-2.5 h-2.5 rotate-45 bg-slate-800 border-slate-700 ${isRTL ? "-right-[6px] border-r border-t" : "-left-[6px] border-l border-b"}`} />
+                        )}
+                        
+                        {item.subItems.map((sub) => {
+                          const isSubActive = route().current(sub.route);
+                          return (
+                            <Link
+                              key={sub.label}
+                              href={route(sub.route)}
+                              className={`flex items-center justify-between w-full p-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                                isSubActive
+                                  ? "text-white font-medium bg-white/5"
+                                  : "text-slate-300 hover:text-white hover:bg-slate-700"
+                              } ${isRTL ? "text-right" : "text-left"}`}
+                            >
+                              <span className="relative z-10">{sub.label}</span>
                               {sub.route === 'school.notifications.received' && usePage<any>().props.received_incidents_count > 0 && (
-                                <motion.span 
-                                  initial={{ scale: 0 }} 
-                                  animate={{ scale: 1 }}
-                                  className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-2"
-                                >
+                                <span className="relative z-10 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-2">
                                   {usePage<any>().props.received_incidents_count}
-                                </motion.span>
+                                </span>
                               )}
-                            </div>
-                          </Link>
-                        );
-                      })}
-                    </div>
+                            </Link>
+                          );
+                        })}
+                      </PopoverPanel>
+                    </>
                   )}
-                </div>
+                </Popover>
               );
             }
 
@@ -524,16 +519,16 @@ export default function SchoolAuthenticatedLayout({
                 href={item.route ? route(item.route) : "#"}
                 title={isCollapsed ? item.label : ""}
                 className={`
-                  relative group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200
+                  relative group flex items-center p-2 text-sm font-medium rounded-md transition-all duration-200
                   ${flexDirection}
                   ${isActive
-                    ? "bg-brand-yellow/10 text-brand-yellow font-bold"
-                    : "text-gray-400 hover:bg-white/5 hover:text-white"
+                    ? "bg-white/10 text-white"
+                    : "text-slate-400 hover:bg-white/5 hover:text-white"
                   }
                   ${isCollapsed ? "justify-center" : ""}
                 `}
               >
-                <span className={`${!isCollapsed ? (isRTL ? "ml-4" : "mr-4") : ""} ${isActive ? "scale-110 text-brand-yellow" : "group-hover:scale-110"} transition-transform duration-200`}>
+                <span className={`${!isCollapsed ? (isRTL ? "ml-2" : "mr-2") : ""} flex items-center shrink-0`}>
                   {item.icon && renderIcon(item.icon, isActive)}
                 </span>
 
@@ -580,70 +575,95 @@ export default function SchoolAuthenticatedLayout({
                 {isCollapsed && (
                   <>
                     {item.route === 'school.location-requests.index' && usePage<any>().props.pending_location_requests_count > 0 && (
-                      <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-brand-dark shadow-sm" />
+                      <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-brand-dark shadow-sm" />
                     )}
                     {item.route === 'school.absence-requests.index' && usePage<any>().props.pending_absence_requests_count > 0 && (
-                      <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-brand-dark shadow-sm" />
+                      <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-brand-dark shadow-sm" />
                     )}
                     {item.label === (isRTL ? "الإشعارات" : "Notifications") && (usePage<any>().props.notifications_count > 0 || usePage<any>().props.received_incidents_count > 0) && (
-                      <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-brand-yellow rounded-full border-2 border-brand-dark shadow-sm" />
+                      <div className="absolute top-2 right-2 w-2 h-2 bg-slate-100 rounded-full border border-slate-800 shadow-sm" />
                     )}
                   </>
-                )}
-
-                {isActive && (
-                  <motion.div
-                    layoutId="active-indicator"
-                    className={`absolute w-1 h-6 bg-brand-yellow rounded-full ${isRTL ? "left-0" : "right-0"}`}
-                  />
                 )}
               </Link>
             );
           })}
         </nav>
 
-        <div className={`p-4 border-t border-white/10 dark:border-gray-700 bg-brand-navy/30 ${isCollapsed ? "flex flex-col items-center gap-4" : "overflow-hidden"}`}>
-          <div className={`rounded-xl ${isCollapsed ? "p-1" : "p-3"} flex items-center ${flexDirection} justify-between group hover:bg-white/5 transition-colors w-full overflow-hidden`}>
-            {!isCollapsed && (
-              <Link
-                method="post"
-                href={route("logout")}
-                as="button"
-                className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-all"
-                title={isRTL ? "تسجيل الخروج" : "Logout"}
-              >
-                <LogOut className="w-4 h-4" />
-              </Link>
+        <div className="p-2 bg-transparent mt-auto">
+          <Popover className="relative w-full">
+            {({ open }) => (
+              <>
+                <PopoverButton
+                  className={`w-full rounded-lg ${isCollapsed ? "p-2 justify-center" : "p-2"} flex items-center ${flexDirection} group hover:bg-white/5 transition-colors overflow-hidden outline-none ${open ? "bg-white/5" : ""}`}
+                  title={isCollapsed ? (!isRTL && user.name_en ? user.name_en : user.name) : ""}
+                >
+                  <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2"} ${flexDirection} flex-1 min-w-0`}>
+                    <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-zinc-800 flex items-center justify-center text-slate-900 dark:text-white font-medium text-[12px] shrink-0">
+                      {(!isRTL && user.name_en ? user.name_en : user.name).charAt(0).toUpperCase()}
+                    </div>
+                    {!isCollapsed && (
+                      <div className={`grid flex-1 ${isRTL ? "text-right" : "text-left"} text-sm leading-tight min-w-0`}>
+                        <span className="truncate font-medium text-slate-900 dark:text-white" dir="auto">
+                          {!isRTL && user.name_en ? user.name_en : user.name}
+                        </span>
+                        <span className="truncate text-xs text-slate-500 dark:text-slate-400">
+                          {isRTL ? "مدير مدرسة" : "School Admin"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {!isCollapsed && (
+                    <ChevronsUpDown className="w-4 h-4 text-slate-500 group-hover:text-slate-300 shrink-0 ml-auto" />
+                  )}
+                </PopoverButton>
+
+                <PopoverPanel
+                  anchor={isMobile ? "top" : (isCollapsed ? (isRTL ? "left end" : "right end") : "top start")}
+                  className={`
+                    z-[9999] flex flex-col min-w-[224px] p-1 rounded-lg bg-white dark:bg-[#18181B] border border-gray-200 dark:border-white/10 shadow-lg outline-none relative
+                    ${isMobile ? "mb-2" : (isCollapsed ? (isRTL ? "mr-4" : "ml-4") : "mb-2")}
+                  `}
+                >
+                  <div className={`flex items-center gap-2 px-1 py-1.5 ${isRTL ? "text-right" : "text-left"} text-sm`}>
+                    <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-zinc-800 flex items-center justify-center text-slate-900 dark:text-white font-medium text-[12px] shrink-0">
+                      {(!isRTL && user.name_en ? user.name_en : user.name).charAt(0).toUpperCase()}
+                    </div>
+                    <div className={`grid flex-1 ${isRTL ? "text-right" : "text-left"} text-sm leading-tight min-w-0`}>
+                      <span className="truncate font-medium text-slate-900 dark:text-white" dir="auto">
+                        {!isRTL && user.name_en ? user.name_en : user.name}
+                      </span>
+                      <span className="truncate text-xs text-slate-500 dark:text-slate-400" dir="auto">
+                        {user.email || 'admin@school.com'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="h-px bg-gray-200 dark:bg-white/10 my-1 -mx-1" />
+                  
+                  <Link
+                    href={route('profile.edit')}
+                    className={`flex items-center w-full px-2 py-1.5 text-sm font-normal text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-sm transition-colors cursor-pointer ${isRTL ? "flex-row-reverse" : ""}`}
+                  >
+                    <Settings className={`w-4 h-4 ${isRTL ? "ml-2" : "mr-2"}`} />
+                    <span>{isRTL ? "الإعدادات" : "Settings"}</span>
+                  </Link>
+
+                  <div className="h-px bg-gray-200 dark:bg-white/10 my-1 -mx-1" />
+
+                  <Link
+                    method="post"
+                    href={route("logout")}
+                    as="button"
+                    className={`flex items-center w-full px-2 py-1.5 text-sm font-normal text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-sm transition-colors cursor-pointer ${isRTL ? "flex-row-reverse" : ""}`}
+                  >
+                    <LogOut className={`w-4 h-4 ${isRTL ? "ml-2" : "mr-2"}`} />
+                    <span>{isRTL ? "تسجيل الخروج" : "Log out"}</span>
+                  </Link>
+                </PopoverPanel>
+              </>
             )}
-
-            <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"} ${flexDirection} min-w-0`}>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-yellow to-yellow-600 flex items-center justify-center text-white font-bold shadow-lg shrink-0">
-                {(!isRTL && user.name_en ? user.name_en : user.name).charAt(0).toUpperCase()}
-              </div>
-              {!isCollapsed && (
-                <div className={`flex flex-col ${isRTL ? "text-right" : "text-left"} overflow-hidden min-w-0`}>
-                  <span className="text-sm font-bold text-white truncate" dir="auto">
-                    {!isRTL && user.name_en ? user.name_en : user.name}
-                  </span>
-                  <span className="text-[10px] text-gray-400 uppercase font-medium">
-                    {isRTL ? "مدير المدرسة" : "School Admin"}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {isCollapsed && (
-            <Link
-              method="post"
-              href={route("logout")}
-              as="button"
-              className="p-3 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-all"
-              title={isRTL ? "تسجيل الخروج" : "Logout"}
-            >
-              <LogOut className="w-5 h-5" />
-            </Link>
-          )}
+          </Popover>
         </div>
       </motion.aside>
 
@@ -652,13 +672,16 @@ export default function SchoolAuthenticatedLayout({
         className={`
           flex-1 min-w-0 min-h-screen flex flex-col relative transition-all duration-300
           ${isRTL 
-            ? (isCollapsed ? "md:mr-20" : "md:mr-[260px]") 
-            : (isCollapsed ? "md:ml-20" : "md:ml-[260px]")
+            ? (isCollapsed ? "md:mr-[64px]" : "md:mr-[256px]") 
+            : (isCollapsed ? "md:ml-[64px]" : "md:ml-[256px]")
           }
+          p-2
         `}
       >
+        <div className="flex-1 bg-white dark:bg-[#0B1120] rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden relative min-h-0">
+        
         {/* Top Header */}
-        <header className="force-print-hide print:hidden h-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md flex items-center justify-between px-4 md:px-8 sticky top-0 z-40 border-b border-gray-100 dark:border-gray-700 shadow-sm w-full">
+        <header className="force-print-hide print:hidden h-16 bg-transparent flex items-center justify-between px-4 md:px-6 sticky top-0 z-40 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 w-full">
           <div className="flex items-center gap-4">
             {/* Collapse Toggle - Desktop */}
             <button
@@ -783,17 +806,19 @@ export default function SchoolAuthenticatedLayout({
         </header>
 
         {/* Page Content */}
-        <div className={`flex-1 bg-gray-50 dark:bg-gray-900 ${isLiveTracking ? 'p-0 overflow-hidden' : 'p-4 md:p-8'}`}>
-          <div className={isLiveTracking ? 'w-full h-[calc(100vh-80px)]' : 'max-w-7xl mx-auto'}>
+        <div className={`flex-1 overflow-auto bg-gray-50/30 dark:bg-transparent ${isLiveTracking ? 'p-0' : 'p-4 md:p-6'}`}>
+          <div className={isLiveTracking ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className={isLiveTracking ? 'w-full h-full' : ''}
+              className="w-full h-full"
             >
               {children}
             </motion.div>
           </div>
+        </div>
+        
         </div>
       </main>
       <ToastContainer 

@@ -1419,7 +1419,7 @@ export default function IndexStudents({
                           <input
                             type="text"
                             value={guardianEntries[0]?.national_id || ""}
-                            onChange={e => updatePrimaryGuardian({ national_id: e.target.value, hasSearched: false })}
+                            onChange={e => updatePrimaryGuardian({ national_id: e.target.value.replace(/\D/g, ''), hasSearched: false })} minLength={7} maxLength={20} pattern="\d+"
                             onBlur={() => handleGuardianLookup(0)}
                             className={DS_inputCls}
                             required
@@ -1435,7 +1435,7 @@ export default function IndexStudents({
                           <input
                             type="text"
                             value={guardianEntries[0]?.phone || ""}
-                            onChange={e => updatePrimaryGuardian({ phone: e.target.value })}
+                            onChange={e => updatePrimaryGuardian({ phone: e.target.value.replace(/\D/g, ''), })} minLength={8} maxLength={20} pattern="\d+"
                             className={DS_inputCls}
                             required
                           />
@@ -1600,7 +1600,7 @@ export default function IndexStudents({
                       <input
                         type="text"
                         value={studentForm.data.national_id}
-                        onChange={e => studentForm.setData("national_id", e.target.value)}
+                        onChange={e => studentForm.setData("national_id", e.target.value.replace(/\D/g, ''))} minLength={7} maxLength={20} pattern="\d+"
                         className={DS_inputCls}
                         dir="ltr"
                         required

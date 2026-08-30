@@ -53,7 +53,7 @@ class SchoolManagementTest extends TestCase
             'create_admin' => true,
             'admin_name' => 'سالم عبد العزيز القاسم',
             'admin_email' => 'salem.admin@masarat.test',
-            'admin_phone' => '+966509988776',
+            'admin_phone' => '966509988776',
             'admin_national_id' => '1088776655',
             'admin_password' => 'Password123',
             'admin_password_confirmation' => 'Password123',

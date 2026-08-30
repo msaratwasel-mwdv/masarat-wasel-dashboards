@@ -722,12 +722,12 @@ export default function TeachersIndex({ auth, teachers, counts, grades = [], fil
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className={DS_labelCls}>{isRtl ? "الرقم المدني" : "Civil ID"} <span className="text-rose-500">*</span></label>
-                          <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value)} className={`${DS_inputCls} font-mono`} dir="ltr" required />
+                          <input type="text" value={data.national_id} onChange={e => setData("national_id", e.target.value.replace(/\D/g, ''))} minLength={7} maxLength={20} pattern="\d+" className={`${DS_inputCls} font-mono`} dir="ltr" required />
                           <InputError message={errors.national_id} />
                         </div>
                         <div className="space-y-1">
                           <label className={DS_labelCls}>{isRtl ? "رقم الجوال" : "Phone Number"} <span className="text-rose-500">*</span></label>
-                          <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value)} className={`${DS_inputCls} font-mono`} dir="ltr" required />
+                          <input type="text" value={data.phone} onChange={e => setData("phone", e.target.value.replace(/\D/g, ''))} minLength={8} maxLength={20} pattern="\d+" className={`${DS_inputCls} font-mono`} dir="ltr" required />
                           <InputError message={errors.phone} />
                         </div>
                       </div>
