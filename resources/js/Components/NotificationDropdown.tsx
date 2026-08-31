@@ -175,7 +175,7 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
             {/* Bell Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all"
+                className="relative p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all"
             >
                 {/* Badge */}
                 {unreadCount > 0 && (

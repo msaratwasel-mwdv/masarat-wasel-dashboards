@@ -188,12 +188,7 @@ const getMenuItems = (isRTL: boolean) => [
         route: "school.reports.speed-discipline",
       },
     ],
-  },
-  {
-    label: isRTL ? "الإعدادات" : "Settings",
-    route: "profile.edit",
-    icon: "cog",
-  },
+  }
 ];
 
 export default function SchoolAuthenticatedLayout({
@@ -686,23 +681,14 @@ export default function SchoolAuthenticatedLayout({
             {/* Collapse Toggle - Desktop */}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="hidden md:flex p-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-500 hover:text-brand-dark dark:hover:text-white hover:bg-brand-yellow/10 transition-all border border-gray-100 dark:border-gray-600 shadow-sm"
+              className="hidden md:flex p-2.5 rounded-xl bg-transparent text-gray-500 hover:text-brand-dark dark:hover:text-white transition-all"
               title={isCollapsed ? (isRTL ? "توسيع" : "Expand") : (isRTL ? "تقليص" : "Collapse")}
             >
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={isCollapsed ? "collapsed" : "expanded"}
-                  initial={{ rotate: isRTL ? 180 : 0, opacity: 0 }}
-                  animate={{ rotate: 0, opacity: 1 }}
-                  exit={{ rotate: isRTL ? -180 : 0, opacity: 0 }}
-                >
-                  {isRTL ? (
-                    isCollapsed ? <PanelRight className="w-5 h-5 text-brand-yellow" /> : <PanelRightClose className="w-5 h-5" />
-                  ) : (
-                    isCollapsed ? <PanelLeft className="w-5 h-5 text-brand-yellow" /> : <PanelLeftClose className="w-5 h-5" />
-                  )}
-                </motion.div>
-              </AnimatePresence>
+              {isRTL ? (
+                isCollapsed ? <PanelRight className="w-5 h-5" /> : <PanelRightClose className="w-5 h-5" />
+              ) : (
+                isCollapsed ? <PanelLeft className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />
+              )}
             </button>
 
             {/* Mobile Menu Toggle */}
@@ -713,28 +699,9 @@ export default function SchoolAuthenticatedLayout({
               {isMobileMenuOpen ? <X className="w-6 h-6 text-brand-yellow" /> : <Menu className="w-6 h-6" />}
             </button>
 
-            {/* School Info Badge (Optional context for school layout) */}
-            <div className="hidden md:flex items-center gap-3 p-1.5 pr-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-              {user?.school?.logo_url ? (
-                <img src={user.school.logo_url} alt="School" className="w-11 h-11 rounded-xl object-contain bg-white p-1" />
-              ) : (
-                <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-brand-yellow text-slate-900 shadow-lg shadow-brand-yellow/20">
-                  <GraduationCap className="w-6 h-6" />
-                </div>
-              )}
-              <div>
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest leading-tight">
-                  {isRTL ? "لوحة المدرسة" : "School Dashboard"}
-                </p>
-                <h2 className="text-sm font-black text-gray-800 dark:text-white leading-tight">
-                  {user?.school?.name}
-                </h2>
-              </div>
-            </div>
-
             {header && (
               <>
-                <div className="hidden md:block w-px h-8 bg-gray-200 dark:bg-gray-700" />
+                <div className="hidden md:block w-px h-4 bg-gray-200 dark:bg-gray-700" />
                 <div className="hidden md:block text-gray-800 dark:text-white font-bold text-lg">
                   {header}
                 </div>
@@ -743,37 +710,26 @@ export default function SchoolAuthenticatedLayout({
           </div>
 
           {/* Right Side Controls */}
-          <div className="flex items-center gap-1.5 md:gap-4">
-            {/* Logout Button (Far Left in RTL) - Hidden on mobile as it is inside the sidebar drawer */}
-            <Link
-              method="post"
-              href={route("logout")}
-              as="button"
-              className="hidden md:flex p-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all border border-transparent hover:border-red-100 dark:hover:border-red-900/30"
-              title={isRTL ? "تسجيل الخروج" : "Logout"}
-            >
-              <LogOut className="w-5 h-5" />
-            </Link>
-
+          <div className="flex items-center gap-2 md:gap-4 ">
             {/* Language Toggle */}
             <button
               onClick={toggleLanguage}
-              className="p-2 sm:p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
+              className="p-2 sm:p-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-colors"
               title={isRTL ? "Switch to English" : "التبديل إلى العربية"}
             >
-              <span className="text-xs font-bold leading-none">
+              <span className="text-xs font-bold">
                 {language === "ar" ? "EN" : "ع"}
               </span>
             </button>
 
             <button
               onClick={toggleTheme}
-              className="p-2 sm:p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
+              className="p-2 sm:p-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:text-brand-dark dark:hover:text-white transition-all"
               title={theme === "dark" ? (isRTL ? "الوضع الفاتح" : "Light Mode") : (isRTL ? "الوضع المظلم" : "Dark Mode")}
             >
               {theme === "dark" ? (
                 <motion.div initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.3 }}>
-                  <Sun className="w-5 h-5 text-brand-yellow" />
+                  <Sun className="w-5 h-5 text-brand-yellow dark:hover:text-white transition-colors" />
                 </motion.div>
               ) : (
                 <motion.div initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.3 }}>
@@ -786,22 +742,7 @@ export default function SchoolAuthenticatedLayout({
             <NotificationDropdown isRTL={isRTL} />
 
             {/* User Profile - Hidden on mobile as it is inside the sidebar drawer */}
-            <div className={`hidden md:flex items-center gap-3 ${isRTL ? "pr-4 md:pr-6 border-r" : "pl-4 md:pl-6 border-l"} border-gray-100 dark:border-gray-700`}>
-              <div className={`hidden sm:block ${isRTL ? "text-right" : "text-left"}`}>
-                <p className="text-[13px] font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap truncate max-w-[120px] leading-none mb-1" dir="auto">
-                  {!isRTL && user.name_en ? user.name_en : user.name}
-                </p>
-                <div className={`flex items-center gap-1.5 ${flexDirection} opacity-50`}>
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  <p className="text-[9px] font-bold uppercase tracking-widest">
-                    {isRTL ? "متصل الآن" : "Online"}
-                  </p>
-                </div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-brand-dark dark:bg-gray-700 text-white flex items-center justify-center shadow-lg shrink-0 border-2 border-white dark:border-gray-800">
-                <UserSquare2 className="w-5 h-5 text-brand-yellow" />
-              </div>
-            </div>
+            
           </div>
         </header>
 
