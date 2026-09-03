@@ -554,7 +554,7 @@ export default function Subscription({ plans }: any) {
                     <div className={`p-10 lg:p-14 border-t flex flex-col items-center gap-8 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-100'}`}>
                        <p className={`text-sm font-bold max-w-lg text-center leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>
                           {isAr ? "بمجرد النقر على زر الإرسال، فإنك توافق على " : "By clicking submit, you agree to our "}
-                          <a href="#" className={`underline underline-offset-4 ${isDark ? 'text-brand-yellow' : 'text-brand-navy'}`}>{isAr ? "سياسة الخصوصية" : "Privacy Policy"}</a>
+                          <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className={`underline underline-offset-4 ${isDark ? 'text-brand-yellow' : 'text-brand-navy'}`}>{isAr ? "سياسة الخصوصية" : "Privacy Policy"}</a>
                           {isAr ? " وشروط الاستخدام الخاصة بمنظومة مسارات واصل." : " and Terms of Service."}
                        </p>
                        <button

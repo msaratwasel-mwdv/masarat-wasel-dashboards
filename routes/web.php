@@ -41,6 +41,12 @@ Route::post('/subscription', [\App\Http\Controllers\SubscriptionPageController::
 // Public Events Page
 Route::get('/events', [\App\Http\Controllers\PublicEventController::class, 'index'])->name('events.index');
 
+// Privacy Policy Page (Google Play & Public Compliance)
+Route::get('/privacy-policy', function () {
+    return Inertia::render('PrivacyPolicy');
+})->name('privacy.policy');
+Route::redirect('/privacy', '/privacy-policy');
+
 // Dynamic XML Sitemap for SEO
 Route::get('/sitemap.xml', function () {
     $events = \App\Models\Event::where('is_published', true)->orderBy('updated_at', 'desc')->get();
@@ -70,6 +76,14 @@ Route::get('/sitemap.xml', function () {
     $xml .= '    <lastmod>'.(count($events) > 0 && isset($events[0]->updated_at) ? $events[0]->updated_at->format('Y-m-d') : date('Y-m-d')).'</lastmod>';
     $xml .= '    <changefreq>daily</changefreq>';
     $xml .= '    <priority>0.8</priority>';
+    $xml .= '  </url>';
+
+    // Privacy Policy Page
+    $xml .= '  <url>';
+    $xml .= '    <loc>'.route('privacy.policy').'</loc>';
+    $xml .= '    <lastmod>'.date('Y-m-d').'</lastmod>';
+    $xml .= '    <changefreq>monthly</changefreq>';
+    $xml .= '    <priority>0.7</priority>';
     $xml .= '  </url>';
 
     $xml .= '</urlset>';

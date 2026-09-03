@@ -286,9 +286,9 @@ html[dir="rtl"] {
     cursor: pointer;
 }
 
-/* Prevent horizontal overflow scrolling globally on dashboard layout */
+/* Prevent horizontal overflow scrolling globally without breaking position: sticky */
 html, body {
-    overflow-x: hidden;
+    overflow-x: clip;
     width: 100%;
 }
 

@@ -634,11 +634,20 @@ export default function Welcome({
 
             <section id="privacy" className={`py-16 border-t ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'}`}>
                 <div className="max-w-4xl mx-auto px-6">
-                    <h3 className={`text-2xl font-black mb-6 ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "سياسة الخصوصية" : "Privacy Policy"}</h3>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <h3 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-brand-navy'}`}>{isAr ? "سياسة الخصوصية" : "Privacy Policy"}</h3>
+                        <Link
+                            href="/privacy-policy"
+                            className="inline-flex items-center gap-2 text-sm font-bold text-amber-500 hover:text-amber-600 transition-colors"
+                        >
+                            <span>{isAr ? "عرض السياسة الكاملة وإفصاح الموقع الجغرافي" : "View Full Policy & Location Disclosure"}</span>
+                            <ArrowLeft className={`w-4 h-4 ${isAr ? "" : "rotate-180"}`} />
+                        </Link>
+                    </div>
                     <div className={`space-y-4 font-medium leading-relaxed ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                        <p>{isAr ? "تلتزم مسارات واصل بحماية خصوصية جميع مستخدميها. نجمع البيانات اللازمة فقط لتشغيل خدمات النقل وتحسينها، ولا نشاركها مع أطراف ثالثة إلا بموافقتك الصريحة." : "Masarat Wasel is committed to protecting the privacy of all users. We only collect data necessary to operate and improve transport services, and we do not share it with third parties without your explicit consent."}</p>
-                        <p>{isAr ? "نستخدم أعلى معايير التشفير (SSL/TLS) لحماية بياناتك أثناء النقل والتخزين. يحق لك طلب حذف بياناتك في أي وقت عبر التواصل مع فريق الدعم." : "We use the highest encryption standards (SSL/TLS) to protect your data during transmission and storage. You have the right to request deletion of your data at any time by contacting the support team."}</p>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>{isAr ? "آخر تحديث: مايو 2024 | للاستفسار: msaratwasel@gmail.com" : "Last updated: May 2024 | Inquiries: msaratwasel@gmail.com"}</p>
+                        <p>{isAr ? "تلتزم مسارات واصل بحماية خصوصية جميع مستخدميها. نجمع البيانات اللازمة فقط لتشغيل خدمات النقل المدرسي الذكي وتحسينها (بما في ذلك التتبع المباشر لبيانات الموقع الجغرافي في الخلفية أثناء الرحلات لتأمين سلامة الطلاب وإرسال تنبيهات الوصول)، ولا نشاركها مع أي أطراف ثالثة لأغراض إعلانية." : "Masarat Wasel is committed to protecting the privacy of all users. We collect data necessary to operate and enhance smart school transport services (including real-time background location telemetry during active trips for student safety and arrival alerts), and never share it with third parties for marketing."}</p>
+                        <p>{isAr ? "نستخدم أعلى معايير التشفير (SSL/TLS) لحماية بياناتك أثناء النقل والتخزين. يحق لك طلب حذف بياناتك أو حسابك في أي وقت." : "We use the highest encryption standards (SSL/TLS) to protect your data during transmission and storage. You have the right to request deletion of your data or account at any time."}</p>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>{isAr ? "آخر تحديث: سبتمبر 2026 | للاستفسار: msaratwasel@gmail.com" : "Last updated: September 2026 | Inquiries: msaratwasel@gmail.com"}</p>
                     </div>
                 </div>
             </section>
@@ -725,7 +734,7 @@ export default function Welcome({
                                     <a href="#guide" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>{isAr ? "دليل الاستخدام" : "User Guide"}</a>
                                 </li>
                                 <li>
-                                    <a href="#privacy" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>{isAr ? "سياسة الخصوصية" : "Privacy Policy"}</a>
+                                    <Link href="/privacy-policy" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>{isAr ? "سياسة الخصوصية" : "Privacy Policy"}</Link>
                                 </li>
                                 <li>
                                     <a href="#terms" className={`font-bold transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-brand-yellow' : 'text-slate-500 hover:text-brand-navy'}`}>{isAr ? "شروط الخدمة" : "Terms of Service"}</a>
