@@ -16,11 +16,14 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
-          extensions: mbstring, bcmath, curl, zip, pdo_pgsql, pgsql, intl, gd
+          extensions: mbstring, bcmath, curl, zip, pdo_pgsql, pgsql, intl, gd, pdo_sqlite, sqlite3
           coverage: none
 
       - name: Install Composer Dependencies
         run: composer install  --optimize-autoloader
+
+      - name: Run Test Suite
+        run: php artisan test --compact
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

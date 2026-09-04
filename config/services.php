@@ -42,5 +42,12 @@ return [
     'meta_whatsapp' => [
         'token' => env('META_WHATSAPP_TOKEN'),
         'phone_number_id' => env('META_PHONE_NUMBER_ID'),
+        'english_code' => env('META_WHATSAPP_ENGLISH_CODE', 'en'),
+        'templates' => [
+            'student_status_ar' => env('WHATSAPP_TPL_STUDENT_STATUS_AR', 'student_bus_status'),
+            'student_status_en' => env('WHATSAPP_TPL_STUDENT_STATUS_EN', 'student_bus_status_en'),
+            'trip_summary_ar' => env('WHATSAPP_TPL_TRIP_SUMMARY_AR', 'bus_trip_summary'),
+            'trip_summary_en' => env('WHATSAPP_TPL_TRIP_SUMMARY_EN', 'bus_trip_summary_en'),
+        ],
     ],
 ];

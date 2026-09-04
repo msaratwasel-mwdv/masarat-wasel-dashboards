@@ -46,6 +46,20 @@ class WhatsAppService
         return (bool) SystemSetting::get("whatsapp_template_{$templateName}_enabled", true);
     }
 
+    public function normalizeLanguageCode(string $lang): string
+    {
+        $lang = trim($lang);
+        if (in_array(strtolower($lang), ['en', 'en_us', 'en-us'])) {
+            return config('services.meta_whatsapp.english_code', 'en');
+        }
+
+        if (in_array(strtolower($lang), ['ar', 'ar_ae', 'ar_sa', 'ar-ae', 'ar-sa'])) {
+            return 'ar';
+        }
+
+        return $lang;
+    }
+
     /**
      * قائمة القوالب المعروفة في النظام مع تفاصيلها
      */
@@ -54,25 +68,51 @@ class WhatsAppService
         return [
             [
                 'name' => 'student_bus_status',
-                'title_ar' => 'إشعار صعود ونزول الطالب من الحافلة',
-                'title_en' => 'Student Bus Boarding/Alighting Status',
-                'description_ar' => 'يُرسل لولي الأمر لحظياً عند ركوب أو نزول الطالب من الحافلة المدرسية متضمناً تفاصيل السائق والمشرفة والمدرسة.',
-                'description_en' => 'Sent to the parent in real-time when the student boards or alights the bus.',
+                'title_ar' => 'تقرير رحلة الطالب اليومي (عربي)',
+                'title_en' => 'Daily Student Trip Report (Arabic)',
+                'description_ar' => 'يُرسل لولي الأمر لحظياً عند ركوب الطالب للحافلة متضمناً أوقات الوصول والانتظار وتفاصيل الطاقم.',
+                'description_en' => 'Sent to parents in real-time when the student boards the bus with arrival and waiting times.',
                 'target' => 'parent',
+                'lang' => 'ar',
                 'default_enabled' => true,
                 'header_image' => '/assets/images/student_bus_status.png',
-                'sample_body' => "👋 تحديث حالة الطالب\n\nعزيزي الوالد: فضل المطري\nتحياتي، نود أن نبلغكم بحالة الطالب:\n\n👦 الاسم: أحمد فضل\n🚌 الحالة: صعد الحافلة ✅\n👨✈️ السائق: نجيب الصلوان\n🏫 المشرفة: فاطمة علي\n📞 رقم الاتصال: 775376507\n\n🏫 المدرسة العصرية الحديثة | شكراً لتعاونكم 🤝",
+                'sample_body' => "📢 تقرير رحلة الحافلة المدرسية اليومي\n📅 التاريخ: 2026/05/24\n\n👦 اسم الطالب: أحمد فضل\n🏨 اسم المدرسة: جبل المعرفة الدولية\n🚌 تحديث الحالة: صعد الحافلة ✅\n🕒 وقت وصول الحافلة للمنزل: 06:55 ص\n⏳ وقت الانتظار خارج المنزل: 3 دقائق\n🕒 وقت صعود الطالب للحافلة: 07:00 ص\n🧑✈️ اسم السائق: نجيب الصلوان\n🧕 اسم المشرفة: فاطمة علي\n📞 رقم الاتصال: 775376507\n\nمسارات واصل شريككم الآمن\nشاكرين لكم ثقتكم 🤝",
+            ],
+            [
+                'name' => 'student_bus_status_en',
+                'title_ar' => 'تقرير رحلة الطالب اليومي (إنجليزي)',
+                'title_en' => 'Daily Student Trip Report (English)',
+                'description_ar' => 'النسخة الإنجليزية التي تُرسل تلقائياً لأولياء الأمور المفضلين للغة الإنجليزية.',
+                'description_en' => 'English version automatically sent to parents whose preferred language is English.',
+                'target' => 'parent',
+                'lang' => 'en',
+                'default_enabled' => true,
+                'header_image' => '/assets/images/student_bus_status.png',
+                'sample_body' => "📢 Daily School Bus Trip Report\n📅 Date: 2026/05/24\n\n👦 Student Name: Ahmed Fadel\n🏨 School Name: Jabal Al-Maarefa International\n🚌 Status Update: Boarded the bus ✅\n🕒 Bus Arrival Time at Home: 06:55 AM\n⏳ Waiting Time Outside Home: 3 mins\n🕒 Student Boarding Time: 07:00 AM\n🧑✈️ Driver Name: Najeeb Al-Salwan\n🧕 Supervisor Name: Fatima Ali\n📞 Contact Number: +967775376507\n\nMasarat Wasel - Your Safe Partner\nThank you for your trust 🤝",
             ],
             [
                 'name' => 'bus_trip_summary',
-                'title_ar' => 'تقرير رحلة الحافلة المدرسية التفصيلي',
-                'title_en' => 'Detailed Bus Trip Summary Report',
+                'title_ar' => 'تقرير رحلة الحافلة التفصيلي (عربي)',
+                'title_en' => 'Detailed Bus Trip Summary Report (Arabic)',
                 'description_ar' => 'يُرسل لإدارة المدرسة عند انتهاء الرحلة متضمناً إحصائيات الحضور والغياب ومدة ومسافة الرحلة التفصيلية.',
-                'description_en' => 'Sent to the school admin upon trip completion with detailed stats.',
+                'description_en' => 'Sent to school admins upon trip completion with attendance stats and distance in Arabic.',
                 'target' => 'school_admin',
+                'lang' => 'ar',
                 'default_enabled' => true,
                 'header_image' => '/assets/images/bus_trip_report.png',
-                'sample_body' => "📢 تقرير رحلة الحافلة المدرسية التفصيلي\n🏫 المدرسة: المدرسة العصرية الحديثة\n📅 التاريخ: 2026/05/24\n🚌 رقم الحافلة: B-202\n🕒 بدء الرحلة: 07:00 ص\n🕓 انتهاء الرحلة: 08:15 ص\n\n⏳ مدة الانتظار: 00:15 دقيقة\n🕒 مدة الرحلة: 01:15 ساعة\n📏 المسافة: 25 كم\n\n👥 الحضور: 24\n🚫 الغياب: 2\n\n✅ وصلت الحافلة B-202 إلى المدرسة بسلام\n🤝 نشكر لكم شراكتكم وثقتكم بنا",
+                'sample_body' => "📢 تقرير رحلة الحافلة المدرسية التفصيلي\n🏫 المدرسة: جبل المعرفة الدولية\n📅 التاريخ: 2026/05/24\n🚌 رقم الحافلة: B-202\n🕒 بدء الرحلة: 07:00 ص\n🕓 انتهاء الرحلة: 08:15 ص\n\n⏳ مدة الانتظار: 00:15 دقيقة\n🕒 مدة الرحلة: 01:15 ساعة\n📏 المسافة: 25 كم\n\n👥 الحضور: 24\n🚫 الغياب: 2\n\n✅ وصلت الحافلة B-202 إلى المدرسة بسلام\n🤝 نشكر لكم شراكتكم وثقتكم بنا",
+            ],
+            [
+                'name' => 'bus_trip_summary_en',
+                'title_ar' => 'تقرير رحلة الحافلة التفصيلي (إنجليزي)',
+                'title_en' => 'Detailed Bus Trip Summary Report (English)',
+                'description_ar' => 'النسخة الإنجليزية التي تُرسل لإدارة المدرسة باللغة الإنجليزية عند انتهاء الرحلة.',
+                'description_en' => 'Sent to school admins upon trip completion in English.',
+                'target' => 'school_admin',
+                'lang' => 'en',
+                'default_enabled' => true,
+                'header_image' => '/assets/images/bus_trip_report.png',
+                'sample_body' => "📢 School Bus Trip Detailed Report\n🏫 School: Jabal Al-Maarefa International\n📅 Date: 2026/05/24\n🚌 Bus Number: B-202\n🕒 Departure Time: 07:00 AM\n🕓 Arrival Time: 08:15 AM\n\n⏳ Waiting Duration: 15 mins\n🕒 Trip Duration: 1 hr 15 mins\n📏 Distance: 25 km\n\n👥 Present: 24\n🚫 Absent: 2\n\n✅ Bus B-202 has arrived safely at school\n🤝 Thank you for your partnership and trust",
             ],
         ];
     }
@@ -153,12 +193,12 @@ class WhatsAppService
 
         // تعيين صورة الهيدر التلقائية إذا كان القالب يتطلب صورة ولم تُمرر صراحة
         if (! $headerImageUrl) {
-            if ($templateName === 'student_bus_status') {
+            if (str_starts_with($templateName, 'student_bus_status') || str_starts_with($templateName, 'student_daily_trip_report')) {
                 $headerImageUrl = url('assets/images/student_bus_status.png');
                 if (str_contains($headerImageUrl, 'localhost') || str_contains($headerImageUrl, '.test') || str_contains($headerImageUrl, '127.0.0.1')) {
                     $headerImageUrl = 'https://images.unsplash.com/photo-1557223562-6c77ef16210f?w=800';
                 }
-            } elseif ($templateName === 'bus_trip_summary' || $templateName === 'bus_trip_report') {
+            } elseif (str_starts_with($templateName, 'bus_trip_summary') || str_starts_with($templateName, 'bus_trip_report')) {
                 $headerImageUrl = url('assets/images/bus_trip_report.png');
                 if (str_contains($headerImageUrl, 'localhost') || str_contains($headerImageUrl, '.test') || str_contains($headerImageUrl, '127.0.0.1')) {
                     $headerImageUrl = 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800';
@@ -180,24 +220,39 @@ class WhatsAppService
             ]);
         }
 
-        try {
-            $response = Http::withToken($this->token)
-                ->post($this->baseUrl, [
-                    'messaging_product' => 'whatsapp',
-                    'to' => $formattedPhone,
-                    'type' => 'template',
-                    'template' => [
-                        'name' => $templateName,
-                        'language' => [
-                            'code' => $lang,
-                        ],
-                        'components' => $components,
-                    ],
-                ]);
+        $normalizedLang = $this->normalizeLanguageCode($lang);
 
+        try {
+            $payload = [
+                'messaging_product' => 'whatsapp',
+                'to' => $formattedPhone,
+                'type' => 'template',
+                'template' => [
+                    'name' => $templateName,
+                    'language' => [
+                        'code' => $normalizedLang,
+                    ],
+                    'components' => $components,
+                ],
+            ];
+
+            $response = Http::withToken($this->token)->post($this->baseUrl, $payload);
             $status = $response->status();
             $body = $response->json();
             Log::info("Meta WhatsApp API Response Status: {$status} Body: ".$response->body());
+
+            // معالجة ذكية: إذا فشل بسبب رمز اللغة الإنجليزية (en مقابل en_US)، إعادة المحاولة بالرمز البديل تلقائياً
+            if (! $response->successful() && in_array($normalizedLang, ['en', 'en_US'])) {
+                $alternateLang = ($normalizedLang === 'en') ? 'en_US' : 'en';
+                $errMessage = $body['error']['message'] ?? '';
+                if (str_contains($errMessage, 'does not exist in the translated language') || ($body['error']['code'] ?? null) === 132001) {
+                    Log::info("Retrying template {$templateName} with alternate language code: {$alternateLang}");
+                    $payload['template']['language']['code'] = $alternateLang;
+                    $response = Http::withToken($this->token)->post($this->baseUrl, $payload);
+                    $status = $response->status();
+                    $body = $response->json();
+                }
+            }
 
             if ($response->successful()) {
                 $wamid = $body['messages'][0]['id'] ?? null;

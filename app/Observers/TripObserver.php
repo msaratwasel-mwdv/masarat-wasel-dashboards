@@ -65,24 +65,84 @@ class TripObserver
                     })->first();
 
                     if ($schoolAdmin && $schoolAdmin->phone) {
+                        $isEn = ($schoolAdmin->preferred_language === 'en');
+                        $lang = $isEn ? config('services.meta_whatsapp.english_code', 'en') : 'ar';
+                        $templateName = $isEn
+                            ? config('services.meta_whatsapp.templates.trip_summary_en', 'bus_trip_summary_en')
+                            : config('services.meta_whatsapp.templates.trip_summary_ar', 'bus_trip_summary');
+
                         $attendanceCount = $trip->attendances()->where('status', 'boarded')->count();
                         $absenceCount = $trip->attendances()->where('status', 'absent')->count();
 
-                        $durationStr = '01:00 ساعة';
-                        if ($trip->departure_time && $trip->arrival_time) {
-                            $minutes = $trip->departure_time->diffInMinutes($trip->arrival_time);
-                            $durationStr = $minutes.' دقيقة';
+                        // 1. حساب وتنسيق مدة الرحلة بدون كسور
+                        if ($isEn) {
+                            $durationStr = '30 mins';
+                            if ($trip->departure_time && $trip->arrival_time) {
+                                $minutes = (int) round($trip->departure_time->diffInMinutes($trip->arrival_time));
+                                if ($minutes >= 60) {
+                                    $hours = floor($minutes / 60);
+                                    $remainingMins = $minutes % 60;
+                                    $durationStr = $remainingMins > 0 ? "{$hours} hr {$remainingMins} mins" : "{$hours} hr";
+                                } else {
+                                    $durationStr = max(1, $minutes).' mins';
+                                }
+                            }
+                        } else {
+                            $durationStr = '30 دقيقة';
+                            if ($trip->departure_time && $trip->arrival_time) {
+                                $minutes = (int) round($trip->departure_time->diffInMinutes($trip->arrival_time));
+                                if ($minutes >= 60) {
+                                    $hours = floor($minutes / 60);
+                                    $remainingMins = $minutes % 60;
+                                    $durationStr = $remainingMins > 0 ? "{$hours} ساعة و {$remainingMins} دقيقة" : "{$hours} ساعة";
+                                } else {
+                                    $durationStr = max(1, $minutes).' دقيقة';
+                                }
+                            }
+                        }
+
+                        // 2. دالة مساعدة لتنسيق الوقت بدقة صباحاً ومساءً
+                        $formatTime = function ($dateTime, bool $isEnglish, $defaultAr = '07:00 ص', $defaultEn = '07:00 AM') {
+                            if (! $dateTime) {
+                                return $isEnglish ? $defaultEn : $defaultAr;
+                            }
+                            $carbon = $dateTime instanceof Carbon ? $dateTime : Carbon::parse($dateTime);
+                            if ($isEnglish) {
+                                return $carbon->format('h:i A');
+                            }
+                            $period = $carbon->format('A') === 'AM' ? 'ص' : 'م';
+
+                            return $carbon->format('h:i').' '.$period;
+                        };
+
+                        // 3. حساب مدة الانتظار الفعلية
+                        $totalWaitMinutes = (int) $trip->attendances()->sum('extra_wait_time');
+                        if ($isEn) {
+                            $waitingStr = $totalWaitMinutes > 0 ? "{$totalWaitMinutes} mins" : '0 mins';
+                        } else {
+                            $waitingStr = $totalWaitMinutes > 0 ? "{$totalWaitMinutes} دقيقة" : '0 دقيقة';
+                        }
+
+                        // 4. معالجة المسافة
+                        $route = $trip->route ?? $bus?->route;
+                        $distanceVal = $route?->estimated_distance_km ? (float) $route->estimated_distance_km : 0;
+                        if ($isEn) {
+                            $distanceStr = $distanceVal > 0 ? (round($distanceVal, 1).' km') : 'N/A';
+                            $schoolName = ! empty($school?->name_en) ? $school->name_en : ($school?->name ?? 'Masarat Wasel');
+                        } else {
+                            $distanceStr = $distanceVal > 0 ? (round($distanceVal, 1).' كم') : 'غير محدد';
+                            $schoolName = $school?->name ?? 'مسارات واصل';
                         }
 
                         $parameters = [
-                            $school?->name ?? 'مسارات واصل',
+                            $schoolName,
                             $trip->trip_date ? Carbon::parse($trip->trip_date)->format('Y/m/d') : date('Y/m/d'),
                             $bus?->bus_number ?? 'B-202',
-                            $trip->departure_time ? $trip->departure_time->format('h:i ص') : '07:00 ص',
-                            $trip->arrival_time ? $trip->arrival_time->format('h:i ص') : '08:15 ص',
-                            '00:15 دقيقة',
+                            $formatTime($trip->departure_time, $isEn, '07:00 ص', '07:00 AM'),
+                            $formatTime($trip->arrival_time, $isEn, '08:15 ص', '08:15 AM'),
+                            $waitingStr,
                             $durationStr,
-                            $bus?->route?->estimated_distance_km ? $bus->route->estimated_distance_km.' كم' : '25 كم',
+                            $distanceStr,
                             $attendanceCount,
                             $absenceCount,
                             $bus?->bus_number ?? 'B-202',
@@ -91,16 +151,15 @@ class TripObserver
                         // تحديد رابط صورة تقرير الرحلة
                         $imageUrl = url('assets/images/bus_trip_report.png');
                         if (str_contains($imageUrl, 'localhost') || str_contains($imageUrl, '.test') || str_contains($imageUrl, '127.0.0.1')) {
-                            // رابط الصورة التجريبية أثناء العمل المحلي (مع إمكانية تحميلها من النفق الفعلي)
-                            $imageUrl = 'https://ringtones-broader-him-hist.trycloudflare.com/assets/images/bus_trip_report.png';
+                            $imageUrl = 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800';
                         }
 
-                        // إرسال التقرير عبر طابور المهام في الخلفية (Background Queue)
+                        // إرسال التقرير عبر طابور المهام في الخلفية
                         \App\Jobs\SendWhatsAppTemplateJob::dispatch(
                             to: $schoolAdmin->phone,
-                            templateName: 'bus_trip_summary',
+                            templateName: $templateName,
                             parameters: $parameters,
-                            lang: 'ar',
+                            lang: $lang,
                             headerImageUrl: $imageUrl,
                             eventType: 'trip_finished_report',
                             userId: $schoolAdmin->id

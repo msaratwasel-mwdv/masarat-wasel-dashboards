@@ -144,43 +144,80 @@ class WhatsAppManagementController extends Controller
         $request->validate([
             'phone' => 'required|string|min:8|max:20',
             'template_name' => 'required|string',
+            'lang' => 'nullable|string',
             'parameters' => 'nullable|array',
             'header_image_url' => 'nullable|url',
         ]);
 
         $phone = $request->phone;
         $templateName = $request->template_name;
+        $isEnglish = $request->lang === 'en' || str_ends_with($templateName, '_en');
+        $lang = $request->input('lang', $isEnglish ? 'en' : 'ar');
 
-        // تجهيز المتغيرات الافتراضية المناسبة لكل نوع قالب
-        if ($templateName === 'bus_trip_summary' || $templateName === 'bus_trip_report') {
-            $params = $request->parameters ?? [
-                'المدرسة العصرية الحديثة',
-                date('Y/m/d'),
-                'B-202',
-                '07:00 ص',
-                '08:15 ص',
-                '00:15 دقيقة',
-                '01:15 ساعة',
-                '25 كم',
-                '24',
-                '2',
-                'B-202',
-            ];
+        // تجهيز المتغيرات الافتراضية المناسبة لكل نوع قالب ولغة
+        if (str_starts_with($templateName, 'bus_trip_summary') || str_starts_with($templateName, 'bus_trip_report')) {
+            if ($isEnglish) {
+                $params = $request->parameters ?? [
+                    'Jabal Al-Maarefa International',
+                    date('Y/m/d'),
+                    'B-202',
+                    '07:00 AM',
+                    '08:15 AM',
+                    '15 mins',
+                    '1 hr 15 mins',
+                    '25 km',
+                    '24',
+                    '2',
+                    'B-202',
+                ];
+            } else {
+                $params = $request->parameters ?? [
+                    'جبل المعرفة الدولية',
+                    date('Y/m/d'),
+                    'B-202',
+                    '07:00 ص',
+                    '08:15 ص',
+                    '00:15 دقيقة',
+                    '01:15 ساعة',
+                    '25 كم',
+                    '24',
+                    '2',
+                    'B-202',
+                ];
+            }
             $headerUrl = $request->header_image_url ?? url('assets/images/bus_trip_report.png');
         } elseif ($templateName === 'masarat_welcome') {
             $params = $request->parameters ?? [$phone];
             $headerUrl = null;
         } else {
-            // student_bus_status
-            $params = $request->parameters ?? [
-                'فضل المطري',
-                'أحمد فضل',
-                'صعد الحافلة ✅',
-                'نجيب الصلوان',
-                'فاطمة علي',
-                '775376507',
-                'المدرسة العصرية الحديثة',
-            ];
+            // student_bus_status / student_daily_trip_report (10 متغيرات)
+            if ($isEnglish) {
+                $params = $request->parameters ?? [
+                    date('Y/m/d'),
+                    'Ahmed Fadel',
+                    'Jabal Al-Maarefa International',
+                    'Boarded the bus ✅',
+                    '06:55 AM',
+                    '3 mins',
+                    '07:00 AM',
+                    'Najeeb Al-Salwan',
+                    'Fatima Ali',
+                    '775376507',
+                ];
+            } else {
+                $params = $request->parameters ?? [
+                    date('Y/m/d'),
+                    'أحمد فضل',
+                    'جبل المعرفة الدولية',
+                    'صعد الحافلة ✅',
+                    '06:55 ص',
+                    '3 دقائق',
+                    '07:00 ص',
+                    'نجيب الصلوان',
+                    'فاطمة علي',
+                    '775376507',
+                ];
+            }
             $headerUrl = $request->header_image_url ?? url('assets/images/student_bus_status.png');
         }
 
@@ -188,7 +225,7 @@ class WhatsAppManagementController extends Controller
             to: $phone,
             templateName: $templateName,
             parameters: $params,
-            lang: 'ar',
+            lang: $lang,
             headerImageUrl: $headerUrl,
             eventType: 'manual_admin_test',
             userId: auth()->id()
@@ -207,12 +244,14 @@ class WhatsAppManagementController extends Controller
     public function retryMessage(Request $request, WhatsAppLog $log)
     {
         $params = is_array($log->parameters) ? $log->parameters : (json_decode($log->parameters, true) ?? []);
+        $isEnglish = str_ends_with($log->template_name, '_en');
+        $lang = $isEnglish ? 'en' : 'ar';
 
         $sent = $this->whatsAppService->sendTemplate(
             to: $log->recipient_phone,
             templateName: $log->template_name,
             parameters: $params,
-            lang: 'ar',
+            lang: $lang,
             headerImageUrl: $log->header_image_url,
             eventType: $log->event_type ?? 'retry_failed_message',
             userId: $log->user_id

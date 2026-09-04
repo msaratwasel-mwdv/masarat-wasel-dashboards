@@ -183,4 +183,61 @@ class WhatsAppServiceTest extends TestCase
         $this->assertEquals('96891234567', $this->whatsAppService->formatPhoneNumber('91234567'));
         $this->assertEquals('966501234567', $this->whatsAppService->formatPhoneNumber('501234567'));
     }
+
+    public function test_send_english_template_normalizes_language_and_sends_successfully(): void
+    {
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::response([
+                'messaging_product' => 'whatsapp',
+                'messages' => [['id' => 'wamid.EN_TEST_123']],
+            ], 200),
+        ]);
+
+        $success = $this->whatsAppService->sendTemplate(
+            to: '771234567',
+            templateName: 'student_bus_status_en',
+            parameters: ['2026/05/24', 'Ahmed', 'School', 'Boarded the bus ✅', '07:00 AM', '3 mins', '07:03 AM', 'Driver', 'Supervisor', '77xxxxxxx'],
+            lang: 'en'
+        );
+
+        $this->assertTrue($success);
+
+        Http::assertSent(function ($request) {
+            return $request['template']['name'] === 'student_bus_status_en'
+                && $request['template']['language']['code'] === 'en'
+                && count($request['template']['components'][1]['parameters']) === 10;
+        });
+    }
+
+    public function test_send_template_retries_with_alternate_english_code_on_language_not_found(): void
+    {
+        Http::fake([
+            'https://graph.facebook.com/*' => Http::sequence()
+                ->push(['error' => ['message' => 'Template does not exist in the translated language', 'code' => 132001]], 400)
+                ->push(['messaging_product' => 'whatsapp', 'messages' => [['id' => 'wamid.RETRY_SUCCESS']]], 200),
+        ]);
+
+        $success = $this->whatsAppService->sendTemplate(
+            to: '771234567',
+            templateName: 'bus_trip_summary_en',
+            parameters: ['School', '2026/05/24', 'B-202', '07:00 AM', '08:15 AM', '15 mins', '1 hr', '25 km', '20', '1', 'B-202'],
+            lang: 'en'
+        );
+
+        $this->assertTrue($success);
+
+        // Assert two requests were made (original 'en' then retry 'en_US')
+        Http::assertSentCount(2);
+    }
+
+    public function test_get_available_templates_includes_arabic_and_english_versions(): void
+    {
+        $templates = $this->whatsAppService->getAvailableTemplates();
+        $names = array_column($templates, 'name');
+
+        $this->assertContains('student_bus_status', $names);
+        $this->assertContains('student_bus_status_en', $names);
+        $this->assertContains('bus_trip_summary', $names);
+        $this->assertContains('bus_trip_summary_en', $names);
+    }
 }
