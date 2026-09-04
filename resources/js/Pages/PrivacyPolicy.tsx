@@ -1,7 +1,7 @@
 import { Head, Link } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { useState, useEffect } from "react";
-import { Globe, Moon, Sun, ArrowRight, ArrowLeft, ChevronDown } from "lucide-react";
+import { Globe, Moon, Sun, ArrowRight, ArrowLeft, ChevronDown, Trash2 } from "lucide-react";
 
 export default function PrivacyPolicy() {
   const { isRTL, theme, toggleTheme, language, toggleLanguage } = useTheme();
@@ -350,12 +350,47 @@ export default function PrivacyPolicy() {
             </section>
 
             {/* ─── Section 12 ─── */}
-            <section id="section-12" className="scroll-mt-24 space-y-4 pt-2">
-              <SH2 a="طلب حذف الحساب والبيانات" e="Account & Data Deletion Request" />
-              <p className={`text-base sm:text-[17px] leading-relaxed ${prose}`}>{isAr ? "يمكن للمستخدم طلب حذف حسابه وبياناته الشخصية، وفقاً للحقوق والقيود المنصوص عليها في قانون حماية البيانات الشخصية ولائحته التنفيذية." : "Users may request permanent deletion of their account and associated personal data in accordance with statutory rights and limitations under Omani law."}</p>
-              <div className={`p-5 rounded-xl border text-base space-y-2.5 ${isDark ? "bg-slate-900/50 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-                <p><strong className={isDark ? "text-slate-200" : "text-slate-800"}>{isAr ? "لتقديم طلب الحذف، تواصل معنا عبر البريد الإلكتروني:" : "To submit a deletion request, email us at:"}</strong>{" "}<a href="mailto:msaratwasel@gmail.com" className="text-amber-600 dark:text-amber-400 font-mono font-medium underline">msaratwasel@gmail.com</a></p>
-                <p className={`text-sm font-mono ${isDark ? "text-slate-400" : "text-slate-500"}`}>{isAr ? "الموضوع: طلب حذف البيانات" : "Subject: Data Deletion Request"}</p>
+            <section id="section-12" className="scroll-mt-24 space-y-5 pt-2">
+              <SH2 a="حذف الحساب والبيانات الشخصية" e="Delete Your Account & Associated Data" />
+              <p className={`text-base sm:text-[17px] leading-relaxed ${prose}`}>
+                {isAr
+                  ? "تلتزم مسارات واصل بتمكين جميع المستخدمين من ممارسة حقوقهم الرقمية الكاملة بحرية وشفافية، بما في ذلك طلب الحذف النهائي للحساب وكافة السجلات المرتبطة به وفقاً لسياسات Google Play والمرسوم السلطاني رقم 6/2022."
+                  : "Masarat Wasel is committed to empowering all users with full transparent control over their personal data, including the right to permanently delete their account and personal records under Google Play policies and Omani Royal Decree 6/2022."}
+              </p>
+
+              {/* Prominent Callout Card */}
+              <div className={`p-6 sm:p-7 rounded-2xl border space-y-4 ${isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
+                <div className="space-y-1.5">
+                  <h3 className={`text-lg sm:text-xl font-bold ${hClass}`}>
+                    {isAr ? "حذف حسابك وبياناتك نهائياً" : "Delete your account"}
+                  </h3>
+                  <p className={`text-sm sm:text-base leading-relaxed ${proseMuted}`}>
+                    {isAr
+                      ? "يمكنك في أي وقت طلب حذف حسابك والبيانات الشخصية المرتبطة به نهائياً وبشكل فوري عبر الصفحة المخصصة."
+                      : "You can permanently delete your account and associated personal data at any time through our dedicated deletion portal."}
+                  </p>
+                </div>
+
+                <div className="pt-2 flex flex-wrap items-center gap-4">
+                  <Link
+                    href={route("account.delete")}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition-all shadow-md shadow-red-600/20"
+                  >
+                    <Trash2 size={16} />
+                    <span>{isAr ? "طلب حذف الحساب والبيانات" : "Request Account Deletion"}</span>
+                  </Link>
+                </div>
+
+                <div className={`mt-4 pt-4 border-t text-xs ${borderClass} ${proseMuted} space-y-1`}>
+                  <p>
+                    <strong className={hClass}>{isAr ? "التطبيقات المشمولة: " : "Store Listings: "}</strong>
+                    {isAr ? "خدمات مسارات واصل (Msarat Wasel Services) • مسارات واصل - أولياء الأمور (Masarat Wasel Guardian)" : "Msarat Wasel Services • Masarat Wasel Guardian"}
+                  </p>
+                  <p>
+                    <strong className={hClass}>{isAr ? "المهلة الزمنية: " : "Timeline: "}</strong>
+                    {isAr ? "تعطيل الحساب فورياً، وإتمام مسح البيانات الشخصية خلال 7 أيام عمل." : "Immediate deactivation, permanent data purge within 7 business days."}
+                  </p>
+                </div>
               </div>
             </section>
 

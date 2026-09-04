@@ -47,6 +47,11 @@ Route::get('/privacy-policy', function () {
 })->name('privacy.policy');
 Route::redirect('/privacy', '/privacy-policy');
 
+// Account & Data Deletion Page (Google Play & Statutory Compliance)
+Route::get('/delete-account', [\App\Http\Controllers\AccountDeletionController::class, 'show'])->name('account.delete');
+Route::post('/delete-account', [\App\Http\Controllers\AccountDeletionController::class, 'store'])->name('account.delete.store');
+Route::redirect('/delete', '/delete-account');
+
 // Dynamic XML Sitemap for SEO
 Route::get('/sitemap.xml', function () {
     $events = \App\Models\Event::where('is_published', true)->orderBy('updated_at', 'desc')->get();
@@ -84,6 +89,14 @@ Route::get('/sitemap.xml', function () {
     $xml .= '    <lastmod>'.date('Y-m-d').'</lastmod>';
     $xml .= '    <changefreq>monthly</changefreq>';
     $xml .= '    <priority>0.7</priority>';
+    $xml .= '  </url>';
+
+    // Account Deletion Page
+    $xml .= '  <url>';
+    $xml .= '    <loc>'.route('account.delete').'</loc>';
+    $xml .= '    <lastmod>'.date('Y-m-d').'</lastmod>';
+    $xml .= '    <changefreq>monthly</changefreq>';
+    $xml .= '    <priority>0.6</priority>';
     $xml .= '  </url>';
 
     $xml .= '</urlset>';
