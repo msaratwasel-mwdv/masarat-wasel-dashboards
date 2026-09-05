@@ -39,7 +39,7 @@ class SubscriptionController extends Controller
     public function uploadReceipt(Request $request, \App\Models\Installment $installment)
     {
         $request->validate([
-            'receipt' => 'required|image|mimes:jpeg,png,jpg,pdf|max:5120',
+            'receipt' => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
         ]);
 
         // Ensure this installment belongs to this school

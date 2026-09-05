@@ -21,7 +21,7 @@ class Teacher extends Model
         'fcm_token',
     ];
 
-    // protected $appends = ['name'];
+    protected $appends = ['name', 'name_en'];
 
     public function getNameAttribute()
     {

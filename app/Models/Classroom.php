@@ -95,7 +95,7 @@ class Classroom extends Model
                 || app()->getLocale() === 'en');
         }
 
-        if ($isEn && ! empty(trim($this->name_en))) {
+        if ($isEn && ! empty(trim($this->name_en ?? ''))) {
             return $this->name_en;
         }
 

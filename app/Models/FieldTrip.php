@@ -56,7 +56,7 @@ class FieldTrip extends Model
     public function students()
     {
         return $this->belongsToMany(Student::class, 'field_trip_participants', 'field_trip_id', 'national_id', 'id', 'national_id')
-            ->wherePivot('type', 'student')
+            ->withPivotValue('type', 'student')
             ->withTimestamps();
     }
 
@@ -66,7 +66,7 @@ class FieldTrip extends Model
     public function internalTeachers()
     {
         return $this->belongsToMany(User::class, 'field_trip_participants', 'field_trip_id', 'national_id', 'id', 'national_id')
-            ->wherePivot('type', 'user')
+            ->withPivotValue('type', 'user')
             ->withTimestamps();
     }
 

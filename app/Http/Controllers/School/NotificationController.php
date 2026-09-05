@@ -460,23 +460,6 @@ class NotificationController extends Controller
     }
 
     /**
-     * Display the specified notification.
-     */
-    public function show(Notification $notification)
-    {
-        // Authorization
-        if ($notification->sender_id !== Auth::id()) {
-            abort(403);
-        }
-
-        $notification->load(['sender', 'recipients.user']);
-
-        return Inertia::render('School/Notifications/Show', [
-            'notification' => $notification,
-        ]);
-    }
-
-    /**
      * Helper: Get recipients based on type and filter.
      * الآن يرجع مجموعة من User (role=parent) بدلاً من Guardian
      */

@@ -292,15 +292,14 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::post('classrooms/grades', [ClassroomController::class, 'storeGrade'])->name('classrooms.grades.store');
         Route::put('classrooms/grades/{grade}', [ClassroomController::class, 'updateGrade'])->name('classrooms.grades.update');
         Route::delete('classrooms/grades/{grade}', [ClassroomController::class, 'destroyGrade'])->name('classrooms.grades.destroy');
-        Route::resource('classrooms', ClassroomController::class);
+        Route::resource('classrooms', ClassroomController::class)->except(['create', 'edit', 'show']);
 
         // 3. إدارة المعلمين والمشرفين
         Route::get('teachers/print-all', [TeacherController::class, 'printAll'])->name('teachers.print-all');
         Route::get('teachers/export', [TeacherController::class, 'export'])->name('teachers.export');
         Route::get('teachers/template', [TeacherController::class, 'downloadTemplate'])->name('teachers.template');
         Route::post('teachers/import', [TeacherController::class, 'import'])->name('teachers.import');
-        Route::resource('teachers', TeacherController::class)->except(['show']);
-        Route::resource('supervisors', \App\Http\Controllers\School\SupervisorController::class)->except(['show']);
+        Route::resource('teachers', TeacherController::class)->except(['show', 'create', 'edit']);
 
         // 4. إدارة الطلاب
         Route::get('students-api', [StudentController::class, 'apiIndex'])->name('students.api');
@@ -309,7 +308,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
         Route::get('students/export/template', [StudentController::class, 'downloadTemplate'])->name('students.template');
         Route::post('students/import/all', [StudentController::class, 'import'])->name('students.import');
 
-        Route::resource('students', StudentController::class);
+        Route::resource('students', StudentController::class)->except(['create', 'edit', 'show']);
         Route::post('students/{student}/update', [StudentController::class, 'update'])->name('students.update_post');
         Route::get('students/{student}/print', [StudentController::class, 'printCard'])->name('students.print');
 
@@ -334,6 +333,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
                 Route::get('/', [AttendanceController::class, 'index'])->name('attendance.index');
                 Route::post('/', [AttendanceController::class, 'store'])->name('attendance.store');
                 Route::get('/{id}', [AttendanceController::class, 'show'])->name('attendance.show');
+                Route::match(['put', 'patch'], '/{id}', [AttendanceController::class, 'update'])->name('attendance.update');
                 Route::delete('/{id}', [AttendanceController::class, 'destroy'])->name('attendance.destroy');
                 Route::post('/bulk', [AttendanceController::class, 'bulkStore'])->name('attendance.bulk');
             });
@@ -345,9 +345,7 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
 
         Route::middleware([\App\Http\Middleware\CheckTransportAccess::class])->group(function () {
             // 6. الحافلات والرحلات
-            Route::resource('buses', \App\Http\Controllers\School\BusController::class);
-            Route::post('buses/bulk-destroy', [\App\Http\Controllers\School\BusController::class, 'bulkDestroy'])->name('buses.bulk-destroy');
-            Route::resource('bus-groups', \App\Http\Controllers\School\BusGroupController::class);
+            Route::resource('buses', \App\Http\Controllers\School\BusController::class)->only(['index', 'update']);
 
             Route::get('buses/tracking/api', [\App\Http\Controllers\School\BusController::class, 'trackingApi'])->name('buses.tracking.api');
             Route::get('live-tracking', [\App\Http\Controllers\School\BusController::class, 'liveTracking'])->name('live-tracking.index');
@@ -369,27 +367,23 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
             // 7. الإشعارات
             Route::get('notifications/sent', [\App\Http\Controllers\School\NotificationController::class, 'sent'])->name('notifications.sent');
             Route::get('notifications/received', [\App\Http\Controllers\School\NotificationController::class, 'received'])->name('notifications.received');
-            Route::resource('notifications', \App\Http\Controllers\School\NotificationController::class);
+            Route::resource('notifications', \App\Http\Controllers\School\NotificationController::class)->except(['show', 'edit', 'update', 'destroy']);
             Route::post('notifications/preview', [\App\Http\Controllers\School\NotificationController::class, 'preview'])->name('notifications.preview');
             Route::post('notifications/incidents/{incident}/resend', [\App\Http\Controllers\School\NotificationController::class, 'resendIncidentToParent'])->name('notifications.incidents.resend');
 
-            Route::resource('routes', \App\Http\Controllers\School\RouteController::class);
+            Route::resource('routes', \App\Http\Controllers\School\RouteController::class)->except(['create', 'show', 'edit']);
 
             // Field Trips gating
             Route::middleware(['plan.feature:has_field_trips'])->group(function () {
-                Route::resource('field-trips', \App\Http\Controllers\School\FieldTripController::class);
+                Route::resource('field-trips', \App\Http\Controllers\School\FieldTripController::class)->except(['create', 'edit']);
             });
 
             // Trips Dashboard
             Route::get('trips-dashboard', [\App\Http\Controllers\School\TripDashboardController::class, 'index'])->name('trips.dashboard');
             Route::get('trips/{trip}', [\App\Http\Controllers\School\TripDashboardController::class, 'show'])->name('trips.show');
 
-            // Trip Reports
+            // Reports Hub
             Route::middleware(['plan.feature:has_reports'])->group(function () {
-                Route::get('trip-reports', [\App\Http\Controllers\School\TripReportController::class, 'index'])->name('trip-reports.index');
-                Route::get('trip-reports/data', [\App\Http\Controllers\School\TripReportController::class, 'getData'])->name('trip-reports.data');
-
-                // School Reports Hub
                 Route::get('reports', [\App\Http\Controllers\School\ReportController::class, 'index'])->name('reports.index');
                 Route::get('reports/student-attendance', [\App\Http\Controllers\School\ReportController::class, 'studentAttendance'])->name('reports.student-attendance');
                 Route::get('reports/trip-operations', [\App\Http\Controllers\School\ReportController::class, 'tripOperations'])->name('reports.trip-operations');

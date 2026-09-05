@@ -614,9 +614,17 @@ const dictionary = {
     en: "Search by name, Civil ID or Father ID...",
   },
   "Guardian Found": { ar: "تم العثور على ولي الأمر", en: "Guardian Found" },
+  "Existing guardian found": {
+    ar: "تم العثور على ولي أمر مسجل مسبقاً",
+    en: "Existing guardian found",
+  },
   "Guardian Not Found": {
     ar: "لم يتم العثور على ولي الأمر",
     en: "Guardian Not Found",
+  },
+  "Guardian not found. Please enter details.": {
+    ar: "لم يتم العثور على ولي الأمر، يرجى إدخال البيانات.",
+    en: "Guardian not found. Please enter details.",
   },
   "Select Guardian & Continue": {
     ar: "اعتماد ولي الأمر والمتابعة",

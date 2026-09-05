@@ -49,7 +49,8 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
 
     // Member Modal State (For External Members)
     const [showMemberModal, setShowMemberModal] = useState(false);
-    const [memberForm, setMemberForm] = useState<TripMember>({ name: '' });
+    const [memberForm, setMemberForm] = useState<TripMember>({ name: '', phone: '', national_id: '' });
+    const [memberErrors, setMemberErrors] = useState<{ name?: string; phone?: string; national_id?: string }>({});
 
     // Today's date as default
     const todayStr = new Date().toISOString().split('T')[0];
@@ -439,38 +440,131 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
 
                 {/* External Member Sub-Modal */}
                 {showMemberModal && (
-                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/70 backdrop-blur-xl animate-fadeIn" onClick={() => setShowMemberModal(false)}>
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/70 backdrop-blur-xl animate-fadeIn" onClick={() => { setShowMemberModal(false); setMemberErrors({}); }}>
                         <div className={`bg-white dark:bg-[#1a2845] rounded-[24px] shadow-2xl max-w-sm w-full p-6 border border-gray-100 dark:border-[#243460] ${isRTL ? 'rtl' : 'ltr'}`} onClick={e => e.stopPropagation()}>
-                            <h3 className="text-base font-bold text-[#0f2044] dark:text-white mb-5 flex items-center gap-3">
-                                <span className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-[12px] text-lg">➕</span>
-                                {t('External Escort')}
-                            </h3>
+                            <div className="flex items-center justify-between mb-5">
+                                <h3 className="text-base font-bold text-[#0f2044] dark:text-white flex items-center gap-3">
+                                    <span className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-[12px] text-lg">👥</span>
+                                    {isRTL ? 'تسجيل مرافق خارجي' : t('External Escort')}
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowMemberModal(false); setMemberErrors({}); }}
+                                    className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
                             <div className="space-y-4 mb-6">
                                 <div>
-                                    <label className={DS_labelCls}>{t('Legal Name')}</label>
-                                    <input type="text" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} className={DS_inputCls} placeholder={t('Full name...')} />
+                                    <label className={DS_labelCls}>
+                                        {isRTL ? 'الاسم الثلاثي *' : `${t('Legal Name')} *`}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={memberForm.name}
+                                        onChange={e => {
+                                            setMemberForm({...memberForm, name: e.target.value});
+                                            if (memberErrors.name) setMemberErrors(prev => ({ ...prev, name: undefined }));
+                                        }}
+                                        className={`${DS_inputCls} ${memberErrors.name ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                                        placeholder={isRTL ? 'الاسم الكامل للمرافق...' : t('Full name...')}
+                                    />
+                                    {memberErrors.name && (
+                                        <p className="text-red-500 text-[11px] mt-1 font-semibold">{memberErrors.name}</p>
+                                    )}
                                 </div>
                                 <div>
-                                    <label className={DS_labelCls}>{t('Contact #')}</label>
-                                    <input type="text" value={memberForm.phone || ''} onChange={e => setMemberForm({...memberForm, phone: e.target.value})} className={DS_inputCls} placeholder="05XXXXXXXX" />
+                                    <label className={DS_labelCls}>
+                                        {isRTL ? 'رقم الهاتف / الجوال *' : `${t('Contact #')} *`}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={memberForm.phone || ''}
+                                        onChange={e => {
+                                            setMemberForm({...memberForm, phone: e.target.value});
+                                            if (memberErrors.phone) setMemberErrors(prev => ({ ...prev, phone: undefined }));
+                                        }}
+                                        className={`${DS_inputCls} ${memberErrors.phone ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                                        placeholder="05XXXXXXXX"
+                                        dir="ltr"
+                                    />
+                                    {memberErrors.phone && (
+                                        <p className="text-red-500 text-[11px] mt-1 font-semibold">{memberErrors.phone}</p>
+                                    )}
                                 </div>
                                 <div>
-                                    <label className={DS_labelCls}>{t('ID / Passport')}</label>
-                                    <input type="text" value={memberForm.national_id || ''} onChange={e => setMemberForm({...memberForm, national_id: e.target.value})} className={DS_inputCls} placeholder={t('ID number...')} />
+                                    <label className={DS_labelCls}>
+                                        {isRTL ? 'رقم الهوية / جواز السفر *' : `${t('ID / Passport')} *`}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={memberForm.national_id || ''}
+                                        onChange={e => {
+                                            setMemberForm({...memberForm, national_id: e.target.value});
+                                            if (memberErrors.national_id) setMemberErrors(prev => ({ ...prev, national_id: undefined }));
+                                        }}
+                                        className={`${DS_inputCls} ${memberErrors.national_id ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                                        placeholder={isRTL ? 'رقم السجل المدني أو الجواز...' : t('ID number...')}
+                                        dir="ltr"
+                                    />
+                                    {memberErrors.national_id && (
+                                        <p className="text-red-500 text-[11px] mt-1 font-semibold">{memberErrors.national_id}</p>
+                                    )}
                                 </div>
                             </div>
-                            <button
-                                onClick={() => {
-                                    if(memberForm.name && memberForm.phone) {
-                                        setData('external_members', [...data.external_members, memberForm]);
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowMemberModal(false); setMemberErrors({}); }}
+                                    className={`flex-1 py-2.5 text-xs ${DS_cancelBtn}`}
+                                >
+                                    {t('Cancel')}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const errs: { name?: string; phone?: string; national_id?: string } = {};
+                                        const name = memberForm.name?.trim() || '';
+                                        const phone = memberForm.phone?.trim() || '';
+                                        const nationalId = memberForm.national_id?.trim() || '';
+
+                                        if (!name) {
+                                            errs.name = isRTL ? 'الاسم الكامل مطلوب' : 'Full legal name is required';
+                                        } else if (name.length < 3) {
+                                            errs.name = isRTL ? 'يجب ألا يقل الاسم عن 3 أحرف' : 'Name must be at least 3 characters';
+                                        }
+
+                                        if (!phone) {
+                                            errs.phone = isRTL ? 'رقم الهاتف مطلوب' : 'Contact phone is required';
+                                        } else if (!/^[0-9+]{8,20}$/.test(phone.replace(/[\s-]/g, ''))) {
+                                            errs.phone = isRTL ? 'رقم الهاتف غير صحيح (8 أرقام على الأقل)' : 'Invalid phone number (at least 8 digits)';
+                                        }
+
+                                        if (!nationalId) {
+                                            errs.national_id = isRTL ? 'رقم الهوية أو الجواز مطلوب' : 'ID / Passport number is required';
+                                        } else if (nationalId.length < 6) {
+                                            errs.national_id = isRTL ? 'يجب ألا يقل رقم الهوية عن 6 خانات' : 'ID must be at least 6 characters';
+                                        }
+
+                                        if (Object.keys(errs).length > 0) {
+                                            setMemberErrors(errs);
+                                            return;
+                                        }
+
+                                        setData('external_members', [
+                                            ...data.external_members,
+                                            { name, phone, national_id: nationalId },
+                                        ]);
                                         setShowMemberModal(false);
-                                        setMemberForm({name: ''});
-                                    }
-                                }}
-                                className="w-full py-3 bg-purple-600 text-white font-bold rounded-[14px] hover:bg-purple-700 shadow transition-all text-sm"
-                            >
-                                {t('Register Member')}
-                            </button>
+                                        setMemberForm({ name: '', phone: '', national_id: '' });
+                                        setMemberErrors({});
+                                    }}
+                                    className="flex-1 py-2.5 bg-purple-600 text-white font-bold rounded-[14px] hover:bg-purple-700 shadow transition-all text-xs"
+                                >
+                                    {isRTL ? 'تسجيل المرافق' : t('Register Member')}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

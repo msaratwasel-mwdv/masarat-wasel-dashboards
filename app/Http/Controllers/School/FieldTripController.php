@@ -77,9 +77,9 @@ class FieldTripController extends Controller
                 'teacher_ids' => 'nullable|array',
                 'teacher_ids.*' => 'exists:users,id',
                 'external_members' => 'nullable|array',
-                'external_members.*.name' => 'required|string|max:255',
-                'external_members.*.phone' => 'nullable|string|max:20',
-                'external_members.*.national_id' => 'nullable|string|max:50',
+                'external_members.*.name' => 'required|string|min:3|max:255',
+                'external_members.*.phone' => 'required|string|min:8|max:20',
+                'external_members.*.national_id' => 'required|string|min:6|max:50',
             ]);
             \Illuminate\Support\Facades\Log::info('FieldTrip Validation PASSED', $validated);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -115,7 +115,7 @@ class FieldTripController extends Controller
                 ->filter()
                 ->toArray();
 
-            $fieldTrip->students()->sync($studentNationalIds);
+            $fieldTrip->students()->syncWithPivotValues($studentNationalIds, ['type' => 'student']);
 
             // Resolve National IDs for Internal Teachers
             if (! empty($validated['teacher_ids'])) {
@@ -124,7 +124,7 @@ class FieldTripController extends Controller
                     ->filter()
                     ->toArray();
 
-                $fieldTrip->internalTeachers()->sync($teacherNationalIds);
+                $fieldTrip->internalTeachers()->syncWithPivotValues($teacherNationalIds, ['type' => 'user']);
             }
 
             // Save External Members to the participants table (ignoring name/phone as they are removed from migration)

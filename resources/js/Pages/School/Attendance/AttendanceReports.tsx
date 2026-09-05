@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
-import { Head, usePage } from "@inertiajs/react";
+import { Head, usePage, router } from "@inertiajs/react";
 import axios from "axios";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
 import PrintReportHeader from "@/Components/PrintReportHeader";
 import { Search, Plus, CalendarCheck, Check, X, Users, Edit3, Trash2 , Printer} from "lucide-react";
+import { debounce } from "lodash";
 import {
     DS_card,
     DS_pageTitle,
@@ -53,6 +54,7 @@ interface Classroom {
     id: number;
     name: string;
     teachers?: any[];
+    teacher?: any;
     supervisor?: any;
 }
 
@@ -66,6 +68,23 @@ interface AttendanceRecord {
     classroom?: Classroom;
 }
 
+interface AttendanceReportsProps {
+    attendance?: AttendanceRecord[];
+    classrooms?: Classroom[];
+    filters?: {
+        search?: string;
+        classroom_id?: string;
+        start_date?: string;
+        end_date?: string;
+        status?: string;
+    };
+    stats?: {
+        total: number;
+        present: number;
+        absent: number;
+    };
+}
+
 
 // Print CSS
 const PRINT_STYLES = `
@@ -77,13 +96,16 @@ const PRINT_STYLES = `
 }
 `;
 
-export default function AttendanceReports() {
+export default function AttendanceReports({
+    attendance = [],
+    classrooms: initialClassrooms = [],
+    filters: initialFilters = {},
+    stats: initialStats,
+}: AttendanceReportsProps) {
     const { isRTL: isRtl } = useTheme();
     const { auth } = usePage().props as any;
-    const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
-    const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+    const [classrooms, setClassrooms] = useState<Classroom[]>(initialClassrooms);
     const [students, setStudents] = useState<Student[]>([]);
-    const [loading, setLoading] = useState(false);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
     // Modals
@@ -108,68 +130,79 @@ export default function AttendanceReports() {
         attendance: [] as { student_id: number; status: 'present' | 'absent' }[],
     });
 
+    const [search, setSearch] = useState(initialFilters.search || "");
     const [filters, setFilters] = useState({
-        start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        end_date: new Date().toISOString().split('T')[0],
-        classroom_id: '',
-        student_national_id: '',
+        start_date: initialFilters.start_date || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        end_date: initialFilters.end_date || new Date().toISOString().split('T')[0],
+        classroom_id: initialFilters.classroom_id || '',
+        status: initialFilters.status || 'all',
     });
 
-    const [stats, setStats] = useState({ total: 0, present: 0, absent: 0 });
+    useEffect(() => {
+        if (initialClassrooms && initialClassrooms.length > 0) {
+            setClassrooms(initialClassrooms);
+        }
+    }, [initialClassrooms]);
 
     useEffect(() => {
-        fetchMetadata();
-        fetchData();
+        const fetchStudents = async () => {
+            try {
+                const studentRes = await axios.get('/school/students-api');
+                setStudents(studentRes.data);
+                if (!initialClassrooms || initialClassrooms.length === 0) {
+                    const classRes = await axios.get('/school/classes-api');
+                    setClassrooms(classRes.data);
+                }
+            } catch (error) {
+                console.error('Error fetching students metadata:', error);
+            }
+        };
+        fetchStudents();
     }, []);
 
-    const fetchMetadata = async () => {
-        try {
-            const [classRes, studentRes] = await Promise.all([
-                axios.get('/school/classes-api'),
-                axios.get('/school/students-api')
-            ]);
-            setClassrooms(classRes.data);
-            setStudents(studentRes.data);
-        } catch (error) {
-            console.error('Error fetching metadata:', error);
-            showToast((isRtl ? 'خطأ في تحميل البيانات' : 'Error loading metadata'), 'error');
-        }
+    // --- Search Debounce matching school/students pattern ---
+    const debouncedSearch = useCallback(
+        debounce((val: string, currentFilters: typeof filters) => {
+            router.get(
+                route("school.attendance.index"),
+                {
+                    search: val || undefined,
+                    classroom_id: currentFilters.classroom_id || undefined,
+                    start_date: currentFilters.start_date || undefined,
+                    end_date: currentFilters.end_date || undefined,
+                    status: currentFilters.status === "all" ? undefined : currentFilters.status,
+                },
+                { preserveState: true, preserveScroll: true, replace: true }
+            );
+        }, 300),
+        []
+    );
+
+    const handleSearchChange = (val: string) => {
+        setSearch(val);
+        debouncedSearch(val, filters);
     };
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            const params: any = {};
-            if (filters.start_date && filters.end_date) {
-                params.start_date = filters.start_date;
-                params.end_date = filters.end_date;
-            }
-            if (filters.classroom_id) params.classroom_id = filters.classroom_id;
-            if (filters.student_national_id) params.student_national_id = filters.student_national_id;
+    const handleFilterChange = (key: string, value: string) => {
+        const nextFilters = { ...filters, [key]: value };
+        setFilters(nextFilters);
+        router.get(
+            route("school.attendance.index"),
+            {
+                search: search || undefined,
+                classroom_id: nextFilters.classroom_id || undefined,
+                start_date: nextFilters.start_date || undefined,
+                end_date: nextFilters.end_date || undefined,
+                status: nextFilters.status === "all" ? undefined : nextFilters.status,
+            },
+            { preserveState: true, preserveScroll: true, replace: true }
+        );
+    };
 
-            const res = await axios.get('/school/attendance', { params });
-            let data = res.data;
-
-            // Optional client filter for ID just in case
-            if (filters.student_national_id) {
-                data = data.filter((r: AttendanceRecord) =>
-                    r.student?.student_national_id?.includes(filters.student_national_id) ||
-                    r.student?.national_id?.includes(filters.student_national_id)
-                );
-            }
-
-            setAttendance(data);
-
-            const total = data.length;
-            const present = data.filter((a: AttendanceRecord) => a.status === 'present').length;
-            const absent = data.filter((a: AttendanceRecord) => a.status === 'absent').length;
-            setStats({ total, present, absent });
-        } catch (error) {
-            console.error('Error fetching attendance:', error);
-            showToast((isRtl ? 'خطأ في تحميل بيانات الحضور' : 'Error loading attendance data'), 'error');
-        } finally {
-            setLoading(false);
-        }
+    const stats = initialStats || {
+        total: attendance.length,
+        present: attendance.filter((a: AttendanceRecord) => a.status === 'present').length,
+        absent: attendance.filter((a: AttendanceRecord) => a.status === 'absent').length,
     };
 
     const showToast = (message: string, type: 'success' | 'error') => {
@@ -242,7 +275,7 @@ export default function AttendanceReports() {
                 }
             }
             setShowModal(false);
-            fetchData();
+            router.reload({ only: ['attendance', 'stats'] });
         } catch (error: any) {
             showToast(error.response?.data?.message || (isRtl ? 'خطأ في الحفظ' : 'Error saving attendance'), 'error');
         } finally {
@@ -291,7 +324,7 @@ export default function AttendanceReports() {
             await axios.post('/school/attendance/bulk', bulkData);
             showToast((isRtl ? 'تم تسجيل الحضور الجماعي بنجاح' : 'Bulk attendance recorded successfully'), 'success');
             setShowBulkModal(false);
-            fetchData();
+            router.reload({ only: ['attendance', 'stats'] });
         } catch (error: any) {
             showToast(error.response?.data?.message || (isRtl ? 'خطأ في الحفظ' : 'Error saving bulk attendance'), 'error');
         } finally {
@@ -311,7 +344,7 @@ export default function AttendanceReports() {
         try {
             await axios.delete(`/school/attendance/${recordToDelete}`);
             showToast((isRtl ? 'تم حذف السجل' : 'Attendance record deleted'), 'success');
-            fetchData();
+            router.reload({ only: ['attendance', 'stats'] });
         } catch (error) {
             showToast((isRtl ? 'خطأ في الحذف' : 'Error deleting record'), 'error');
         } finally {
@@ -325,11 +358,11 @@ export default function AttendanceReports() {
     const handlePrint = () => window.print();
 
     const getFoundEntity = () => {
-        if (!filters.student_national_id) return null;
-        const nid = filters.student_national_id;
-        const studentFound = students.find(s => s.national_id === nid || s.student_national_id === nid);
-        const guardianFoundStudent = students.find(s => s.guardian?.national_id === nid);
-        const supervisorFoundClass = classrooms.find(c => c.teachers?.some(t => t.national_id === nid) || c.supervisor?.national_id === nid);
+        const query = search.trim();
+        if (!query) return null;
+        const studentFound = students.find(s => s.national_id === query || s.student_national_id === query || s.student_code === query);
+        const guardianFoundStudent = students.find(s => s.guardian?.national_id === query || s.guardian?.phone === query);
+        const supervisorFoundClass = classrooms.find(c => c.teachers?.some(t => t.national_id === query) || c.supervisor?.national_id === query);
 
         if (studentFound) return { type: 'student', data: studentFound };
         if (guardianFoundStudent) return { type: 'guardian', data: guardianFoundStudent };
@@ -437,15 +470,15 @@ export default function AttendanceReports() {
                 <div className={`${DS_card} p-5`}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
-                            <label className={DS_labelCls}>{(isRtl ? 'البحث بالرقم المدني' : 'Search by ID')}</label>
+                            <label className={DS_labelCls}>{(isRtl ? 'بحث عن طالب' : 'Search Students')}</label>
                             <div className="relative">
                                 <Search className={`w-4 h-4 absolute top-3.5 ${isRtl ? 'right-4' : 'left-4'} text-gray-400`} />
                                 <input
                                     type="text"
                                     className={`${DS_inputCls} ${isRtl ? 'pr-11' : 'pl-11'}`}
-                                    placeholder={(isRtl ? 'الرقم المدني...' : 'Civil ID...')}
-                                    value={filters.student_national_id}
-                                    onChange={e => setFilters({ ...filters, student_national_id: e.target.value })}
+                                    placeholder={(isRtl ? 'الاسم، الرقم المدني، رقم القيد...' : 'Name, Civil ID, Code...')}
+                                    value={search}
+                                    onChange={e => handleSearchChange(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -454,7 +487,7 @@ export default function AttendanceReports() {
                             <select
                                 className={`${DS_inputCls} appearance-none rtl:pl-12 ltr:pr-12`} style={{ backgroundImage: "url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22currentColor%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%222%22 d=%22M19 9l-7 7-7-7%22/%3E%3C/svg%3E')", backgroundRepeat: "no-repeat", backgroundPosition: isRtl ? "left 1rem center" : "right 1rem center", backgroundSize: "1em" }}
                                 value={filters.classroom_id}
-                                onChange={e => setFilters({ ...filters, classroom_id: e.target.value })}
+                                onChange={e => handleFilterChange('classroom_id', e.target.value)}
                             >
                                 <option value="">{(isRtl ? 'جميع الفصول' : 'All Classes')}</option>
                                 {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -463,26 +496,21 @@ export default function AttendanceReports() {
                         <div className="grid grid-cols-2 gap-3 lg:col-span-2">
                             <div>
                                 <label className={DS_labelCls}>{(isRtl ? 'من تاريخ' : 'From Date')}</label>
-                                    <input
-                                        type="date"
-                                        className={DS_inputCls}
+                                <input
+                                    type="date"
+                                    className={DS_inputCls}
                                     value={filters.start_date}
-                                    onChange={e => setFilters({ ...filters, start_date: e.target.value })}
+                                    onChange={e => handleFilterChange('start_date', e.target.value)}
                                 />
                             </div>
-                            <div className="flex items-end gap-2">
-                                <div className="flex-1">
-                                    <label className={DS_labelCls}>{(isRtl ? 'إلى تاريخ' : 'To Date')}</label>
-                                    <input
-                                        type="date"
-                                        className={`${DS_inputCls} appearance-none rtl:pl-12 ltr:pr-12`} style={{ backgroundImage: "url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22currentColor%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%222%22 d=%22M19 9l-7 7-7-7%22/%3E%3C/svg%3E')", backgroundRepeat: "no-repeat", backgroundPosition: isRtl ? "left 1rem center" : "right 1rem center", backgroundSize: "1em" }}
-                                        value={filters.end_date}
-                                        onChange={e => setFilters({ ...filters, end_date: e.target.value })}
-                                    />
-                                </div>
-                                <button onClick={fetchData} className="w-11 h-11 rounded-[14px] bg-[#0f2044] text-[#f5b800] flex items-center justify-center shadow-lg hover:bg-[#162d60] transition-all flex-shrink-0">
-                                    <Search className="w-5 h-5" />
-                                </button>
+                            <div>
+                                <label className={DS_labelCls}>{(isRtl ? 'إلى تاريخ' : 'To Date')}</label>
+                                <input
+                                    type="date"
+                                    className={DS_inputCls}
+                                    value={filters.end_date}
+                                    onChange={e => handleFilterChange('end_date', e.target.value)}
+                                />
                             </div>
                         </div>
                     </div>
@@ -521,7 +549,7 @@ export default function AttendanceReports() {
                                     <>
                                         <div><p className={DS_labelCls}>{(isRtl ? 'الاسم' : 'Name')}</p><p className="font-bold text-[#0f2044] dark:text-white">{foundEntity.data.guardian?.name}</p></div>
                                         <div><p className={DS_labelCls}>{(isRtl ? 'رقم الجوال' : 'Phone')}</p><p className="font-bold font-mono text-[#0f2044] dark:text-white">{foundEntity.data.guardian?.phone}</p></div>
-                                        <div><p className={DS_labelCls}>{(isRtl ? 'الأبناء' : 'Children')}</p><p className="font-bold text-[#0f2044] dark:text-white">{students.filter(s => s.guardian?.national_id === filters.student_national_id).map(s => s.name).join(', ')}</p></div>
+                                        <div><p className={DS_labelCls}>{(isRtl ? 'الأبناء' : 'Children')}</p><p className="font-bold text-[#0f2044] dark:text-white">{students.filter(s => s.guardian?.national_id === search.trim() || s.guardian?.phone === search.trim()).map(s => s.name).join(', ')}</p></div>
                                     </>
                                 )}
                                 {foundEntity.type === 'supervisor' && (
@@ -561,12 +589,7 @@ export default function AttendanceReports() {
 
                 {/* Data Table */}
                 <div className={DS_card}>
-                    {loading ? (
-                        <div className="p-16 flex flex-col items-center justify-center">
-                            <div className="w-10 h-10 border-4 border-[#0f2044]/20 border-t-[#f5b800] rounded-full animate-spin mb-4" />
-                            <p className="text-gray-500 font-bold">{(isRtl ? 'جاري تحميل البيانات...' : 'Loading data...')}</p>
-                        </div>
-                    ) : attendance.length > 0 ? (
+                    {attendance.length > 0 ? (
                         <div className={DS_tableWrapper}>
                             <table className={DS_tableBase}>
                                 <thead className={DS_tableHead}>
@@ -604,7 +627,7 @@ export default function AttendanceReports() {
                                             </td>
                                             <td className={DS_tableTd}>
                                                 <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                                    {a.classroom?.teachers?.[0]?.name || a.classroom?.supervisor?.name || '-'}
+                                                    {a.classroom?.teacher?.name || a.classroom?.teachers?.[0]?.name || a.classroom?.supervisor?.name || '-'}
                                                 </span>
                                             </td>
                                             <td className={`${DS_tableTd} text-center`}>

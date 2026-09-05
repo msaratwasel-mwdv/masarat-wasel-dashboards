@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import { Head, useForm, router } from "@inertiajs/react";
 import useTranslation from "@/hooks/useTranslation";
@@ -45,6 +45,8 @@ interface Teacher {
   id: number;
   name: string;
   name_en?: string;
+  assigned_grade_id?: number | null;
+  assigned_grade_name?: string | null;
 }
 
 interface Props {
@@ -60,6 +62,29 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
   const [activeTab, setActiveTab] = useState<"classrooms" | "grades">("grades");
   const [search, setSearch] = useState(filters.search || "");
   
+  // Dynamic search filtering for grades and classrooms by name (multi-word & bilingual raw_name support)
+  const filteredGrades = useMemo(() => {
+    if (!search.trim()) return grades;
+    const terms = search.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    return grades.filter((g) => {
+      const name = (g.name || "").toLowerCase();
+      const rawName = (g.raw_name || "").toLowerCase();
+      return terms.every((term) => name.includes(term) || rawName.includes(term));
+    });
+  }, [grades, search]);
+
+  const filteredClassrooms = useMemo(() => {
+    if (!search.trim()) return classrooms;
+    const terms = search.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    return classrooms.filter((c) => {
+      const name = (c.name || "").toLowerCase();
+      const rawName = (c.raw_name || "").toLowerCase();
+      const nameEn = (c.name_en || "").toLowerCase();
+      const gradeName = (c.grade_name || "").toLowerCase();
+      return terms.every((term) => name.includes(term) || rawName.includes(term) || nameEn.includes(term) || gradeName.includes(term));
+    });
+  }, [classrooms, search]);
+  
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -70,9 +95,69 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
   const [entityToEdit, setEntityToEdit] = useState<any>(null);
   const [entityToDelete, setEntityToDelete] = useState<any>(null);
 
+  // Teacher assignment conflict warning state
+  const [teacherConflict, setTeacherConflict] = useState<{
+    teacherName: string;
+    assignedGradeName: string;
+    targetTeacherId: string;
+    isEdit: boolean;
+  } | null>(null);
+
   // Forms
   const classForm = useForm({ name: "", grade_id: "" });
   const gradeForm = useForm({ name: "", teacher_id: "" });
+
+  // Dirty / modification tracking for edit modal
+  const isClassModified = Boolean(
+    entityToEdit &&
+      (classForm.data.name.trim() !== (entityToEdit.name || "").trim() ||
+        classForm.data.grade_id.toString() !== (entityToEdit.grade_id?.toString() || ""))
+  );
+
+  const isGradeModified = Boolean(
+    entityToEdit &&
+      (gradeForm.data.name.trim() !== (entityToEdit.name || "").trim() ||
+        (gradeForm.data.teacher_id?.toString() || "") !== (entityToEdit.teacher_id?.toString() || ""))
+  );
+
+  const isEditModified = activeTab === "classrooms" ? isClassModified : isGradeModified;
+
+  // Teacher selection with assignment conflict check
+  const handleTeacherSelect = (teacherId: string, isEdit: boolean) => {
+    if (!teacherId) {
+      gradeForm.setData("teacher_id", "");
+      return;
+    }
+
+    const tObj = teachers.find((t) => t.id.toString() === teacherId);
+    if (tObj && tObj.assigned_grade_id) {
+      const isSameGradeBeingEdited =
+        isEdit && entityToEdit && entityToEdit.id.toString() === tObj.assigned_grade_id.toString();
+
+      if (!isSameGradeBeingEdited) {
+        setTeacherConflict({
+          teacherName: isRtl ? tObj.name : (tObj.name_en || tObj.name),
+          assignedGradeName: tObj.assigned_grade_name || "",
+          targetTeacherId: teacherId,
+          isEdit,
+        });
+        return;
+      }
+    }
+
+    gradeForm.setData("teacher_id", teacherId);
+  };
+
+  const confirmTeacherConflict = () => {
+    if (teacherConflict) {
+      gradeForm.setData("teacher_id", teacherConflict.targetTeacherId);
+      setTeacherConflict(null);
+    }
+  };
+
+  const cancelTeacherConflict = () => {
+    setTeacherConflict(null);
+  };
 
   // Handlers
   const handleAddSubmit = (e: React.FormEvent) => {
@@ -209,7 +294,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                   {activeTab === "classrooms" ? t("Classrooms List") : t("Grades List")}
                 </h3>
                 <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-                  {t("Total")}: <span className="text-[#0f2044] dark:text-[#7ba7e8]">{activeTab === "classrooms" ? classrooms.length : grades.length}</span>
+                  {t("Total")}: <span className="text-[#0f2044] dark:text-[#7ba7e8]">{activeTab === "classrooms" ? filteredClassrooms.length : filteredGrades.length}</span>
                 </p>
               </div>
             </div>
@@ -246,7 +331,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
               </thead>
               <tbody>
                 {activeTab === "classrooms" ? (
-                  classrooms.length > 0 ? classrooms.map((c) => (
+                  filteredClassrooms.length > 0 ? filteredClassrooms.map((c) => (
                     <tr key={c.id} className={DS_tableRow}>
                       <td className={DS_tableTd}>
                         <span className="font-bold text-[#0f2044] dark:text-white">{c.name}</span>
@@ -280,10 +365,10 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                       </td>
                     </tr>
                   )) : (
-                    <tr><td colSpan={3} className="py-12 text-center text-gray-400 font-bold">{t("No Data Found")}</td></tr>
+                    <tr><td colSpan={4} className="py-12 text-center text-gray-400 font-bold">{t("No Data Found")}</td></tr>
                   )
                 ) : (
-                  grades.length > 0 ? grades.map((g) => (
+                  filteredGrades.length > 0 ? filteredGrades.map((g) => (
                     <tr key={g.id} className={DS_tableRow}>
                       <td className={DS_tableTd}>
                         <span className="font-bold text-[#0f2044] dark:text-white">{g.name}</span>
@@ -321,7 +406,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                       </td>
                     </tr>
                   )) : (
-                    <tr><td colSpan={3} className="py-12 text-center text-gray-400 font-bold">{t("No Data Found")}</td></tr>
+                    <tr><td colSpan={4} className="py-12 text-center text-gray-400 font-bold">{t("No Data Found")}</td></tr>
                   )
                 )}
               </tbody>
@@ -391,7 +476,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                 </div>
                 <div>
                   <label className={DS_labelCls}>{t("Responsible Teacher")}</label>
-                  <Listbox value={gradeForm.data.teacher_id} onChange={(val) => gradeForm.setData("teacher_id", val)}>
+                  <Listbox value={gradeForm.data.teacher_id} onChange={(val) => handleTeacherSelect(val, false)}>
                     <div className="relative">
                       <ListboxButton className={`${DS_inputCls} flex items-center justify-between cursor-pointer`}>
                         <span className="block truncate">{getTeacherName(gradeForm.data.teacher_id)}</span>
@@ -401,7 +486,14 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                         <ListboxOption value="" className="py-2.5 px-4 text-sm font-semibold text-gray-400 italic cursor-pointer hover:bg-gray-50 dark:hover:bg-[#243460]">{t("None")}</ListboxOption>
                         {teachers.map((tItem) => (
                           <ListboxOption key={tItem.id} value={tItem.id.toString()} className={({ active }) => `cursor-pointer py-2.5 px-4 text-sm font-semibold transition-colors ${active ? "bg-[#0f2044]/5 dark:bg-[#243460] text-[#0f2044] dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
-                            {isRtl ? tItem.name : (tItem.name_en || tItem.name)}
+                            <div className="flex items-center justify-between gap-2">
+                              <span>{isRtl ? tItem.name : (tItem.name_en || tItem.name)}</span>
+                              {tItem.assigned_grade_name && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-normal">
+                                  {isRtl ? `(معين: ${tItem.assigned_grade_name})` : `(Assigned: ${tItem.assigned_grade_name})`}
+                                </span>
+                              )}
+                            </div>
                           </ListboxOption>
                         ))}
                       </ListboxOptions>
@@ -483,7 +575,7 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                 </div>
                 <div>
                   <label className={DS_labelCls}>{t("Responsible Teacher")}</label>
-                  <Listbox value={gradeForm.data.teacher_id} onChange={(val) => gradeForm.setData("teacher_id", val)}>
+                  <Listbox value={gradeForm.data.teacher_id} onChange={(val) => handleTeacherSelect(val, true)}>
                     <div className="relative">
                       <ListboxButton className={`${DS_inputCls} flex items-center justify-between cursor-pointer`}>
                         <span className="block truncate">{getTeacherName(gradeForm.data.teacher_id)}</span>
@@ -493,7 +585,14 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
                         <ListboxOption value="" className="py-2.5 px-4 text-sm font-semibold text-gray-400 italic cursor-pointer hover:bg-gray-50 dark:hover:bg-[#243460]">{t("None")}</ListboxOption>
                         {teachers.map((tItem) => (
                           <ListboxOption key={tItem.id} value={tItem.id.toString()} className={({ active }) => `cursor-pointer py-2.5 px-4 text-sm font-semibold transition-colors ${active ? "bg-[#0f2044]/5 dark:bg-[#243460] text-[#0f2044] dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
-                            {isRtl ? tItem.name : (tItem.name_en || tItem.name)}
+                            <div className="flex items-center justify-between gap-2">
+                              <span>{isRtl ? tItem.name : (tItem.name_en || tItem.name)}</span>
+                              {tItem.assigned_grade_name && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-normal">
+                                  {isRtl ? `(معين: ${tItem.assigned_grade_name})` : `(Assigned: ${tItem.assigned_grade_name})`}
+                                </span>
+                              )}
+                            </div>
                           </ListboxOption>
                         ))}
                       </ListboxOptions>
@@ -504,13 +603,47 @@ export default function ClassroomIndex({ auth, classrooms = [], grades = [], tea
             )}
             <div className="flex justify-between items-center pt-4 border-t border-[#0f2044]/10 dark:border-[#243460] mt-2">
               <button type="button" onClick={() => setShowEditModal(false)} className={DS_cancelBtn}>{t("Cancel")}</button>
-              <button type="submit" disabled={classForm.processing || gradeForm.processing} className={DS_submitBtn(classForm.processing || gradeForm.processing)}>
+              <button
+                type="submit"
+                disabled={!isEditModified || classForm.processing || gradeForm.processing}
+                className={DS_submitBtn(!isEditModified || classForm.processing || gradeForm.processing)}
+              >
                 {t("Save Changes")}
               </button>
             </div>
           </form>
         </div>
       </Modal>
+
+      {/* ── Teacher Conflict Confirmation Modal ────────────────────── */}
+      {teacherConflict && (
+        <Modal show={Boolean(teacherConflict)} onClose={cancelTeacherConflict} maxWidth="sm">
+          <div className={DS_confirmModal}>
+            <div className="w-16 h-16 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-amber-500" />
+            </div>
+            <h3 className="text-xl font-bold text-[#0f2044] dark:text-white mb-2">
+              {isRtl ? "تنبيه تعيين المعلم" : "Teacher Assignment Warning"}
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+              {isRtl
+                ? `المعلم "${teacherConflict.teacherName}" معين بالفعل لمرحلة أخرى (${teacherConflict.assignedGradeName}). هل تود المتابعة؟`
+                : `The teacher "${teacherConflict.teacherName}" is already assigned to another class/grade (${teacherConflict.assignedGradeName}). Would you like to proceed?`}
+            </p>
+            <div className="flex gap-3">
+              <button onClick={cancelTeacherConflict} className={`flex-1 py-3 ${DS_cancelBtn}`}>
+                {isRtl ? "إلغاء" : "Cancel"}
+              </button>
+              <button
+                onClick={confirmTeacherConflict}
+                className="flex-1 py-3 rounded-[14px] bg-[#f5b800] hover:bg-[#e0a900] text-[#0f2044] font-bold transition-all shadow"
+              >
+                {isRtl ? "نعم، المتابعة" : "Yes, Proceed"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* ── Delete Confirmation Modal ───────────────────────────────── */}
       {showDeleteModal && (

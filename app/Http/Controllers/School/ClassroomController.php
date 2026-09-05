@@ -48,19 +48,36 @@ class ClassroomController extends Controller
         $search = $request->input('search');
 
         $classrooms = Classroom::atSchool($schoolId)
-            ->when($search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%");
-                });
-            })
             ->latest()
             ->with(['grade', 'teachers.user'])
             ->withCount('students')
             ->get()
+            ->filter(function ($c) use ($search) {
+                if (! $search) {
+                    return true;
+                }
+                $terms = array_filter(preg_split('/\s+/', mb_strtolower(trim($search))));
+                $name = mb_strtolower($c->name);
+                $rawName = mb_strtolower($c->getRawOriginal('name') ?? '');
+                $nameEn = mb_strtolower($c->name_en ?? '');
+                $gradeName = mb_strtolower($c->grade?->name ?? '');
+                $gradeRawName = mb_strtolower($c->grade?->getRawOriginal('name') ?? '');
+
+                return collect($terms)->every(function ($term) use ($name, $rawName, $nameEn, $gradeName, $gradeRawName) {
+                    return str_contains($name, $term)
+                        || str_contains($rawName, $term)
+                        || str_contains($nameEn, $term)
+                        || str_contains($gradeName, $term)
+                        || str_contains($gradeRawName, $term);
+                });
+            })
+            ->values()
             ->map(function ($c) {
                 return [
                     'id' => $c->id,
                     'name' => $c->name,
+                    'name_en' => $c->name_en,
+                    'raw_name' => $c->getRawOriginal('name'),
                     'grade_id' => $c->grade_id,
                     'grade_name' => $c->grade?->name,
                     'school_id' => $c->grade?->school_id,
@@ -81,10 +98,24 @@ class ClassroomController extends Controller
             ->withCount('classrooms')
             ->orderBy('name')
             ->get()
+            ->filter(function ($g) use ($search) {
+                if (! $search) {
+                    return true;
+                }
+                $terms = array_filter(preg_split('/\s+/', mb_strtolower(trim($search))));
+                $name = mb_strtolower($g->name);
+                $rawName = mb_strtolower($g->getRawOriginal('name') ?? '');
+
+                return collect($terms)->every(function ($term) use ($name, $rawName) {
+                    return str_contains($name, $term) || str_contains($rawName, $term);
+                });
+            })
+            ->values()
             ->map(function ($g) {
                 return [
                     'id' => $g->id,
                     'name' => $g->name,
+                    'raw_name' => $g->getRawOriginal('name'),
                     'teacher_id' => $g->teacher?->user_id,
                     'teacher_name' => $g->teacher?->name,
                     'teacher_name_en' => $g->teacher?->name_en,
@@ -95,18 +126,27 @@ class ClassroomController extends Controller
                 ];
             });
 
-        // Fetch teachers to populate the dropdown
+        // Fetch teachers to populate the dropdown along with their assigned grade
+        $teacherAssignments = \App\Models\Teacher::where('school_id', $schoolId)
+            ->whereNotNull('grade_id')
+            ->with('grade:id,name')
+            ->get()
+            ->keyBy('user_id');
+
         $availableTeachers = User::atSchool($schoolId)
             ->withRole('teacher')
             ->orderBy('first_name_ar')
             ->get()
-            ->map(function ($u) {
+            ->map(function ($u) use ($teacherAssignments) {
+                $assignment = $teacherAssignments->get($u->id);
+
                 return [
                     'id' => $u->id,
                     'name' => $u->name,
                     'name_en' => $u->name_en,
-
                     'email' => $u->email,
+                    'assigned_grade_id' => $assignment?->grade_id,
+                    'assigned_grade_name' => $assignment?->grade?->name,
                 ];
             });
 
@@ -117,45 +157,6 @@ class ClassroomController extends Controller
             'filters' => [
                 'search' => $search,
             ],
-        ]);
-    }
-
-    // عرض صفحة تعديل الفصل وربط المعلمين
-    public function edit(Classroom $classroom)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if ($classroom->grade?->school_id !== $user->getSchoolId()) {
-            abort(403);
-        }
-
-        $teachers = User::atSchool($user->getSchoolId())
-            ->withRole('teacher')
-            ->where('is_active', true)
-            ->orderBy('first_name_ar')
-            ->get()
-            ->map(function ($u) {
-                return [
-                    'id' => $u->id,
-                    'name' => $u->name,
-                    'email' => $u->email,
-                ];
-            });
-
-        return Inertia::render('School/Classrooms/Edit', [
-            'classroom' => [
-                'id' => $classroom->id,
-                'name' => $classroom->name,
-                'grade_level' => $classroom->grade_level,
-                'teachers' => $classroom->teachers->map(function ($t) {
-                    return [
-                        'user_id' => $t->user_id,
-                        'name' => $t->name,
-                    ];
-                }),
-            ],
-            'teachers' => $teachers,
         ]);
     }
 

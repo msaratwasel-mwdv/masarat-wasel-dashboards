@@ -372,6 +372,42 @@ export default function IndexStudents({
     }
   }, [selectedGuardianId, guardianEntries[0]?.relationship_type, guardianEntries[0]?.first_name_ar, guardianEntries[0]?.last_name_ar, guardianEntries[0]?.first_name_en, guardianEntries[0]?.last_name_en, showNewGuardianForm, guardians]);
 
+  // Track modifications in edit mode
+  const isStudentModified = useMemo(() => {
+    if (modalMode !== "edit" || !currentStudent) return true;
+
+    const sf = studentForm.data;
+    const cs = currentStudent;
+
+    if ((sf.first_name_ar || "") !== (cs.first_name_ar || "")) return true;
+    if ((sf.second_name_ar || "") !== (cs.second_name_ar || "")) return true;
+    if ((sf.third_name_ar || "") !== (cs.third_name_ar || "")) return true;
+    if ((sf.last_name_ar || "") !== (cs.last_name_ar || "")) return true;
+    if ((sf.first_name_en || "") !== (cs.first_name_en || "")) return true;
+    if ((sf.second_name_en || "") !== (cs.second_name_en || "")) return true;
+    if ((sf.third_name_en || "") !== (cs.third_name_en || "")) return true;
+    if ((sf.last_name_en || "") !== (cs.last_name_en || "")) return true;
+    if ((sf.national_id || "") !== (cs.national_id || "")) return true;
+    if ((sf.gender || "male") !== (cs.gender || "male")) return true;
+    if ((sf.classroom_id?.toString() || "") !== (cs.current_enrollment?.classroom?.id?.toString() || "")) return true;
+    if ((sf.forth_bus_id?.toString() || "") !== (cs.forth_bus_id?.toString() || "")) return true;
+    if ((sf.back_bus_id?.toString() || "") !== (cs.back_bus_id?.toString() || "")) return true;
+    if (Boolean(sf.is_active) !== Boolean(cs.is_active)) return true;
+    if (sf.image !== null) return true;
+
+    const initialGuardianId = cs.guardians?.[0]?.id?.toString() || "";
+    if (selectedGuardianId.toString() !== initialGuardianId) return true;
+    if (showNewGuardianForm) return true;
+
+    const primaryG = guardianEntries[0];
+    const initialG = cs.guardians?.[0];
+    if (primaryG && initialG) {
+      if ((primaryG.relationship_type || "father") !== (initialG.pivot?.relationship_type || "father")) return true;
+    }
+
+    return false;
+  }, [modalMode, currentStudent, studentForm.data, selectedGuardianId, showNewGuardianForm, guardianEntries]);
+
   const resetForms = () => {
     studentForm.reset();
     studentForm.clearErrors();
@@ -562,7 +598,7 @@ export default function IndexStudents({
       onSuccess: (page: any) => {
         const res = page.props.guardianResult;
         if (res?.found && res.guardian) {
-          toast.success(t('Existing guardian found'));
+          toast.success(isRtl ? 'تم العثور على ولي أمر مسجل مسبقاً' : t('Existing guardian found'));
           updateGuardianEntry(index, {
             first_name_ar: res.guardian.first_name_ar || res.guardian.name || '',
             last_name_ar: res.guardian.last_name_ar || '',
@@ -575,7 +611,7 @@ export default function IndexStudents({
             imagePreview: res.guardian.image ? getImageUrl(res.guardian.image, "guardian") : null
           });
         } else {
-          toast.info(t('Guardian not found. Please enter details.'));
+          toast.info(isRtl ? 'لم يتم العثور على ولي الأمر، يرجى إدخال البيانات.' : t('Guardian not found. Please enter details.'));
           updateGuardianEntry(index, { verified: false, guardian_id: '', hasSearched: true, isSearching: false });
         }
       },
@@ -647,13 +683,28 @@ export default function IndexStudents({
   const handleSubmitStudent = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. Student Name validation
-    if (!studentForm.data.first_name_ar.trim() || !studentForm.data.last_name_ar.trim()) {
-      toast.error(isRtl ? 'يرجى إدخال الاسم الأول والأخير للطالب بالعربية' : 'Please enter student first and last name in Arabic');
-      return;
-    }
-    if (!studentForm.data.first_name_en.trim() || !studentForm.data.last_name_en.trim()) {
-      toast.error(isRtl ? 'يرجى إدخال الاسم الأول والأخير للطالب بالإنجليزية' : 'Please enter student first and last name in English');
+    // 1. Student Name validation: Arabic provided => English optional; English provided => Arabic optional
+    const hasStudentAr = Boolean(studentForm.data.first_name_ar.trim() && studentForm.data.last_name_ar.trim());
+    const hasStudentEn = Boolean(studentForm.data.first_name_en.trim() && studentForm.data.last_name_en.trim());
+
+    if (!hasStudentAr && !hasStudentEn) {
+      if (studentForm.data.first_name_ar.trim() && !studentForm.data.last_name_ar.trim()) {
+        toast.error(isRtl ? 'يرجى إدخال اسم العائلة للطالب بالعربية' : 'Please enter student last name in Arabic');
+        return;
+      }
+      if (!studentForm.data.first_name_ar.trim() && studentForm.data.last_name_ar.trim()) {
+        toast.error(isRtl ? 'يرجى إدخال الاسم الأول للطالب بالعربية' : 'Please enter student first name in Arabic');
+        return;
+      }
+      if (studentForm.data.first_name_en.trim() && !studentForm.data.last_name_en.trim()) {
+        toast.error(isRtl ? 'يرجى إدخال اسم العائلة للطالب بالإنجليزية' : 'Please enter student last name in English');
+        return;
+      }
+      if (!studentForm.data.first_name_en.trim() && studentForm.data.last_name_en.trim()) {
+        toast.error(isRtl ? 'يرجى إدخال الاسم الأول للطالب بالإنجليزية' : 'Please enter student first name in English');
+        return;
+      }
+      toast.error(isRtl ? 'يرجى إدخال الاسم الأول واسم العائلة للطالب (بالعربية أو بالإنجليزية على الأقل)' : 'Please enter student first and last name (in Arabic or English)');
       return;
     }
 
@@ -666,12 +717,27 @@ export default function IndexStudents({
     // 3. For entries without guardian_id (new guardian inline registration), create them first
     if (showNewGuardianForm && !guardianEntries[0]?.guardian_id) {
       const entry = guardianEntries[0];
-      if (!entry.first_name_ar.trim() || !entry.last_name_ar.trim()) {
-        toast.error(isRtl ? 'يرجى إدخال الاسم الأول والأخير لولي الأمر بالعربية' : 'Please enter guardian first and last name in Arabic');
-        return;
-      }
-      if (!entry.first_name_en.trim() || !entry.last_name_en.trim()) {
-        toast.error(isRtl ? 'يرجى إدخال الاسم الأول والأخير لولي الأمر بالإنجليزية' : 'Please enter guardian first and last name in English');
+      const hasGuardianAr = Boolean(entry.first_name_ar.trim() && entry.last_name_ar.trim());
+      const hasGuardianEn = Boolean(entry.first_name_en.trim() && entry.last_name_en.trim());
+
+      if (!hasGuardianAr && !hasGuardianEn) {
+        if (entry.first_name_ar.trim() && !entry.last_name_ar.trim()) {
+          toast.error(isRtl ? 'يرجى إدخال اسم العائلة لولي الأمر بالعربية' : 'Please enter guardian last name in Arabic');
+          return;
+        }
+        if (!entry.first_name_ar.trim() && entry.last_name_ar.trim()) {
+          toast.error(isRtl ? 'يرجى إدخال الاسم الأول لولي الأمر بالعربية' : 'Please enter guardian first name in Arabic');
+          return;
+        }
+        if (entry.first_name_en.trim() && !entry.last_name_en.trim()) {
+          toast.error(isRtl ? 'يرجى إدخال اسم العائلة لولي الأمر بالإنجليزية' : 'Please enter guardian last name in English');
+          return;
+        }
+        if (!entry.first_name_en.trim() && entry.last_name_en.trim()) {
+          toast.error(isRtl ? 'يرجى إدخال الاسم الأول لولي الأمر بالإنجليزية' : 'Please enter guardian first name in English');
+          return;
+        }
+        toast.error(isRtl ? 'يرجى إدخال الاسم الأول واسم العائلة لولي الأمر (بالعربية أو بالإنجليزية على الأقل)' : 'Please enter guardian first and last name (in Arabic or English)');
         return;
       }
       if (!entry.national_id.trim() || !entry.phone.trim()) {
@@ -681,10 +747,18 @@ export default function IndexStudents({
 
       toast.info(isRtl ? "جاري تسجيل حساب ولي الأمر أولاً..." : "Creating guardian account first...");
       try {
+        const gFirstAr = entry.first_name_ar.trim() || entry.first_name_en.trim();
+        const gLastAr = entry.last_name_ar.trim() || entry.last_name_en.trim();
+        const gFirstEn = entry.first_name_en.trim() || entry.first_name_ar.trim();
+        const gLastEn = entry.last_name_en.trim() || entry.last_name_ar.trim();
+
+        const gNameAr = `${gFirstAr} ${gLastAr}`.trim();
+        const gNameEn = `${gFirstEn} ${gLastEn}`.trim();
+
         await new Promise<void>((resolve, reject) => {
           router.post(route('school.guardians.store'), {
-            name: `${entry.first_name_ar} ${entry.last_name_ar}`.trim(),
-            name_en: `${entry.first_name_en} ${entry.last_name_en}`.trim(),
+            name: gNameAr,
+            name_en: gNameEn,
             national_id: entry.national_id,
             phone: entry.phone,
             email: entry.email,
@@ -715,23 +789,38 @@ export default function IndexStudents({
     }
 
     // 4. Prepare student and guardian payload
-    const finalGuardians = guardianEntries.map(g => ({
-      guardian_id: g.guardian_id || selectedGuardianId.toString(),
-      name: g.name || `${g.first_name_ar} ${g.last_name_ar}`.trim(),
-      name_en: g.name_en || `${g.first_name_en} ${g.last_name_en}`.trim(),
-      phone: g.phone,
-      email: g.email,
-      address: g.address,
-      home_number: g.home_number,
-      national_id: g.national_id,
-      relationship_type: g.relationship_type,
-    }));
+    const finalGuardians = guardianEntries.map(g => {
+      const arFirst = g.first_name_ar?.trim() || g.first_name_en?.trim() || '';
+      const arLast = g.last_name_ar?.trim() || g.last_name_en?.trim() || '';
+      const enFirst = g.first_name_en?.trim() || g.first_name_ar?.trim() || '';
+      const enLast = g.last_name_en?.trim() || g.last_name_ar?.trim() || '';
+
+      const nameAr = g.name || `${arFirst} ${arLast}`.trim();
+      const nameEn = g.name_en || `${enFirst} ${enLast}`.trim();
+
+      return {
+        guardian_id: g.guardian_id || selectedGuardianId.toString(),
+        name: nameAr || nameEn,
+        name_en: nameEn || nameAr,
+        phone: g.phone,
+        email: g.email,
+        address: g.address,
+        home_number: g.home_number,
+        national_id: g.national_id,
+        relationship_type: g.relationship_type,
+      };
+    });
+
+    const finalStudentFirstAr = studentForm.data.first_name_ar.trim() || studentForm.data.first_name_en.trim();
+    const finalStudentLastAr = studentForm.data.last_name_ar.trim() || studentForm.data.last_name_en.trim();
+    const finalStudentFirstEn = studentForm.data.first_name_en.trim() || studentForm.data.first_name_ar.trim();
+    const finalStudentLastEn = studentForm.data.last_name_en.trim() || studentForm.data.last_name_ar.trim();
 
     const data = {
-      first_name_ar: studentForm.data.first_name_ar,
-      last_name_ar: studentForm.data.last_name_ar,
-      first_name_en: studentForm.data.first_name_en,
-      last_name_en: studentForm.data.last_name_en,
+      first_name_ar: finalStudentFirstAr,
+      last_name_ar: finalStudentLastAr,
+      first_name_en: finalStudentFirstEn,
+      last_name_en: finalStudentLastEn,
       national_id: studentForm.data.national_id,
       gender: studentForm.data.gender,
       classroom_id: studentForm.data.classroom_id,
@@ -980,6 +1069,18 @@ export default function IndexStudents({
     to: students.to,
   };
 
+  // Conditional Name Helpers: Arabic provided => English optional, and vice versa
+  const hasStudentArFilled = Boolean(studentForm.data.first_name_ar?.trim() && studentForm.data.last_name_ar?.trim());
+  const hasStudentEnFilled = Boolean(studentForm.data.first_name_en?.trim() && studentForm.data.last_name_en?.trim());
+  const isAnyStudentArTyped = Boolean(studentForm.data.first_name_ar?.trim() || studentForm.data.last_name_ar?.trim());
+  const isAnyStudentEnTyped = Boolean(studentForm.data.first_name_en?.trim() || studentForm.data.last_name_en?.trim());
+
+  const currentGuardian = guardianEntries[0];
+  const hasGuardianArFilled = Boolean(currentGuardian?.first_name_ar?.trim() && currentGuardian?.last_name_ar?.trim());
+  const hasGuardianEnFilled = Boolean(currentGuardian?.first_name_en?.trim() && currentGuardian?.last_name_en?.trim());
+  const isAnyGuardianArTyped = Boolean(currentGuardian?.first_name_ar?.trim() || currentGuardian?.last_name_ar?.trim());
+  const isAnyGuardianEnTyped = Boolean(currentGuardian?.first_name_en?.trim() || currentGuardian?.last_name_en?.trim());
+
   // Print
   const handlePrint = () => window.print();
 
@@ -1129,7 +1230,7 @@ export default function IndexStudents({
         </div>
 
         {/* Modal Body */}
-        <div className={`p-4 md:p-5 ${modalMode === "view" ? "space-y-4" : "space-y-3"} overflow-y-auto max-h-[80vh] bg-white dark:bg-[#1a2845]`}>
+        <div className={`p-4 md:p-5 ${modalMode === "view" ? "space-y-4" : "space-y-3"} overflow-y-auto max-h-[85vh] bg-white dark:bg-[#1a2845]`}>
           {modalMode === "view" ? (
             /* View Mode Body */
             <>
@@ -1214,7 +1315,7 @@ export default function IndexStudents({
             </>
           ) : (
             /* Edit / Create Unified Modern Form */
-            <form onSubmit={handleSubmitStudent} className="space-y-3.5 pb-2 max-w-2xl mx-auto">
+            <form onSubmit={handleSubmitStudent} className="space-y-3.5 pb-8 max-w-2xl mx-auto">
               {/* SECTION 1: GUARDIAN LIAISON */}
               <div className="p-4 rounded-xl bg-gray-50/40 dark:bg-white/[0.02] border border-gray-150 dark:border-white/5 space-y-3.5 shadow-sm">
                 <div className="flex items-center gap-1.5 border-b border-gray-150 dark:border-white/5 pb-2">
@@ -1234,25 +1335,20 @@ export default function IndexStudents({
                       onChange={handleSelectParent}
                       options={parentOptions}
                       forceBottom={true}
-                      onNotFoundClick={(term) => {
+                      onAddNewClick={(term) => {
                           setShowNewGuardianForm(true);
                           setSelectedGuardianId("");
-                          handleGuardianLookup(0, term);
+                          if (term && /^\d+$/.test(term)) {
+                            updatePrimaryGuardian({ national_id: term });
+                            handleGuardianLookup(0, term);
+                          } else if (term) {
+                            updatePrimaryGuardian({ first_name_ar: term, name: term });
+                          } else {
+                            updatePrimaryGuardian(emptyGuardianEntry());
+                          }
                       }}
+                      addNewLabel={t("Add New Guardian")}
                     />
-
-                    {/* Add New Guardian Button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowNewGuardianForm(true);
-                        updatePrimaryGuardian(emptyGuardianEntry());
-                      }}
-                      className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-[12px] border border-dashed border-gray-300 dark:border-white/10 hover:border-[#f5b800] transition-all bg-white dark:bg-white/5 text-gray-400 font-bold hover:bg-gray-50 dark:hover:bg-white/10 text-xs"
-                    >
-                      <UserPlus size={14} />
-                      {t("Add New Guardian")}
-                    </button>
                   </div>
                 )}
 
@@ -1336,83 +1432,7 @@ export default function IndexStudents({
                     </div>
 
                     <div className="space-y-2.5">
-                      {/* Name Fields Row */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        <div className="space-y-0.5">
-                          <label className={DS_labelCls}>{isRtl ? "الاسم الأول (عربي) *" : "First Name (Arabic) *"}</label>
-                          <input
-                            type="text"
-                            value={guardianEntries[0]?.first_name_ar || ""}
-                            onChange={e => {
-                              const f_ar = e.target.value;
-                              const l_ar = guardianEntries[0]?.last_name_ar || "";
-                              updatePrimaryGuardian({
-                                first_name_ar: f_ar,
-                                name: `${f_ar} ${l_ar}`.trim()
-                              });
-                            }}
-                            className={DS_inputCls}
-                            required
-                            dir="rtl"
-                          />
-                        </div>
-                        <div className="space-y-0.5">
-                          <label className={DS_labelCls}>{isRtl ? "اسم العائلة (عربي) *" : "Last Name (Arabic) *"}</label>
-                          <input
-                            type="text"
-                            value={guardianEntries[0]?.last_name_ar || ""}
-                            onChange={e => {
-                              const l_ar = e.target.value;
-                              const f_ar = guardianEntries[0]?.first_name_ar || "";
-                              updatePrimaryGuardian({
-                                last_name_ar: l_ar,
-                                name: `${f_ar} ${l_ar}`.trim()
-                              });
-                            }}
-                            className={DS_inputCls}
-                            required
-                            dir="rtl"
-                          />
-                        </div>
-                        <div className="space-y-0.5">
-                          <label className={DS_labelCls}>{isRtl ? "الاسم الأول (إنجليزي) *" : "First Name (English) *"}</label>
-                          <input
-                            type="text"
-                            value={guardianEntries[0]?.first_name_en || ""}
-                            onChange={e => {
-                              const f_en = e.target.value;
-                              const l_en = guardianEntries[0]?.last_name_en || "";
-                              updatePrimaryGuardian({
-                                first_name_en: f_en,
-                                name_en: `${f_en} ${l_en}`.trim()
-                              });
-                            }}
-                            className={DS_inputCls}
-                            required
-                            dir="ltr"
-                          />
-                        </div>
-                        <div className="space-y-0.5">
-                          <label className={DS_labelCls}>{isRtl ? "اسم العائلة (إنجليزي) *" : "Last Name (English) *"}</label>
-                          <input
-                            type="text"
-                            value={guardianEntries[0]?.last_name_en || ""}
-                            onChange={e => {
-                              const l_en = e.target.value;
-                              const f_en = guardianEntries[0]?.first_name_en || "";
-                              updatePrimaryGuardian({
-                                last_name_en: l_en,
-                                name_en: `${f_en} ${l_en}`.trim()
-                              });
-                            }}
-                            className={DS_inputCls}
-                            required
-                            dir="ltr"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Civil ID, Phone, Relationship Row */}
+                      {/* Civil ID, Phone, Relationship Row (FIRST) */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         <div className="space-y-0.5 relative">
                           <label className={DS_labelCls}>{t("Civil ID")} *</label>
@@ -1423,6 +1443,7 @@ export default function IndexStudents({
                             onBlur={() => handleGuardianLookup(0)}
                             className={DS_inputCls}
                             required
+                            placeholder={isRtl ? "أدخل رقم الهوية أو الإقامة..." : "Enter Civil ID / Iqama..."}
                           />
                           {guardianEntries[0]?.isSearching && (
                               <div className="absolute top-7 right-3 rtl:right-auto rtl:left-3 flex items-center">
@@ -1438,6 +1459,7 @@ export default function IndexStudents({
                             onChange={e => updatePrimaryGuardian({ phone: e.target.value.replace(/\D/g, ''), })} minLength={8} maxLength={20} pattern="\d+"
                             className={DS_inputCls}
                             required
+                            placeholder="05XXXXXXXX"
                           />
                         </div>
                         <div className="space-y-0.5">
@@ -1460,6 +1482,94 @@ export default function IndexStudents({
                             <option value="aunt_maternal">{t("Aunt (Maternal)")}</option>
                             <option value="other">{t("Other")}</option>
                           </select>
+                        </div>
+                      </div>
+
+                      {/* Name Fields Row */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div className="space-y-0.5">
+                          <label className={DS_labelCls}>
+                            {isRtl ? "الاسم الأول (عربي)" : "First Name (Arabic)"}
+                            {!hasGuardianEnFilled && " *"}
+                          </label>
+                          <input
+                            type="text"
+                            value={guardianEntries[0]?.first_name_ar || ""}
+                            onChange={e => {
+                              const f_ar = e.target.value;
+                              const l_ar = guardianEntries[0]?.last_name_ar || "";
+                              updatePrimaryGuardian({
+                                first_name_ar: f_ar,
+                                name: `${f_ar} ${l_ar}`.trim()
+                              });
+                            }}
+                            className={DS_inputCls}
+                            required={!isAnyGuardianEnTyped}
+                            dir="rtl"
+                          />
+                        </div>
+                        <div className="space-y-0.5">
+                          <label className={DS_labelCls}>
+                            {isRtl ? "اسم العائلة (عربي)" : "Last Name (Arabic)"}
+                            {!hasGuardianEnFilled && " *"}
+                          </label>
+                          <input
+                            type="text"
+                            value={guardianEntries[0]?.last_name_ar || ""}
+                            onChange={e => {
+                              const l_ar = e.target.value;
+                              const f_ar = guardianEntries[0]?.first_name_ar || "";
+                              updatePrimaryGuardian({
+                                last_name_ar: l_ar,
+                                name: `${f_ar} ${l_ar}`.trim()
+                              });
+                            }}
+                            className={DS_inputCls}
+                            required={!isAnyGuardianEnTyped}
+                            dir="rtl"
+                          />
+                        </div>
+                        <div className="space-y-0.5">
+                          <label className={DS_labelCls}>
+                            {isRtl ? "الاسم الأول (إنجليزي)" : "First Name (English)"}
+                            {!hasGuardianArFilled && " *"}
+                          </label>
+                          <input
+                            type="text"
+                            value={guardianEntries[0]?.first_name_en || ""}
+                            onChange={e => {
+                              const f_en = e.target.value;
+                              const l_en = guardianEntries[0]?.last_name_en || "";
+                              updatePrimaryGuardian({
+                                first_name_en: f_en,
+                                name_en: `${f_en} ${l_en}`.trim()
+                              });
+                            }}
+                            className={DS_inputCls}
+                            required={!isAnyGuardianArTyped}
+                            dir="ltr"
+                          />
+                        </div>
+                        <div className="space-y-0.5">
+                          <label className={DS_labelCls}>
+                            {isRtl ? "اسم العائلة (إنجليزي)" : "Last Name (English)"}
+                            {!hasGuardianArFilled && " *"}
+                          </label>
+                          <input
+                            type="text"
+                            value={guardianEntries[0]?.last_name_en || ""}
+                            onChange={e => {
+                              const l_en = e.target.value;
+                              const f_en = guardianEntries[0]?.first_name_en || "";
+                              updatePrimaryGuardian({
+                                last_name_en: l_en,
+                                name_en: `${f_en} ${l_en}`.trim()
+                              });
+                            }}
+                            className={DS_inputCls}
+                            required={!isAnyGuardianArTyped}
+                            dir="ltr"
+                          />
                         </div>
                       </div>
 
@@ -1502,19 +1612,25 @@ export default function IndexStudents({
                   {/* Row 1: Student Names in a Single Row (Custom width: first names smaller, last names larger) */}
                   <div className="grid grid-cols-2 md:grid-cols-10 gap-2">
                     <div className="space-y-0.5 md:col-span-2">
-                      <label className={DS_labelCls}>{isRtl ? "الاسم الأول (عربي) *" : "First Name (Arabic) *"}</label>
+                      <label className={DS_labelCls}>
+                        {isRtl ? "الاسم الأول (عربي)" : "First Name (Arabic)"}
+                        {!hasStudentEnFilled && " *"}
+                      </label>
                       <input
                         type="text"
                         value={studentForm.data.first_name_ar}
                         onChange={e => studentForm.setData("first_name_ar", e.target.value)}
                         className={DS_inputCls}
                         dir="rtl"
-                        required
+                        required={!isAnyStudentEnTyped}
                       />
                       <InputError message={studentForm.errors.first_name_ar} />
                     </div>
                     <div className="space-y-0.5 md:col-span-3">
-                      <label className={DS_labelCls}>{isRtl ? "اسم العائلة (عربي) *" : "Last Name (Arabic) *"}</label>
+                      <label className={DS_labelCls}>
+                        {isRtl ? "اسم العائلة (عربي)" : "Last Name (Arabic)"}
+                        {!hasStudentEnFilled && " *"}
+                      </label>
                       <div className="relative">
                         <input
                           type="text"
@@ -1522,7 +1638,7 @@ export default function IndexStudents({
                           onChange={e => studentForm.setData("last_name_ar", e.target.value)}
                           className={`${DS_inputCls} ${guardianEntries[0]?.relationship_type === 'father' && (selectedGuardianId || showNewGuardianForm) ? "pr-8 border-yellow-300 dark:border-yellow-600/30 bg-yellow-50/5 text-gray-500 font-medium" : ""}`}
                           dir="rtl"
-                          required
+                          required={!isAnyStudentEnTyped}
                         />
                         {guardianEntries[0]?.relationship_type === 'father' && (selectedGuardianId || showNewGuardianForm) && (
                           <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none" title={isRtl ? "مورث من الأب" : "Inherited from father"}>
@@ -1533,19 +1649,25 @@ export default function IndexStudents({
                       <InputError message={studentForm.errors.last_name_ar} />
                     </div>
                     <div className="space-y-0.5 md:col-span-2">
-                      <label className={DS_labelCls}>{isRtl ? "الاسم الأول (إنجليزي) *" : "First Name (English) *"}</label>
+                      <label className={DS_labelCls}>
+                        {isRtl ? "الاسم الأول (إنجليزي)" : "First Name (English)"}
+                        {!hasStudentArFilled && " *"}
+                      </label>
                       <input
                         type="text"
                         value={studentForm.data.first_name_en}
                         onChange={e => studentForm.setData("first_name_en", e.target.value)}
                         className={DS_inputCls}
                         dir="ltr"
-                        required
+                        required={!isAnyStudentArTyped}
                       />
                       <InputError message={studentForm.errors.first_name_en} />
                     </div>
                     <div className="space-y-0.5 md:col-span-3">
-                      <label className={DS_labelCls}>{isRtl ? "اسم العائلة (إنجليزي) *" : "Last Name (English) *"}</label>
+                      <label className={DS_labelCls}>
+                        {isRtl ? "اسم العائلة (إنجليزي)" : "Last Name (English)"}
+                        {!hasStudentArFilled && " *"}
+                      </label>
                       <div className="relative">
                         <input
                           type="text"
@@ -1553,7 +1675,7 @@ export default function IndexStudents({
                           onChange={e => studentForm.setData("last_name_en", e.target.value)}
                           className={`${DS_inputCls} ${guardianEntries[0]?.relationship_type === 'father' && (selectedGuardianId || showNewGuardianForm) ? "pl-8 border-yellow-300 dark:border-yellow-600/30 bg-yellow-50/5 text-gray-500 font-medium" : ""}`}
                           dir="ltr"
-                          required
+                          required={!isAnyStudentArTyped}
                         />
                         {guardianEntries[0]?.relationship_type === 'father' && (selectedGuardianId || showNewGuardianForm) && (
                           <div className="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none" title={isRtl ? "مورث من الأب" : "Inherited from father"}>
@@ -1676,7 +1798,7 @@ export default function IndexStudents({
                       value={studentForm.data.classroom_id}
                       onChange={v => studentForm.setData("classroom_id", v as string)}
                       options={classrooms.map(c => ({ id: c.id, label: c.name }))}
-                      forceBottom={true}
+                      openDirection="up"
                     />
                     <InputError message={studentForm.errors.classroom_id} />
                   </div>
@@ -1688,7 +1810,7 @@ export default function IndexStudents({
                       value={studentForm.data.forth_bus_id}
                       onChange={v => studentForm.setData("forth_bus_id", v as string)}
                       options={[{ id: "", label: t("None") }, ...buses.map(b => ({ id: b.id, label: `${b.bus_number} - ${b.plate_number}` }))]}
-                      forceBottom={true}
+                      openDirection="up"
                     />
                   </div>
 
@@ -1699,7 +1821,7 @@ export default function IndexStudents({
                       value={studentForm.data.back_bus_id}
                       onChange={v => studentForm.setData("back_bus_id", v as string)}
                       options={[{ id: "", label: t("None") }, ...buses.map(b => ({ id: b.id, label: `${b.bus_number} - ${b.plate_number}` }))]}
-                      forceBottom={true}
+                      openDirection="up"
                     />
                   </div>
                 </div>
@@ -1734,7 +1856,11 @@ export default function IndexStudents({
                   <button type="button" onClick={closeModal} className={DS_cancelBtn}>
                     {t("Cancel")}
                   </button>
-                  <button type="submit" disabled={studentForm.processing} className={DS_submitBtn(studentForm.processing)}>
+                  <button
+                    type="submit"
+                    disabled={studentForm.processing || (modalMode === "edit" && !isStudentModified)}
+                    className={DS_submitBtn(studentForm.processing || (modalMode === "edit" && !isStudentModified))}
+                  >
                     {modalMode === "edit" ? t("Save Changes") : t("Enroll Student")}
                   </button>
                 </div>

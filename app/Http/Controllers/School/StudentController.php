@@ -152,31 +152,6 @@ class StudentController extends Controller
     }
 
     /**
-     * [Create] عرض صفحة إنشاء طالب جديد
-     */
-    public function create()
-    {
-        $schoolId = Auth::user()->getSchoolId();
-
-        // جلب الفصول المتاحة في مدرسة المدير لوضعها في قائمة منسدلة
-        $classrooms = Classroom::atSchool($schoolId)->orderBy('name')->get(['id', 'name']);
-
-        // جلب المشرفين المتاحين في نفس المدرسة
-        $supervisors = User::atSchool($schoolId)
-            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['assistant', 'teacher', 'school_admin']))
-            ->orderBy('first_name_ar')
-            ->get(['id', 'first_name_ar', 'last_name_ar', 'email']);
-
-        $buses = \App\Models\Bus::where('school_id', $schoolId)->orderBy('bus_number')->get(['id', 'bus_number', 'plate_number']);
-
-        return Inertia::render('School/Students/CreateStudent', [
-            'classrooms' => $classrooms,
-            'buses' => $buses,
-            'guardianResult' => session('guardianResult'),
-        ]);
-    }
-
-    /**
      * Step 1: Search guardian by national_id
      */
     public function searchGuardian(Request $request)
@@ -224,14 +199,17 @@ class StudentController extends Controller
         $cleanPhone = preg_replace('/\s+/', '', $validated['phone']);
         $validated['phone'] = $cleanPhone;
 
-        // Ensure at least one name is present
+        // Ensure at least one name (Arabic or English) is present
         if (empty($validated['name']) && empty($validated['name_en'])) {
-            return back()->withErrors(['name' => 'يجب إدخال اسم ولي الأمر (عربي أو إنجليزي).']);
+            return back()->withErrors(['name' => 'يجب إدخال اسم ولي الأمر (عربي أو إنجليزي على الأقل).']);
         }
 
-        // Fall back: if Arabic name is empty, copy from English name
+        // Bidirectional fallback: if one is empty, copy from the other
         if (empty($validated['name'])) {
             $validated['name'] = $validated['name_en'];
+        }
+        if (empty($validated['name_en'])) {
+            $validated['name_en'] = $validated['name'];
         }
 
         $guardian = DB::transaction(function () use ($validated, $request) {
@@ -242,11 +220,16 @@ class StudentController extends Controller
             $nameParts = User::parseFullName($validated['name'] ?? '');
             $enNameParts = User::parseFullName($validated['name_en'] ?? '');
 
+            $firstAr = $nameParts[0] ?: ($enNameParts[0] ?? '');
+            $lastAr = $nameParts[3] ?: ($enNameParts[3] ?? '');
+            $firstEn = $enNameParts[0] ?: ($nameParts[0] ?? '');
+            $lastEn = $enNameParts[3] ?: ($nameParts[3] ?? '');
+
             $guardianData = [
-                'first_name_ar' => $nameParts[0],
-                'last_name_ar' => $nameParts[3],
-                'first_name_en' => $enNameParts[0],
-                'last_name_en' => $enNameParts[3],
+                'first_name_ar' => $firstAr,
+                'last_name_ar' => $lastAr,
+                'first_name_en' => $firstEn,
+                'last_name_en' => $lastEn,
                 'national_id' => $validated['national_id'],
                 'phone' => $validated['phone'],
                 'email' => $validated['email'] ?? null,
@@ -295,12 +278,12 @@ class StudentController extends Controller
     {
         $schoolId = Auth::user()->getSchoolId();
 
-        // ⬅️ تحديث validation rules لإضافة الحقول الجديدة
+        // Validation rules: Arabic name is optional if English name is provided, and vice versa
         $validated = $request->validate([
-            'first_name_ar' => 'required|string|max:255',
-            'last_name_ar' => 'required|string|max:255',
-            'first_name_en' => 'required|string|max:255',
-            'last_name_en' => 'required|string|max:255',
+            'first_name_ar' => 'nullable|string|max:255',
+            'last_name_ar' => 'nullable|string|max:255',
+            'first_name_en' => 'nullable|string|max:255',
+            'last_name_en' => 'nullable|string|max:255',
             'student_code' => 'nullable|string|max:50|unique:students,student_code',
             'national_id' => 'required|string|max:50|unique:students,national_id',
             'gender' => 'required|in:male,female',
@@ -320,16 +303,30 @@ class StudentController extends Controller
             'guardians.*.relationship_type' => 'nullable|string|max:255',
         ]);
 
+        $hasAr = ! empty($validated['first_name_ar']) && ! empty($validated['last_name_ar']);
+        $hasEn = ! empty($validated['first_name_en']) && ! empty($validated['last_name_en']);
+
+        if (! $hasAr && ! $hasEn) {
+            return back()->withErrors([
+                'first_name_ar' => 'يجب إدخال الاسم الأول واسم العائلة للطالب (بالعربية أو بالإنجليزية على الأقل).',
+            ])->withInput();
+        }
+
+        $firstNameAr = ! empty($validated['first_name_ar']) ? $validated['first_name_ar'] : ($validated['first_name_en'] ?? '');
+        $lastNameAr = ! empty($validated['last_name_ar']) ? $validated['last_name_ar'] : ($validated['last_name_en'] ?? '');
+        $firstNameEn = ! empty($validated['first_name_en']) ? $validated['first_name_en'] : ($validated['first_name_ar'] ?? '');
+        $lastNameEn = ! empty($validated['last_name_en']) ? $validated['last_name_en'] : ($validated['last_name_ar'] ?? '');
+
         $school = Auth::user()->school;
 
         // استخدام Transaction لضمان سلامة البيانات
-        DB::transaction(function () use ($validated, $schoolId, $request, $school) {
+        DB::transaction(function () use ($validated, $schoolId, $request, $school, $firstNameAr, $lastNameAr, $firstNameEn, $lastNameEn) {
             // ⬅️ تحديث بيانات إنشاء الطالب
             $studentData = [
-                'first_name_ar' => $validated['first_name_ar'],
-                'last_name_ar' => $validated['last_name_ar'],
-                'first_name_en' => $validated['first_name_en'],
-                'last_name_en' => $validated['last_name_en'],
+                'first_name_ar' => $firstNameAr,
+                'last_name_ar' => $lastNameAr,
+                'first_name_en' => $firstNameEn,
+                'last_name_en' => $lastNameEn,
                 'student_code' => $validated['student_code'] ?? 'ST-'.$validated['national_id'],
                 'national_id' => $validated['national_id'],
                 'gender' => $validated['gender'],
@@ -395,25 +392,6 @@ class StudentController extends Controller
     }
 
     /**
-     * [Update] عرض صفحة تعديل الطالب
-     */
-    public function edit(Student $student)
-    {
-        // التحقق من أن المدير يملك صلاحية تعديل هذا الطالب
-        $this->authorize('update', $student);
-
-        $schoolId = Auth::user()->getSchoolId();
-
-        $buses = \App\Models\Bus::where('school_id', $schoolId)->orderBy('bus_number')->get(['id', 'bus_number', 'plate_number']);
-
-        return Inertia::render('School/Students/EditStudent', [
-            'student' => $student->load(['currentEnrollment', 'guardians', 'forthBus.route', 'backBus.route']),
-            'classrooms' => Classroom::atSchool($schoolId)->orderBy('name')->get(['id', 'name']),
-            'buses' => $buses,
-        ]);
-    }
-
-    /**
      * [Update] تحديث بيانات الطالب
      */
     public function update(Request $request, Student $student)
@@ -426,10 +404,10 @@ class StudentController extends Controller
         // Laravel يعيد المستخدم تلقائياً مع رسائل الخطأ عند فشل الـ validation
         $validated = $request->validate([
             // Student Data
-            'first_name_ar' => 'required|string|max:255',
-            'last_name_ar' => 'required|string|max:255',
-            'first_name_en' => 'required|string|max:255',
-            'last_name_en' => 'required|string|max:255',
+            'first_name_ar' => 'nullable|string|max:255',
+            'last_name_ar' => 'nullable|string|max:255',
+            'first_name_en' => 'nullable|string|max:255',
+            'last_name_en' => 'nullable|string|max:255',
             'national_id' => ['nullable', 'string', 'max:50', Rule::unique('students')->ignore($student->id)],
             'gender' => 'required|in:male,female',
             'classroom_id' => [
@@ -449,19 +427,33 @@ class StudentController extends Controller
             'guardians' => 'required|array|min:1',
             'guardians.*.guardian_id' => 'required|integer|exists:users,id',
             'guardians.*.relationship_type' => 'nullable|string|max:255',
-            'guardians.*.name' => 'required|string|max:255',
+            'guardians.*.name' => 'nullable|string|max:255',
             'guardians.*.name_en' => 'nullable|string|max:255',
             'guardians.*.phone' => 'required|string|max:50',
             'guardians.*.address' => 'nullable|string|max:255',
             'guardians.*.home_number' => 'nullable|string|max:50',
         ]);
 
-        DB::transaction(function () use ($validated, $request, $student) {
+        $hasAr = ! empty($validated['first_name_ar']) && ! empty($validated['last_name_ar']);
+        $hasEn = ! empty($validated['first_name_en']) && ! empty($validated['last_name_en']);
+
+        if (! $hasAr && ! $hasEn) {
+            return back()->withErrors([
+                'first_name_ar' => 'يجب إدخال الاسم الأول واسم العائلة للطالب (بالعربية أو بالإنجليزية على الأقل).',
+            ])->withInput();
+        }
+
+        $firstNameAr = ! empty($validated['first_name_ar']) ? $validated['first_name_ar'] : ($validated['first_name_en'] ?? '');
+        $lastNameAr = ! empty($validated['last_name_ar']) ? $validated['last_name_ar'] : ($validated['last_name_en'] ?? '');
+        $firstNameEn = ! empty($validated['first_name_en']) ? $validated['first_name_en'] : ($validated['first_name_ar'] ?? '');
+        $lastNameEn = ! empty($validated['last_name_en']) ? $validated['last_name_en'] : ($validated['last_name_ar'] ?? '');
+
+        DB::transaction(function () use ($validated, $request, $student, $firstNameAr, $lastNameAr, $firstNameEn, $lastNameEn) {
             $studentData = [
-                'first_name_ar' => $validated['first_name_ar'],
-                'last_name_ar' => $validated['last_name_ar'],
-                'first_name_en' => $validated['first_name_en'],
-                'last_name_en' => $validated['last_name_en'],
+                'first_name_ar' => $firstNameAr,
+                'last_name_ar' => $lastNameAr,
+                'first_name_en' => $firstNameEn,
+                'last_name_en' => $lastNameEn,
                 'national_id' => $validated['national_id'],
                 'gender' => $validated['gender'],
                 'forth_bus_id' => $validated['forth_bus_id'] ?? null,
@@ -496,14 +488,17 @@ class StudentController extends Controller
                 // Also update the guardian's user record
                 $guardianUser = \App\Models\User::find($g['guardian_id']);
                 if ($guardianUser) {
-                    $arParts = \App\Models\User::parseFullName($g['name'] ?? '');
-                    $enParts = \App\Models\User::parseFullName($g['name_en'] ?? '');
+                    $gNameAr = ! empty($g['name']) ? $g['name'] : ($g['name_en'] ?? '');
+                    $gNameEn = ! empty($g['name_en']) ? $g['name_en'] : ($g['name'] ?? '');
+
+                    $arParts = \App\Models\User::parseFullName($gNameAr);
+                    $enParts = \App\Models\User::parseFullName($gNameEn);
 
                     $guardianUser->update([
-                        'first_name_ar' => $arParts[0],
-                        'last_name_ar' => $arParts[3],
-                        'first_name_en' => $enParts[0],
-                        'last_name_en' => $enParts[3],
+                        'first_name_ar' => $arParts[0] ?: ($enParts[0] ?? ''),
+                        'last_name_ar' => $arParts[3] ?: ($enParts[3] ?? ''),
+                        'first_name_en' => $enParts[0] ?: ($arParts[0] ?? ''),
+                        'last_name_en' => $enParts[3] ?: ($arParts[3] ?? ''),
                         'phone' => $g['phone'],
                         'address' => $g['address'],
                         'home_number' => $g['home_number'],
