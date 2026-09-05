@@ -19,10 +19,10 @@ class StoreSchoolUserRequest extends FormRequest
         $userId = $this->route('user') ? $this->route('user')->id : null;
 
         return [
-            'first_name_ar' => ['required', 'string', 'max:255'],
-            'last_name_ar' => ['required', 'string', 'max:255'],
-            'first_name_en' => ['nullable', 'string', 'max:255'],
-            'last_name_en' => ['nullable', 'string', 'max:255'],
+            'first_name_ar' => ['required_without_all:first_name_en,name,name_en', 'nullable', 'string', 'max:255'],
+            'last_name_ar' => ['required_with:first_name_ar', 'nullable', 'string', 'max:255'],
+            'first_name_en' => ['required_without_all:first_name_ar,name,name_en', 'nullable', 'string', 'max:255'],
+            'last_name_en' => ['required_with:first_name_en', 'nullable', 'string', 'max:255'],
             'name' => ['nullable', 'string', 'max:255'],
             'name_en' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId)],

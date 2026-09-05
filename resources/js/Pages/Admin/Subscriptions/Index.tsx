@@ -32,6 +32,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { motion, AnimatePresence } from "framer-motion";
 import Modal from "@/Components/Modal";
 import InputError from "@/Components/InputError";
+import ConfirmationModal from "@/Components/ConfirmationModal";
 import { toast } from "react-toastify";
 import { 
     DS_pageWrapper, 
@@ -162,56 +163,127 @@ export default function SubscriptionsIndex({ subscriptions, filters, all_plans, 
         setIsEditModalOpen(true);
     };
 
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        confirmText: string;
+        cancelText: string;
+        type: 'danger' | 'warning' | 'primary';
+        action: () => void;
+        processing: boolean;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        confirmText: '',
+        cancelText: '',
+        type: 'danger',
+        action: () => {},
+        processing: false,
+    });
+
+    const isEditUnchanged = Boolean(
+        selectedSubscription &&
+        String(editData.plan_id) === String(selectedSubscription.plan_id) &&
+        editData.status === selectedSubscription.status &&
+        (editData.start_date || '') === (selectedSubscription.start_date ? selectedSubscription.start_date.split('T')[0] : '') &&
+        (editData.end_date || '') === (selectedSubscription.end_date ? selectedSubscription.end_date.split('T')[0] : '')
+    );
+
     const handleApprove = (e: React.FormEvent) => {
         e.preventDefault();
         postApprove(route('admin.subscriptions.approve', selectedSubscription!.id), {
             onSuccess: () => {
                 setIsApproveModalOpen(false);
-                toast.success(isRTL ? 'تم تفعيل الاشتراك بنجاح' : 'Subscription activated successfully');
             }
         });
     };
 
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
+        if (isEditUnchanged) return;
         putEdit(route('admin.subscriptions.update', selectedSubscription!.id), {
             onSuccess: () => {
                 setIsEditModalOpen(false);
-                toast.success(isRTL ? 'تم تحديث الاشتراك بنجاح' : 'Subscription updated successfully');
             }
         });
     };
 
     const handleReject = (subId: number) => {
-        if(confirm(isRTL ? 'هل أنت متأكد من رفض هذا الطلب؟' : 'Are you sure you want to reject this request?')) {
-            router.post(route('admin.subscriptions.reject', subId), {}, {
-                onSuccess: () => toast.success(isRTL ? 'تم رفض الطلب' : 'Request rejected')
-            });
-        }
+        setConfirmModal({
+            isOpen: true,
+            title: isRTL ? 'رفض طلب الاشتراك' : 'Reject Subscription Request',
+            message: isRTL ? 'هل أنت متأكد من رغبتك في رفض هذا الطلب؟' : 'Are you sure you want to reject this request?',
+            confirmText: isRTL ? 'رفض الطلب' : 'Reject Request',
+            cancelText: isRTL ? 'إلغاء' : 'Cancel',
+            type: 'danger',
+            processing: false,
+            action: () => {
+                setConfirmModal(prev => ({ ...prev, processing: true }));
+                router.post(route('admin.subscriptions.reject', subId), {}, {
+                    onSuccess: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
+                    onFinish: () => setConfirmModal(prev => ({ ...prev, processing: false })),
+                });
+            }
+        });
     };
 
     const handlePause = (subId: number) => {
-        if(confirm(isRTL ? 'هل أنت متأكد من تجميد هذا الاشتراك؟ لن تتمكن المدرسة من إجراء عمليات جديدة.' : 'Are you sure you want to pause this subscription? The school will not be able to perform new operations.')) {
-            router.post(route('admin.subscriptions.pause', subId), {}, {
-                onSuccess: () => toast.success(isRTL ? 'تم تجميد الاشتراك' : 'Subscription paused')
-            });
-        }
+        setConfirmModal({
+            isOpen: true,
+            title: isRTL ? 'تجميد الاشتراك' : 'Pause Subscription',
+            message: isRTL ? 'هل أنت متأكد من تجميد هذا الاشتراك؟ لن تتمكن المدرسة من إجراء عمليات جديدة.' : 'Are you sure you want to pause this subscription? The school will not be able to perform new operations.',
+            confirmText: isRTL ? 'تجميد' : 'Pause',
+            cancelText: isRTL ? 'إلغاء' : 'Cancel',
+            type: 'warning',
+            processing: false,
+            action: () => {
+                setConfirmModal(prev => ({ ...prev, processing: true }));
+                router.post(route('admin.subscriptions.pause', subId), {}, {
+                    onSuccess: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
+                    onFinish: () => setConfirmModal(prev => ({ ...prev, processing: false })),
+                });
+            }
+        });
     };
 
     const handleResume = (subId: number) => {
-        if(confirm(isRTL ? 'هل أنت متأكد من إعادة تفعيل هذا الاشتراك؟' : 'Are you sure you want to resume this subscription?')) {
-            router.post(route('admin.subscriptions.resume', subId), {}, {
-                onSuccess: () => toast.success(isRTL ? 'تم إعادة تفعيل الاشتراك' : 'Subscription resumed')
-            });
-        }
+        setConfirmModal({
+            isOpen: true,
+            title: isRTL ? 'إعادة تفعيل الاشتراك' : 'Resume Subscription',
+            message: isRTL ? 'هل أنت متأكد من إعادة تفعيل هذا الاشتراك؟' : 'Are you sure you want to resume this subscription?',
+            confirmText: isRTL ? 'إعادة التفعيل' : 'Resume',
+            cancelText: isRTL ? 'إلغاء' : 'Cancel',
+            type: 'primary',
+            processing: false,
+            action: () => {
+                setConfirmModal(prev => ({ ...prev, processing: true }));
+                router.post(route('admin.subscriptions.resume', subId), {}, {
+                    onSuccess: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
+                    onFinish: () => setConfirmModal(prev => ({ ...prev, processing: false })),
+                });
+            }
+        });
     };
 
     const handleDelete = (subId: number) => {
-        if(confirm(isRTL ? 'هل أنت متأكد من حذف هذا الاشتراك نهائياً؟' : 'Are you sure you want to delete this subscription?')) {
-            router.delete(route('admin.subscriptions.destroy', subId), {
-                onSuccess: () => toast.success(isRTL ? 'تم حذف الاشتراك' : 'Subscription deleted')
-            });
-        }
+        setConfirmModal({
+            isOpen: true,
+            title: isRTL ? 'حذف الاشتراك' : 'Delete Subscription',
+            message: isRTL ? 'هل أنت متأكد من حذف هذا الاشتراك نهائياً؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure you want to delete this subscription? This action cannot be undone.',
+            confirmText: isRTL ? 'نعم، حذف' : 'Yes, Delete',
+            cancelText: isRTL ? 'إلغاء' : 'Cancel',
+            type: 'danger',
+            processing: false,
+            action: () => {
+                setConfirmModal(prev => ({ ...prev, processing: true }));
+                router.delete(route('admin.subscriptions.destroy', subId), {
+                    onSuccess: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
+                    onFinish: () => setConfirmModal(prev => ({ ...prev, processing: false })),
+                });
+            }
+        });
     };
 
     const columnHelper = createColumnHelper<Subscription>();
@@ -698,13 +770,30 @@ export default function SubscriptionsIndex({ subscriptions, filters, all_plans, 
                                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="text-xs font-bold text-gray-400">
                                     {isRTL ? "إلغاء" : "Cancel"}
                                 </button>
-                                <button type="submit" disabled={editProcessing} className={DS_btnGold}>
+                                <button
+                                    type="submit"
+                                    disabled={editProcessing || isEditUnchanged}
+                                    className={`${DS_btnGold} ${isEditUnchanged ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
                                     {editProcessing ? (isRTL ? "جاري الحفظ..." : "Saving...") : (isRTL ? "حفظ التغييرات" : "Save Changes")}
                                 </button>
                             </div>
                         </form>
                     </div>
                 </Modal>
+
+                {/* CONFIRMATION ACTION MODAL */}
+                <ConfirmationModal
+                    show={confirmModal.isOpen}
+                    title={confirmModal.title}
+                    message={confirmModal.message}
+                    confirmText={confirmModal.confirmText}
+                    cancelText={confirmModal.cancelText}
+                    onConfirm={confirmModal.action}
+                    onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                    type={confirmModal.type}
+                    processing={confirmModal.processing}
+                />
 
             </div>
         </AuthenticatedLayout>

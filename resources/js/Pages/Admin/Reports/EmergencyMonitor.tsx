@@ -84,10 +84,17 @@ export default function EmergencyMonitor({ activeIncidents, resolvedIncidents, a
     router.put(route("admin.emergencies.update-status", id), { status }, { preserveScroll: true });
   };
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDelete = () => {
     if (incidentToDelete) {
+      setIsDeleting(true);
       router.delete(route("admin.emergencies.destroy", incidentToDelete), {
-        onSuccess: () => setIsDeleteModalOpen(false),
+        onSuccess: () => {
+          setIsDeleteModalOpen(false);
+          setIncidentToDelete(null);
+        },
+        onFinish: () => setIsDeleting(false),
       });
     }
   };
@@ -390,9 +397,15 @@ export default function EmergencyMonitor({ activeIncidents, resolvedIncidents, a
 
         {/* Delete Confirmation */}
         <ConfirmationModal
-            isOpen={isDeleteModalOpen}
-            onClose={() => setIsDeleteModalOpen(false)}
+            show={isDeleteModalOpen}
+            onClose={() => {
+                if (!isDeleting) {
+                    setIsDeleteModalOpen(false);
+                    setIncidentToDelete(null);
+                }
+            }}
             onConfirm={handleDelete}
+            processing={isDeleting}
             title={isRTL ? "حذف بلاغ الطوارئ" : "Delete Emergency Report"}
             message={isRTL ? "هل أنت متأكد من رغبتك في حذف هذا البلاغ؟ سيتم مسحه نهائياً من السجلات." : "Are you sure you want to delete this report? It will be permanently removed from the logs."}
             confirmText={isRTL ? "حذف" : "Delete"}

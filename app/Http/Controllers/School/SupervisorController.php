@@ -86,8 +86,8 @@ class SupervisorController extends Controller
         $user = Auth::user();
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'name_en' => 'nullable|string|max:255',
+            'name' => 'required_without:name_en|nullable|string|max:255',
+            'name_en' => 'required_without:name|nullable|string|max:255',
             'national_id' => ['required', 'string', 'regex:/^[0-9]+$/', 'min:7', 'max:20', Rule::unique('users', 'national_id')],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')],
             'phone' => ['required', 'string', 'regex:/^[0-9]+$/', 'min:8', 'max:20', Rule::unique('users', 'phone')],
@@ -113,17 +113,17 @@ class SupervisorController extends Controller
             }
 
             // Split names
-            $nameParts = User::parseFullName($validated['name']);
+            $nameParts = User::parseFullName($validated['name'] ?? '');
             $enNameParts = User::parseFullName($validated['name_en'] ?? '');
 
             // إنشاء المستخدم
             $newSupervisor = User::create([
-                'first_name_ar' => $nameParts[0],
-                'last_name_ar' => $nameParts[3],
-                'first_name_en' => $enNameParts[0],
-                'last_name_en' => $enNameParts[3],
+                'first_name_ar' => $nameParts[0] ?: null,
+                'last_name_ar' => $nameParts[3] ?: null,
+                'first_name_en' => $enNameParts[0] ?: null,
+                'last_name_en' => $enNameParts[3] ?: null,
                 'national_id' => $validated['national_id'],
-                'email' => $validated['email'],
+                'email' => $validated['email'] ?? null,
                 'phone' => $validated['phone'],
                 'address' => $validated['address'] ?? null,
                 'preferred_language' => $validated['preferred_language'] ?? 'ar',
@@ -185,8 +185,8 @@ class SupervisorController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'name_en' => 'nullable|string|max:255',
+            'name' => 'required_without:name_en|nullable|string|max:255',
+            'name_en' => 'required_without:name|nullable|string|max:255',
             'national_id' => ['required',
                 'string', 'regex:/^[0-9]+$/', 'min:7', 'max:20',
                 Rule::unique('users', 'national_id')->ignore($supervisor->id),
@@ -222,15 +222,15 @@ class SupervisorController extends Controller
             }
 
             // Split names
-            $nameParts = User::parseFullName($validated['name']);
+            $nameParts = User::parseFullName($validated['name'] ?? '');
             $enNameParts = User::parseFullName($validated['name_en'] ?? '');
 
             // تحديث المستخدم
             $supervisor->update([
-                'first_name_ar' => $nameParts[0],
-                'last_name_ar' => $nameParts[3],
-                'first_name_en' => $enNameParts[0],
-                'last_name_en' => $enNameParts[3],
+                'first_name_ar' => $nameParts[0] ?: null,
+                'last_name_ar' => $nameParts[3] ?: null,
+                'first_name_en' => $enNameParts[0] ?: null,
+                'last_name_en' => $enNameParts[3] ?: null,
                 'national_id' => $validated['national_id'],
                 'email' => $validated['email'] ?? null,
                 'phone' => $validated['phone'],

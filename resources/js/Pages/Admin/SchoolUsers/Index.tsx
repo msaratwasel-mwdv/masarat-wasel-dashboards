@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, useForm, router, usePage } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
+import ConfirmationModal from "@/Components/ConfirmationModal";
 import InputError from "@/Components/InputError";
 import { useTheme } from "@/Contexts/ThemeContext";
 import BaseDataTable, {
@@ -146,6 +147,9 @@ export default function SchoolUsersIndex({
   const flash = usePage().props.flash as any;
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<number | null>(null);
+  const [editingUser, setEditingUser] = useState<SchoolUser | null>(null);
+  const [userToDelete, setUserToDelete] = useState<SchoolUser | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<SchoolUser | null>(null);
@@ -169,9 +173,40 @@ export default function SchoolUsersIndex({
       image: null as File | null,
     });
 
+  // --- isUnchanged check for edit modal ---
+  const isUnchanged = useMemo(() => {
+    if (!isEditing || !editingUser) return false;
+    const arParts = (editingUser.name || "").split(" ");
+    const enParts = (editingUser.name_en || "").split(" ");
+    const initialFirstNameAr = editingUser.first_name_ar || arParts[0] || "";
+    const initialLastNameAr = editingUser.last_name_ar || arParts.slice(1).join(" ") || "";
+    const initialFirstNameEn = editingUser.first_name_en || enParts[0] || "";
+    const initialLastNameEn = editingUser.last_name_en || enParts.slice(1).join(" ") || "";
+    const initialSchoolId = String(editingUser.school_admin?.school?.id || "");
+    const initialStatus = editingUser.school_admin?.status || "active";
+
+    return (
+      (data.first_name_ar || "").trim() === initialFirstNameAr.trim() &&
+      (data.last_name_ar || "").trim() === initialLastNameAr.trim() &&
+      (data.first_name_en || "").trim() === initialFirstNameEn.trim() &&
+      (data.last_name_en || "").trim() === initialLastNameEn.trim() &&
+      (data.national_id || "").trim() === (editingUser.national_id || "").trim() &&
+      (data.email || "").trim() === (editingUser.email || "").trim() &&
+      (data.phone || "").trim() === (editingUser.phone || "").trim() &&
+      String(data.school_id || "") === initialSchoolId &&
+      data.status === initialStatus &&
+      (data.address || "").trim() === (editingUser.address || "").trim() &&
+      (data.preferred_language || "ar") === (editingUser.preferred_language || "ar") &&
+      !data.password &&
+      !data.password_confirmation &&
+      !data.image
+    );
+  }, [data, isEditing, editingUser]);
+
   const openAddModal = () => {
     setIsEditing(false);
     setCurrentId(null);
+    setEditingUser(null);
     setPreviewImage(null);
     reset();
     setData("_method", "post");
@@ -182,6 +217,7 @@ export default function SchoolUsersIndex({
   const openEditModal = (user: SchoolUser) => {
     setIsEditing(true);
     setCurrentId(user.id);
+    setEditingUser(user);
     setPreviewImage(user.image ? `/storage/${user.image}` : null);
 
     // Parse name components if not directly available
@@ -216,6 +252,7 @@ export default function SchoolUsersIndex({
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setEditingUser(null);
     setPreviewImage(null);
     reset();
   };
@@ -224,6 +261,7 @@ export default function SchoolUsersIndex({
     e.preventDefault();
 
     if (isEditing && currentId) {
+      if (isUnchanged) return;
       post(route("admin.school-admins.update", currentId), {
         forceFormData: true,
         onSuccess: () => closeModal(),
@@ -236,10 +274,19 @@ export default function SchoolUsersIndex({
     }
   };
 
-  const deleteUser = (id: number) => {
-    if (confirm(isRTL ? "هل أنت متأكد من حذف هذا المدير بالكامل؟" : "Are you sure you want to delete this school manager?")) {
-      router.delete(route("admin.school-admins.destroy", id));
-    }
+  const deleteUser = (user: SchoolUser) => {
+    setUserToDelete(user);
+  };
+
+  const confirmDeleteUser = () => {
+    if (!userToDelete || isDeleting) return;
+    setIsDeleting(true);
+    router.delete(route("admin.school-admins.destroy", userToDelete.id), {
+      onFinish: () => {
+        setIsDeleting(false);
+        setUserToDelete(null);
+      },
+    });
   };
 
   const handlePrint = () => {
@@ -376,7 +423,7 @@ export default function SchoolUsersIndex({
               />
               <ActionButton
                 label={isRTL ? "حذف" : "Delete"}
-                onClick={() => deleteUser(user.id)}
+                onClick={() => deleteUser(user)}
                 color="red"
                 icon={<Trash2 size={15} />}
               />
@@ -657,7 +704,7 @@ export default function SchoolUsersIndex({
                                     {isRTL ? "الأسماء الرسمية" : "Official Names"}
                                 </h4>
                                 <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded">
-                                    {isRTL ? "* مطلوب" : "* Required"}
+                                    {isRTL ? "* مطلوب عربي أو إنجليزي" : "* Req: Arabic or English"}
                                 </span>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -666,13 +713,13 @@ export default function SchoolUsersIndex({
                                     <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider">{isRTL ? "البيانات بالعربية" : "ARABIC DOSSIER"}</span>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"} <span className="text-rose-500">*</span></label>
-                                            <input type="text" value={data.first_name_ar} onChange={e => setData("first_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
+                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"} {!data.first_name_en && !data.last_name_en && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.first_name_ar} onChange={e => setData("first_name_ar", e.target.value)} className={DS_input} dir="rtl" required={!data.first_name_en && !data.last_name_en} />
                                             <InputError message={errors.first_name_ar} />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"} <span className="text-rose-500">*</span></label>
-                                            <input type="text" value={data.last_name_ar} onChange={e => setData("last_name_ar", e.target.value)} className={DS_input} dir="rtl" required />
+                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"} {!data.first_name_en && !data.last_name_en && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.last_name_ar} onChange={e => setData("last_name_ar", e.target.value)} className={DS_input} dir="rtl" required={!data.first_name_en && !data.last_name_en} />
                                             <InputError message={errors.last_name_ar} />
                                         </div>
                                     </div>
@@ -682,13 +729,13 @@ export default function SchoolUsersIndex({
                                     <span className="text-[9px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider">{isRTL ? "البيانات بالإنجليزية" : "ENGLISH DOSSIER"}</span>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"}</label>
-                                            <input type="text" value={data.first_name_en} onChange={e => setData("first_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                            <label className={DS_label}>{isRTL ? "الاسم الأول" : "First Name"} {!data.first_name_ar && !data.last_name_ar && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.first_name_en} onChange={e => setData("first_name_en", e.target.value)} className={DS_input} dir="ltr" required={!data.first_name_ar && !data.last_name_ar} />
                                             <InputError message={errors.first_name_en} />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"}</label>
-                                            <input type="text" value={data.last_name_en} onChange={e => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" />
+                                            <label className={DS_label}>{isRTL ? "الاسم الأخير" : "Last Name"} {!data.first_name_ar && !data.last_name_ar && <span className="text-rose-500">*</span>}</label>
+                                            <input type="text" value={data.last_name_en} onChange={e => setData("last_name_en", e.target.value)} className={DS_input} dir="ltr" required={!data.first_name_ar && !data.last_name_ar} />
                                             <InputError message={errors.last_name_en} />
                                         </div>
                                     </div>
@@ -840,7 +887,11 @@ export default function SchoolUsersIndex({
                             <button type="button" onClick={closeModal} className="text-xs font-bold text-gray-400 hover:text-[#0f2044] transition-colors">
                                 {isRTL ? "إلغاء" : "Cancel"}
                             </button>
-                            <button type="submit" disabled={processing} className={DS_btnGold}>
+                            <button
+                                type="submit"
+                                disabled={processing || (isEditing && isUnchanged)}
+                                className={`${DS_btnGold} ${isEditing && isUnchanged ? "opacity-50 cursor-not-allowed" : ""}`}
+                            >
                                 {processing && <Loader2 size={16} className="animate-spin" />}
                                 {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل المدير" : "Enroll Manager")}
                             </button>
@@ -908,6 +959,23 @@ export default function SchoolUsersIndex({
                 </form>
             </div>
         </Modal>
+
+        {/* --- Delete Confirmation Modal --- */}
+        <ConfirmationModal
+            show={!!userToDelete}
+            onClose={() => !isDeleting && setUserToDelete(null)}
+            onConfirm={confirmDeleteUser}
+            title={isRTL ? "حذف مدير المدرسة" : "Delete School Manager"}
+            message={
+                isRTL
+                    ? `هل أنت متأكد من حذف مدير المدرسة "${userToDelete?.name || ""}" بالكامل؟ لا يمكن التراجع عن هذا الإجراء.`
+                    : `Are you sure you want to delete school manager "${userToDelete?.name || ""}"? This action cannot be undone.`
+            }
+            confirmText={isRTL ? "نعم، حذف" : "Yes, Delete"}
+            cancelText={isRTL ? "إلغاء" : "Cancel"}
+            type="danger"
+            loading={isDeleting}
+        />
 
       </div>
     </AuthenticatedLayout>

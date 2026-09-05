@@ -79,6 +79,8 @@ export interface School {
   logo?: string;
   buses_count?: number;
   enrollments_count?: number;
+  max_buses?: number | null;
+  plan?: PlanData;
   current_subscription?: SubscriptionData | null;
   school_admins?: SchoolAdminRelation[];
 }

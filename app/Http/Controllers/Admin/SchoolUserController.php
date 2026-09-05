@@ -83,10 +83,10 @@ class SchoolUserController extends Controller
             $en = User::parseFullName($enName);
 
             $user = User::create([
-                'first_name_ar' => $request->first_name_ar ?? $ar[0],
-                'last_name_ar' => $request->last_name_ar ?? ($ar[3] ?: $ar[0]),
-                'first_name_en' => $request->first_name_en ?? $en[0],
-                'last_name_en' => $request->last_name_en ?? ($en[3] ?: $en[0]),
+                'first_name_ar' => $request->first_name_ar ?: ($ar[0] ?: null),
+                'last_name_ar' => $request->last_name_ar ?: ($ar[3] ?: ($ar[0] ?: null)),
+                'first_name_en' => $request->first_name_en ?: ($en[0] ?: null),
+                'last_name_en' => $request->last_name_en ?: ($en[3] ?: ($en[0] ?: null)),
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'national_id' => $request->national_id,
@@ -114,10 +114,10 @@ class SchoolUserController extends Controller
         $en = User::parseFullName($enName);
 
         $updateData = [
-            'first_name_ar' => $request->first_name_ar ?? $ar[0],
-            'last_name_ar' => $request->last_name_ar ?? ($ar[3] ?: $ar[0]),
-            'first_name_en' => $request->first_name_en ?? $en[0],
-            'last_name_en' => $request->last_name_en ?? ($en[3] ?: $en[0]),
+            'first_name_ar' => $request->first_name_ar ?: ($ar[0] ?: null),
+            'last_name_ar' => $request->last_name_ar ?: ($ar[3] ?: ($ar[0] ?: null)),
+            'first_name_en' => $request->first_name_en ?: ($en[0] ?: null),
+            'last_name_en' => $request->last_name_en ?: ($en[3] ?: ($en[0] ?: null)),
             'email' => $request->email,
             'phone' => $request->phone,
             'national_id' => $request->national_id,

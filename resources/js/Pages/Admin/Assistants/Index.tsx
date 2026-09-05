@@ -3,6 +3,7 @@ import debounce from "lodash/debounce";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, useForm, router, usePage } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
+import ConfirmationModal from "@/Components/ConfirmationModal";
 import InputError from "@/Components/InputError";
 import { useTheme } from "@/Contexts/ThemeContext";
 import useTranslation from "@/hooks/useTranslation";
@@ -112,15 +113,16 @@ interface Assistant {
   preferred_language?: string;
 }
 
-export const getAssistantName = (assistant: Assistant, isArabic?: boolean) => {
-  const isAr = isArabic !== undefined ? isArabic : (document.documentElement.lang === 'ar' || document.documentElement.dir === 'rtl');
-  const arName = [assistant.first_name_ar, assistant.last_name_ar].filter(Boolean).join(' ') || assistant.name;
-  const enName = [assistant.first_name_en, assistant.last_name_en].filter(Boolean).join(' ') || assistant.name_en;
+export const getAssistantName = (assistant: Assistant | null | undefined, isArabic?: boolean): string => {
+  if (!assistant) return "";
+  const isAr = isArabic !== undefined ? isArabic : (typeof document !== 'undefined' && (document.documentElement.lang === 'ar' || document.documentElement.dir === 'rtl'));
+  const arName = [assistant.first_name_ar, assistant.last_name_ar].filter(Boolean).join(' ') || assistant.name || "";
+  const enName = [assistant.first_name_en, assistant.last_name_en].filter(Boolean).join(' ') || assistant.name_en || "";
   
   if (isAr) {
-    return arName || enName || assistant.email;
+    return arName || enName || assistant.email || "";
   } else {
-    return enName || arName || assistant.email;
+    return enName || arName || assistant.email || "";
   }
 };
 
@@ -162,6 +164,9 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
   const flash = usePage().props.flash as any;
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<number | null>(null);
+  const [editingAssistant, setEditingAssistant] = useState<Assistant | null>(null);
+  const [assistantToDelete, setAssistantToDelete] = useState<Assistant | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewIdCardFront, setPreviewIdCardFront] = useState<string | null>(null);
   const [previewIdCardBack, setPreviewIdCardBack] = useState<string | null>(null);
@@ -191,6 +196,32 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
       remove_id_card_front_image: false,
       remove_id_card_back_image: false,
     });
+
+  // --- Dirty Check (isUnchanged) ---
+  const isUnchanged = useMemo(() => {
+    if (!isEditing || !editingAssistant) return false;
+    const origStatus = (editingAssistant.assistant?.status === "active" || editingAssistant["حالة المشرفة"] === "نشط") ? "active" : "inactive";
+    return (
+      (data.first_name_ar || "").trim() === (editingAssistant.first_name_ar || "").trim() &&
+      (data.last_name_ar || "").trim() === (editingAssistant.last_name_ar || "").trim() &&
+      (data.first_name_en || "").trim() === (editingAssistant.first_name_en || "").trim() &&
+      (data.last_name_en || "").trim() === (editingAssistant.last_name_en || "").trim() &&
+      (data.national_id || "").trim() === (editingAssistant.national_id || editingAssistant["الهوية"] || "").trim() &&
+      (data.email || "").trim() === (editingAssistant.email || editingAssistant["البريد الإلكتروني"] || "").trim() &&
+      (data.phone || "").trim() === (editingAssistant.phone || editingAssistant["رقم الجوال"] || "").trim() &&
+      (data.emergency_contact_name || "").trim() === (editingAssistant.assistant?.emergency_contact_name || editingAssistant["اسم جهة الاتصال للطوارئ"] || "").trim() &&
+      (data.emergency_contact_phone || "").trim() === (editingAssistant.assistant?.emergency_contact_phone || editingAssistant["رقم هاتف الطوارئ"] || "").trim() &&
+      (data.status || "active") === origStatus &&
+      (data.address || "").trim() === (editingAssistant.address || "").trim() &&
+      (data.preferred_language || "ar") === (editingAssistant.preferred_language || "ar") &&
+      !data.image &&
+      !data.id_card_front_image &&
+      !data.id_card_back_image &&
+      !data.remove_image &&
+      !data.remove_id_card_front_image &&
+      !data.remove_id_card_back_image
+    );
+  }, [data, isEditing, editingAssistant]);
 
   // --- Handlers ---
   const debouncedSearch = useMemo(
@@ -224,6 +255,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
   const openAddModal = () => {
     setIsEditing(false);
     setCurrentId(null);
+    setEditingAssistant(null);
     setPreviewImage(null);
     setPreviewIdCardFront(null);
     setPreviewIdCardBack(null);
@@ -236,23 +268,27 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
   const openEditModal = (assistant: Assistant) => {
     setIsEditing(true);
     setCurrentId(assistant.id);
+    setEditingAssistant(assistant);
     setPreviewImage(assistant.image ? `/storage/${assistant.image}` : null);
     const idFront = assistant.assistant?.id_card_front_image || assistant.id_card_front_image;
     setPreviewIdCardFront(idFront ? `/storage/${idFront}` : null);
     const idBack = assistant.assistant?.id_card_back_image || assistant.id_card_back_image;
     setPreviewIdCardBack(idBack ? `/storage/${idBack}` : null);
+
+    const isAssistantActive = assistant.assistant?.status === "active" || assistant["حالة المشرفة"] === "نشط";
+
     setData({
       _method: "put",
       first_name_ar: assistant.first_name_ar || "",
       last_name_ar: assistant.last_name_ar || "",
       first_name_en: assistant.first_name_en || "",
       last_name_en: assistant.last_name_en || "",
-      national_id: assistant.national_id || "",
-      email: assistant.email || "",
-      phone: assistant.phone || "",
-      emergency_contact_name: assistant.assistant?.emergency_contact_name || "",
-      emergency_contact_phone: assistant.assistant?.emergency_contact_phone || "",
-      status: assistant.assistant?.status === "active" ? "active" : "inactive",
+      national_id: assistant.national_id || assistant["الهوية"] || "",
+      email: assistant.email || assistant["البريد الإلكتروني"] || "",
+      phone: assistant.phone || assistant["رقم الجوال"] || "",
+      emergency_contact_name: assistant.assistant?.emergency_contact_name || assistant["اسم جهة الاتصال للطوارئ"] || "",
+      emergency_contact_phone: assistant.assistant?.emergency_contact_phone || assistant["رقم هاتف الطوارئ"] || "",
+      status: isAssistantActive ? "active" : "inactive",
       address: assistant.address || "",
       preferred_language: assistant.preferred_language || "ar",
       image: null,
@@ -273,6 +309,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setEditingAssistant(null);
     setPreviewImage(null);
     setPreviewIdCardFront(null);
     setPreviewIdCardBack(null);
@@ -283,6 +320,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
     e.preventDefault();
 
     if (isEditing && currentId) {
+      if (isUnchanged) return;
       post(route("admin.assistants.update", currentId), {
         forceFormData: true,
         onSuccess: () => closeModal(),
@@ -292,10 +330,19 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
     }
   };
 
-  const deleteAssistant = (id: number) => {
-    if (confirm(isRTL ? "هل أنت متأكد من حذف هذه المشرفة؟" : "Are you sure?")) {
-      router.delete(route("admin.assistants.destroy", id));
-    }
+  const deleteAssistant = (assistant: Assistant) => {
+    setAssistantToDelete(assistant);
+  };
+
+  const confirmDeleteAssistant = () => {
+    if (!assistantToDelete || isDeleting) return;
+    setIsDeleting(true);
+    router.delete(route("admin.assistants.destroy", assistantToDelete.id), {
+      onFinish: () => {
+        setIsDeleting(false);
+        setAssistantToDelete(null);
+      },
+    });
   };
 
   const handlePrint = () => {
@@ -453,7 +500,7 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
               />
               <ActionButton
                 label={isRTL ? "حذف" : "Delete"}
-                onClick={() => deleteAssistant(assistant.id)}
+                onClick={() => deleteAssistant(assistant)}
                 color="red"
                 icon={<Trash2 size={15} />}
               />
@@ -979,7 +1026,11 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
                             <button type="button" onClick={closeModal} className="text-xs font-bold text-gray-400 hover:text-[#0f2044] transition-colors">
                                 {isRTL ? "إلغاء" : "Cancel"}
                             </button>
-                            <button type="submit" disabled={processing} className={DS_btnGold}>
+                            <button
+                                type="submit"
+                                disabled={processing || (isEditing && isUnchanged)}
+                                className={`${DS_btnGold} ${isEditing && isUnchanged ? "opacity-50 cursor-not-allowed" : ""}`}
+                            >
                                 {processing && <Loader2 size={16} className="animate-spin" />}
                                 {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل المشرفة" : "Enroll Supervisor")}
                             </button>
@@ -1048,6 +1099,23 @@ export default function AssistantsIndex({ auth, assistants, counts, filters }: P
                 </form>
             </div>
         </Modal>
+
+        {/* --- Delete Confirmation Modal --- */}
+        <ConfirmationModal
+            show={!!assistantToDelete}
+            onClose={() => !isDeleting && setAssistantToDelete(null)}
+            onConfirm={confirmDeleteAssistant}
+            title={isRTL ? "حذف المشرفة" : "Delete Assistant"}
+            message={
+                isRTL
+                    ? `هل أنت متأكد من حذف المشرفة "${assistantToDelete?.user?.name || assistantToDelete?.first_name_ar || assistantToDelete?.user?.first_name_ar || ""}"؟ لا يمكن التراجع عن هذا الإجراء.`
+                    : `Are you sure you want to delete assistant "${assistantToDelete?.user?.name || assistantToDelete?.first_name_en || assistantToDelete?.user?.first_name_en || ""}"? This action cannot be undone.`
+            }
+            confirmText={isRTL ? "نعم، حذف" : "Yes, Delete"}
+            cancelText={isRTL ? "إلغاء" : "Cancel"}
+            type="danger"
+            loading={isDeleting}
+        />
 
       </div>
     </AuthenticatedLayout>

@@ -89,13 +89,30 @@ export default function AdminDailyTripEditModal({ show, onClose, trip, buses, ro
         }
     }, [trip, show]);
 
+    const initialValues = useMemo(() => {
+        if (!trip) return null;
+        return {
+            route_id: trip.route_id?.toString() || '',
+            status: trip.status || '',
+            departure_time: trip.departure_time ? new Date(trip.departure_time).toISOString().slice(0, 16) : '',
+            arrival_time: trip.arrival_time ? new Date(trip.arrival_time).toISOString().slice(0, 16) : '',
+        };
+    }, [trip]);
+
+    const isUnchanged = Boolean(
+        initialValues &&
+        data.route_id === initialValues.route_id &&
+        data.status === initialValues.status &&
+        data.departure_time === initialValues.departure_time &&
+        data.arrival_time === initialValues.arrival_time
+    );
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!trip) return;
+        if (!trip || isUnchanged) return;
 
         put(route('admin.daily-trips.update', trip.id), {
             onSuccess: () => {
-                toast.success(isRTL ? 'تم تحديث الرحلة بنجاح' : 'Trip updated successfully');
                 onClose();
             },
             onError: () => {
@@ -207,7 +224,11 @@ export default function AdminDailyTripEditModal({ show, onClose, trip, buses, ro
                         <button type="button" onClick={onClose} className={DS_btnSecondary}>
                             {isRTL ? 'إلغاء' : 'Cancel'}
                         </button>
-                        <button type="submit" disabled={processing} className={DS_btnPrimary}>
+                        <button
+                            type="submit"
+                            disabled={processing || isUnchanged}
+                            className={`${DS_btnPrimary} ${isUnchanged ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
                             {processing ? (
                                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : (

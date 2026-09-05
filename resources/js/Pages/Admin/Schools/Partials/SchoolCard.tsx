@@ -40,7 +40,9 @@ export default function SchoolCard({ school, isDark, isRTL, onEdit }: Props) {
     );
   };
 
-  const planName = school.current_subscription?.plan?.name_ar || school.current_subscription?.plan?.name;
+  const planName = school.current_subscription?.plan?.name_ar || school.current_subscription?.plan?.name || school.plan?.name_ar || school.plan?.name;
+  const maxBuses = school.max_buses || school.current_subscription?.plan?.max_buses || school.plan?.max_buses;
+  const busesCount = Number(school.buses_count) || 0;
 
   return (
     <motion.div
@@ -114,18 +116,73 @@ export default function SchoolCard({ school, isDark, isRTL, onEdit }: Props) {
 
         {/* Metrics Stats Pill */}
         <div
-          className={`grid grid-cols-2 gap-2 p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 text-xs`}
+          className={`p-3 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 space-y-2.5`}
         >
-          <div className="flex items-center gap-2 justify-center">
-            <BusIcon className="w-4 h-4 text-blue-500" />
-            <span className="font-mono font-bold">{school.buses_count || 0}</span>
-            <span className="text-gray-400 text-[11px]">{isRTL ? "حافلة" : "Buses"}</span>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {/* Buses Count & Capacity */}
+            <div className="flex items-center gap-2 justify-center">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <BusIcon className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col text-start">
+                <div className="flex items-baseline gap-1">
+                  <span className="font-mono font-black text-sm text-slate-800 dark:text-white">
+                    {busesCount}
+                  </span>
+                  {maxBuses ? (
+                    <span 
+                      className="font-mono text-[11px] text-gray-400 font-bold" 
+                      title={isRTL ? `سعة الباقة: ${maxBuses} حافلات` : `Plan limit: ${maxBuses} buses`}
+                    >
+                      / {maxBuses}
+                    </span>
+                  ) : null}
+                </div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  {isRTL ? "حافلات" : "Buses"}
+                </span>
+              </div>
+            </div>
+
+            {/* Students Count */}
+            <div className="flex items-center gap-2 justify-center border-s border-gray-200 dark:border-gray-700">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <UsersIcon className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col text-start">
+                <span className="font-mono font-black text-sm text-slate-800 dark:text-white">
+                  {school.enrollments_count || 0}
+                </span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  {isRTL ? "طالب" : "Students"}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2 justify-center border-s border-gray-200 dark:border-gray-700">
-            <UsersIcon className="w-4 h-4 text-emerald-500" />
-            <span className="font-mono font-bold">{school.enrollments_count || 0}</span>
-            <span className="text-gray-400 text-[11px]">{isRTL ? "طالب" : "Students"}</span>
-          </div>
+
+          {/* Bus Fleet Capacity Bar if Max Buses is defined */}
+          {maxBuses ? (
+            <div className="pt-2 border-t border-gray-200/60 dark:border-gray-800/60">
+              <div className="flex items-center justify-between text-[10px] font-bold mb-1">
+                <span className="text-gray-400">
+                  {isRTL ? "استيعاب الحافلات" : "Bus Capacity"}
+                </span>
+                <span className={`font-mono ${busesCount >= maxBuses ? "text-amber-500 font-black" : "text-blue-600 dark:text-blue-400"}`}>
+                  {busesCount} {isRTL ? "من" : "of"} {maxBuses} {isRTL ? "حافلات" : "buses"}
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-gray-200/70 dark:bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    busesCount >= maxBuses 
+                      ? "bg-amber-500" 
+                      : "bg-gradient-to-r from-blue-500 to-indigo-600"
+                  }`}
+                  style={{ width: `${Math.min(100, Math.round((busesCount / maxBuses) * 100))}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Actions */}

@@ -41,8 +41,20 @@ export default function Edit({ event }: { event: Event }) {
     image: null as File | null,
   });
 
+  const isUnchanged = Boolean(
+    !data.image &&
+    data.title_ar.trim() === (event.title_ar || '').trim() &&
+    data.title_en.trim() === (event.title_en || '').trim() &&
+    data.content_ar.trim() === (event.content_ar || '').trim() &&
+    data.content_en.trim() === (event.content_en || '').trim() &&
+    data.type === (event.type || 'news') &&
+    (data.event_date || '') === (event.event_date ? event.event_date.split('T')[0] : '') &&
+    data.is_published === Boolean(event.is_published)
+  );
+
   const submit: FormEventHandler = (e) => {
     e.preventDefault();
+    if (isUnchanged) return;
     post(route("admin.events.update", event.id));
   };
 
@@ -195,7 +207,10 @@ export default function Edit({ event }: { event: Event }) {
             </div>
 
             <div className={`flex items-center justify-end mt-8 border-t pt-6 ${isDark ? "border-gray-700" : "border-gray-100"}`}>
-              <PrimaryButton disabled={processing} className="bg-brand-navy hover:bg-brand-dark px-8 py-3">
+              <PrimaryButton
+                disabled={processing || isUnchanged}
+                className={`bg-brand-navy hover:bg-brand-dark px-8 py-3 transition-all ${isUnchanged ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
                 <Save className={`w-4 h-4 ${isRTL ? "ml-2" : "mr-2"}`} />
                 {isRTL ? "حفظ التعديلات" : "Save Changes"}
               </PrimaryButton>

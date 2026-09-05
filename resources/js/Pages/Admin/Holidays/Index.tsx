@@ -7,6 +7,7 @@ import InputLabel from "@/Components/InputLabel";
 import TextInput from "@/Components/TextInput";
 import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
+import ConfirmationModal from "@/Components/ConfirmationModal";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     CalendarOff,
@@ -85,14 +86,22 @@ export default function HolidaysIndex({ holidays, schools }: Props) {
         reset();
     };
 
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [holidayToDelete, setHolidayToDelete] = useState<number | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const isUnchanged = Boolean(
+        modalType === "edit" && currentHoliday !== null &&
+        data.name.trim() === currentHoliday.name.trim() &&
+        data.type === currentHoliday.type &&
+        data.start_date === currentHoliday.start_date &&
+        data.end_date === currentHoliday.end_date &&
+        (data.notes || '').trim() === (currentHoliday.notes || '').trim() &&
+        (data.school_id || '') === (currentHoliday.school_id ? currentHoliday.school_id.toString() : '')
+    );
+
     const submitForm = (e: React.FormEvent) => {
         e.preventDefault();
-        
-        // Before sending, if school_id is empty string, make it null
-        const payload = {
-            ...data,
-            school_id: data.school_id === "" ? null : data.school_id
-        };
 
         if (modalType === "add") {
             post(route("admin.holidays.store"), {
@@ -105,9 +114,21 @@ export default function HolidaysIndex({ holidays, schools }: Props) {
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm(isRTL ? "هل أنت متأكد من حذف هذه العطلة؟" : "Are you sure you want to delete this holiday?")) {
-            destroy(route("admin.holidays.destroy", id));
+    const confirmDeleteHoliday = (id: number) => {
+        setHolidayToDelete(id);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleDelete = () => {
+        if (holidayToDelete) {
+            setIsDeleting(true);
+            destroy(route("admin.holidays.destroy", holidayToDelete), {
+                onSuccess: () => {
+                    setIsDeleteModalOpen(false);
+                    setHolidayToDelete(null);
+                },
+                onFinish: () => setIsDeleting(false),
+            });
         }
     };
 
@@ -218,7 +239,7 @@ export default function HolidaysIndex({ holidays, schools }: Props) {
                                             {isRTL ? "تعديل" : "Edit"}
                                         </button>
                                         <button
-                                            onClick={() => handleDelete(holiday.id)}
+                                            onClick={() => confirmDeleteHoliday(holiday.id)}
                                             className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
                                         >
                                             <Trash2 className="w-3.5 h-3.5" />
@@ -352,8 +373,8 @@ export default function HolidaysIndex({ holidays, schools }: Props) {
                                 </button>
                                 <PrimaryButton
                                     type="submit"
-                                    disabled={processing}
-                                    className="bg-brand-yellow text-brand-dark px-8 py-2.5 rounded-xl border-none font-black"
+                                    disabled={processing || isUnchanged}
+                                    className={`bg-brand-yellow text-brand-dark px-8 py-2.5 rounded-xl border-none font-black transition-all ${isUnchanged ? 'opacity-50 cursor-not-allowed' : 'hover:bg-brand-yellow/90'}`}
                                 >
                                     {processing ? (isRTL ? "جاري الحفظ..." : "Saving...") : (isRTL ? "حفظ العطلة" : "Save Holiday")}
                                 </PrimaryButton>
@@ -361,6 +382,22 @@ export default function HolidaysIndex({ holidays, schools }: Props) {
                         </form>
                     </div>
                 </Modal>
+
+                {/* DELETE CONFIRMATION MODAL */}
+                <ConfirmationModal
+                    show={isDeleteModalOpen}
+                    title={isRTL ? "تأكيد حذف العطلة" : "Confirm Holiday Deletion"}
+                    message={isRTL ? "هل أنت متأكد من رغبتك في حذف هذه العطلة المدرسية؟ لا يمكن التراجع عن هذا الإجراء." : "Are you sure you want to delete this holiday? This action cannot be undone."}
+                    confirmText={isRTL ? "نعم، حذف" : "Yes, Delete"}
+                    cancelText={isRTL ? "إلغاء" : "Cancel"}
+                    onConfirm={handleDelete}
+                    onClose={() => {
+                        setIsDeleteModalOpen(false);
+                        setHolidayToDelete(null);
+                    }}
+                    type="danger"
+                    processing={isDeleting}
+                />
             </div>
         </AuthenticatedLayout>
     );

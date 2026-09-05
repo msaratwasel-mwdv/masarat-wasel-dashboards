@@ -227,6 +227,44 @@ export default function SchoolModal({
     }
   };
 
+  // Check if edit form is unchanged
+  const isUnchanged = useMemo(() => {
+    if (modalType !== "edit" || !currentSchool) return false;
+    const sub = currentSchool.current_subscription;
+    const subNotes = sub?.notes || {};
+
+    const origName = currentSchool.name || "";
+    const origAddress = currentSchool.address || "";
+    const origLat = currentSchool.latitude ? Number(currentSchool.latitude) : null;
+    const origLng = currentSchool.longitude ? Number(currentSchool.longitude) : null;
+    const origStatus = currentSchool.status || "Active";
+    const origPlanId = currentSchool.plan_id || sub?.plan_id || (plans.length > 0 ? plans[0].id : null);
+    const origInstallmentsCount = Number(subNotes.installments_count || (sub?.installments?.length || 1));
+    const origPricePerStudent = Number(subNotes.price_per_student || (sub?.plan?.price_per_student || 8));
+    const origStudentCount = Number(subNotes.student_count || (currentSchool.enrollments_count || 20));
+    const origStartDate = sub?.start_date ? sub.start_date.split("T")[0] : "";
+    const origBillingType = subNotes.billing_type || "yearly";
+
+    const hasLogoChanged = Boolean(data.logo);
+    const hasAdminChanged = Boolean(data.create_admin && (data.admin_name || data.admin_email));
+
+    return (
+      !hasLogoChanged &&
+      !hasAdminChanged &&
+      data.name.trim() === origName.trim() &&
+      (data.address || "").trim() === origAddress.trim() &&
+      data.latitude === origLat &&
+      data.longitude === origLng &&
+      data.status === origStatus &&
+      Number(data.plan_id) === Number(origPlanId) &&
+      Number(data.installments_count) === origInstallmentsCount &&
+      Number(data.price_per_student) === origPricePerStudent &&
+      Number(data.student_count) === origStudentCount &&
+      (!origStartDate || data.start_date === origStartDate) &&
+      data.billing_type === origBillingType
+    );
+  }, [data, modalType, currentSchool, plans]);
+
   // Strict submission only on step 3!
   const submitForm = (e?: React.FormEvent | React.MouseEvent) => {
     if (e) {
@@ -240,12 +278,15 @@ export default function SchoolModal({
       return;
     }
 
+    if (modalType === "edit" && isUnchanged) {
+      return;
+    }
+
     if (modalType === "add") {
       post(route("admin.schools.store"), {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
-          toast.success(isRTL ? "تم تسجيل المدرسة وإعداد اشتراكها بنجاح!" : "School registered successfully!");
           onClose();
         },
         onError: (errs) => {
@@ -264,7 +305,6 @@ export default function SchoolModal({
           forceFormData: true,
           preserveScroll: true,
           onSuccess: () => {
-            toast.success(isRTL ? "تم حفظ وتحديث بيانات المدرسة والاشتراك!" : "School updated successfully!");
             onClose();
           },
           onError: (errs) => {
@@ -968,13 +1008,17 @@ export default function SchoolModal({
               ) : (
                 <button
                   type="button"
-                  disabled={processing}
+                  disabled={processing || (modalType === "edit" && isUnchanged)}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     submitForm(e);
                   }}
-                  className="bg-brand-yellow text-brand-dark px-7 py-2 rounded-xl text-xs font-black hover:bg-yellow-400 transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                  className={`bg-brand-yellow text-brand-dark px-7 py-2 rounded-xl text-xs font-black transition-all shadow-md active:scale-95 flex items-center gap-2 ${
+                    modalType === "edit" && isUnchanged
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-yellow-400 cursor-pointer"
+                  } disabled:opacity-50`}
                 >
                   {processing ? (
                     <>

@@ -556,7 +556,7 @@ export default function Index({ auth, fieldTrips = [], buses = [] }: Props) {
                                     <td className="border border-gray-300 p-1.5">{trip.destination_address}</td>
                                     <td className="border border-gray-300 p-1.5 text-center">{trip.date}</td>
                                     <td className="border border-gray-300 p-1.5 text-center">{trip.bus?.bus_number || '---'}</td>
-                                    <td className="border border-gray-300 p-1.5 text-center font-bold">{trip.cost || '---'} ر.ع</td>
+                                    <td className="border border-gray-300 p-1.5 text-center font-bold">{trip.cost ? `${trip.cost} ${isRTL ? 'ر.ع' : 'OMR'}` : '---'}</td>
                                     <td className="border border-gray-300 p-1.5 text-center">
                                         <span className="px-2 py-0.5 border border-gray-400 rounded text-[8px] font-black uppercase">
                                             {trip.status}

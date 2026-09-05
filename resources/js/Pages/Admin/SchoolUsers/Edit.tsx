@@ -1,6 +1,6 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, useForm } from "@inertiajs/react";
-import { FormEventHandler } from "react";
+import { FormEventHandler, useMemo } from "react";
 import { useTheme } from "@/Contexts/ThemeContext";
 import { Loader2 } from "lucide-react";
 import useTranslation from "@/hooks/useTranslation";
@@ -37,8 +37,19 @@ export default function EditSchoolAdmin({
     password_confirmation: "",
   });
 
+  const isUnchanged = useMemo(() => {
+    return (
+      (data.name || "").trim() === (user.name || "").trim() &&
+      (data.email || "").trim() === (user.email || "").trim() &&
+      (data.phone || "").trim() === (user.phone || "").trim() &&
+      !data.password &&
+      !data.password_confirmation
+    );
+  }, [data, user]);
+
   const submit: FormEventHandler = (e) => {
     e.preventDefault();
+    if (isUnchanged) return;
     put(route("admin.schools.users.update", [school.id, user.id]));
   };
 
@@ -244,8 +255,10 @@ export default function EditSchoolAdmin({
               </Link>
               <button
                 type="submit"
-                disabled={processing}
-                className="px-6 py-2 bg-brand-navy text-white rounded-lg hover:bg-opacity-90 flex items-center gap-2"
+                disabled={processing || isUnchanged}
+                className={`px-6 py-2 bg-brand-navy text-white rounded-lg hover:bg-opacity-90 flex items-center gap-2 ${
+                  isUnchanged ? "opacity-50 cursor-not-allowed" : ""
+                }`}
               >
                 {processing && <Loader2 size={16} className="animate-spin" />}
                 {isRTL ? "حفظ التعديلات" : "Save Changes"}

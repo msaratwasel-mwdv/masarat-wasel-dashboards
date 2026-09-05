@@ -31,9 +31,11 @@ import SchoolModal from "./Partials/SchoolModal";
 interface Props {
   schools: School[];
   plans: PlanData[];
+  totalBuses?: number;
+  totalStudents?: number;
 }
 
-export default function SchoolsIndex({ schools, plans }: Props) {
+export default function SchoolsIndex({ schools, plans, totalBuses, totalStudents }: Props) {
   const { isRTL, theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -62,6 +64,8 @@ export default function SchoolsIndex({ schools, plans }: Props) {
       all: filteredSchools.length,
       active: filteredSchools.filter((s) => s.status === "Active").length,
       inactive: filteredSchools.filter((s) => s.status !== "Active").length,
+      buses: filteredSchools.reduce((acc, s) => acc + (Number(s.buses_count) || 0), 0),
+      students: filteredSchools.reduce((acc, s) => acc + (Number(s.enrollments_count) || 0), 0),
     }),
     [filteredSchools]
   );

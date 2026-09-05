@@ -112,7 +112,6 @@ export default function PaymentModal({
         preserveScroll: true,
         onSuccess: () => {
           setProcessing(false);
-          toast.success(isRTL ? "تم تسجيل التحصيل المالي بنجاح!" : "Collection recorded successfully!");
           onClose();
         },
         onError: (errs) => {

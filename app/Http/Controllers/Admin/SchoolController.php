@@ -12,14 +12,27 @@ class SchoolController extends Controller
 {
     public function index()
     {
-        $schools = School::withCount(['buses', 'enrollments'])
-            ->with(['currentSubscription.plan', 'currentSubscription.installments', 'schoolAdmins.user'])
+        $schools = School::query()
+            ->select('schools.*')
+            ->withCount(['buses'])
+            ->selectSub(
+                \App\Models\StudentSchoolEnrollment::query()
+                    ->join('classrooms', 'classrooms.id', '=', 'student_school_enrollments.classroom_id')
+                    ->join('grades', 'grades.id', '=', 'classrooms.grade_id')
+                    ->whereColumn('grades.school_id', 'schools.id')
+                    ->where('student_school_enrollments.is_active', true)
+                    ->selectRaw('count(distinct student_school_enrollments.student_id)'),
+                'enrollments_count'
+            )
+            ->with(['plan', 'currentSubscription.plan', 'currentSubscription.installments', 'schoolAdmins.user'])
             ->latest()
             ->get();
 
         return Inertia::render('Admin/Schools/Index', [
             'schools' => $schools,
             'plans' => \App\Models\Plan::active()->orderBy('sort_order')->get(),
+            'totalBuses' => \App\Models\Bus::count(),
+            'totalStudents' => \App\Models\Student::count(),
         ]);
     }
 

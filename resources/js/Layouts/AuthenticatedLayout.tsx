@@ -329,7 +329,7 @@ export default function Authenticated({
   useEffect(() => {
     if (flash?.success && flash.success !== lastShownToastRef.current) {
       toast.success(t(flash.success), {
-        toastId: `success-${flash.success}`,
+        toastId: `success-${Date.now()}`,
         position: "top-center",
         autoClose: 3000,
         transition: Bounce,
@@ -339,11 +339,15 @@ export default function Authenticated({
         theme: theme === 'dark' ? 'dark' : 'light',
       });
       lastShownToastRef.current = flash.success;
+      const timer = setTimeout(() => {
+        lastShownToastRef.current = null;
+      }, 1500);
+      return () => clearTimeout(timer);
     }
     
     if (flash?.error && flash.error !== lastShownToastRef.current) {
       toast.error(t(flash.error), {
-        toastId: `error-${flash.error}`,
+        toastId: `error-${Date.now()}`,
         position: "top-center",
         autoClose: 4000,
         transition: Bounce,
@@ -353,13 +357,17 @@ export default function Authenticated({
         theme: theme === 'dark' ? 'dark' : 'light',
       });
       lastShownToastRef.current = flash.error;
+      const timer = setTimeout(() => {
+        lastShownToastRef.current = null;
+      }, 1500);
+      return () => clearTimeout(timer);
     }
 
-    // Reset ref when flash is empty to allow showing the same message again if it comes back
+    // Reset ref when flash is empty
     if (!flash?.success && !flash?.error) {
         lastShownToastRef.current = null;
     }
-  }, [flash]);
+  }, [flash, language]);
 
   // Layout calculations
   const rtlClasses = isRTL ? "rtl" : "ltr";
@@ -585,17 +593,6 @@ export default function Authenticated({
                   <span className={`flex-1 text-sm font-medium ${isRTL ? "text-right" : "text-left"} whitespace-nowrap flex items-center justify-between`}>
                     <span>{item.label}</span>
 
-                    {/* Badge for Conversations */}
-                    {item.route === 'admin.chat.index' && notifications_count > 0 && (
-                      <motion.span 
-                        initial={{ scale: 0 }} 
-                        animate={{ scale: 1 }}
-                        className="bg-brand-yellow text-brand-dark text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-2"
-                      >
-                        {notifications_count}
-                      </motion.span>
-                    )}
-
                     {/* Parent Badge for Field Operations (Emergencies) */}
                     {item.label === (isRTL ? "الرقابة الميدانية" : "Field Operations") && active_emergencies_count > 0 && (
                       <motion.span 
@@ -623,9 +620,6 @@ export default function Authenticated({
                 {/* Collapsed Indicator Dot */}
                 {isCollapsed && (
                   <>
-                    {(item.route === 'admin.chat.index' && notifications_count > 0) && (
-                      <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-brand-yellow rounded-full border-2 border-brand-dark shadow-sm" />
-                    )}
                     {(item.label === (isRTL ? "الرقابة الميدانية" : "Field Operations") && active_emergencies_count > 0) && (
                       <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-brand-dark shadow-sm" />
                     )}

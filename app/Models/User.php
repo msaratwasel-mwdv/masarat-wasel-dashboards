@@ -153,12 +153,15 @@ class User extends Authenticatable
         $fullName = trim(implode(' ', array_filter($names)));
 
         if (empty($fullName)) {
-            return $this->name_en;
+            $nameEn = $this->name_en;
+            if (! empty(trim($nameEn)) && $nameEn !== $this->email) {
+                return $nameEn;
+            }
         }
 
         $email = is_string($this->email) ? mb_convert_encoding($this->email, 'UTF-8', 'UTF-8') : '';
 
-        return $fullName ?: $email;
+        return $fullName ?: ($this->name_en ?: ($email ?: ($this->phone ?? '')));
     }
 
     /**
@@ -195,9 +198,27 @@ class User extends Authenticatable
 
         $fullNameEn = trim(implode(' ', array_filter($namesEn)));
 
+        if (! empty($fullNameEn)) {
+            return $fullNameEn;
+        }
+
+        // Fallback to Arabic full name if English is not provided
+        $namesAr = [
+            $this->first_name_ar,
+            $this->last_name_ar,
+        ];
+        $namesAr = array_map(function ($n) {
+            return is_string($n) ? mb_convert_encoding($n, 'UTF-8', 'UTF-8') : null;
+        }, $namesAr);
+        $fullNameAr = trim(implode(' ', array_filter($namesAr)));
+
+        if (! empty($fullNameAr)) {
+            return $fullNameAr;
+        }
+
         $email = is_string($this->email) ? mb_convert_encoding($this->email, 'UTF-8', 'UTF-8') : '';
 
-        return $fullNameEn ?: $email;
+        return $email ?: ($this->phone ?? '');
     }
 
     /**

@@ -7,6 +7,7 @@ import InputLabel from "@/Components/InputLabel";
 import TextInput from "@/Components/TextInput";
 import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
+import ConfirmationModal from "@/Components/ConfirmationModal";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Calendar as CalendarIcon,
@@ -102,8 +103,29 @@ export default function AcademicCalendarsIndex({ calendars, schools }: Props) {
         reset();
     };
 
+    const [deleteCalendarId, setDeleteCalendarId] = useState<number | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const isUnchanged = Boolean(
+        modalType === "edit" && currentCalendar !== null &&
+        String(data.school_id) === String(currentCalendar.school_id) &&
+        data.name.trim() === currentCalendar.name.trim() &&
+        data.start_date === currentCalendar.start_date &&
+        data.end_date === currentCalendar.end_date &&
+        (data.is_active === (currentCalendar.is_active === true || (currentCalendar.is_active as any) === 1)) &&
+        JSON.stringify([...data.working_days].sort()) === JSON.stringify(
+            (typeof currentCalendar.working_days === 'string'
+                ? JSON.parse(currentCalendar.working_days)
+                : currentCalendar.working_days || []
+            ).slice().sort()
+        )
+    );
+
     const submitForm = (e: React.FormEvent) => {
         e.preventDefault();
+        if (modalType === "edit" && isUnchanged) return;
+
         if (modalType === "add") {
             post(route("admin.academic-calendars.store"), {
                 onSuccess: () => closeModal(),
@@ -115,10 +137,21 @@ export default function AcademicCalendarsIndex({ calendars, schools }: Props) {
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm(isRTL ? "هل أنت متأكد من حذف هذا التقويم؟" : "Are you sure you want to delete this calendar?")) {
-            destroy(route("admin.academic-calendars.destroy", id));
-        }
+    const confirmDeleteCalendar = (id: number) => {
+        setDeleteCalendarId(id);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleDelete = () => {
+        if (!deleteCalendarId) return;
+        setIsDeleting(true);
+        destroy(route("admin.academic-calendars.destroy", deleteCalendarId), {
+            onSuccess: () => {
+                setIsDeleteModalOpen(false);
+                setDeleteCalendarId(null);
+            },
+            onFinish: () => setIsDeleting(false),
+        });
     };
 
     const toggleWorkingDay = (day: string) => {
@@ -239,7 +272,7 @@ export default function AcademicCalendarsIndex({ calendars, schools }: Props) {
                                                 {isRTL ? "تعديل" : "Edit"}
                                             </button>
                                             <button
-                                                onClick={() => handleDelete(calendar.id)}
+                                                onClick={() => confirmDeleteCalendar(calendar.id)}
                                                 className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
@@ -371,8 +404,8 @@ export default function AcademicCalendarsIndex({ calendars, schools }: Props) {
                                 </button>
                                 <PrimaryButton
                                     type="submit"
-                                    disabled={processing}
-                                    className="bg-brand-yellow text-brand-dark px-8 py-2.5 rounded-xl border-none font-black"
+                                    disabled={processing || isUnchanged}
+                                    className={`bg-brand-yellow text-brand-dark px-8 py-2.5 rounded-xl border-none font-black transition-all ${isUnchanged ? 'opacity-50 cursor-not-allowed' : 'hover:bg-brand-yellow/90'}`}
                                 >
                                     {processing ? (isRTL ? "جاري الحفظ..." : "Saving...") : (isRTL ? "حفظ التقويم" : "Save Calendar")}
                                 </PrimaryButton>
@@ -380,6 +413,22 @@ export default function AcademicCalendarsIndex({ calendars, schools }: Props) {
                         </form>
                     </div>
                 </Modal>
+
+                {/* DELETE CONFIRMATION MODAL */}
+                <ConfirmationModal
+                    show={isDeleteModalOpen}
+                    title={isRTL ? "تأكيد حذف التقويم" : "Confirm Calendar Deletion"}
+                    message={isRTL ? "هل أنت متأكد من رغبتك في حذف هذا التقويم الدراسي؟ لا يمكن التراجع عن هذا الإجراء." : "Are you sure you want to delete this academic calendar? This action cannot be undone."}
+                    confirmText={isRTL ? "نعم، حذف" : "Yes, Delete"}
+                    cancelText={isRTL ? "إلغاء" : "Cancel"}
+                    onConfirm={handleDelete}
+                    onClose={() => {
+                        setIsDeleteModalOpen(false);
+                        setDeleteCalendarId(null);
+                    }}
+                    type="danger"
+                    processing={isDeleting}
+                />
             </div>
         </AuthenticatedLayout>
     );

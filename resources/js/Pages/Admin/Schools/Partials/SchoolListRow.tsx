@@ -107,7 +107,17 @@ export default function SchoolListRow({ school, isDark, isRTL, onEdit }: Props) 
 
       {/* Buses Count */}
       <td className="px-6 py-4 text-center font-mono font-bold text-xs text-blue-600 dark:text-blue-400">
-        {school.buses_count || 0}
+        <div className="flex items-center justify-center gap-1">
+          <span>{school.buses_count || 0}</span>
+          {school.max_buses || school.current_subscription?.plan?.max_buses || school.plan?.max_buses ? (
+            <span className="text-gray-400 text-[10px] font-normal">
+              / {school.max_buses || school.current_subscription?.plan?.max_buses || school.plan?.max_buses}
+            </span>
+          ) : null}
+        </div>
+        <span className="text-[10px] text-gray-400 font-sans font-normal block">
+          {isRTL ? "حافلة" : "buses"}
+        </span>
       </td>
 
       {/* Students Count */}

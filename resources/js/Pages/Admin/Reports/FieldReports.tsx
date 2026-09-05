@@ -37,6 +37,51 @@ import {
     DS_btnGold
 } from "@/lib/DS";
 import ConfirmationModal from "@/Components/ConfirmationModal";
+import PrintReportHeader from "@/Components/PrintReportHeader";
+
+const PRINT_STYLES = `
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  main {
+    margin: 0 !important;
+    position: static !important;
+  }
+  #field-reports-print-area, #field-reports-print-area *,
+  #single-violation-print-area, #single-violation-print-area * {
+    visibility: visible !important;
+  }
+  #field-reports-print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 0 !important;
+    background: white !important;
+    display: block !important;
+  }
+  #single-violation-print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    display: block !important;
+  }
+}
+`;
 
 interface Violation {
   id: number;
@@ -193,74 +238,261 @@ export default function FieldReports({ violations, filters, auth }: Props) {
   return (
     <AuthenticatedLayout user={auth?.user}>
       <Head title={isRTL ? "سجل المخالفات الميدانية" : "Field Violations Log"} />
+      <style>{PRINT_STYLES}</style>
 
-      {/* Individual Violation Print View */}
+      {/* ── Single Violation Notice Print & Preview ── */}
       {printingViolation && (
-        <div className="fixed inset-0 z-[200] bg-white text-black p-0 print:block hidden dir-rtl">
-            <div className="p-10">
-                {/* Print Header */}
-                <div className="flex justify-between items-center mb-10 pb-6 border-b-2 border-slate-200">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-brand-navy rounded-xl flex items-center justify-center">
-                            <ApplicationLogo className="w-8 h-8" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-black text-brand-navy">مسارات واصل</h1>
-                            <p className="text-[10px] font-bold text-brand-gold tracking-widest uppercase">MASARAT WASEL</p>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <h2 className="text-xl font-black text-slate-800">إشعار مخالفة ميدانية</h2>
-                        <p className="text-xs text-slate-400">الرقم المرجعي: #VIOL-{printingViolation.id}</p>
-                    </div>
+        <div 
+          id="single-violation-print-area"
+          className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm overflow-y-auto p-4 md:p-10 flex items-center justify-center print:static print:p-0 print:bg-white print:overflow-visible"
+        >
+          <div 
+            className="bg-white text-black w-full max-w-4xl rounded-2xl shadow-2xl p-8 md:p-12 relative print:shadow-none print:p-6 print:max-w-full print:rounded-none"
+            dir={isRTL ? 'rtl' : 'ltr'}
+          >
+            {/* Screen-Only Toolbar */}
+            <div className="flex items-center justify-between pb-6 mb-6 border-b border-slate-200 print:hidden">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                  <Printer size={20} />
                 </div>
-
-                <div className="grid grid-cols-2 gap-8 mb-10">
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">التاريخ والوقت</p>
-                        <p className="font-bold">{new Date(printingViolation.created_at).toLocaleString('ar-SA')}</p>
-                    </div>
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">الحافلة</p>
-                        <p className="font-bold">{printingViolation.bus?.bus_number || "—"}</p>
-                    </div>
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">المشرف</p>
-                        <p className="font-bold">{printingViolation.field_supervisor?.name || "—"}</p>
-                    </div>
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">نوع المخالفة</p>
-                        <p className="font-bold">{printingViolation.type}</p>
-                    </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-base">
+                    {isRTL ? "معاينة إشعار المخالفة الميدانية" : "Field Violation Notice Preview"}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {isRTL ? "جاهز للطباعة أو الحفظ كـ PDF" : "Ready to print or save as PDF"}
+                  </p>
                 </div>
-
-                <div className="mb-10">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">وصف وتفاصيل المخالفة</p>
-                    <div className="p-6 bg-white border border-slate-200 rounded-xl min-h-[200px] leading-relaxed text-slate-700">
-                        {printingViolation.description}
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-12 mt-20 text-center">
-                    <div>
-                        <p className="font-black text-slate-800 border-b border-slate-200 pb-2 mb-8">توقيع المشرف الميداني</p>
-                        <div className="h-20" />
-                    </div>
-                    <div>
-                        <p className="font-black text-slate-800 border-b border-slate-200 pb-2 mb-8">اعتماد الإدارة</p>
-                        <div className="h-20" />
-                    </div>
-                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-[#0f2044] hover:bg-[#1a346e] text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-sm"
+                >
+                  <Printer size={16} />
+                  {isRTL ? "طباعة الإشعار" : "Print Notice"}
+                </button>
+                <button
+                  onClick={() => setPrintingViolation(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors"
+                >
+                  <XCircle size={16} />
+                  {isRTL ? "إغلاق" : "Close"}
+                </button>
+              </div>
             </div>
-            
-            {/* Close Print Preview Button (Screen Only) */}
-            <button 
-                onClick={() => setPrintingViolation(null)}
-                className="fixed bottom-10 left-10 bg-brand-navy text-white px-6 py-3 rounded-full font-bold shadow-2xl print:hidden flex items-center gap-2"
-            >
-                <XCircle size={20} />
-                إغلاق وضع الطباعة
-            </button>
+
+            {/* Print Header */}
+            <div className="flex justify-between items-center mb-8 pb-6 border-b-2 border-slate-200" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+              {/* Dashboard Logo Container */}
+              <div className="flex items-center gap-4">
+                <div 
+                  className="w-16 h-16 rounded-2xl bg-white border-2 border-slate-200 p-1.5 shadow-md flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: '#ffffff', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}
+                >
+                  <ApplicationLogo className="w-full h-full object-contain" />
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-2xl font-black text-[#0f2044]">
+                      {isRTL ? "مسارات" : "Masarat"}
+                    </span>
+                    <span className="text-2xl font-black text-[#f5b800]">
+                      {isRTL ? "واصل" : "Wasel"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase">
+                    {isRTL ? "منظومة النقل المدرسي الذكية" : "Smart School Transport System"}
+                  </p>
+                </div>
+              </div>
+
+              <div className={isRTL ? "text-left" : "text-right"}>
+                <h2 className="text-xl font-black text-slate-800">
+                  {isRTL ? "إشعار مخالفة ميدانية" : "Field Violation Notice"}
+                </h2>
+                <p className="text-xs text-slate-400 font-mono mt-1">
+                  {isRTL ? "الرقم المرجعي: " : "Reference No: "} #VIOL-{printingViolation.id}
+                </p>
+              </div>
+            </div>
+
+            {/* Violation Details Grid */}
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl" style={{ backgroundColor: '#f8fafc', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  {isRTL ? "التاريخ والوقت" : "Date & Time"}
+                </p>
+                <p className="font-bold text-slate-800">
+                  {new Date(printingViolation.created_at).toLocaleString(isRTL ? 'ar-SA' : 'en-US')}
+                </p>
+              </div>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl" style={{ backgroundColor: '#f8fafc', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  {isRTL ? "الحافلة" : "Bus"}
+                </p>
+                <p className="font-bold text-slate-800">{printingViolation.bus?.bus_number || "—"}</p>
+              </div>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl" style={{ backgroundColor: '#f8fafc', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  {isRTL ? "المشرف الميداني" : "Field Supervisor"}
+                </p>
+                <p className="font-bold text-slate-800">{printingViolation.field_supervisor?.name || "—"}</p>
+              </div>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl" style={{ backgroundColor: '#f8fafc', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  {isRTL ? "نوع المخالفة" : "Violation Type"}
+                </p>
+                <p className="font-bold text-slate-800">{printingViolation.type}</p>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="mb-10">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                {isRTL ? "وصف وتفاصيل المخالفة" : "Violation Details & Description"}
+              </p>
+              <div className="p-6 bg-white border border-slate-200 rounded-xl min-h-[160px] leading-relaxed text-slate-700 whitespace-pre-wrap">
+                {printingViolation.description}
+              </div>
+            </div>
+
+            {/* Signatures */}
+            <div className="grid grid-cols-2 gap-12 mt-16 text-center">
+              <div>
+                <p className="font-black text-slate-800 border-b border-slate-300 pb-2 mb-12">
+                  {isRTL ? "توقيع المشرف الميداني" : "Field Supervisor Signature"}
+                </p>
+                <div className="h-12" />
+              </div>
+              <div>
+                <p className="font-black text-slate-800 border-b border-slate-300 pb-2 mb-12">
+                  {isRTL ? "اعتماد الإدارة" : "Management Approval"}
+                </p>
+                <div className="h-12" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Full Field Violations Report Print Area ── */}
+      {!printingViolation && (
+        <div id="field-reports-print-area" className="hidden print:block bg-white text-black w-full" dir={isRTL ? "rtl" : "ltr"}>
+          {/* Official Report Header */}
+          <div className="flex justify-between items-center pb-6 mb-8 border-b-2 border-slate-200" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+            <div className="flex items-center gap-4">
+              <div 
+                className="w-16 h-16 rounded-2xl bg-white border-2 border-slate-200 p-1.5 shadow-md flex items-center justify-center shrink-0"
+                style={{ backgroundColor: '#ffffff', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}
+              >
+                <ApplicationLogo className="w-full h-full object-contain" />
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-2xl font-black text-[#0f2044]">
+                    {isRTL ? "مسارات" : "Masarat"}
+                  </span>
+                  <span className="text-2xl font-black text-[#f5b800]">
+                    {isRTL ? "واصل" : "Wasel"}
+                  </span>
+                </div>
+                <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase">
+                  {isRTL ? "منظومة النقل المدرسي الذكية - الإدارة العامة" : "Smart School Transport System - General Administration"}
+                </p>
+              </div>
+            </div>
+
+            <div className={isRTL ? "text-left" : "text-right"}>
+              <h2 className="text-2xl font-black text-slate-800">
+                {isRTL ? "تقرير سجل المخالفات الميدانية" : "Field Violations Log Report"}
+              </h2>
+              <div className="flex items-center gap-2 mt-1 justify-end text-xs text-slate-500">
+                <span>{isRTL ? "تاريخ التقرير: " : "Report Date: "} {new Date().toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span>•</span>
+                <span>{isRTL ? "إجمالي المخالفات: " : "Total: "} {violations.total}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-3 gap-4 mb-6 text-center">
+            <div className="border border-slate-200 rounded-xl p-3 bg-slate-50" style={{ backgroundColor: '#f8fafc', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+              <p className="text-xs font-bold text-slate-500">{isRTL ? "إجمالي المخالفات المسجلة" : "Total Recorded Violations"}</p>
+              <p className="text-2xl font-black text-[#0f2044]">{violations.total}</p>
+            </div>
+            <div className="border border-slate-200 rounded-xl p-3 bg-slate-50" style={{ backgroundColor: '#f8fafc', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+              <p className="text-xs font-bold text-slate-500">{isRTL ? "المخالفات قيد المعالجة" : "Pending Violations"}</p>
+              <p className="text-2xl font-black text-amber-600">
+                {violations.data.filter(v => v.status === 'pending').length}
+              </p>
+            </div>
+            <div className="border border-slate-200 rounded-xl p-3 bg-slate-50" style={{ backgroundColor: '#f8fafc', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+              <p className="text-xs font-bold text-slate-500">{isRTL ? "المخالفات المحلولة" : "Resolved Violations"}</p>
+              <p className="text-2xl font-black text-emerald-600">
+                {violations.data.filter(v => v.status === 'resolved').length}
+              </p>
+            </div>
+          </div>
+
+          {/* Table */}
+          <table className="w-full border-collapse border border-slate-200 text-xs mb-8">
+            <thead className="bg-slate-100" style={{ backgroundColor: '#f1f5f9', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+              <tr>
+                <th className="border border-slate-200 p-2 text-center">#</th>
+                <th className="border border-slate-200 p-2 text-start">{isRTL ? "التاريخ والوقت" : "Date & Time"}</th>
+                <th className="border border-slate-200 p-2 text-start">{isRTL ? "الحافلة" : "Bus"}</th>
+                <th className="border border-slate-200 p-2 text-start">{isRTL ? "المشرف الميداني" : "Supervisor"}</th>
+                <th className="border border-slate-200 p-2 text-start">{isRTL ? "نوع المخالفة" : "Type"}</th>
+                <th className="border border-slate-200 p-2 text-start">{isRTL ? "الوصف" : "Description"}</th>
+                <th className="border border-slate-200 p-2 text-center">{isRTL ? "الحالة" : "Status"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {violations.data.map((violation, idx) => (
+                <tr key={violation.id} className={idx % 2 === 1 ? "bg-slate-50/50" : "bg-white"}>
+                  <td className="border border-slate-200 p-2 text-center font-mono font-bold text-slate-600">#{violation.id}</td>
+                  <td className="border border-slate-200 p-2 whitespace-nowrap">
+                    {new Date(violation.created_at).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')}
+                  </td>
+                  <td className="border border-slate-200 p-2 font-bold text-slate-800">
+                    {violation.bus?.bus_number || "—"}
+                  </td>
+                  <td className="border border-slate-200 p-2">
+                    {violation.field_supervisor?.name || "—"}
+                  </td>
+                  <td className="border border-slate-200 p-2 font-semibold">
+                    {violation.type}
+                  </td>
+                  <td className="border border-slate-200 p-2 text-slate-600 max-w-xs truncate">
+                    {violation.description}
+                  </td>
+                  <td className="border border-slate-200 p-2 text-center font-bold">
+                    <span className={violation.status === 'resolved' ? "text-emerald-700" : "text-amber-700"}>
+                      {statusLabel(violation.status)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Footer / Signatures */}
+          <div className="grid grid-cols-2 gap-12 mt-12 text-center">
+            <div>
+              <p className="font-bold text-slate-700 border-b border-slate-300 pb-2 mb-10">
+                {isRTL ? "مسؤول العمليات الميدانية" : "Field Operations Officer"}
+              </p>
+              <div className="h-10" />
+            </div>
+            <div>
+              <p className="font-bold text-slate-700 border-b border-slate-300 pb-2 mb-10">
+                {isRTL ? "مدير إدارة النقل والرقابة" : "Transport & Audit Director"}
+              </p>
+              <div className="h-10" />
+            </div>
+          </div>
         </div>
       )}
 
@@ -282,7 +514,10 @@ export default function FieldReports({ violations, filters, auth }: Props) {
             
             <div className="flex items-center gap-3">
                 <button 
-                    onClick={() => window.print()}
+                    onClick={() => {
+                        setPrintingViolation(null);
+                        setTimeout(() => window.print(), 100);
+                    }}
                     className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all shadow-sm"
                 >
                     <Download size={16} />
@@ -339,7 +574,7 @@ export default function FieldReports({ violations, filters, auth }: Props) {
 
         {/* Delete Confirmation */}
         <ConfirmationModal
-            isOpen={isDeleteModalOpen}
+            show={isDeleteModalOpen}
             onClose={() => setIsDeleteModalOpen(false)}
             onConfirm={handleDelete}
             title={isRTL ? "حذف تقرير المخالفة" : "Delete Violation Report"}

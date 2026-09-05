@@ -75,7 +75,7 @@ class DriverController extends Controller
             'first_name_en' => 'required_without:first_name_ar|nullable|string|max:255',
             'last_name_en' => 'required_with:first_name_en|nullable|string|max:255',
             'national_id' => ['required', 'numeric', \Illuminate\Validation\Rule::unique('users')->ignore($driver->id)],
-            'email' => ['required', 'email', \Illuminate\Validation\Rule::unique('users')->ignore($driver->id)],
+            'email' => ['nullable', 'email', \Illuminate\Validation\Rule::unique('users')->ignore($driver->id)],
             'phone' => ['required', \Illuminate\Validation\Rule::unique('users')->ignore($driver->id)],
             'license_number' => ['required', \Illuminate\Validation\Rule::unique('drivers', 'license_number')->ignore($driver->id, 'user_id')],
             'license_expiry_date' => 'required|date',
@@ -89,12 +89,12 @@ class DriverController extends Controller
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($request, $driver) {
             $updateData = [
-                'first_name_ar' => $request->first_name_ar,
-                'last_name_ar' => $request->last_name_ar,
-                'first_name_en' => $request->first_name_en ?? '',
-                'last_name_en' => $request->last_name_en ?? '',
+                'first_name_ar' => $request->first_name_ar ?: null,
+                'last_name_ar' => $request->last_name_ar ?: null,
+                'first_name_en' => $request->first_name_en ?: null,
+                'last_name_en' => $request->last_name_en ?: null,
                 'national_id' => $request->national_id,
-                'email' => $request->email,
+                'email' => $request->email ?: null,
                 'phone' => $request->phone,
                 'address' => $request->address,
             ];

@@ -3,6 +3,7 @@ import debounce from "lodash/debounce";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, useForm, router, usePage } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
+import ConfirmationModal from "@/Components/ConfirmationModal";
 import InputError from "@/Components/InputError";
 import { useTheme } from "@/Contexts/ThemeContext";
 import useTranslation from "@/hooks/useTranslation";
@@ -93,15 +94,16 @@ interface Supervisor {
   preferred_language?: string;
 }
 
-export const getSupervisorName = (supervisor: Supervisor, isArabic?: boolean) => {
-  const isAr = isArabic !== undefined ? isArabic : (document.documentElement.lang === 'ar' || document.documentElement.dir === 'rtl');
-  const arName = [supervisor.first_name_ar, supervisor.last_name_ar].filter(Boolean).join(' ') || supervisor.name;
-  const enName = [supervisor.first_name_en, supervisor.last_name_en].filter(Boolean).join(' ') || supervisor.name_en;
+export const getSupervisorName = (supervisor: Supervisor | null | undefined, isArabic?: boolean): string => {
+  if (!supervisor) return "";
+  const isAr = isArabic !== undefined ? isArabic : (typeof document !== 'undefined' && (document.documentElement.lang === 'ar' || document.documentElement.dir === 'rtl'));
+  const arName = [supervisor.first_name_ar, supervisor.last_name_ar].filter(Boolean).join(' ') || supervisor.name || "";
+  const enName = [supervisor.first_name_en, supervisor.last_name_en].filter(Boolean).join(' ') || supervisor.name_en || "";
   
   if (isAr) {
-    return arName || enName || supervisor.email;
+    return arName || enName || supervisor.email || "";
   } else {
-    return enName || arName || supervisor.email;
+    return enName || arName || supervisor.email || "";
   }
 };
 
@@ -140,6 +142,9 @@ export default function FieldSupervisorsIndex({ auth, supervisors, counts, filte
   const flash = usePage().props.flash as any;
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<number | null>(null);
+  const [editingSupervisor, setEditingSupervisor] = useState<Supervisor | null>(null);
+  const [supervisorToDelete, setSupervisorToDelete] = useState<Supervisor | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedSupervisor, setSelectedSupervisor] = useState<Supervisor | null>(null);
@@ -161,6 +166,26 @@ export default function FieldSupervisorsIndex({ auth, supervisors, counts, filte
       image: null as File | null,
       remove_image: false,
     });
+
+  // --- isUnchanged check for edit modal ---
+  const isUnchanged = useMemo(() => {
+    if (!isEditing || !editingSupervisor) return false;
+    const initialStatus = editingSupervisor.field_supervisor?.status === "active" ? "active" : "inactive";
+    return (
+      (data.first_name_ar || "").trim() === (editingSupervisor.first_name_ar || "").trim() &&
+      (data.last_name_ar || "").trim() === (editingSupervisor.last_name_ar || "").trim() &&
+      (data.first_name_en || "").trim() === (editingSupervisor.first_name_en || "").trim() &&
+      (data.last_name_en || "").trim() === (editingSupervisor.last_name_en || "").trim() &&
+      (data.national_id || "").trim() === (editingSupervisor.national_id || "").trim() &&
+      (data.email || "").trim() === (editingSupervisor.email || "").trim() &&
+      (data.phone || "").trim() === (editingSupervisor.phone || "").trim() &&
+      (data.address || "").trim() === (editingSupervisor.address || "").trim() &&
+      (data.preferred_language || "ar") === (editingSupervisor.preferred_language || "ar") &&
+      data.status === initialStatus &&
+      !data.image &&
+      !data.remove_image
+    );
+  }, [data, isEditing, editingSupervisor]);
 
   // --- Handlers ---
   const debouncedSearch = useMemo(
@@ -194,6 +219,7 @@ export default function FieldSupervisorsIndex({ auth, supervisors, counts, filte
   const openAddModal = () => {
     setIsEditing(false);
     setCurrentId(null);
+    setEditingSupervisor(null);
     setPreviewImage(null);
     reset();
     setData("_method", "post");
@@ -204,6 +230,7 @@ export default function FieldSupervisorsIndex({ auth, supervisors, counts, filte
   const openEditModal = (supervisor: Supervisor) => {
     setIsEditing(true);
     setCurrentId(supervisor.id);
+    setEditingSupervisor(supervisor);
     setPreviewImage(supervisor.image ? `/storage/${supervisor.image}` : null);
     setData({
       _method: "put",
@@ -231,6 +258,7 @@ export default function FieldSupervisorsIndex({ auth, supervisors, counts, filte
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setEditingSupervisor(null);
     setPreviewImage(null);
     reset();
   };
@@ -239,6 +267,7 @@ export default function FieldSupervisorsIndex({ auth, supervisors, counts, filte
     e.preventDefault();
 
     if (isEditing && currentId) {
+      if (isUnchanged) return;
       post(route("admin.field-supervisors.update", currentId), {
         forceFormData: true,
         onSuccess: () => closeModal(),
@@ -248,10 +277,19 @@ export default function FieldSupervisorsIndex({ auth, supervisors, counts, filte
     }
   };
 
-  const deleteSupervisor = (id: number) => {
-    if (confirm(isRTL ? "هل أنت متأكد من حذف هذا المشرف الميداني؟" : "Are you sure you want to delete this field supervisor?")) {
-      router.delete(route("admin.field-supervisors.destroy", id));
-    }
+  const deleteSupervisor = (supervisor: Supervisor) => {
+    setSupervisorToDelete(supervisor);
+  };
+
+  const confirmDeleteSupervisor = () => {
+    if (!supervisorToDelete || isDeleting) return;
+    setIsDeleting(true);
+    router.delete(route("admin.field-supervisors.destroy", supervisorToDelete.id), {
+      onFinish: () => {
+        setIsDeleting(false);
+        setSupervisorToDelete(null);
+      },
+    });
   };
 
   const handlePrint = () => {
@@ -387,7 +425,7 @@ export default function FieldSupervisorsIndex({ auth, supervisors, counts, filte
               />
               <ActionButton
                 label={isRTL ? "حذف" : "Delete"}
-                onClick={() => deleteSupervisor(supervisor.id)}
+                onClick={() => deleteSupervisor(supervisor)}
                 color="red"
                 icon={<Trash2 size={15} />}
               />
@@ -738,7 +776,11 @@ export default function FieldSupervisorsIndex({ auth, supervisors, counts, filte
                             <button type="button" onClick={closeModal} className="text-xs font-bold text-gray-400 hover:text-[#0f2044] transition-colors">
                                 {isRTL ? "إلغاء" : "Cancel"}
                             </button>
-                            <button type="submit" disabled={processing} className={DS_btnGold}>
+                            <button
+                                type="submit"
+                                disabled={processing || (isEditing && isUnchanged)}
+                                className={`${DS_btnGold} ${isEditing && isUnchanged ? "opacity-50 cursor-not-allowed" : ""}`}
+                            >
                                 {processing && <Loader2 size={16} className="animate-spin" />}
                                 {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل المشرف" : "Enroll Supervisor")}
                             </button>
@@ -807,6 +849,25 @@ export default function FieldSupervisorsIndex({ auth, supervisors, counts, filte
                 </form>
             </div>
         </Modal>
+
+        {/* --- Delete Confirmation Modal --- */}
+        <ConfirmationModal
+            show={!!supervisorToDelete}
+            onClose={() => !isDeleting && setSupervisorToDelete(null)}
+            onConfirm={confirmDeleteSupervisor}
+            title={isRTL ? "حذف المشرف الميداني" : "Delete Field Supervisor"}
+            message={
+                supervisorToDelete
+                    ? (isRTL
+                        ? `هل أنت متأكد من حذف المشرف الميداني "${getSupervisorName(supervisorToDelete, true)}"؟ لا يمكن التراجع عن هذا الإجراء.`
+                        : `Are you sure you want to delete field supervisor "${getSupervisorName(supervisorToDelete, false)}"? This action cannot be undone.`)
+                    : ""
+            }
+            confirmText={isRTL ? "نعم، حذف" : "Yes, Delete"}
+            cancelText={isRTL ? "إلغاء" : "Cancel"}
+            type="danger"
+            loading={isDeleting}
+        />
 
       </div>
     </AuthenticatedLayout>

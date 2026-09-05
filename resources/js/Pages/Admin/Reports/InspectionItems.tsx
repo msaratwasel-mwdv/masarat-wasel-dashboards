@@ -88,6 +88,13 @@ export default function InspectionItems({ items, auth }: Props) {
     reset();
   };
 
+  const isUnchanged = Boolean(
+    editingItem !== null &&
+    data.name.trim() === editingItem.name.trim() &&
+    Boolean(data.is_active) === Boolean(editingItem.is_active) &&
+    Number(data.order_index) === Number(editingItem.order_index)
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingItem) {
@@ -104,7 +111,10 @@ export default function InspectionItems({ items, auth }: Props) {
   const handleDelete = () => {
     if (itemToDelete) {
       destroy(route("admin.inspection-items.destroy", itemToDelete), {
-        onSuccess: () => setIsDeleteModalOpen(false),
+        onSuccess: () => {
+          setIsDeleteModalOpen(false);
+          setItemToDelete(null);
+        },
       });
     }
   };
@@ -361,8 +371,8 @@ export default function InspectionItems({ items, auth }: Props) {
                         <button
                             type="submit"
                             form="inspection-item-form"
-                            disabled={processing}
-                            className={DS_btnGold + " px-8"}
+                            disabled={processing || isUnchanged}
+                            className={`${DS_btnGold} px-8 ${(processing || isUnchanged) ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             {editingItem ? (isRTL ? "تحديث" : "Update") : (isRTL ? "إضافة" : "Create")}
                         </button>
@@ -373,9 +383,15 @@ export default function InspectionItems({ items, auth }: Props) {
 
         {/* Delete Confirmation */}
         <ConfirmationModal
-            isOpen={isDeleteModalOpen}
-            onClose={() => setIsDeleteModalOpen(false)}
+            show={isDeleteModalOpen}
+            onClose={() => {
+                if (!processing) {
+                    setIsDeleteModalOpen(false);
+                    setItemToDelete(null);
+                }
+            }}
             onConfirm={handleDelete}
+            processing={processing}
             title={isRTL ? "حذف بند الفحص" : "Delete Item"}
             message={isRTL ? "هل أنت متأكد من رغبتك في حذف هذا البند؟ قد يؤثر ذلك على السجلات القديمة." : "Are you sure you want to delete this item? This may affect historical logs."}
             confirmText={isRTL ? "حذف" : "Delete"}

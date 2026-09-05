@@ -31,6 +31,7 @@ import {
   DS_statValue2,
 } from "@/lib/DS";
 import PrintReportHeader from "@/Components/PrintReportHeader";
+import ConfirmationModal from "@/Components/ConfirmationModal";
 
 // ─── Print CSS ──────────────────────────────────────────────────
 const PRINT_STYLES = `
@@ -80,6 +81,26 @@ export default function Index({ events, counts, filters }: Props) {
 
   // --- State ---
   const [search, setSearch] = useState(filters.search || "");
+  const [deleteEventId, setDeleteEventId] = useState<number | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const confirmDeleteEvent = (id: number) => {
+    setDeleteEventId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (!deleteEventId) return;
+    setIsDeleting(true);
+    router.delete(route("admin.events.destroy", deleteEventId), {
+      onSuccess: () => {
+        setIsDeleteModalOpen(false);
+        setDeleteEventId(null);
+      },
+      onFinish: () => setIsDeleting(false),
+    });
+  };
 
   // --- Search & Filter ---
   const debouncedSearch = useMemo(
@@ -173,11 +194,7 @@ export default function Index({ events, counts, filters }: Props) {
               <ActionButton
                 label={isRTL ? "حذف" : "Delete"}
                 color="red"
-                onClick={() => {
-                  if (confirm(isRTL ? "هل أنت متأكد من الحذف؟" : "Are you sure?")) {
-                    router.delete(route("admin.events.destroy", event.id));
-                  }
-                }}
+                onClick={() => confirmDeleteEvent(event.id)}
               />
             </div>
           );
@@ -321,6 +338,22 @@ export default function Index({ events, counts, filters }: Props) {
           />
         </motion.div>
       </div>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <ConfirmationModal
+        show={isDeleteModalOpen}
+        title={isRTL ? "تأكيد حذف الفعالية" : "Confirm Event Deletion"}
+        message={isRTL ? "هل أنت متأكد من رغبتك في حذف هذه الفعالية أو الخبر نهائياً؟ لا يمكن التراجع عن هذا الإجراء." : "Are you sure you want to delete this event or news item? This action cannot be undone."}
+        confirmText={isRTL ? "نعم، حذف" : "Yes, Delete"}
+        cancelText={isRTL ? "إلغاء" : "Cancel"}
+        onConfirm={handleDelete}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeleteEventId(null);
+        }}
+        type="danger"
+        processing={isDeleting}
+      />
     </AuthenticatedLayout>
   );
 }

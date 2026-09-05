@@ -30,7 +30,35 @@ class School extends Model
      *
      * @var array
      */
-    protected $appends = ['logo_url'];
+    protected $appends = ['logo_url', 'max_buses', 'enrollments_count'];
+
+    /**
+     * Get the max allowed buses attribute from active subscription or plan.
+     */
+    public function getMaxBusesAttribute(): ?int
+    {
+        return $this->maxBuses();
+    }
+
+    /**
+     * Get the total enrolled students count for this school.
+     */
+    public function getEnrollmentsCountAttribute(): int
+    {
+        if (array_key_exists('enrollments_count', $this->attributes)) {
+            return (int) $this->attributes['enrollments_count'];
+        }
+
+        return (int) Student::inSchool($this->id)->count();
+    }
+
+    /**
+     * Alias accessor for students count.
+     */
+    public function getStudentsCountAttribute(): int
+    {
+        return $this->enrollments_count;
+    }
 
     /**
      * Get the fully qualified URL for the school's logo.
@@ -142,11 +170,11 @@ class School extends Model
     public function maxBuses(): ?int
     {
         $subscription = $this->currentSubscription;
-        if (! $subscription || ! $subscription->plan) {
-            return 0;
+        if ($subscription && $subscription->plan) {
+            return $subscription->plan->max_buses;
         }
 
-        return $subscription->plan->max_buses;
+        return $this->plan?->max_buses;
     }
 
     public function totalOwed(): float

@@ -445,7 +445,7 @@ export default function InspectionLogs({ inspections, filters, auth }: Props) {
 
         {/* Delete Confirmation */}
         <ConfirmationModal
-            isOpen={isDeleteModalOpen}
+            show={isDeleteModalOpen}
             onClose={() => setIsDeleteModalOpen(false)}
             onConfirm={handleDelete}
             title={isRTL ? "حذف سجل الفحص" : "Delete Inspection Log"}

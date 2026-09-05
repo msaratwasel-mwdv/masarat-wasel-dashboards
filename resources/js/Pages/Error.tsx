@@ -58,10 +58,15 @@ export default function ErrorPage({ status }: ErrorPageProps) {
         color: 'from-slate-500 to-slate-700',
     };
 
+    const isEn = typeof window !== 'undefined' && (
+        localStorage.getItem('language') === 'en' || 
+        document.cookie.split('; ').some(row => row.startsWith('locale=en'))
+    );
+
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#f8f9fa] relative overflow-hidden font-sans" dir="rtl">
+        <div className="min-h-screen flex items-center justify-center bg-[#f8f9fa] relative overflow-hidden font-sans" dir={isEn ? "ltr" : "rtl"}>
             <Head>
-                <title>{`${status} - ${config.titleAr} | مسارات واصل`}</title>
+                <title>{`${status} - ${isEn ? config.titleEn : config.titleAr} | ${isEn ? "Masarat Wasel" : "مسارات واصل"}`}</title>
                 <link rel="icon" type="image/png" href="/images/logo2.png" />
             </Head>
 
@@ -87,11 +92,15 @@ export default function ErrorPage({ status }: ErrorPageProps) {
                         {status}
                     </div>
 
-                    <h1 className="text-2xl font-extrabold text-slate-800 mb-2">{config.titleAr}</h1>
-                    <p className="text-sm text-slate-400 font-medium mb-4">{config.titleEn}</p>
+                    <h1 className="text-2xl font-extrabold text-slate-800 mb-2">
+                        {isEn ? config.titleEn : config.titleAr}
+                    </h1>
+                    <p className="text-sm text-slate-400 font-medium mb-4">
+                        {isEn ? config.titleAr : config.titleEn}
+                    </p>
 
                     <p className="text-slate-500 text-sm font-medium leading-relaxed mb-8">
-                        {config.descAr}
+                        {isEn ? config.descEn : config.descAr}
                     </p>
 
                     {/* Action Buttons */}
@@ -100,8 +109,8 @@ export default function ErrorPage({ status }: ErrorPageProps) {
                             onClick={() => window.history.back()}
                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg hover:bg-slate-800 hover:-translate-y-0.5 transition-all text-sm"
                         >
-                            <ArrowRight size={18} />
-                            رجوع
+                            <ArrowRight size={18} className={isEn ? "rotate-180" : ""} />
+                            {isEn ? "Go Back" : "رجوع"}
                         </button>
 
                         <Link
@@ -109,7 +118,7 @@ export default function ErrorPage({ status }: ErrorPageProps) {
                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-all text-sm border border-slate-200"
                         >
                             <Home size={18} />
-                            الرئيسية
+                            {isEn ? "Home" : "الرئيسية"}
                         </Link>
 
                         {status === 419 && (
@@ -118,14 +127,16 @@ export default function ErrorPage({ status }: ErrorPageProps) {
                                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-all text-sm shadow-lg"
                             >
                                 <RefreshCw size={18} />
-                                تحديث الصفحة
+                                {isEn ? "Refresh Page" : "تحديث الصفحة"}
                             </button>
                         )}
                     </div>
 
                     {/* Contact Support */}
                     <div className="mt-8 pt-6 border-t border-slate-100">
-                        <p className="text-xs text-slate-400 font-medium mb-3">هل تحتاج مساعدة؟</p>
+                        <p className="text-xs text-slate-400 font-medium mb-3">
+                            {isEn ? "Need help?" : "هل تحتاج مساعدة؟"}
+                        </p>
                         <a
                             href="https://wa.me/96879967769"
                             target="_blank"
@@ -133,14 +144,16 @@ export default function ErrorPage({ status }: ErrorPageProps) {
                             className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 hover:-translate-y-0.5 transition-all text-sm shadow-lg shadow-green-500/20"
                         >
                             <MessageCircle size={16} />
-                            تواصل مع الدعم الفني
+                            {isEn ? "Contact Technical Support" : "تواصل مع الدعم الفني"}
                         </a>
                     </div>
                 </div>
 
                 {/* Footer */}
                 <div className="mt-6 text-center text-xs text-slate-400 font-medium">
-                    © {new Date().getFullYear()} مسارات واصل. جميع الحقوق محفوظة.
+                    {isEn 
+                        ? `© ${new Date().getFullYear()} Masarat Wasel. All rights reserved.` 
+                        : `© ${new Date().getFullYear()} مسارات واصل. جميع الحقوق محفوظة.`}
                 </div>
             </div>
         </div>

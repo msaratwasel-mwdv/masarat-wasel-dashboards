@@ -33,6 +33,7 @@ import {
   Tooltip as RechartsTooltip, ResponsiveContainer 
 } from "recharts";
 import PrimaryButton from "@/Components/PrimaryButton";
+import ConfirmationModal from "@/Components/ConfirmationModal";
 import ReportModal from "@/Components/Admin/BusExpenses/ReportModal";
 import ExpenseFormModal from "@/Components/Admin/BusExpenses/ExpenseFormModal";
 import BaseDataTable, { ActionButton, type FilterTab } from "@/Components/BaseDataTable";
@@ -125,14 +126,20 @@ export default function BusExpensesIndex({ expenses, buses, filters, stats }: Pr
     setDeleteConfirm(expense);
   }, []);
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const confirmDelete = useCallback(() => {
-    if (deleteConfirm) {
+    if (deleteConfirm && !isDeleting) {
+      setIsDeleting(true);
       router.delete(route('admin.bus-expenses.destroy', deleteConfirm.id), {
         preserveScroll: true,
-        onSuccess: () => setDeleteConfirm(null),
+        onSuccess: () => {
+          setDeleteConfirm(null);
+        },
+        onFinish: () => setIsDeleting(false),
       });
     }
-  }, [deleteConfirm]);
+  }, [deleteConfirm, isDeleting]);
 
   const handleFilterChange = (type: string) => {
     setActiveType(type);
@@ -437,52 +444,22 @@ export default function BusExpensesIndex({ expenses, buses, filters, stats }: Pr
             expense={editingExpense}
         />
 
-        {/* Delete Confirmation Modal */}
-        <AnimatePresence>
-          {deleteConfirm && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
-              onClick={() => setDeleteConfirm(null)}
-            >
-              <motion.div
-                initial={{ scale: 0.95, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.95, y: 20 }}
-                className="bg-white dark:bg-[#1a2845] p-8 rounded-[22px] w-full max-w-sm shadow-2xl text-center"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
-                  <Trash2 className="w-8 h-8 text-red-500" />
-                </div>
-                <h3 className="text-lg font-bold text-[#0f2044] dark:text-white mb-2">
-                  {isRTL ? "تأكيد الحذف" : "Confirm Delete"}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                  {isRTL 
-                    ? "هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء."
-                    : "Are you sure you want to delete this record? This action cannot be undone."}
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <button 
-                    onClick={() => setDeleteConfirm(null)} 
-                    className="px-5 py-2.5 rounded-[14px] bg-[#0f2044]/[0.07] dark:bg-[#0f2044]/30 text-[#0f2044] dark:text-gray-300 text-sm font-bold hover:bg-[#0f2044]/[0.14] transition-all"
-                  >
-                    {isRTL ? "إلغاء" : "Cancel"}
-                  </button>
-                  <button 
-                    onClick={confirmDelete} 
-                    className="px-5 py-2.5 rounded-[14px] bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-all shadow"
-                  >
-                    {isRTL ? "حذف" : "Delete"}
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Standardized Delete Confirmation Modal */}
+        <ConfirmationModal
+            show={deleteConfirm !== null}
+            onClose={() => {
+                if (!isDeleting) setDeleteConfirm(null);
+            }}
+            onConfirm={confirmDelete}
+            processing={isDeleting}
+            title={isRTL ? "تأكيد حذف المصروف" : "Confirm Delete Expense"}
+            message={isRTL 
+              ? "هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء."
+              : "Are you sure you want to delete this record? This action cannot be undone."}
+            confirmText={isRTL ? "حذف" : "Delete"}
+            cancelText={isRTL ? "إلغاء" : "Cancel"}
+            type="danger"
+        />
     </AuthenticatedLayout>
   );
 }

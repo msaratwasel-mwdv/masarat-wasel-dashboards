@@ -67,8 +67,15 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        $intended = session()->get('url.intended');
+
         if ($user->role === 'admin') {
-            return redirect()->intended(route('admin.dashboard'));
+            session()->forget('url.intended');
+            if ($intended && str_contains($intended, '/admin') && ! str_contains($intended, '/login')) {
+                return redirect()->to($intended);
+            }
+
+            return redirect()->route('admin.dashboard');
         }
 
         if ($user->role === 'school_admin') {
@@ -84,7 +91,12 @@ class AuthenticatedSessionController extends Controller
                 ]);
             }
 
-            return redirect()->intended(route('school.dashboard'));
+            session()->forget('url.intended');
+            if ($intended && str_contains($intended, '/school') && ! str_contains($intended, '/login')) {
+                return redirect()->to($intended);
+            }
+
+            return redirect()->route('school.dashboard');
         }
 
         // إذا كان مستخدماً عادياً أو غير محدد، ولا يوجد له لوحة تحكم

@@ -103,12 +103,12 @@ class FieldSupervisorController extends Controller
 
         DB::transaction(function () use ($request) {
             $user = User::create([
-                'first_name_ar' => $request->first_name_ar ?? '',
-                'last_name_ar' => $request->last_name_ar ?? '',
-                'first_name_en' => $request->first_name_en ?? '',
-                'last_name_en' => $request->last_name_en ?? '',
+                'first_name_ar' => $request->first_name_ar ?: null,
+                'last_name_ar' => $request->last_name_ar ?: null,
+                'first_name_en' => $request->first_name_en ?: null,
+                'last_name_en' => $request->last_name_en ?: null,
                 'national_id' => $request->national_id,
-                'email' => $request->email,
+                'email' => $request->email ?: null,
                 'phone' => $request->phone,
                 'password' => Hash::make($request->phone),
                 'address' => $request->address,
@@ -150,12 +150,12 @@ class FieldSupervisorController extends Controller
 
         DB::transaction(function () use ($request, $field_supervisor) {
             $data = [
-                'first_name_ar' => $request->first_name_ar ?? '',
-                'last_name_ar' => $request->last_name_ar ?? '',
-                'first_name_en' => $request->first_name_en ?? '',
-                'last_name_en' => $request->last_name_en ?? '',
+                'first_name_ar' => $request->first_name_ar ?: null,
+                'last_name_ar' => $request->last_name_ar ?: null,
+                'first_name_en' => $request->first_name_en ?: null,
+                'last_name_en' => $request->last_name_en ?: null,
                 'national_id' => $request->national_id,
-                'email' => $request->email,
+                'email' => $request->email ?: null,
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'preferred_language' => $request->preferred_language ?? 'ar',

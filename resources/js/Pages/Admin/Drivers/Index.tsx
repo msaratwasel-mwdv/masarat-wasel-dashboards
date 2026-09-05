@@ -3,6 +3,7 @@ import debounce from "lodash/debounce";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, useForm, router, Link, usePage } from "@inertiajs/react";
 import Modal from "@/Components/Modal";
+import ConfirmationModal from "@/Components/ConfirmationModal";
 import InputError from "@/Components/InputError";
 import { useTheme } from "@/Contexts/ThemeContext";
 import useTranslation from "@/hooks/useTranslation";
@@ -161,6 +162,9 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
   const flash = usePage().props.flash as any;
   const [isEditing, setIsEditing] = useState(false);
   const [currentDriverId, setCurrentDriverId] = useState<number | null>(null);
+  const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
+  const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewLicenseFront, setPreviewLicenseFront] = useState<string | null>(null);
   const [previewLicenseBack, setPreviewLicenseBack] = useState<string | null>(null);
@@ -197,6 +201,36 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
       remove_id_card_back_image: false,
     });
 
+  // --- Dirty Check (isUnchanged) ---
+  const isUnchanged = useMemo(() => {
+    if (!isEditing || !editingDriver) return false;
+    const origStatus = (editingDriver.driver?.status === "active" || editingDriver["حالة السائق"] === "نشط") ? "active" : "inactive";
+    return (
+      (data.first_name_ar || "").trim() === (editingDriver.first_name_ar || "").trim() &&
+      (data.last_name_ar || "").trim() === (editingDriver.last_name_ar || "").trim() &&
+      (data.first_name_en || "").trim() === (editingDriver.first_name_en || "").trim() &&
+      (data.last_name_en || "").trim() === (editingDriver.last_name_en || "").trim() &&
+      (data.national_id || "").trim() === (editingDriver.national_id || editingDriver["الهوية"] || "").trim() &&
+      (data.email || "").trim() === (editingDriver.email || editingDriver["البريد الإلكتروني"] || "").trim() &&
+      (data.phone || "").trim() === (editingDriver.phone || editingDriver["رقم الجوال"] || "").trim() &&
+      (data.license_number || "").trim() === (editingDriver.driver?.license_number || editingDriver["رقم الرخصة"] || "").trim() &&
+      (data.license_expiry_date || "").trim() === (editingDriver.driver?.license_expiry_date || editingDriver["تاريخ انتهاء الرخصة"] || "").trim() &&
+      (data.status || "active") === origStatus &&
+      (data.address || "").trim() === (editingDriver.address || "").trim() &&
+      (data.preferred_language || "ar") === (editingDriver.preferred_language || "ar") &&
+      !data.image &&
+      !data.license_front_image &&
+      !data.license_back_image &&
+      !data.id_card_front_image &&
+      !data.id_card_back_image &&
+      !data.remove_image &&
+      !data.remove_license_front_image &&
+      !data.remove_license_back_image &&
+      !data.remove_id_card_front_image &&
+      !data.remove_id_card_back_image
+    );
+  }, [data, isEditing, editingDriver]);
+
   // --- Handlers ---
   const debouncedSearch = useMemo(
     () =>
@@ -229,6 +263,7 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
   const openAddModal = () => {
     setIsEditing(false);
     setCurrentDriverId(null);
+    setEditingDriver(null);
     setPreviewImage(null);
     setPreviewLicenseFront(null);
     setPreviewLicenseBack(null);
@@ -243,6 +278,7 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
   const openEditModal = (driver: Driver) => {
     setIsEditing(true);
     setCurrentDriverId(driver.id);
+    setEditingDriver(driver);
     setPreviewImage(driver.image ? `/storage/${driver.image}` : null);
     
     const licFront = driver.driver?.license_front_image || driver.license_front_image;
@@ -257,18 +293,20 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
     const idBack = driver.driver?.id_card_back_image || driver.id_card_back_image;
     setPreviewIdCardBack(idBack ? `/storage/${idBack}` : null);
 
+    const isDriverActive = driver.driver?.status === "active" || driver["حالة السائق"] === "نشط";
+
     setData({
       _method: "put",
       first_name_ar: driver.first_name_ar || "",
       last_name_ar: driver.last_name_ar || "",
       first_name_en: driver.first_name_en || "",
       last_name_en: driver.last_name_en || "",
-      national_id: driver.national_id || "",
-      email: driver.email || "",
-      phone: driver.phone || "",
-      license_number: driver.driver?.license_number || "",
-      license_expiry_date: driver.driver?.license_expiry_date || "",
-      status: driver.driver?.status === "active" ? "active" : "inactive",
+      national_id: driver.national_id || driver["الهوية"] || "",
+      email: driver.email || driver["البريد الإلكتروني"] || "",
+      phone: driver.phone || driver["رقم الجوال"] || "",
+      license_number: driver.driver?.license_number || driver["رقم الرخصة"] || "",
+      license_expiry_date: driver.driver?.license_expiry_date || driver["تاريخ انتهاء الرخصة"] || "",
+      status: isDriverActive ? "active" : "inactive",
       address: driver.address || "",
       preferred_language: driver.preferred_language || "ar",
       image: null,
@@ -293,6 +331,7 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setEditingDriver(null);
     setPreviewImage(null);
     setPreviewLicenseFront(null);
     setPreviewLicenseBack(null);
@@ -305,6 +344,7 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
     e.preventDefault();
 
     if (isEditing && currentDriverId) {
+      if (isUnchanged) return;
       post(route("admin.drivers.update", currentDriverId), {
         forceFormData: true,
         onSuccess: () => closeModal(),
@@ -314,10 +354,19 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
     }
   };
 
-  const deleteDriver = (driverId: number) => {
-    if (confirm(isRTL ? "هل أنت متأكد من حذف هذا السائق؟" : "Are you sure?")) {
-      router.delete(route("admin.drivers.destroy", driverId));
-    }
+  const deleteDriver = (driver: Driver) => {
+    setDriverToDelete(driver);
+  };
+
+  const confirmDeleteDriver = () => {
+    if (!driverToDelete || isDeleting) return;
+    setIsDeleting(true);
+    router.delete(route("admin.drivers.destroy", driverToDelete.id), {
+      onFinish: () => {
+        setIsDeleting(false);
+        setDriverToDelete(null);
+      },
+    });
   };
 
   const handlePrint = () => window.print();
@@ -477,7 +526,7 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
               />
               <ActionButton
                 label={isRTL ? "حذف" : "Delete"}
-                onClick={() => deleteDriver(driver.id)}
+                onClick={() => deleteDriver(driver)}
                 color="red"
                 icon={<Trash2 size={15} />}
               />
@@ -1059,7 +1108,11 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                             <button type="button" onClick={closeModal} className="text-xs font-bold text-gray-400 hover:text-[#0f2044] transition-colors">
                                 {isRTL ? "إلغاء" : "Cancel"}
                             </button>
-                            <button type="submit" disabled={processing} className={DS_btnGold}>
+                            <button 
+                                type="submit" 
+                                disabled={processing || (isEditing && isUnchanged)} 
+                                className={`${DS_btnGold} ${isEditing && isUnchanged ? "opacity-50 cursor-not-allowed" : ""}`}
+                            >
                                 {processing && <Loader2 size={16} className="animate-spin" />}
                                 {isEditing ? (isRTL ? "حفظ التعديلات" : "Finalize Changes") : (isRTL ? "تسجيل السائق" : "Enroll Operative")}
                             </button>
@@ -1141,6 +1194,23 @@ export default function DriversIndex({ auth, drivers, counts, filters }: Props) 
                 </form>
             </div>
         </Modal>
+
+        {/* --- Delete Confirmation Modal --- */}
+        <ConfirmationModal
+            show={!!driverToDelete}
+            onClose={() => !isDeleting && setDriverToDelete(null)}
+            onConfirm={confirmDeleteDriver}
+            title={isRTL ? "حذف السائق" : "Delete Driver"}
+            message={
+                isRTL
+                    ? `هل أنت متأكد من رغبتك في حذف السائق (${driverToDelete?.name || driverToDelete?.name_en || ""})؟ سيتم إلغاء تعيينه من الحافلة ولن يمكن التراجع عن هذا الإجراء.`
+                    : `Are you sure you want to delete driver (${driverToDelete?.name_en || driverToDelete?.name || ""})? This action cannot be undone.`
+            }
+            confirmText={isRTL ? "تأكيد الحذف" : "Confirm Delete"}
+            cancelText={isRTL ? "إلغاء" : "Cancel"}
+            variant="danger"
+            isLoading={isDeleting}
+        />
 
       </div>
     </AuthenticatedLayout>

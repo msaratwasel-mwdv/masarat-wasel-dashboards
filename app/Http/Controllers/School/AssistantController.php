@@ -68,12 +68,12 @@ class AssistantController extends Controller
         }
 
         $request->validate([
-            'first_name_ar' => 'required|string|max:255',
-            'last_name_ar' => 'required|string|max:255',
-            'first_name_en' => 'nullable|string|max:255',
-            'last_name_en' => 'nullable|string|max:255',
+            'first_name_ar' => 'required_without:first_name_en|nullable|string|max:255',
+            'last_name_ar' => 'required_with:first_name_ar|nullable|string|max:255',
+            'first_name_en' => 'required_without:first_name_ar|nullable|string|max:255',
+            'last_name_en' => 'required_with:first_name_en|nullable|string|max:255',
             'national_id' => ['required', 'numeric', \Illuminate\Validation\Rule::unique('users')->ignore($assistant->id)],
-            'email' => ['required', 'email', \Illuminate\Validation\Rule::unique('users')->ignore($assistant->id)],
+            'email' => ['nullable', 'email', \Illuminate\Validation\Rule::unique('users')->ignore($assistant->id)],
             'phone' => ['required', \Illuminate\Validation\Rule::unique('users')->ignore($assistant->id)],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'id_card_front_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
@@ -86,12 +86,12 @@ class AssistantController extends Controller
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($request, $assistant) {
             $data = [
-                'first_name_ar' => $request->first_name_ar,
-                'last_name_ar' => $request->last_name_ar,
-                'first_name_en' => $request->first_name_en ?? '',
-                'last_name_en' => $request->last_name_en ?? '',
+                'first_name_ar' => $request->first_name_ar ?: null,
+                'last_name_ar' => $request->last_name_ar ?: null,
+                'first_name_en' => $request->first_name_en ?: null,
+                'last_name_en' => $request->last_name_en ?: null,
                 'national_id' => $request->national_id,
-                'email' => $request->email,
+                'email' => $request->email ?: null,
                 'phone' => $request->phone,
                 'address' => $request->address,
             ];

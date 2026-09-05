@@ -8,6 +8,7 @@ import BaseDataTable, { ActionButton, StatusBadge, type FilterTab, type Paginati
 import AdminDailyTripDetailsModal from './Partials/AdminDailyTripDetailsModal';
 import AdminDailyTripEditModal from './Partials/AdminDailyTripEditModal';
 import PrintReportHeader from "@/Components/PrintReportHeader";
+import ConfirmationModal from '@/Components/ConfirmationModal';
 import {
     DS_pageWrapper,
     DS_statCard,
@@ -132,6 +133,51 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
     });
     const [dateValidation, setDateValidation] = useState<{ status: string; message: string; message_ar: string; is_working: boolean } | null>(null);
 
+    const [deleteTripId, setDeleteTripId] = useState<number | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const [confirmTripId, setConfirmTripId] = useState<number | null>(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [isConfirming, setIsConfirming] = useState(false);
+
+    const [isAutoCreateModalOpen, setIsAutoCreateModalOpen] = useState(false);
+    const [isAutoCreating, setIsAutoCreating] = useState(false);
+
+    const handleDeleteTrip = () => {
+        if (!deleteTripId) return;
+        setIsDeleting(true);
+        router.delete(route('admin.daily-trips.destroy', deleteTripId), {
+            onSuccess: () => {
+                setIsDeleteModalOpen(false);
+                setDeleteTripId(null);
+            },
+            onFinish: () => setIsDeleting(false),
+        });
+    };
+
+    const handleConfirmTrip = () => {
+        if (!confirmTripId) return;
+        setIsConfirming(true);
+        router.post(route('admin.daily-trips.confirm', confirmTripId), {}, {
+            onSuccess: () => {
+                setIsConfirmModalOpen(false);
+                setConfirmTripId(null);
+            },
+            onFinish: () => setIsConfirming(false),
+        });
+    };
+
+    const handleAutoCreate = () => {
+        setIsAutoCreating(true);
+        router.post(route('admin.daily-trips.auto-create'), { date: autoCreateDate }, {
+            onSuccess: () => {
+                setIsAutoCreateModalOpen(false);
+            },
+            onFinish: () => setIsAutoCreating(false),
+        });
+    };
+
     // Manual Create Form
     const { data: createData, setData: setCreateData, post: postCreate, processing: processingCreate, errors: createErrors, reset: resetCreate } = useForm({
         bus_id: '',
@@ -185,7 +231,6 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
                 resetCreate();
-                toast.success(isRTL ? 'تمت إضافة الرحلة بنجاح' : 'Trip added successfully');
             }
         });
     };
@@ -227,15 +272,6 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
             .then(res => setDateValidation(res.data))
             .catch(err => console.error('Date validation failed:', err));
     }, [autoCreateDate]);
-
-    useEffect(() => {
-        if (flash?.error) {
-            toast.error(flash.error);
-        }
-        if (flash?.success) {
-            toast.success(flash.success);
-        }
-    }, [flash]);
 
     const applyFilters = () => {
         router.get(route('admin.daily-trips.index'), {
@@ -417,11 +453,11 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                 return (
                     <div className="flex justify-center gap-1.5">
                         {trip.status === 'awaiting_confirmation' && (
-                            <ActionButton label={isRTL ? 'تأكيد' : 'Confirm'} onClick={() => { if (confirm(isRTL ? 'تأكيد بدء هذه الرحلة؟' : 'Confirm starting this trip?')) router.post(route('admin.daily-trips.confirm', trip.id)); }} color="indigo" icon={<CheckCircle2 size={15} />} />
+                            <ActionButton label={isRTL ? 'تأكيد' : 'Confirm'} onClick={() => { setConfirmTripId(trip.id); setIsConfirmModalOpen(true); }} color="indigo" icon={<CheckCircle2 size={15} />} />
                         )}
                         <ActionButton label={isRTL ? 'عرض' : 'View'} onClick={() => { setViewTripId(trip.id); setIsViewModalOpen(true); }} color="green" icon={<Eye size={15} />} />
                         <ActionButton label={isRTL ? 'تعديل' : 'Edit'} onClick={() => { setEditTrip(trip); setIsEditModalOpen(true); }} color="blue" icon={<Edit2 size={15} />} />
-                        <ActionButton label={isRTL ? 'حذف' : 'Delete'} onClick={() => { if (confirm(isRTL ? 'هل أنت متأكد من الحذف؟' : 'Are you sure you want to delete?')) router.delete(route('admin.daily-trips.destroy', trip.id)); }} color="red" icon={<Trash2 size={15} />} />
+                        <ActionButton label={isRTL ? 'حذف' : 'Delete'} onClick={() => { setDeleteTripId(trip.id); setIsDeleteModalOpen(true); }} color="red" icon={<Trash2 size={15} />} />
                     </div>
                 );
             }
@@ -551,11 +587,7 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                                     onChange={(e) => setAutoCreateDate(e.target.value)}
                                 />
                                 <button
-                                    onClick={() => {
-                                        if (confirm(isRTL ? 'هل أنت متأكد من إنشاء رحلات لهذا اليوم؟' : 'Are you sure you want to create trips for this date?')) {
-                                            router.post(route('admin.daily-trips.auto-create'), { date: autoCreateDate });
-                                        }
-                                    }}
+                                    onClick={() => setIsAutoCreateModalOpen(true)}
                                     className="px-8 py-2.5 bg-[#f5b800] hover:bg-[#e5ac00] text-[#0f2044] rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-[#f5b800]/10 active:scale-95 w-full sm:w-auto"
                                 >
                                     {isRTL ? 'توليد تلقائي' : 'Auto-Generate'}
@@ -836,6 +868,51 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
         </form>
     </div>
 </Modal>
+
+        {/* DELETE TRIP MODAL */}
+        <ConfirmationModal
+            show={isDeleteModalOpen}
+            title={isRTL ? "تأكيد حذف الرحلة" : "Confirm Trip Deletion"}
+            message={isRTL ? "هل أنت متأكد من رغبتك في حذف هذه الرحلة اليومية؟ لا يمكن التراجع عن هذا الإجراء." : "Are you sure you want to delete this daily trip? This action cannot be undone."}
+            confirmText={isRTL ? "نعم، حذف" : "Yes, Delete"}
+            cancelText={isRTL ? "إلغاء" : "Cancel"}
+            onConfirm={handleDeleteTrip}
+            onClose={() => {
+                setIsDeleteModalOpen(false);
+                setDeleteTripId(null);
+            }}
+            type="danger"
+            processing={isDeleting}
+        />
+
+        {/* CONFIRM START TRIP MODAL */}
+        <ConfirmationModal
+            show={isConfirmModalOpen}
+            title={isRTL ? "تأكيد بدء الرحلة" : "Confirm Starting Trip"}
+            message={isRTL ? "هل أنت متأكد من رغبتك في تأكيد وبدء هذه الرحلة الآن؟" : "Are you sure you want to confirm and start this trip now?"}
+            confirmText={isRTL ? "تأكيد البدء" : "Confirm Start"}
+            cancelText={isRTL ? "إلغاء" : "Cancel"}
+            onConfirm={handleConfirmTrip}
+            onClose={() => {
+                setIsConfirmModalOpen(false);
+                setConfirmTripId(null);
+            }}
+            type="primary"
+            processing={isConfirming}
+        />
+
+        {/* AUTO CREATE TRIPS MODAL */}
+        <ConfirmationModal
+            show={isAutoCreateModalOpen}
+            title={isRTL ? "تأكيد التوليد التلقائي للرحلات" : "Confirm Auto-Generating Trips"}
+            message={isRTL ? `هل أنت متأكد من رغبتك في توليد رحلات اليوم (${autoCreateDate}) تلقائياً لجميع الحافلات؟` : `Are you sure you want to auto-generate trips for date (${autoCreateDate}) for all buses?`}
+            confirmText={isRTL ? "توليد الآن" : "Generate Now"}
+            cancelText={isRTL ? "إلغاء" : "Cancel"}
+            onConfirm={handleAutoCreate}
+            onClose={() => setIsAutoCreateModalOpen(false)}
+            type="primary"
+            processing={isAutoCreating}
+        />
         </AuthenticatedLayout>
     );
 }
