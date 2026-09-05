@@ -193,7 +193,7 @@ function ConfirmModal({
             {/* Forth (Morning) changes */}
             <div className="space-y-2">
               <p className="text-sm font-black text-[#0f2044] dark:text-[#7ba7e8] flex items-center gap-2 mb-3 bg-[#0f2044]/5 dark:bg-[#0f2044]/30 p-2 rounded-[12px]">
-                <Sunrise className="w-4 h-4" /> {isRtl ? "رحلة ذهاب" : "Outbound Trip"}
+                <Sunrise className="w-4 h-4" /> {isRtl ? "رحلة ذهاب" : "Forth Trip"}
               </p>
               <Section
                 title={isRtl ? "إضافة" : "Adding"}
@@ -425,7 +425,7 @@ export default function AssignStudents() {
             <div className="text-right">
               <p className="text-sm font-bold text-gray-700">{isRtl ? "سعة الحافلة:" : "Bus Capacity:"} {selectedBus.capacity}</p>
               <p className="text-sm font-bold mt-1 text-gray-700">{isRtl ? "إجمالي الطلاب المخصصين:" : "Total Assigned:"} {uniqueTotal}</p>
-              <p className="text-sm font-bold mt-1 text-emerald-600">{isRtl ? "رحلة ذهاب:" : "Outbound:"} {forthStudentIds.length}</p>
+              <p className="text-sm font-bold mt-1 text-emerald-600">{isRtl ? "رحلة ذهاب:" : "Forth:"} {forthStudentIds.length}</p>
               <p className="text-sm font-bold mt-1 text-yellow-600">{isRtl ? "رحلة عودة:" : "Return:"} {backStudentIds.length}</p>
             </div>
           </div>
@@ -437,7 +437,7 @@ export default function AssignStudents() {
                   <th className="border border-gray-300 p-1.5 text-center font-bold w-8 text-black">#</th>
                   <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRtl ? "اسم الطالب" : "Student Name"}</th>
                   <th className="border border-gray-300 p-1.5 text-right font-bold text-black">{isRtl ? "الرقم المدني" : "Civil ID"}</th>
-                  <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRtl ? "رحلة ذهاب" : "Outbound"}</th>
+                  <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRtl ? "رحلة ذهاب" : "Forth"}</th>
                   <th className="border border-gray-300 p-1.5 text-center font-bold text-black">{isRtl ? "رحلة عودة" : "Return"}</th>
                 </tr>
               </thead>
@@ -540,7 +540,7 @@ export default function AssignStudents() {
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
             {[
               { label: isRtl ? "إجمالي الطلاب" : "Total Students", val: uniqueTotal, icon: <Users className="w-4 h-4 sm:w-5 sm:h-5" />, accent: "navy" as const },
-              { label: isRtl ? "رحلة ذهاب" : "Outbound", val: forthStudentIds.length, icon: <Sunrise className="w-4 h-4 sm:w-5 sm:h-5" />, accent: "blue" as const },
+              { label: isRtl ? "رحلة ذهاب" : "Forth", val: forthStudentIds.length, icon: <Sunrise className="w-4 h-4 sm:w-5 sm:h-5" />, accent: "blue" as const },
               { label: isRtl ? "رحلة عودة" : "Return", val: backStudentIds.length, icon: <Sunset className="w-4 h-4 sm:w-5 sm:h-5" />, accent: "gold" as const },
               { label: isRtl ? "المقاعد المتاحة" : "Available Seats", val: selectedBus ? Math.max(0, selectedBus.capacity - uniqueTotal) : 0, icon: <BusIcon className="w-4 h-4 sm:w-5 sm:h-5" />, accent: overCapacity ? "red" as const : "green" as const },
             ].map(s => (
@@ -704,8 +704,8 @@ export default function AssignStudents() {
                   <span className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-3">{isRtl ? "دليل الألوان" : "Color Legend"}</span>
                   <div className="space-y-2.5">
                     {[
-                      { color: "bg-[#0f2044] border-[#0f2044] shadow-sm", label: isRtl ? "رحلة ذهاب فقط" : "Outbound only" },
-                      { color: "bg-[#f5b800] border-[#f5b800] shadow-sm", label: isRtl ? "رحلة عودة فقط" : "Return only" },
+                      { color: "bg-[#0f2044] border-[#0f2044] shadow-sm", label: isRtl ? "رحلة ذهاب فقط" : "Forth only" },
+                      { color: "bg-[#f5b800] border-[#f5b800] shadow-sm", label: isRtl ? "رحلة عودة فقط" : "Back only" },
                       { color: "bg-gradient-to-r from-[#0f2044] to-[#f5b800] shadow-sm", label: isRtl ? "رحلة ذهاب وعودة" : "Both trips" },
                       { color: "bg-red-400 border-red-500 shadow-sm", label: isRtl ? "معين لحافلة أخرى" : "Assigned to another bus" },
                     ].map(({ color, label }) => (
@@ -744,10 +744,10 @@ export default function AssignStudents() {
                 </div>
                 <div className="flex gap-2 sm:gap-4 w-full lg:w-auto flex-shrink-0">
                   <button onClick={toggleAllForth} className="flex-1 lg:flex-none text-[#0f2044] dark:text-[#7ba7e8] hover:opacity-70 bg-[#0f2044]/10 dark:bg-[#0f2044]/30 px-2 sm:px-3 py-2 sm:py-1.5 rounded-[10px] transition-all text-[10px] sm:text-xs font-bold text-center flex items-center justify-center">
-                    {allForthSelected ? (isRtl ? "إلغاء الكل ذهاب" : "Clear Outbound") : (isRtl ? "تحديد الكل ذهاب" : "All Outbound")}
+                    {allForthSelected ? (isRtl ? "إلغاء الكل ذهاب" : "Clear Forth") : (isRtl ? "تحديد الكل ذهاب" : "All Forth")}
                   </button>
                   <button onClick={toggleAllBack} className="flex-1 lg:flex-none text-[#7a5c00] dark:text-[#f5b800] hover:opacity-70 bg-[#f5b800]/20 px-2 sm:px-3 py-2 sm:py-1.5 rounded-[10px] transition-all text-[10px] sm:text-xs font-bold text-center flex items-center justify-center">
-                    {allBackSelected ? (isRtl ? "إلغاء الكل عودة" : "Clear Return") : (isRtl ? "تحديد الكل عودة" : "All Return")}
+                    {allBackSelected ? (isRtl ? "إلغاء الكل عودة" : "Clear Back") : (isRtl ? "تحديد الكل عودة" : "All Back")}
                   </button>
                 </div>
               </div>
@@ -770,8 +770,8 @@ export default function AssignStudents() {
                             <tr>
                                 <th className={`${DS_tableTh(isRtl)} px-2 sm:px-4 min-w-[150px]`}>{isRtl ? "الطالب" : "Student"}</th>
                                 <th className={DS_tableTh(isRtl)}>{isRtl ? "الرقم المدني" : "Civil ID"}</th>
-                                <th className={DS_tableTh(isRtl) + " text-center"}>{isRtl ? "رحلة ذهاب" : "Outbound"}</th>
-                                <th className={DS_tableTh(isRtl) + " text-center"}>{isRtl ? "رحلة عودة" : "Return"}</th>
+                                <th className={DS_tableTh(isRtl) + " text-center"}>{isRtl ? "رحلة ذهاب" : "Forth"}</th>
+                                <th className={DS_tableTh(isRtl) + " text-center"}>{isRtl ? "رحلة عودة" : "Back"}</th>
                             </tr>
                         </thead>
                         <tbody>

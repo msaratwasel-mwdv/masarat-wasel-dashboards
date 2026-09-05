@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use App\Models\Student;
 use App\Policies\StudentPolicy;
-// ✅ 1. استيراد "البوابة" و "المودل" و "البوليسي"
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Vite;

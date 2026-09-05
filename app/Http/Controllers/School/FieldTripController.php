@@ -66,20 +66,37 @@ class FieldTripController extends Controller
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'description' => 'required|string|max:1000',
-                'date' => 'required|date',
-                'departure_time' => 'required',
+                'date' => ['required', 'date', 'after_or_equal:today'],
+                'departure_time' => [
+                    'required',
+                    function ($attribute, $value, $fail) use ($request) {
+                        if ($request->filled('date') && $request->date === now()->toDateString()) {
+                            $departureDateTime = \Carbon\Carbon::parse($request->date.' '.$value);
+                            if ($departureDateTime->isPast()) {
+                                $fail(__('لا يمكن أن يكون موعد انطلاق الرحلة في وقت سابق عن الوقت الحالي.'));
+                            }
+                        }
+                    },
+                ],
                 'arrival_time' => 'nullable|after:departure_time',
                 'destination_address' => 'required|string|max:255',
                 'destination_latitude' => 'required|numeric',
                 'destination_longitude' => 'required|numeric',
                 'student_ids' => 'required|array|min:1',
                 'student_ids.*' => 'exists:students,id',
-                'teacher_ids' => 'nullable|array',
+                'teacher_ids' => 'required|array|min:1',
                 'teacher_ids.*' => 'exists:users,id',
                 'external_members' => 'nullable|array',
                 'external_members.*.name' => 'required|string|min:3|max:255',
                 'external_members.*.phone' => 'required|string|min:8|max:20',
                 'external_members.*.national_id' => 'required|string|min:6|max:50',
+            ], [
+                'date.after_or_equal' => __('لا يمكن إنشاء رحلة ميدانية بتاريخ سابق.'),
+                'arrival_time.after' => __('يجب أن يكون وقت الوصول المتوقع بعد وقت انطلاق الرحلة.'),
+                'teacher_ids.required' => __('يجب تحديد معلم واحد على الأقل للإشراف على الرحلة الميدانية ومرافقة الطلاب.'),
+                'teacher_ids.min' => __('يجب تحديد معلم واحد على الأقل للإشراف على الرحلة الميدانية ومرافقة الطلاب.'),
+                'student_ids.required' => __('يجب تحديد طالب واحد على الأقل في الرحلة الميدانية.'),
+                'student_ids.min' => __('يجب تحديد طالب واحد على الأقل في الرحلة الميدانية.'),
             ]);
             \Illuminate\Support\Facades\Log::info('FieldTrip Validation PASSED', $validated);
         } catch (\Illuminate\Validation\ValidationException $e) {

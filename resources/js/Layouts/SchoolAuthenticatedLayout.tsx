@@ -10,6 +10,7 @@ import { useRealtimeToast } from "@/hooks/useRealtimeToast";
 import useTranslation from "@/hooks/useTranslation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
+import SidebarTooltip from "@/Components/SidebarTooltip";
 import {
   ChevronRight,
   ChevronsUpDown,
@@ -392,7 +393,8 @@ export default function SchoolAuthenticatedLayout({
         className={`
           force-print-hide print:hidden
           bg-transparent
-          text-white flex flex-col fixed inset-y-0 h-full z-50 overflow-hidden
+          text-white flex flex-col fixed inset-y-0 h-full z-50
+          ${isCollapsed && !isMobile ? "overflow-visible" : "overflow-hidden"}
           ${sidebarPosition}
           ${isMobileMenuOpen ? "translate-x-0" : isRTL ? "translate-x-full md:translate-x-0" : "-translate-x-full md:translate-x-0"}
           transition-transform duration-300 md:transition-none
@@ -411,11 +413,19 @@ export default function SchoolAuthenticatedLayout({
               <motion.div
                 initial={{ opacity: 0, x: isRTL ? 20 : -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className={`flex flex-col ${isRTL ? "text-right" : "text-left"}`}
+                className={`flex flex-col min-w-0 ${isRTL ? "text-right" : "text-left"}`}
               >
-                <span className="text-[15px] font-semibold text-white whitespace-nowrap">
+                <span className="text-[14px] font-bold text-white whitespace-nowrap leading-tight">
                   {isRTL ? "مسارات واصل" : "Masarat Wasel"}
                 </span>
+                {((usePage().props as any).school?.name || user?.school?.name || user?.school_name) && (
+                  <span 
+                    className="text-[11px] font-medium text-slate-400 truncate max-w-[160px] leading-tight mt-0.5"
+                    title={(usePage().props as any).school?.name || user?.school?.name || user?.school_name}
+                  >
+                    {(usePage().props as any).school?.name || user?.school?.name || user?.school_name}
+                  </span>
+                )}
               </motion.div>
             )}
           </Link>
@@ -425,7 +435,7 @@ export default function SchoolAuthenticatedLayout({
         <nav
           ref={sidebarNavRef}
           onScroll={handleSidebarScroll}
-          className="flex-1 px-3 space-y-0.5 mt-2 overflow-y-auto custom-scrollbar"
+          className={`flex-1 px-3 space-y-0.5 mt-2 custom-scrollbar ${isCollapsed && !isMobile ? "overflow-visible" : "overflow-y-auto"}`}
         >
 
           {menuItems.map((item) => {
@@ -443,7 +453,6 @@ export default function SchoolAuthenticatedLayout({
                             setIsCollapsed(false);
                           }
                         }}
-                        title={isCollapsed ? item.label : ""}
                         className={`
                           w-full relative group flex items-center p-2 text-sm font-medium rounded-md transition-all duration-200 outline-none
                           ${flexDirection}
@@ -457,6 +466,8 @@ export default function SchoolAuthenticatedLayout({
                         <span className={`${!isCollapsed ? (isRTL ? "ml-2" : "mr-2") : ""} flex items-center shrink-0`}>
                           {item.icon && renderIcon(item.icon, isActive)}
                         </span>
+
+                        {isCollapsed && !open && <SidebarTooltip label={item.label} isRTL={isRTL} />}
 
                         {!isCollapsed && (
                           <>
@@ -512,7 +523,6 @@ export default function SchoolAuthenticatedLayout({
               <Link
                 key={item.label}
                 href={item.route ? route(item.route) : "#"}
-                title={isCollapsed ? item.label : ""}
                 className={`
                   relative group flex items-center p-2 text-sm font-medium rounded-md transition-all duration-200
                   ${flexDirection}
@@ -526,6 +536,8 @@ export default function SchoolAuthenticatedLayout({
                 <span className={`${!isCollapsed ? (isRTL ? "ml-2" : "mr-2") : ""} flex items-center shrink-0`}>
                   {item.icon && renderIcon(item.icon, isActive)}
                 </span>
+
+                {isCollapsed && <SidebarTooltip label={item.label} isRTL={isRTL} />}
 
                 {!isCollapsed && (
                   <span className={`flex-1 text-sm font-medium ${isRTL ? "text-right" : "text-left"} whitespace-nowrap flex items-center justify-between`}>

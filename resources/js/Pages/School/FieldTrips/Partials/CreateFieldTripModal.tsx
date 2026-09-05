@@ -1,4 +1,4 @@
-import { useState, FormEventHandler, useMemo } from 'react';
+import { useState, FormEventHandler, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useForm } from '@inertiajs/react';
 import useTranslation from '@/hooks/useTranslation';
@@ -52,8 +52,14 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
     const [memberForm, setMemberForm] = useState<TripMember>({ name: '', phone: '', national_id: '' });
     const [memberErrors, setMemberErrors] = useState<{ name?: string; phone?: string; national_id?: string }>({});
 
-    // Today's date as default
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Today's date in local timezone (YYYY-MM-DD)
+    const todayStr = useMemo(() => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }, []);
 
     const { data, setData, post, processing, reset, errors } = useForm({
         name: '',
@@ -69,8 +75,61 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
         external_members: [] as TripMember[],
     });
 
+    const isDateInPast = useMemo(() => {
+        if (!data.date) return false;
+        return data.date < todayStr;
+    }, [data.date, todayStr]);
+
+    const isDepartureTimePast = useMemo(() => {
+        if (!data.date || !data.departure_time) return false;
+        if (data.date === todayStr) {
+            const [depHours, depMins] = data.departure_time.split(':').map(Number);
+            const now = new Date();
+            const tripTime = new Date();
+            tripTime.setHours(depHours, depMins, 0, 0);
+            return tripTime < now;
+        }
+        return false;
+    }, [data.date, data.departure_time, todayStr]);
+
+    const isArrivalTimeInvalid = useMemo(() => {
+        if (!data.arrival_time || !data.departure_time) return false;
+        return data.arrival_time <= data.departure_time;
+    }, [data.arrival_time, data.departure_time]);
+
+    // If server validation errors occur, auto-navigate to the step with the error
+    useEffect(() => {
+        if (errors.date || errors.departure_time || errors.arrival_time || errors.name || errors.description) {
+            setCurrentStep(1);
+        } else if (errors.destination_address || errors.destination_latitude || errors.destination_longitude) {
+            setCurrentStep(2);
+        } else if (errors.student_ids) {
+            setCurrentStep(3);
+        } else if (errors.teacher_ids || errors.external_members) {
+            setCurrentStep(4);
+        }
+    }, [errors]);
+
     const handleSubmit: FormEventHandler = (e) => {
         e.preventDefault();
+
+        // 1. Validate Date, Departure Time, and Arrival Time
+        if (isDateInPast || isDepartureTimePast || isArrivalTimeInvalid) {
+            setCurrentStep(1);
+            return;
+        }
+
+        // 2. Validate Students
+        if (data.student_ids.length === 0) {
+            setCurrentStep(3);
+            return;
+        }
+
+        // 3. Validate Teachers: do not forward request if no teachers selected
+        if (data.teacher_ids.length === 0) {
+            return;
+        }
+
         post(route('school.field-trips.store'), {
             onSuccess: () => {
                 onClose();
@@ -112,7 +171,12 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
         { id: 4, name: t('Faculty'), icon: '📋' },
     ];
 
-    const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 4));
+    const nextStep = () => {
+        if (currentStep === 1 && (!data.name || !data.date || isDateInPast || isDepartureTimePast || isArrivalTimeInvalid)) {
+            return;
+        }
+        setCurrentStep(prev => Math.min(prev + 1, 4));
+    };
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
     const toggleStudent = (id: number) => {
@@ -202,16 +266,49 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className={DS_labelCls}>{t('Date')}</label>
-                                    <input type="date" value={data.date} onChange={e => setData('date', e.target.value)} className={DS_inputCls} />
+                                    <input
+                                        type="date"
+                                        min={todayStr}
+                                        value={data.date}
+                                        onChange={e => setData('date', e.target.value)}
+                                        className={`${DS_inputCls} ${isDateInPast ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                                    />
+                                    {isDateInPast && (
+                                        <p className="text-red-500 text-[10px] mt-1 font-bold">
+                                            ⚠️ {isRTL ? 'لا يمكن إنشاء رحلة ميدانية بتاريخ سابق لليوم' : t('Date cannot be in the past')}
+                                        </p>
+                                    )}
+                                    {errors.date && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.date}</p>}
                                 </div>
                                 <div>
                                     <label className={DS_labelCls}>{t('Departure')}</label>
-                                    <input type="time" value={data.departure_time} onChange={e => setData('departure_time', e.target.value)} className={DS_inputCls} />
+                                    <input
+                                        type="time"
+                                        value={data.departure_time}
+                                        onChange={e => setData('departure_time', e.target.value)}
+                                        className={`${DS_inputCls} ${isDepartureTimePast ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                                    />
+                                    {isDepartureTimePast && (
+                                        <p className="text-red-500 text-[10px] mt-1 font-bold">
+                                            ⚠️ {isRTL ? 'وقت الانطلاق سابق للوقت الحالي' : t('Departure time cannot be in the past')}
+                                        </p>
+                                    )}
+                                    {errors.departure_time && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.departure_time}</p>}
                                 </div>
                                 <div>
                                     <label className={DS_labelCls}>{t('Arrival (Est.)')}</label>
-                                    <input type="time" value={data.arrival_time} onChange={e => setData('arrival_time', e.target.value)} className={DS_inputCls} />
-                                    {errors.arrival_time && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.arrival_time}</p>}
+                                    <input
+                                        type="time"
+                                        value={data.arrival_time}
+                                        onChange={e => setData('arrival_time', e.target.value)}
+                                        className={`${DS_inputCls} ${isArrivalTimeInvalid ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                                    />
+                                    {isArrivalTimeInvalid && (
+                                        <p className="text-red-500 text-[10px] mt-1 font-bold">
+                                            ⚠️ {isRTL ? 'يجب أن يكون وقت الوصول المتوقع بعد وقت الانطلاق' : t('Arrival time must be after departure time')}
+                                        </p>
+                                    )}
+                                    {errors.arrival_time && <p className="text-red-500 text-[10px] mt-1 font-bold">⚠️ {errors.arrival_time}</p>}
                                 </div>
                             </div>
                         </div>
@@ -334,25 +431,45 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Internal Teachers */}
                                 <div className="space-y-4">
-                                    <label className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-widest flex items-center gap-2">
-                                        🏛 {t('Internal Faculty')}
-                                    </label>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                                        {teachers.map(teacher => (
-                                            <div
-                                                key={teacher.id}
-                                                onClick={() => toggleTeacher(teacher.id)}
-                                                className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                                                    data.teacher_ids.includes(teacher.id)
-                                                    ? 'border-brand-navy bg-brand-navy/5 shadow-sm'
-                                                    : 'border-gray-50 dark:border-gray-800'
-                                                }`}
-                                            >
-                                                <span className="font-bold text-xs text-gray-700 dark:text-gray-200">{teacher.first_name_ar} {teacher.last_name_ar}</span>
-                                                {data.teacher_ids.includes(teacher.id) && <span className="text-brand-navy">✓</span>}
-                                            </div>
-                                        ))}
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[11px] font-black text-[#0f2044] dark:text-[#7ba7e8] uppercase tracking-widest flex items-center gap-2">
+                                            🏛 {t('Internal Faculty')}
+                                        </label>
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                            data.teacher_ids.length > 0
+                                                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                                                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                                        }`}>
+                                            {data.teacher_ids.length} {isRTL ? 'معلم محدد' : 'selected'}
+                                        </span>
                                     </div>
+                                    <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                                        {teachers.length === 0 ? (
+                                            <div className="p-4 border-2 border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/20 rounded-xl text-center">
+                                                <p className="text-xs font-bold text-gray-600 dark:text-gray-400">
+                                                    {isRTL ? 'لا يوجد معلمون مسجلون في المدرسة حالياً' : t('No teachers found for this school')}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            teachers.map(teacher => (
+                                                <div
+                                                    key={teacher.id}
+                                                    onClick={() => toggleTeacher(teacher.id)}
+                                                    className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                                                        data.teacher_ids.includes(teacher.id)
+                                                        ? 'border-brand-navy bg-brand-navy/5 shadow-sm'
+                                                        : 'border-gray-50 dark:border-gray-800'
+                                                    }`}
+                                                >
+                                                    <span className="font-bold text-xs text-gray-700 dark:text-gray-200">{teacher.first_name_ar} {teacher.last_name_ar}</span>
+                                                    {data.teacher_ids.includes(teacher.id) && <span className="text-brand-navy">✓</span>}
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                    {errors.teacher_ids && (
+                                        <p className="text-red-500 text-[10px] mt-1 font-bold">⚠️ {errors.teacher_ids}</p>
+                                    )}
                                 </div>
 
                                 {/* External Members */}
@@ -422,7 +539,7 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                             <button
                                 onClick={nextStep}
                                 disabled={
-                                    (currentStep === 1 && (!data.name || !data.date)) ||
+                                    (currentStep === 1 && (!data.name || !data.date || isDateInPast || isDepartureTimePast || isArrivalTimeInvalid)) ||
                                     (currentStep === 2 && (!data.destination_address)) ||
                                     (currentStep === 3 && data.student_ids.length === 0)
                                 }
@@ -431,7 +548,12 @@ export default function CreateFieldTripModal({ show, onClose, teachers = [], cla
                                 {t('Next Step')}
                             </button>
                         ) : (
-                            <button onClick={handleSubmit} disabled={processing} className={DS_submitBtn(processing)}>
+                            <button
+                                type="button"
+                                onClick={handleSubmit}
+                                disabled={processing || data.teacher_ids.length === 0}
+                                className={DS_submitBtn(processing) + " disabled:opacity-30 disabled:cursor-not-allowed"}
+                            >
                                 {processing ? t('Sending...') : t('Submit Request')}
                             </button>
                         )}
