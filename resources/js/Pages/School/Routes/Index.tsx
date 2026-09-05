@@ -395,6 +395,7 @@ export default function Index({ auth, routes }: IndexProps) {
                                         lng={Number(viewRoute.longitude)} 
                                         onChange={() => {}}
                                         readonly={true}
+                                        height="100%"
                                     />
                                 </div>
                             )}
@@ -469,10 +470,11 @@ export default function Index({ auth, routes }: IndexProps) {
                                 <MapPin className="text-emerald-500" size={16} />
                                 {t('Route Location')}
                             </h4>
-                            <div className="flex-1 rounded-[16px] sm:rounded-[24px] overflow-hidden border border-gray-200 dark:border-gray-700 shadow-inner bg-gray-100 dark:bg-gray-800 relative min-h-[200px] sm:min-h-[300px]">
+                            <div className="rounded-[16px] sm:rounded-[24px] overflow-hidden border border-gray-200 dark:border-gray-700 shadow-inner bg-gray-100 dark:bg-gray-800 relative h-[280px] sm:h-[340px]">
                                 <LocationPicker 
                                     lat={data.latitude} 
                                     lng={data.longitude} 
+                                    height="100%"
                                     onChange={(lat, lng) => {
                                         setData(prev => ({ ...prev, latitude: lat, longitude: lng }));
                                     }}

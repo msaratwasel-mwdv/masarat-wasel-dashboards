@@ -989,7 +989,12 @@ class DailyTripApiController extends Controller
         if (! $bus) {
             Log::info('myTrips: no bus found');
 
-            return response()->json(['message' => 'لا يوجد حافلة معينة لك.'], 404);
+            return response()->json([
+                'success' => true,
+                'has_bus' => false,
+                'message' => 'لم يتم إسناد حافلة لك بعد.',
+                'trips' => [],
+            ], 200);
         }
 
         Log::info('myTrips: found bus '.$bus->id);
