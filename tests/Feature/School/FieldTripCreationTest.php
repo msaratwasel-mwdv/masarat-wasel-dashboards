@@ -119,6 +119,8 @@ class FieldTripCreationTest extends TestCase
         $classroom = Classroom::factory()->create(['grade_id' => $grade->id]);
         $student = Student::factory()->enrolled($school, $classroom)->create();
 
+        $teacher = $this->createTeacher($school, $grade);
+
         $postData = [
             'name' => 'رحلة مع مرافق خارجي',
             'description' => 'وصف الرحلة الاستكشافية مع مرافقين',
@@ -128,6 +130,7 @@ class FieldTripCreationTest extends TestCase
             'destination_latitude' => 24.71,
             'destination_longitude' => 46.68,
             'student_ids' => [$student->id],
+            'teacher_ids' => [$teacher->id],
             'external_members' => [
                 [
                     'name' => 'خالد بن ناصر العتيبي',

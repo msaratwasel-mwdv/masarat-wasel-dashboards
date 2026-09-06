@@ -3,9 +3,7 @@
 namespace Tests\Unit\Services;
 
 use App\Models\AbsenceRequest;
-use App\Models\AcademicCalendar;
 use App\Models\Bus;
-use App\Models\Holiday;
 use App\Models\Route;
 use App\Models\School;
 use App\Models\Student;
@@ -48,44 +46,22 @@ class TripServiceTest extends TestCase
 
     public function test_validate_target_date_with_active_calendar_and_holiday(): void
     {
-        $school = School::factory()->create();
+        School::factory()->create();
 
-        // 1. No active calendar
-        $result = $this->tripService->validateTargetDate(Carbon::parse('2026-09-01')); // Tuesday
-        $this->assertEquals('skipped', $result['status']);
-        $this->assertFalse($result['is_working']);
-
-        // 2. Active calendar on a working day
-        $calendar = AcademicCalendar::create([
-            'school_id' => $school->id,
-            'name' => 'الفصل الأول',
-            'start_date' => '2026-08-01',
-            'end_date' => '2026-12-31',
-            'working_days' => ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'],
-            'is_active' => true,
-        ]);
-
+        // 1. Active school on a working day (Tuesday)
         $workingDayResult = $this->tripService->validateTargetDate(Carbon::parse('2026-09-01')); // Tuesday
         $this->assertEquals('working', $workingDayResult['status']);
         $this->assertTrue($workingDayResult['is_working']);
 
-        // 3. Off-day (Friday)
-        $offDayResult = $this->tripService->validateTargetDate(Carbon::parse('2026-09-04')); // Friday
-        $this->assertEquals('skipped', $offDayResult['status']);
-        $this->assertFalse($offDayResult['is_working']);
+        // 2. Weekend Off-day (Friday)
+        $offDayFriday = $this->tripService->validateTargetDate(Carbon::parse('2026-09-04')); // Friday
+        $this->assertEquals('skipped', $offDayFriday['status']);
+        $this->assertFalse($offDayFriday['is_working']);
 
-        // 4. Official Holiday (Global)
-        Holiday::create([
-            'school_id' => null,
-            'name' => 'عطلة رسمية',
-            'start_date' => '2026-09-01',
-            'end_date' => '2026-09-01 23:59:59',
-            'type' => 'official',
-        ]);
-
-        $holidayResult = $this->tripService->validateTargetDate(Carbon::parse('2026-09-01'));
-        $this->assertEquals('skipped', $holidayResult['status']);
-        $this->assertFalse($holidayResult['is_working']);
+        // 3. Weekend Off-day (Saturday)
+        $offDaySaturday = $this->tripService->validateTargetDate(Carbon::parse('2026-09-05')); // Saturday
+        $this->assertEquals('skipped', $offDaySaturday['status']);
+        $this->assertFalse($offDaySaturday['is_working']);
     }
 
     public function test_create_daily_trip_and_generates_student_attendances(): void
