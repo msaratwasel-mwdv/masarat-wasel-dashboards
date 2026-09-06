@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import useTranslation from '@/hooks/useTranslation';
 import { motion } from 'framer-motion';
@@ -102,10 +102,56 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
     const [isSelectOpen, setIsSelectOpen] = useState(false);
     const [selectSearch, setSelectSearch] = useState('');
 
+    // DOM Refs for Outside Click Detection
+    const panelRef = useRef<HTMLDivElement>(null);
+    const panelTriggerRef = useRef<HTMLButtonElement>(null);
+    const selectBusRef = useRef<HTMLDivElement>(null);
+    const busCardRef = useRef<HTMLDivElement>(null);
+
+    // Click Outside listener to close panel, bus dropdown, and selected bus card
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+            const target = event.target as Node;
+
+            // Close select bus dropdown if clicked outside
+            if (isSelectOpen && selectBusRef.current && !selectBusRef.current.contains(target)) {
+                setIsSelectOpen(false);
+            }
+
+            // Close main control panel if clicked outside panel and not on trigger button
+            if (
+                isPanelOpen &&
+                panelRef.current &&
+                !panelRef.current.contains(target) &&
+                panelTriggerRef.current &&
+                !panelTriggerRef.current.contains(target)
+            ) {
+                setIsPanelOpen(false);
+            }
+
+            // Close selected bus card if clicked outside
+            if (
+                selectedBus &&
+                busCardRef.current &&
+                !busCardRef.current.contains(target)
+            ) {
+                setSelectedBus(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [isPanelOpen, isSelectOpen, selectedBus]);
+
     const openControlPanel = () => {
         setLocalMapType(mapType);
         setLocalStatusFilter(statusFilter);
-        setIsPanelOpen(true);
+        setIsPanelOpen(prev => !prev);
         setIsSelectOpen(false); // Reset internal dropdown
     };
 
@@ -219,6 +265,11 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
                     }}
                     onLoad={onLoad}
                     onUnmount={onUnmount}
+                    onClick={() => {
+                        setIsPanelOpen(false);
+                        setIsSelectOpen(false);
+                        setSelectedBus(null);
+                    }}
                 >
                     {busesWithLocation.map(bus => {
                         const busLat = parseCoord(bus.current_latitude ?? bus.latitude);
@@ -245,6 +296,7 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
             {/* --- 1. SMART CONTROL BUTTON --- */}
             <div className={`absolute top-4 md:top-6 ${isRtl ? 'right-4 md:right-6' : 'left-4 md:left-6'} z-[50]`}>
                 <motion.button
+                    ref={panelTriggerRef}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={openControlPanel}
@@ -257,20 +309,12 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
                 </motion.button>
             </div>
 
-            {/* --- LEGEND --- */}
-            <div className={`absolute bottom-6 ${isRtl ? 'right-6' : 'left-6'} z-[40] hidden sm:block`}>
-                <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl px-5 py-3.5 rounded-[20px] border border-white/20 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
-                    <div className="flex items-center gap-4">
-                        <LegendItem dotColor="bg-emerald-500" label={t('active') || 'Active'} />
-                        <LegendItem dotColor="bg-amber-500" label={t('maintenance') || 'Maintenance'} />
-                        <LegendItem dotColor="bg-slate-400" label={t('inactive') || 'Inactive'} />
-                    </div>
-                </div>
-            </div>
+
 
             {/* --- 2. COMPACT FLOATING CONTROL PANEL (No AnimatePresence for extreme stability) --- */}
             {isPanelOpen && (
                 <motion.div
+                    ref={panelRef}
                     initial={{ y: -10, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     className={`absolute top-20 md:top-24 left-4 right-4 md:w-[320px] bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] rounded-[28px] border border-white/20 dark:border-white/10 z-[101] flex flex-col ${
@@ -311,18 +355,18 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
                             <select
                                 value={localStatusFilter}
                                 onChange={e => setLocalStatusFilter(e.target.value as any)}
-                                className="w-full px-4 py-3 rounded-[16px] bg-slate-50 dark:bg-white/5 border border-transparent text-xs font-bold appearance-none cursor-pointer text-slate-700 dark:text-white focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                                className="w-full px-4 py-3 rounded-[16px] bg-slate-100 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 text-xs font-bold appearance-none cursor-pointer text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-colors"
                             >
-                                <option value="all">{t('All Status') || 'All Status'}</option>
-                                <option value="active">{t('Active Only') || 'Active Only'}</option>
-                                <option value="maintenance">{t('Maintenance') || 'Maintenance'}</option>
-                                <option value="inactive">{t('Inactive') || 'Inactive'}</option>
+                                <option value="all" className="bg-white dark:bg-[#1e293b] text-slate-900 dark:text-white py-1">{t('All Status') || 'All Status'}</option>
+                                <option value="active" className="bg-white dark:bg-[#1e293b] text-slate-900 dark:text-white py-1">{t('Active Only') || 'Active Only'}</option>
+                                <option value="maintenance" className="bg-white dark:bg-[#1e293b] text-slate-900 dark:text-white py-1">{t('Maintenance') || 'Maintenance'}</option>
+                                <option value="inactive" className="bg-white dark:bg-[#1e293b] text-slate-900 dark:text-white py-1">{t('Inactive') || 'Inactive'}</option>
                             </select>
                             <ChevronDown className={`absolute ${isRtl ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none`} />
                         </div>
 
                         {/* Select Bus Search */}
-                        <div className="relative z-50">
+                        <div ref={selectBusRef} className="relative z-50">
                             <button 
                                 onClick={() => setIsSelectOpen(!isSelectOpen)}
                                 className="w-full px-4 py-3 rounded-[16px] bg-slate-50 dark:bg-white/5 border border-transparent flex justify-between items-center text-slate-700 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20 hover:bg-slate-100"
@@ -392,6 +436,7 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
             {/* --- 3. ULTRA COMPACT SELECTED BUS CARD --- */}
             {selectedBus && (
                 <motion.div 
+                    ref={busCardRef}
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     className={`absolute bottom-4 left-4 right-4 md:bottom-auto md:top-6 md:w-[280px] bg-white/95 backdrop-blur-3xl dark:bg-[#0f172a]/95 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 dark:border-white/10 z-[60] flex flex-col ${

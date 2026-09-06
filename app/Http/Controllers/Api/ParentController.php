@@ -427,7 +427,7 @@ class ParentController extends Controller
                     'present_days' => $presentCount,
                     'absent_days' => $absentCount,
                 ],
-                'logs' => $logs,
+                'logs' => (object) $logs,
             ],
         ]);
     }

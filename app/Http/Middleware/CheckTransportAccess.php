@@ -27,6 +27,10 @@ class CheckTransportAccess
                 return $next($request);
             }
 
+            if ($request->is('api/driver/my-trips')) {
+                return $next($request);
+            }
+
             return $this->errorResponse($request, 'School not found.', 403);
         }
 
