@@ -14,7 +14,8 @@ import {
     Navigation,
     Route as RouteIcon,
     AlertCircle,
-    Printer
+    Printer,
+    Video
 } from 'lucide-react';
 import PrintReportHeader from '@/Components/PrintReportHeader';
 import {
@@ -51,6 +52,8 @@ interface Trip {
     trip_date: string;
     attendances_count: number;
     bus: Bus;
+    video_path?: string | null;
+    video_check?: boolean;
 }
 
 interface FieldTrip {
@@ -415,10 +418,18 @@ export default function TripDashboard({ auth, dailyTrips, fieldTrips, routes, fi
                                                         </div>
                                                     </td>
                                                     <td className={DS_tableTd}>
-                                                        <span className={`${DS_badge(trip.status === 'finished')} ${trip.status === 'in_progress' ? '!bg-blue-50 !text-blue-600 dark:!bg-blue-900/30 dark:!text-blue-400 !border-blue-100 dark:!border-blue-800' : ''}`}>
-                                                            {trip.status === 'in_progress' && <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse ml-1.5 rtl:mr-1.5 rtl:ml-0" />}
-                                                            {translateStatus(trip.status)}
-                                                        </span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`${DS_badge(trip.status === 'finished')} ${trip.status === 'in_progress' ? '!bg-blue-50 !text-blue-600 dark:!bg-blue-900/30 dark:!text-blue-400 !border-blue-100 dark:!border-blue-800' : ''}`}>
+                                                                {trip.status === 'in_progress' && <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse ml-1.5 rtl:mr-1.5 rtl:ml-0" />}
+                                                                {translateStatus(trip.status)}
+                                                            </span>
+                                                            {trip.video_path && (
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40 text-[9px] font-black" title={isRtl ? "فيديو التوثيق متوفر" : "Verification Video available"}>
+                                                                    <Video className="w-3 h-3" />
+                                                                    <span>{isRtl ? "موثقة" : "Verified"}</span>
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td className={`${DS_tableTd} ${isRtl ? 'text-left' : 'text-right'}`}>
                                                         <button className="p-2 rounded-[10px] bg-[#0f2044]/5 text-gray-400 hover:text-[#0f2044] hover:bg-[#0f2044]/10 dark:bg-[#0f2044]/30 dark:hover:bg-[#0f2044]/50 dark:hover:text-white transition-all">

@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import SchoolAuthenticatedLayout from '@/Layouts/SchoolAuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import useTranslation from '@/hooks/useTranslation';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { motion } from 'framer-motion';
+import Modal from '@/Components/Modal';
 import { 
     Bus as BusIcon, 
     User, 
@@ -16,7 +17,11 @@ import {
     Shield,
     Home,
     School as SchoolIcon,
-    ArrowRight
+    ArrowRight,
+    Video,
+    X,
+    ShieldCheck,
+    AlertCircle
 } from 'lucide-react';
 
 interface Attendance {
@@ -38,6 +43,8 @@ interface Trip {
     type: string;
     status: 'pending' | 'in_progress' | 'finished';
     trip_date: string;
+    video_path?: string | null;
+    video_check?: boolean;
     bus: {
         id: number;
         bus_number: string;
@@ -61,6 +68,7 @@ interface Props {
 export default function TripDetails({ auth, trip }: Props) {
     const { t } = useTranslation();
     const { isRTL } = useTheme();
+    const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
     const getStatusStyle = (status: string) => {
         switch (status) {
@@ -101,21 +109,38 @@ export default function TripDetails({ auth, trip }: Props) {
         <SchoolAuthenticatedLayout
             user={auth.user}
             header={
-                <div className="flex items-center gap-4">
-                    <Link 
-                        href={route('school.trips.dashboard')}
-                        className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-indigo-600 transition-all"
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                    </Link>
-                    <div>
-                        <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-                            {t('Trip Details')}
-                        </h2>
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                            {trip.type === 'forth' ? t('Morning Shift') : t('Afternoon Shift')} • {trip.trip_date}
-                        </span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <Link 
+                            href={route('school.trips.dashboard')}
+                            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-indigo-600 transition-all"
+                        >
+                            <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
+                        </Link>
+                        <div>
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+                                {t('Trip Details')}
+                            </h2>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                {trip.type === 'forth' ? t('Morning Shift') : t('Afternoon Shift')} • {trip.trip_date}
+                            </span>
+                        </div>
                     </div>
+
+                    {trip.video_path ? (
+                        <button
+                            onClick={() => setIsVideoModalOpen(true)}
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-black shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+                        >
+                            <Video className="w-4 h-4" />
+                            <span>{isRTL ? 'مشاهدة فيديو التوثيق' : 'Watch Verification Video'}</span>
+                        </button>
+                    ) : trip.status === 'finished' ? (
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-2xl text-xs font-bold">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>{isRTL ? 'لا يوجد فيديو توثيق' : 'No Video Uploaded'}</span>
+                        </div>
+                    ) : null}
                 </div>
             }
         >
@@ -140,6 +165,15 @@ export default function TripDetails({ auth, trip }: Props) {
                                 <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-black text-slate-500 uppercase">
                                     {t('ID')}: #{trip.id}
                                 </span>
+                                {trip.video_path && (
+                                    <button
+                                        onClick={() => setIsVideoModalOpen(true)}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider transition-all"
+                                    >
+                                        <Video className="w-3 h-3" />
+                                        <span>{isRTL ? 'فيديو التوثيق' : 'Verification Video'}</span>
+                                    </button>
+                                )}
                             </div>
                             <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-1">
                                 {trip.route?.name || t('Custom Route')}
@@ -330,6 +364,60 @@ export default function TripDetails({ auth, trip }: Props) {
                     </motion.div>
                 </div>
             </div>
+
+            {/* Video Verification Modal */}
+            <Modal show={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} maxWidth="2xl">
+                <div className="flex flex-col max-h-[85vh] overflow-hidden bg-white dark:bg-[#0F172A] rounded-3xl">
+                    <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-2.5 font-black text-slate-900 dark:text-white uppercase tracking-wider text-sm">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                                <Video className="w-4 h-4" />
+                            </div>
+                            <span>{isRTL ? 'فيديو توثيق خلو الحافلة' : 'Trip Verification Video'}</span>
+                        </div>
+                        <button 
+                            onClick={() => setIsVideoModalOpen(false)} 
+                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                    
+                    <div className="aspect-video bg-black flex items-center justify-center relative">
+                        {trip.video_path ? (
+                            <video
+                                src={`/storage/${trip.video_path}`}
+                                controls
+                                autoPlay
+                                className="w-full h-full object-contain"
+                            />
+                        ) : (
+                            <div className="text-white flex flex-col items-center gap-3">
+                                <Video className="w-12 h-12 opacity-40 animate-pulse" />
+                                <span className="opacity-60 text-sm font-bold">{isRTL ? 'جاري التحميل...' : 'Loading video...'}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-5 bg-emerald-50/70 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-900/40">
+                        <div className="flex items-start gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+                                <ShieldCheck className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h4 className="font-black text-sm text-emerald-900 dark:text-emerald-200 mb-1">
+                                    {isRTL ? 'توثيق أمني معتمد' : 'Verified Security Check'}
+                                </h4>
+                                <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 leading-relaxed">
+                                    {isRTL 
+                                        ? 'تم تسجيل هذا الفيديو من قِبل السائق عند نهاية الرحلة للتأكد من خلو الحافلة تماماً ومسح كافة المقاعد لسلامة الطلاب.'
+                                        : 'This video was recorded by the driver at the end of the trip to ensure the bus is completely empty and all seats have been checked.'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
         </SchoolAuthenticatedLayout>
     );
 }
