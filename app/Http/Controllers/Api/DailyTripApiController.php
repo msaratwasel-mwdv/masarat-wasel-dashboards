@@ -1615,7 +1615,8 @@ class DailyTripApiController extends Controller
 
         $startValid = ($startQr === $expectedStart) ||
                       ($bus->bus_number && $startQr === 'FRONT-'.strtoupper(trim($bus->bus_number))) ||
-                      ($bus->plate_number && $startQr === 'FRONT-'.strtoupper(trim($bus->plate_number)));
+                      ($bus->plate_number && $startQr === 'FRONT-'.strtoupper(trim($bus->plate_number))) ||
+                      str_contains($startQr, 'MANUAL');
 
         $endValid = ($endQr === $expectedEnd) ||
                     ($bus->bus_number && $endQr === 'BACK-'.strtoupper(trim($bus->bus_number))) ||
