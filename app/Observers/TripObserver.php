@@ -196,6 +196,10 @@ class TripObserver
 
     protected function broadcastUpdate(): void
     {
-        broadcast(new DashboardStatsUpdated('trips', ['admin.dashboard']));
+        try {
+            broadcast(new DashboardStatsUpdated('trips', ['admin.dashboard']));
+        } catch (\Throwable $e) {
+            \Log::warning('DashboardStatsUpdated broadcast failed: '.$e->getMessage());
+        }
     }
 }

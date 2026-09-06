@@ -167,6 +167,10 @@ class TripAttendanceObserver
 
     protected function broadcastUpdate(): void
     {
-        broadcast(new DashboardStatsUpdated('attendance', ['admin.dashboard']));
+        try {
+            broadcast(new DashboardStatsUpdated('attendance', ['admin.dashboard']));
+        } catch (\Throwable $e) {
+            \Log::warning('DashboardStatsUpdated broadcast failed: '.$e->getMessage());
+        }
     }
 }

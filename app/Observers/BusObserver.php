@@ -31,6 +31,10 @@ class BusObserver
         $monthKey = now()->format('Y-m');
         Cache::forget("analytics:kpis:{$monthKey}");
 
-        broadcast(new DashboardStatsUpdated('buses', ['admin.dashboard']));
+        try {
+            broadcast(new DashboardStatsUpdated('buses', ['admin.dashboard']));
+        } catch (\Throwable $e) {
+            \Log::warning('DashboardStatsUpdated broadcast failed: '.$e->getMessage());
+        }
     }
 }

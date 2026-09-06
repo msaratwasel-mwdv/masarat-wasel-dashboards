@@ -7,8 +7,6 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 
-Schedule::command('trips:create-daily')->dailyAt('22:00')->timezone('Asia/Riyadh');
-
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
@@ -16,8 +14,11 @@ Artisan::command('inspire', function () {
 Schedule::command('model:prune')->daily();
 Schedule::command('telescope:prune --hours=24')->daily();
 
-// Auto-create daily (forth & back) trips for all buses with routes at 01:00 AM each day
-Schedule::command('trips:create-daily')->dailyAt('01:00');
+// Auto-create daily (forth & back) trips for all buses with routes at 02:00 AM Oman time (Asia/Muscat)
+Schedule::command('trips:create-daily')->dailyAt('02:00')->timezone('Asia/Muscat');
+
+// 🧪 سطر تجريبي مؤقت للاختبار على الاستضافة: ينفذ الساعة 01:15 فجراً (و 01:20 كاحتياط لو تأخر الـ Deploy) بتوقيت عمان
+Schedule::command('trips:create-daily')->cron('15,20 1 * * *')->timezone('Asia/Muscat');
 
 // Cleanup trip verification videos older than 30 days
 Schedule::command('trips:cleanup-videos')->dailyAt('03:00');
