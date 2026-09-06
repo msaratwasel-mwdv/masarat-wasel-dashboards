@@ -1,86 +1,40 @@
-import { useState, useMemo } from "react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
-import { Head, Link, router } from "@inertiajs/react";
+import { Head, Link } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
+import { useEffect, useState } from "react";
+import { router } from "@inertiajs/react";
 import { useEchoEvent } from "@/hooks/useEcho";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-    Bus,
-    Users,
-    Route as RouteIcon,
-    ShieldCheck,
-    CheckCircle2,
-    Radio,
-    Bell,
-    Activity,
-    ArrowUpRight,
-    ArrowRight,
-    Layers,
-    Sparkles,
-    UserCheck,
+  GraduationCap, Bus, Users, Route as RouteIcon,
+  Activity, TrendingUp, Calendar, Rocket,
+  UserSquare2, ArrowUpRight, CheckCircle2, BookOpen,
+  ClipboardList, MapPin, Zap, Clock, ShieldCheck,
+    ChevronRight, ArrowRight, Bell, CheckCheck,
+    AlertTriangle, Users2, TrendingDown, LayoutDashboard
 } from "lucide-react";
 import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip as RechartsTooltip,
-    ResponsiveContainer,
-    Legend,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip as RechartsTooltip, ResponsiveContainer,
+    PieChart, Pie, Cell, BarChart, Bar, Legend
 } from "recharts";
-
-interface FleetBus {
-    id: number;
-    bus_number: string;
-    plate_number: string;
-    model: string | null;
-    capacity: number;
-    status: string;
-    assigned_students_count: number;
-    occupancy_rate: number;
-    route: {
-        id: number;
-        name: string;
-        code: string | null;
-        distance_km: string | number | null;
-    } | null;
-    driver: {
-        name: string;
-        phone: string | null;
-    } | null;
-    assistant: {
-        name: string;
-        phone: string | null;
-    } | null;
-}
-
-interface StudentItem {
-    id: number;
-    name: string;
-    national_id: string | null;
-    classroom: string;
-    is_assigned: boolean;
-    bus_number: string;
-    plate_number: string;
-    guardian_name: string;
-    guardian_phone: string;
-}
+import {
+    DS_pageWrapper,
+} from "@/lib/DS";
 
 interface DashboardProps {
-    auth: any;
-    school?: {
-        id: number;
-        name: string;
-        code?: string;
-    } | null;
-    fleet?: FleetBus[];
-    studentPulse?: {
-        total_enrolled: number;
-        assigned_to_transport: number;
-        unassigned_students: number;
-        manifest: StudentItem[];
+  auth: any;
+  stats: {
+    students: number;
+    classes: number;
+    buses: number;
+    active_buses: number;
+    routes: number;
+      teachers: number;
+    attendance_percentage: number;
+    attendance_today_count: number;
     };
-    transport?: {
+    transport: {
         completed_trips_today: number;
         total_trips_today: number;
         students_transported_today: number;
@@ -88,964 +42,459 @@ interface DashboardProps {
         active_buses: number;
         total_buses: number;
         delays_this_month: number;
+        completed_field_trips: number;
         active_trips_now: number;
         delayed_buses_now: number;
         distance_today: number;
         zero_incident_days: number;
-    };
-    attendanceTrend?: Array<{
-        date: string;
-        day_ar?: string;
-        day_en?: string;
-        present: number;
-        absent: number;
-        total: number;
-    }>;
-    recentActivities?: Array<{
-        id: number;
-        type: string;
-        title?: string;
-        title_ar?: string;
-        title_en?: string;
-        description?: string;
-        description_ar: string;
-        description_en: string;
-        time?: string;
-        time_ar?: string;
-        time_en?: string;
-        status: string;
-    }>;
+  };
+  attendanceTrend: Array<{ date: string; present: number; absent: number; total: number }>;
+    studentsByBus: Array<{ name: string; value: number }>;
+  recentActivities: Array<{
+    id: number;
+    type: string;
+    title: string;
+    description_ar: string;
+    description_en: string;
+    time: string;
+    status: string;
+  }>;
+  upcomingHolidays: Array<{
+    id: number;
+    name: string;
+    start_date: string;
+    end_date: string;
+    type: string;
+    notes?: string;
+  }>;
+  system_status: string;
 }
 
 export default function SchoolDashboard({
-    auth,
-    school,
-    fleet = [],
-    studentPulse,
+  auth,
+  stats,
     transport,
-    attendanceTrend = [],
-    recentActivities = [],
+  attendanceTrend = [],
+    studentsByBus = [],
+  recentActivities = [],
+    upcomingHolidays = [],
 }: DashboardProps) {
-    const { theme, isRTL: isRtl } = useTheme();
-    const isDark = theme === "dark";
+  const { isRTL: isRtl } = useTheme();
 
-    // Period switcher for Attendance Volume (Week / Month)
-    const [barPeriod, setBarPeriod] = useState<"weekly" | "monthly">("weekly");
-
-    // Real-time echo updates
-    useEchoEvent(
-        "private",
-        `App.Models.User.${auth.user.id}`,
-        ".notification.pushed",
-        () => {
-            router.reload({
-                only: [
-                    "fleet",
-                    "studentPulse",
-                    "recentActivities",
-                    "transport",
-                    "attendanceTrend",
-                ],
-            });
-        },
-    );
-
-    // 1. Attendance Volume Bar Chart Data (Week / Month)
-    const barChartData = useMemo(() => {
-        if (barPeriod === "monthly") {
-            const currentPresent = attendanceTrend.reduce(
-                (acc, d) => acc + d.present,
-                0,
-            );
-            const currentAbsent = attendanceTrend.reduce(
-                (acc, d) => acc + d.absent,
-                0,
-            );
-            return [
-                { label: isRtl ? "أسبوع 1" : "Week 1", present: 0, absent: 0 },
-                { label: isRtl ? "أسبوع 2" : "Week 2", present: 0, absent: 0 },
-                { label: isRtl ? "أسبوع 3" : "Week 3", present: 0, absent: 0 },
-                {
-                    label: isRtl ? "أسبوع 4" : "Week 4",
-                    present: currentPresent,
-                    absent: currentAbsent,
-                },
-            ];
-        }
-
-        const arabicToEnglishDays: Record<string, string> = {
-            السبت: "Sat",
-            سبت: "Sat",
-            الأحد: "Sun",
-            أحد: "Sun",
-            الإثنين: "Mon",
-            الاثنين: "Mon",
-            إثنين: "Mon",
-            اثنين: "Mon",
-            الثلاثاء: "Tue",
-            ثلاثاء: "Tue",
-            الأربعاء: "Wed",
-            الاربعاء: "Wed",
-            أربعاء: "Wed",
-            اربعاء: "Wed",
-            الخميس: "Thu",
-            خميس: "Thu",
-            الجمعة: "Fri",
-            جمعة: "Fri",
-        };
-
-        const englishToArabicDays: Record<string, string> = {
-            Sat: "السبت",
-            Saturday: "السبت",
-            Sun: "الأحد",
-            Sunday: "الأحد",
-            Mon: "الإثنين",
-            Monday: "الإثنين",
-            Tue: "الثلاثاء",
-            Tuesday: "الثلاثاء",
-            Wed: "الأربعاء",
-            Wednesday: "الأربعاء",
-            Thu: "الخميس",
-            Thursday: "الخميس",
-            Fri: "الجمعة",
-            Friday: "الجمعة",
-        };
-
-        // Weekly View (Real data from DB)
-        if (attendanceTrend.length > 0) {
-            return attendanceTrend.map((d) => {
-                let label = d.date;
-                if (isRtl) {
-                    if (d.day_ar) {
-                        label = d.day_ar;
-                    } else if (englishToArabicDays[d.date]) {
-                        label = englishToArabicDays[d.date];
-                    } else if (/^\d{4}-\d{2}-\d{2}/.test(d.date)) {
-                        try {
-                            label = new Intl.DateTimeFormat("ar-SA", {
-                                weekday: "short",
-                            }).format(new Date(d.date));
-                        } catch {
-                            label = d.date;
-                        }
-                    }
-                } else {
-                    if (d.day_en) {
-                        label = d.day_en;
-                    } else if (arabicToEnglishDays[d.date]) {
-                        label = arabicToEnglishDays[d.date];
-                    } else if (/^\d{4}-\d{2}-\d{2}/.test(d.date)) {
-                        try {
-                            label = new Intl.DateTimeFormat("en-US", {
-                                weekday: "short",
-                            }).format(new Date(d.date));
-                        } catch {
-                            label = d.date;
-                        }
-                    }
-                }
-
-                return {
-                    label,
-                    present: d.present,
-                    absent: d.absent,
-                    total: d.total,
-                };
-            });
-        }
-
-        const days = isRtl
-            ? [
-                  "السبت",
-                  "الأحد",
-                  "الإثنين",
-                  "الثلاثاء",
-                  "الأربعاء",
-                  "الخميس",
-                  "الجمعة",
-              ]
-            : ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
-        return days.map((day) => ({
-            label: day,
-            present: 0,
-            absent: 0,
-            total: 0,
-        }));
-    }, [barPeriod, attendanceTrend, isRtl]);
-
-    // 2. Fleet Seating Capacity & Load Utilization Data
-    const fleetCapacityData = useMemo(() => {
-        if (fleet.length > 0) {
-            return fleet.map((b) => {
-                const allocated = b.assigned_students_count || 0;
-                const capacity = b.capacity || 20;
-                const available = Math.max(0, capacity - allocated);
-                const name = b.bus_number;
-                return {
-                    name,
-                    bus_number: b.bus_number,
-                    plate_number: b.plate_number,
-                    route_name:
-                        b.route?.name || (isRtl ? "المسار 1" : "Route 1"),
-                    allocated,
-                    available,
-                    capacity,
-                    occupancy_rate:
-                        b.occupancy_rate ||
-                        (capacity > 0
-                            ? Math.round((allocated / capacity) * 100)
-                            : 0),
-                };
-            });
-        }
-
-        return [
-            {
-                name: "B-100",
-                bus_number: "B-100",
-                plate_number: "ABC-7021",
-                route_name: isRtl ? "المسار رقم 1" : "Route 1",
-                allocated: 2,
-                available: 18,
-                capacity: 20,
-                occupancy_rate: 10,
-            },
-        ];
-    }, [fleet, isRtl]);
-
-    const totalCapacityStats = useMemo(() => {
-        const totalCap = fleetCapacityData.reduce(
-            (acc, b) => acc + b.capacity,
-            0,
-        );
-        const totalAlloc = fleetCapacityData.reduce(
-            (acc, b) => acc + b.allocated,
-            0,
-        );
-        const totalAvail = Math.max(0, totalCap - totalAlloc);
-        const avgRate =
-            totalCap > 0 ? Math.round((totalAlloc / totalCap) * 100) : 0;
-        return { totalCap, totalAlloc, totalAvail, avgRate };
-    }, [fleetCapacityData]);
-
-    // 100% REAL Student Manifest from database (take 5)
-    const realStudents = useMemo(() => {
-        return (studentPulse?.manifest || []).slice(0, 5);
-    }, [studentPulse]);
-
-    // 100% REAL Activities from database
-    const realActivities = useMemo(() => {
-        return recentActivities.slice(0, 4);
-    }, [recentActivities]);
-
-    const schoolTitle =
-        school?.name || (isRtl ? "إدارة المدرسة" : "School Management");
-
-    // Custom Tooltip for Attendance Volume (sleek, zero clipping, no gray block)
-    const CustomAttendanceTooltip = ({ active, payload, label }: any) => {
-        if (!active || !payload || !payload.length) return null;
-        const presentVal =
-            payload.find((p: any) => p.dataKey === "present")?.value ?? 0;
-        const absentVal =
-            payload.find((p: any) => p.dataKey === "absent")?.value ?? 0;
-        const totalVal = presentVal + absentVal;
-        const rate =
-            totalVal > 0 ? Math.round((presentVal / totalVal) * 100) : 100;
-
-        return (
-            <div className="bg-[#0B1120]/95 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-2xl p-3 text-xs text-white min-w-[160px] pointer-events-none">
-                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-700/60 font-mono">
-                    <span className="font-bold text-slate-200 text-[11px]">
-                        {label}
-                    </span>
-                    <span className="text-[10px] font-sans font-medium px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/25">
-                        {isRtl ? "سجل الحضور" : "Attendance"}
-                    </span>
-                </div>
-                <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-slate-300 text-[11px]">
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-blue-500 shadow-xs shadow-blue-500/50" />
-                            <span>{isRtl ? "حاضر" : "Present"}</span>
-                        </div>
-                        <span className="font-bold font-mono text-white text-xs">
-                            {presentVal}
-                        </span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-300 text-[11px]">
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-red-500 shadow-xs shadow-red-500/50" />
-                            <span>{isRtl ? "غائب" : "Absent"}</span>
-                        </div>
-                        <span className="font-bold font-mono text-white text-xs">
-                            {absentVal}
-                        </span>
-                    </div>
-                    {totalVal > 0 && (
-                        <div className="pt-1.5 mt-1 border-t border-slate-700/60 flex items-center justify-between text-[10px] text-slate-400">
-                            <span>
-                                {isRtl ? "نسبة الحضور" : "Attendance Rate"}
-                            </span>
-                            <span className="font-bold font-mono text-emerald-400 text-xs">
-                                {rate}%
-                            </span>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
+  // Real-time updates for dashboard stats
+  useEchoEvent(
+    'private',
+    `App.Models.User.${auth.user.id}`,
+    '.notification.pushed',
+    (e: any) => {
+        router.reload({ only: ['stats', 'transport', 'recentActivities'] });
+    }
+  );
+  
+  const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { duration: 0.6, staggerChildren: 0.1 } },
     };
 
-    // Custom Tooltip for Fleet Capacity & Load Utilization (with utilization progress bar)
-    const CustomCapacityTooltip = ({ active, payload }: any) => {
-        if (!active || !payload || !payload.length) return null;
-        const data = payload[0]?.payload;
-        if (!data) return null;
-        return (
-            <div className="bg-[#0B1120]/95 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-2xl p-3 text-xs text-white min-w-[195px] pointer-events-none">
-                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-700/60">
-                    <div className="flex items-center gap-1.5">
-                        <Bus className="w-3.5 h-3.5 text-blue-400" />
-                        <span className="font-mono text-blue-400 font-bold text-xs">
-                            {data.bus_number}
+    const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+      visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+  };
+
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000); 
+    return () => clearInterval(timer);
+  }, []);
+
+  const hour = currentTime.getHours();
+  const greeting = hour < 12 
+    ? (isRtl ? 'صباح الخير' : 'Good Morning') 
+    : (isRtl ? 'مساء الخير' : 'Good Evening');
+
+  return (
+    <SchoolDashboardLayout
+        user={auth.user}
+        header={
+            <div className="flex items-center gap-3">
+                
+                <h2 className="text-2xl font-black text-[#0f2044] dark:text-white tracking-tight">
+                    {(isRtl ? 'اللوحة الرئيسية' : 'Command Center')}
+                </h2>
+            </div>
+        }
+    >
+      <Head title={isRtl ? "لوحة التحكم" : "Dashboard"} />
+
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+              className="space-y-8"
+      >
+              {/* World-Class Hero Section */}
+              <motion.div variants={itemVariants} className="relative p-6 md:p-10 rounded-[32px] bg-[#0f2044] overflow-hidden shadow-2xl border border-white/10">
+                  {/* Animated Glow Effects */}
+                  <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[150%] bg-gradient-to-b from-[#f5b800]/20 to-transparent rounded-full blur-[120px] pointer-events-none" />
+                  <div className="absolute bottom-[-20%] left-[-10%] w-[40%] h-[120%] bg-gradient-to-t from-sky-500/20 to-transparent rounded-full blur-[100px] pointer-events-none" />
+            
+                  <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+                <div className={isRtl ? "text-right" : "text-left"}>
+
+                          <h1 className="text-3xl md:text-5xl font-black text-white leading-tight mb-3 tracking-tight">
+                              {greeting}، <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#f5b800] to-yellow-200">
+                            {isRtl 
+                                      ? `${auth.user.first_name_ar || auth.user.name}`.trim()
+                                      : `${auth.user.first_name_en || auth.user.name}`.trim()
+                            }
                         </span>
-                    </div>
-                    <span className="text-[10px] text-slate-300 font-medium px-2 py-0.5 rounded bg-slate-800 border border-slate-700/80">
-                        {data.route_name}
-                    </span>
+                    </h1>
+                          <p className="text-blue-100/70 text-base font-medium max-w-xl leading-relaxed">
+                              {isRtl ? 'إليك نظرة شاملة وفورية لجميع عمليات النقل المدرسي ومؤشرات الأداء لهذا اليوم.' : 'Here is a comprehensive, real-time overview of all school transport operations and KPIs for today.'}
+                          </p>
                 </div>
-                <div className="space-y-1.5 text-[11px]">
-                    <div className="flex items-center justify-between text-slate-300">
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-blue-500 shadow-xs shadow-blue-500/50" />
-                            <span>
-                                {isRtl ? "المقاعد المشغولة" : "Allocated Seats"}
-                            </span>
-                        </div>
-                        <span className="font-bold font-mono text-white text-xs">
-                            {data.allocated}
-                        </span>
+                
+                      <div className="flex flex-col items-center justify-center p-6 rounded-[24px] bg-white/5 border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] min-w-[260px]">
+                          <div className="flex items-center gap-3 mb-3">
+                              <Calendar className="w-5 h-5 text-[#f5b800]" />
+                              <span className="text-white text-sm font-bold tracking-wide">{currentTime.toLocaleDateString(isRtl ? 'ar-SA' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-300">
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-slate-500 shadow-xs shadow-slate-500/50" />
-                            <span>
-                                {isRtl ? "المقاعد الشاغرة" : "Free / Available"}
-                            </span>
-                        </div>
-                        <span className="font-bold font-mono text-slate-300 text-xs">
-                            {data.available}
-                        </span>
-                    </div>
-                    <div className="pt-2 mt-1.5 border-t border-slate-700/60 space-y-1">
-                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-200">
-                            <span className="text-[10px] text-slate-400">
-                                {isRtl
-                                    ? "نسبة إشغال الحافلة"
-                                    : "Load Utilization"}
-                                :
-                            </span>
-                            <span className="text-emerald-400 font-mono text-xs">
-                                {data.occupancy_rate}%
-                            </span>
-                        </div>
-                        <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                            <div
-                                className={`h-full rounded-full transition-all duration-300 ${
-                                    data.occupancy_rate > 90
-                                        ? "bg-red-500"
-                                        : data.occupancy_rate > 75
-                                          ? "bg-amber-500"
-                                          : "bg-blue-500"
-                                }`}
-                                style={{
-                                    width: `${Math.min(100, data.occupancy_rate)}%`,
-                                }}
-                            />
-                        </div>
+                    <div className="text-center">
+                              <div className="text-4xl font-black text-white tracking-widest tabular-nums">
+                            {currentTime.toLocaleTimeString(isRtl ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </div>
                     </div>
                 </div>
             </div>
-        );
-    };
+              </motion.div>
 
-    return (
-        <SchoolAuthenticatedLayout user={auth.user} isLiveTracking={true}>
-            <Head title={isRtl ? "لوحة العمليات" : "Dashboard"} />
+              {/* Stakeholder Priority Metrics */}
+              <motion.div variants={itemVariants}>
+                  <div className="flex items-center gap-3 mb-5">
+                      <div className="p-2.5 bg-gradient-to-br from-[#f5b800] to-yellow-600 rounded-xl shadow-lg shadow-[#f5b800]/20">
+                          <Rocket className="w-5 h-5 text-white" />
+                      </div>
+                      <h3 className="font-black text-xl text-[#0f2044] dark:text-white tracking-tight">
+                          {isRtl ? 'مؤشرات الأداء الرئيسية' : 'Key Performance Indicators'}
+                      </h3>
+                  </div>
 
-            {/* ── 100vh Rigid Cockpit (No Scroll, App Brand Colors) ── */}
-            <div className="w-full h-full flex flex-col justify-between p-3 md:p-4 bg-slate-50 dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 overflow-hidden select-none">
-                {/* ── Row 1: 4 Metric Cards (Clean Slate, Distinct Color Accents) ── */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-shrink-0">
-                    {/* Card 1: Total Enrolled Students (Blue Accent) */}
-                    <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between shadow-xs transition-all">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                {isRtl ? "إجمالي الطلاب" : "Total Students"}
-                            </span>
-                        </div>
-                        <div className="text-xl md:text-2xl font-black text-slate-900 dark:text-white font-mono mt-1.5">
-                            {studentPulse?.total_enrolled ?? 0}
-                        </div>
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Distance Card */}
+                      <div className="group relative p-8 rounded-[32px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 overflow-hidden">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-[#0f2044]/5 dark:bg-[#f5b800]/10 rounded-bl-full transition-transform duration-700 group-hover:scale-110" />
+                          <div className="relative z-10">
+                              <div className="w-14 h-14 rounded-2xl bg-[#0f2044]/5 dark:bg-white/5 flex items-center justify-center mb-6 group-hover:bg-[#0f2044] group-hover:text-white dark:group-hover:bg-[#f5b800] dark:group-hover:text-[#0f2044] transition-colors duration-500 text-[#0f2044] dark:text-[#f5b800]">
+                                  <RouteIcon className="w-7 h-7" />
+                              </div>
+                              <p className="text-[13px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">
+                                  {isRtl ? 'المسافات المقطوعة' : 'Distance Covered'}
+                              </p>
+                              <h4 className="text-5xl font-black text-[#0f2044] dark:text-white flex items-baseline gap-2">
+                                  {Number(transport.distance_today).toFixed(1).replace(/\.0$/, '')} <span className="text-lg font-bold text-gray-400">{isRtl ? 'كم' : 'KM'}</span>
+                              </h4>
+                          </div>
+                      </div>
 
-                    {/* Card 2: Active Buses / Fleet Units (Emerald Accent) */}
-                    <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between shadow-xs transition-all">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                {isRtl ? " الحافلات" : "Active Fleet"}
-                            </span>
-                        </div>
-                        <div className="text-xl md:text-2xl font-black text-slate-900 dark:text-white font-mono mt-1.5">
-                            {fleet.length}
-                        </div>
-                    </div>
+                      {/* Trips Card */}
+                      <div className="group relative p-8 rounded-[32px] bg-gradient-to-br from-[#0f2044] to-[#162d60] border border-white/10 shadow-xl shadow-[#0f2044]/20 hover:-translate-y-1 transition-all duration-500 overflow-hidden">
+                          <div className="absolute -right-10 -top-10 w-40 h-40 bg-[#f5b800]/20 rounded-full blur-3xl" />
+                          <div className="relative z-10">
+                              <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mb-6 text-[#f5b800]">
+                                  <CheckCheck className="w-7 h-7" />
+                              </div>
+                              <p className="text-[13px] font-bold text-blue-200/70 uppercase tracking-widest mb-2">
+                                  {isRtl ? 'الرحلات المنجزة اليوم' : 'Trips Completed Today'}
+                              </p>
+                              <div className="flex items-baseline gap-3">
+                                  <h4 className="text-5xl font-black text-white">
+                                      {transport.completed_trips_today}
+                                  </h4>
+                                  <span className="text-xl font-bold text-blue-200/50">/ {transport.total_trips_today}</span>
+                              </div>
+                              <div className="mt-4 w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                                  <motion.div
+                                      initial={{ width: 0 }}
+                                      animate={{ width: transport.total_trips_today > 0 ? `${(transport.completed_trips_today / transport.total_trips_today) * 100}%` : '0%' }}
+                                      transition={{ duration: 1.5, ease: "easeOut" }}
+                                      className="h-full bg-[#f5b800] rounded-full"
+                                  />
+                              </div>
+                          </div>
+                      </div>
 
-                    {/* Card 3: Trips Today (Indigo Accent) */}
-                    <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between shadow-xs transition-all">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                {isRtl ? "رحلات اليوم" : "Trips Today"}
-                            </span>
-                        </div>
-                        <div className="text-xl md:text-2xl font-black text-slate-900 dark:text-white font-mono mt-1.5">
-                            {transport?.completed_trips_today ?? 0} /{" "}
-                            {transport?.total_trips_today ?? 0}
-                        </div>
-                    </div>
+                      {/* Safety Card */}
+                      <div className="group relative p-8 rounded-[32px] bg-emerald-500 text-white border border-emerald-400 shadow-xl shadow-emerald-500/20 hover:-translate-y-1 transition-all duration-500 overflow-hidden">
+                          <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-3xl" />
+                          <div className="relative z-10">
+                              <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-6 text-white">
+                                  <ShieldCheck className="w-7 h-7" />
+                              </div>
+                              <p className="text-[13px] font-bold text-emerald-100 uppercase tracking-widest mb-2">
+                                  {isRtl ? 'أيام عمل بدون حوادث' : 'Zero-Incident Days'}
+                              </p>
+                              <h4 className="text-5xl font-black text-white flex items-baseline gap-2">
+                                  {transport.zero_incident_days} <span className="text-lg font-bold text-emerald-200">{isRtl ? 'يوم' : 'Days'}</span>
+                              </h4>
+                          </div>
+                      </div>
+                  </div>
+              </motion.div>
 
-                    {/* Card 4: Quick Action Buttons (Replaces Safe Days) */}
-                    <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-2.5 md:p-3 flex flex-col justify-between shadow-xs transition-all">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                            </span>
-                        </div>
+              {/* Live Operations Row */}
+              <motion.div variants={itemVariants}>
+                  <div className="flex items-center gap-3 mb-5 mt-4">
+                      <div className="p-2.5 bg-rose-500/10 rounded-xl shadow-sm">
+                          <Activity className="w-5 h-5 text-rose-500 animate-pulse" />
+                      </div>
+                      <h3 className="font-black text-xl text-[#0f2044] dark:text-white tracking-tight">
+                          {isRtl ? 'العمليات المباشرة' : 'Live Operations'}
+                      </h3>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+                      <LiveKpiCard
+                          title={isRtl ? "رحلات نشطة" : "Active Trips"}
+                          value={transport.active_trips_now}
+                          sub={isRtl ? "في الطريق الآن" : "on the road now"}
+                          icon={RouteIcon}
+                          accent="blue"
+                      />
+                      <LiveKpiCard
+                          title={isRtl ? "حافلات متأخرة" : "Delayed Buses"}
+                          value={transport.delayed_buses_now}
+                          sub={isRtl ? "تتطلب انتباه" : "requires attention"}
+                          icon={AlertTriangle}
+                          accent={transport.delayed_buses_now > 0 ? "rose" : "green"}
+                      />
+                      <LiveKpiCard
+                          title={isRtl ? "طلاب منقولون" : "Transported"}
+                          value={transport.students_transported_today}
+                          sub={isRtl ? "طالب اليوم" : "students today"}
+                          icon={Users}
+                          accent="navy"
+                      />
+                      <LiveKpiCard
+                          title={isRtl ? "كفاءة الأسطول" : "Fleet Efficiency"}
+                          value={`${transport.active_buses}/${transport.total_buses}`}
+                          sub={isRtl ? "حافلة نشطة" : "active buses"}
+                          icon={Bus}
+                          accent="gold"
+                      />
+                  </div>
+              </motion.div>
 
-                        <div className="grid grid-cols-2 gap-2 mt-1">
-                            <Link
-                                href={route("school.live-tracking.index")}
-                                className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-xs group"
-                                title={
-                                    isRtl
-                                        ? "تتبع الحافلات المباشر"
-                                        : "Live Fleet Tracking"
-                                }
-                            >
-                                <Radio className="w-3.5 h-3.5 animate-pulse text-blue-200" />
-                                <span className="truncate">
-                                    {isRtl ? "تتبع الحافلات" : "Live Fleet"}
-                                </span>
-                                <ArrowUpRight className="w-3 h-3 opacity-70 group-hover:opacity-100 transition-opacity" />
-                            </Link>
+              {/* Analytics Section: Students by Bus & Attendance */}
+              <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                            <Link
-                                href={route("school.buses.students.assign")}
-                                className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#1E293B] dark:hover:bg-[#334155] border border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs group"
-                                title={
-                                    isRtl
-                                        ? "تعيين الطلاب على الحافلات"
-                                        : "Assign Students"
-                                }
-                            >
-                                <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
-                                <span className="truncate">
-                                    {isRtl ? "تعيين الطلاب" : "Assign"}
-                                </span>
-                            </Link>
+                  {/* Students by Bus Distribution Chart */}
+                  <div className="p-8 rounded-[32px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-white/5 shadow-sm">
+                      <div className="flex items-center justify-between mb-8">
+                          <div className="flex items-center gap-3">
+                              <div className="p-2.5 bg-sky-500/10 rounded-xl text-sky-500">
+                                  <Users2 className="w-5 h-5" />
                         </div>
-                    </div>
+                              <h3 className="font-black text-lg text-[#0f2044] dark:text-white">
+                                  {isRtl ? 'توزيع الطلاب حسب الحافلات' : 'Students Distribution by Bus'}
+                              </h3>
+                          </div>
+                      </div>
+                      <div className="h-[320px] w-full">
+                          {studentsByBus && studentsByBus.length > 0 ? (
+                              <ResponsiveContainer width="100%" height="100%">
+                                  <BarChart data={studentsByBus} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#0f204410" />
+                                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 'bold' }} dy={10} />
+                                      <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 'bold' }} />
+                                      <RechartsTooltip
+                                          cursor={{ fill: 'rgba(15, 32, 68, 0.05)' }}
+                                          contentStyle={{ backgroundColor: "#0f2044", borderRadius: "16px", border: "none", color: "#fff", fontWeight: "bold", padding: "12px", boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)", direction: isRtl ? "rtl" : "ltr" }}
+                                          itemStyle={{ color: "#f5b800" }}
+                                      />
+                                      <Bar
+                                          dataKey="value"
+                                          name={isRtl ? "عدد الطلاب" : "Students"}
+                                          fill="#0f2044"
+                                          radius={[8, 8, 0, 0]}
+                                          barSize={40}
+                                      >
+                                          {studentsByBus.map((entry, index) => (
+                                              <Cell key={`cell-${index}`} fill={index % 2 === 0 ? "#0f2044" : "#f5b800"} />
+                                          ))}
+                                      </Bar>
+                                  </BarChart>
+                              </ResponsiveContainer>
+                          ) : (
+                              <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                                  <Bus className="w-12 h-12 mb-3 opacity-20" />
+                                  <p className="font-bold text-sm">{isRtl ? "لا توجد بيانات توزيع متاحة" : "No distribution data available"}</p>
+                        </div>
+                          )}
+                      </div>
+                  </div>
+
+                  {/* Attendance Trend Chart */}
+                  <div className="p-8 rounded-[32px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-white/5 shadow-sm">
+                      <div className="flex items-center justify-between mb-8">
+                          <div className="flex items-center gap-3">
+                              <div className="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-500">
+                                  <TrendingUp className="w-5 h-5" />
+                              </div>
+                              <h3 className="font-black text-lg text-[#0f2044] dark:text-white">
+                                  {isRtl ? "مؤشر الحضور الأسبوعي" : "Weekly Attendance Trend"}
+                              </h3>
+                          </div>
+                      </div>
+                      <div className="h-[320px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={attendanceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                  <defs>
+                                      <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                      </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#0f204410" />
+                                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 'bold' }} dy={10} />
+                                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 'bold' }} />
+                                  <RechartsTooltip 
+                                      contentStyle={{ backgroundColor: "#0f2044", borderRadius: "16px", border: "none", color: "#fff", fontWeight: "bold", padding: "12px", boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)", direction: isRtl ? "rtl" : "ltr" }}
+                                  />
+                                  <Area type="monotone" dataKey="present" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorPresent)" name={isRtl ? "حاضر" : "Present"} activeDot={{ r: 6, fill: "#10b981", stroke: "#fff", strokeWidth: 3 }} />
+                                  <Area type="monotone" dataKey="absent" stroke="#ef4444" strokeWidth={3} fillOpacity={0.02} fill="#ef4444" name={isRtl ? "غائب" : "Absent"} />
+                              </AreaChart>
+                          </ResponsiveContainer>
                 </div>
+            </div>
 
-                {/* ── Row 2: Middle Charts (Left: Attendance Volume Bar | Right: Fleet Seating Capacity & Load Utilization) ── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 flex-1 min-h-0 my-2.5">
-                    {/* Card 1: Attendance Volume Bar Chart with (Week - Month) Switcher */}
-                    <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 flex flex-col min-h-0 shadow-xs">
-                        <div className="flex items-center justify-between flex-shrink-0 mb-1.5">
-                            <div>
-                                <h2 className="text-xs md:text-sm font-bold text-slate-900 dark:text-white tracking-wide">
-                                    {isRtl
-                                        ? "سجل حضور وغياب الطلاب"
-                                        : "Attendance Volume"}
-                                </h2>
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                                    {isRtl
-                                        ? "معدل حضور وغياب الطلاب بالنظام"
-                                        : "Student attendance by period"}
-                                </p>
-                            </div>
+              </motion.div>
 
-                            {/* Week - Month Switcher Pills */}
-                            <div className="flex items-center bg-slate-100 dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700/60 p-0.5 rounded-lg text-[10px] font-bold">
-                                <button
-                                    onClick={() => setBarPeriod("weekly")}
-                                    className={`px-2.5 py-0.5 rounded-md transition-colors ${
-                                        barPeriod === "weekly"
-                                            ? "bg-blue-600 text-white shadow-xs"
-                                            : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
-                                    }`}
-                                >
-                                    {isRtl ? "أسبوعي" : "Week"}
-                                </button>
-                                <button
-                                    onClick={() => setBarPeriod("monthly")}
-                                    className={`px-2.5 py-0.5 rounded-md transition-colors ${
-                                        barPeriod === "monthly"
-                                            ? "bg-blue-600 text-white shadow-xs"
-                                            : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
-                                    }`}
-                                >
-                                    {isRtl ? "شهري" : "Month"}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Recharts Bar (Cursor without ugly solid gray block, no stuttering) */}
-                        <div className="flex-1 relative min-h-0">
-                            <div className="absolute inset-0">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        data={barChartData}
-                                        margin={{
-                                            top: 8,
-                                            right: 10,
-                                            left: -20,
-                                            bottom: 0,
-                                        }}
-                                    >
-                                        <CartesianGrid
-                                            strokeDasharray="3 3"
-                                            vertical={false}
-                                            stroke={
-                                                isDark ? "#334155" : "#E2E8F0"
-                                            }
-                                            opacity={0.6}
-                                        />
-                                        <XAxis
-                                            dataKey="label"
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{
-                                                fill: isDark
-                                                    ? "#94A3B8"
-                                                    : "#64748B",
-                                                fontSize: 10,
-                                            }}
-                                            dy={6}
-                                        />
-                                        <YAxis
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{
-                                                fill: isDark
-                                                    ? "#94A3B8"
-                                                    : "#64748B",
-                                                fontSize: 10,
-                                            }}
-                                            allowDecimals={false}
-                                        />
-                                        <RechartsTooltip
-                                            isAnimationActive={false}
-                                            cursor={false}
-                                            allowEscapeViewBox={{
-                                                x: false,
-                                                y: true,
-                                            }}
-                                            wrapperStyle={{
-                                                outline: "none",
-                                                pointerEvents: "none",
-                                                zIndex: 20,
-                                            }}
-                                            content={
-                                                <CustomAttendanceTooltip />
-                                            }
-                                        />
-                                        <Bar
-                                            dataKey="present"
-                                            name={isRtl ? "حاضر" : "Present"}
-                                            fill="#3B82F6"
-                                            radius={[4, 4, 0, 0]}
-                                            barSize={18}
-                                            activeBar={{ fill: "#60A5FA" }}
-                                        />
-                                        <Bar
-                                            dataKey="absent"
-                                            name={isRtl ? "غائب" : "Absent"}
-                                            fill="#EF4444"
-                                            radius={[4, 4, 0, 0]}
-                                            barSize={18}
-                                            activeBar={{ fill: "#F87171" }}
-                                        />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Card 2: Fleet Seating Capacity & Load Utilization (Replacing duplicate attendance rate) */}
-                    <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 flex flex-col min-h-0 shadow-xs">
-                        <div className="flex items-center justify-between flex-shrink-0 mb-1.5">
-                            <div>
-                                <h2 className="text-xs md:text-sm font-bold text-slate-900 dark:text-white tracking-wide">
-                                    {isRtl
-                                        ? "توزيع إشغال وسعة مقاعد الحافلات"
-                                        : "Fleet Seating Capacity & Load"}
-                                </h2>
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                                    {isRtl
-                                        ? "المقاعد المشغولة مقابل الشاغرة لكل حافلة"
-                                        : "Allocated vs available seats per vehicle"}
-                                </p>
-                            </div>
-
-                            {/* Seating Capacity Ratio Badge (e.g. 2 / 20) */}
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700/60 shadow-xs">
-                                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                                <span className="font-mono font-black text-xs text-blue-600 dark:text-blue-400">
-                                    {totalCapacityStats.totalAlloc}
-                                </span>
-                                <span className="text-slate-400 dark:text-slate-500 font-mono text-xs">
-                                    /
-                                </span>
-                                <span className="font-mono font-bold text-xs text-slate-700 dark:text-slate-300">
-                                    {totalCapacityStats.totalCap}
-                                </span>
-                                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                                    {isRtl ? "مقعد" : "seats"}
-                                </span>
-                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/20 px-1.5 py-0.5 rounded font-mono">
-                                    {totalCapacityStats.avgRate}%
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Stacked Capacity Bar Chart */}
-                        <div className="flex-1 relative min-h-0">
-                            <div className="absolute inset-0">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        data={fleetCapacityData}
-                                        margin={{
-                                            top: 8,
-                                            right: 10,
-                                            left: -20,
-                                            bottom: 0,
-                                        }}
-                                    >
-                                        <CartesianGrid
-                                            strokeDasharray="3 3"
-                                            vertical={false}
-                                            stroke={
-                                                isDark ? "#334155" : "#E2E8F0"
-                                            }
-                                            opacity={0.6}
-                                        />
-                                        <XAxis
-                                            dataKey="name"
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{
-                                                fill: isDark
-                                                    ? "#94A3B8"
-                                                    : "#64748B",
-                                                fontSize: 10,
-                                            }}
-                                            dy={6}
-                                        />
-                                        <YAxis
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{
-                                                fill: isDark
-                                                    ? "#94A3B8"
-                                                    : "#64748B",
-                                                fontSize: 10,
-                                            }}
-                                            allowDecimals={false}
-                                        />
-                                        <RechartsTooltip
-                                            isAnimationActive={false}
-                                            cursor={false}
-                                            allowEscapeViewBox={{
-                                                x: false,
-                                                y: true,
-                                            }}
-                                            wrapperStyle={{
-                                                outline: "none",
-                                                pointerEvents: "none",
-                                                zIndex: 20,
-                                            }}
-                                            content={<CustomCapacityTooltip />}
-                                        />
-                                        <Bar
-                                            dataKey="allocated"
-                                            name={
-                                                isRtl
-                                                    ? "المقاعد المشغولة"
-                                                    : "Allocated"
-                                            }
-                                            stackId="seatCapacity"
-                                            fill="#3B82F6"
-                                            radius={[0, 0, 0, 0]}
-                                            barSize={32}
-                                            activeBar={{ fill: "#60A5FA" }}
-                                        />
-                                        <Bar
-                                            dataKey="available"
-                                            name={
-                                                isRtl
-                                                    ? "المقاعد الشاغرة"
-                                                    : "Available"
-                                            }
-                                            stackId="seatCapacity"
-                                            fill={
-                                                isDark ? "#334155" : "#CBD5E1"
-                                            }
-                                            radius={[4, 4, 0, 0]}
-                                            barSize={32}
-                                            activeBar={{
-                                                fill: isDark
-                                                    ? "#475569"
-                                                    : "#94A3B8",
-                                            }}
-                                        />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-                    </div>
+              {/* Quick Actions & Live Feed */}
+              <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
+                  <div className="lg:col-span-8 space-y-6">
+                      <div className="p-8 rounded-[32px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-white/5 shadow-sm h-full">
+                          <div className="flex items-center gap-3 mb-8">
+                              <div className="p-2.5 bg-[#f5b800]/10 rounded-xl text-[#f5b800]">
+                                  <Zap className="w-5 h-5" />
+                              </div>
+                              <h3 className="font-black text-lg text-[#0f2044] dark:text-white">
+                                  {isRtl ? "إجراءات سريعة" : "Quick Actions"}
+                              </h3>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                              <QuickAction icon={GraduationCap} label={isRtl ? "الطلاب" : "Students"} link={route("school.students.index")} accent="navy" />
+                              <QuickAction icon={ClipboardList} label={isRtl ? "الحضور" : "Attendance"} link={route("school.attendance.index")} accent="gold" />
+                              <QuickAction icon={Bus} label={isRtl ? "الحافلات" : "Fleet"} link={route("school.buses.index")} accent="navy" />
+                              <QuickAction icon={Bell} label={isRtl ? "الإشعارات" : "Alerts"} link={route("school.notifications.sent")} accent="gold" />
+                          </div>
                 </div>
+            </div>
 
-                {/* ── Row 3: Bottom Split (History Table 8 cols + Activities 4 cols) ── */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 min-h-0">
-                    {/* Left: Real Students Table (8 Cols) */}
-                    <div className="lg:col-span-8 bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 flex flex-col min-h-0 shadow-xs overflow-hidden">
-                        <div className="flex items-center justify-between flex-shrink-0 mb-1.5">
-                            <div>
-                                <h3 className="text-xs md:text-sm font-bold text-slate-900 dark:text-white tracking-wide">
-                                    {isRtl
-                                        ? "كشف الطلاب المسجلين"
-                                        : "Registered Students"}
-                                </h3>
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                                    {isRtl
-                                        ? "بيانات الطلاب المسجلين وحالة تعيينهم على الحافلات"
-                                        : "Real registered students and bus assignment status"}
-                                </p>
-                            </div>
-
-                            <Link
-                                href={route("school.students.index")}
-                                className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                            >
-                                {isRtl ? "عرض الكل" : "View all"}
-                            </Link>
-                        </div>
-
-                        {/* Table */}
-                        <div className="flex-1 overflow-hidden min-h-0">
-                            <div className="w-full h-full overflow-y-auto custom-scrollbar">
-                                <table
-                                    className={`w-full text-xs ${isRtl ? "text-right" : "text-left"}`}
-                                >
-                                    <thead>
-                                        <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
-                                            <th
-                                                className={`pb-1.5 ${isRtl ? "text-right" : "text-left"}`}
-                                            >
-                                                {isRtl
-                                                    ? "اسم الطالب"
-                                                    : "Student Name"}
-                                            </th>
-                                            <th
-                                                className={`pb-1.5 ${isRtl ? "text-right" : "text-left"}`}
-                                            >
-                                                {isRtl
-                                                    ? "الصف / الفصل"
-                                                    : "Class"}
-                                            </th>
-                                            <th
-                                                className={`pb-1.5 ${isRtl ? "text-right" : "text-left"}`}
-                                            >
-                                                {isRtl ? "الحافلة" : "Bus"}
-                                            </th>
-                                            <th
-                                                className={`pb-1.5 ${isRtl ? "text-right" : "text-left"}`}
-                                            >
-                                                {isRtl
-                                                    ? "ولي الأمر والهاتف"
-                                                    : "Guardian"}
-                                            </th>
-                                            <th className="pb-1.5 text-center">
-                                                {isRtl
-                                                    ? "حالة التعيين"
-                                                    : "Status"}
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                                        {realStudents.length > 0 ? (
-                                            realStudents.map((s) => (
-                                                <tr
-                                                    key={s.id}
-                                                    className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
-                                                >
-                                                    <td className="py-2">
-                                                        <div className="font-bold text-slate-900 dark:text-white truncate max-w-[140px] md:max-w-[180px]">
-                                                            {s.name}
-                                                        </div>
-                                                        {s.national_id && (
-                                                            <div className="text-[10px] text-slate-400 font-mono">
-                                                                {s.national_id}
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                    <td className="py-2 text-slate-600 dark:text-slate-300">
-                                                        {s.classroom}
-                                                    </td>
-                                                    <td className="py-2">
-                                                        {s.is_assigned ? (
-                                                            <span className="inline-flex items-center gap-1 font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded text-[11px] border border-blue-500/20">
-                                                                <Bus className="w-3 h-3" />
-                                                                {s.bus_number}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                                                                {isRtl
-                                                                    ? "غير مخصص"
-                                                                    : "Unassigned"}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="py-2">
-                                                        <div className="text-slate-700 dark:text-slate-300 truncate max-w-[130px]">
-                                                            {s.guardian_name}
-                                                        </div>
-                                                        {s.guardian_phone !==
-                                                            "—" && (
-                                                            <div className="text-[10px] text-slate-400 font-mono">
-                                                                {
-                                                                    s.guardian_phone
-                                                                }
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                    <td className="py-2 text-center">
-                                                        {s.is_assigned ? (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                                {isRtl
-                                                                    ? "مخصص للحافلة"
-                                                                    : "Assigned"}
-                                                            </span>
-                                                        ) : (
-                                                            <Link
-                                                                href={route(
-                                                                    "school.buses.students.assign",
-                                                                )}
-                                                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 transition-colors"
-                                                            >
-                                                                <span>
-                                                                    {isRtl
-                                                                        ? "تعيين"
-                                                                        : "Assign"}
-                                                                </span>
-                                                                <ArrowRight className="w-3 h-3 rtl:rotate-180" />
-                                                            </Link>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        ) : (
-                                            <tr>
-                                                <td
-                                                    colSpan={5}
-                                                    className="py-6 text-center text-slate-400 text-xs"
-                                                >
-                                                    {isRtl
-                                                        ? "لا توجد سجلات طلاب مسجلة"
-                                                        : "No students found"}
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Right: Real Activities Feed (4 Cols) */}
-                    <div className="lg:col-span-4 bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 flex flex-col min-h-0 shadow-xs overflow-hidden">
-                        <div className="flex items-center justify-between flex-shrink-0 mb-1.5">
-                            <h3 className="text-xs md:text-sm font-bold text-slate-900 dark:text-white tracking-wide">
-                                {isRtl
-                                    ? "الأنشطة والعمليات المسجلة"
-                                    : "Recorded Activities"}
-                            </h3>
-                            <Activity className="w-4 h-4 text-slate-400" />
-                        </div>
-
-                        {/* Activities Vertical List with Real Data */}
-                        <div className="flex-1 overflow-hidden min-h-0">
-                            <div className="w-full h-full overflow-y-auto space-y-2 custom-scrollbar">
-                                {realActivities.length > 0 ? (
-                                    realActivities.map((act) => {
-                                        const titleText = isRtl
-                                            ? act.title_ar || act.title
-                                            : act.title_en || act.title;
-                                        const descText = isRtl
-                                            ? act.description_ar ||
-                                              act.description
-                                            : act.description_en ||
-                                              act.description;
-                                        const timeText = isRtl
-                                            ? act.time_ar || act.time
-                                            : act.time_en || act.time;
-
-                                        return (
-                                            <div
-                                                key={act.id}
-                                                className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 transition-all"
-                                            >
-                                                <div className="flex items-center gap-2.5 min-w-0">
-                                                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center flex-shrink-0 border border-blue-500/20">
-                                                        {act.type ===
-                                                        "attendance" ? (
-                                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                                        ) : (
-                                                            <Bus className="w-3.5 h-3.5" />
-                                                        )}
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                                                            {titleText}
-                                                        </div>
-                                                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                                                            {descText}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="text-[10px] font-mono text-slate-400 whitespace-nowrap ml-2 mr-2">
-                                                    {timeText}
-                                                </div>
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
-                                        <Activity className="w-6 h-6 mb-1 text-slate-300 dark:text-slate-600" />
-                                        <span>
-                                            {isRtl
-                                                ? "لا توجد أنشطة مسجلة اليوم"
-                                                : "No activity recorded yet"}
-                                        </span>
+                  <div className="lg:col-span-4">
+                      <div className="p-8 rounded-[32px] bg-white dark:bg-[#1a2845] border border-gray-100 dark:border-white/5 shadow-sm h-full flex flex-col">
+                          <div className="flex items-center gap-3 mb-6">
+                              <div className="p-2.5 bg-[#0f2044]/5 dark:bg-white/5 rounded-xl text-[#0f2044] dark:text-white">
+                                  <Activity className="w-5 h-5" />
+                              </div>
+                              <h3 className="font-black text-lg text-[#0f2044] dark:text-white">
+                                  {isRtl ? "النشاطات الحية" : "Live Activity Feed"}
+                              </h3>
+                          </div>
+                          <div className="flex-1 space-y-6">
+                        {recentActivities.length > 0 ? (
+                                  recentActivities.slice(0, 4).map((act, idx) => (
+                                      <div key={idx} className="relative flex items-start gap-4">
+                                          {idx !== Math.min(recentActivities.length, 4) - 1 && (
+                                              <div className="absolute top-10 rtl:right-[19px] ltr:left-[19px] bottom-[-24px] w-px bg-gray-100 dark:bg-white/5" />
+                                    )}
+                                    <div className={`relative z-10 w-10 h-10 flex-shrink-0 rounded-xl flex items-center justify-center shadow-sm ${
+                                        act.type === "student" ? "bg-sky-500/10 text-sky-500" : "bg-emerald-500/10 text-emerald-500"
+                                    }`}>
+                                        {act.type === "student" ? <GraduationCap className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
                                     </div>
-                                )}
+                                    <div className="flex-1 min-w-0 pt-1">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <h5 className="text-[12px] font-black text-[#0f2044] dark:text-white truncate">{act.title}</h5>
+                                            <span className="text-[10px] font-bold text-gray-400 whitespace-nowrap">{act.time}</span>
+                                        </div>
+                                        <p className="text-[11px] font-medium text-gray-500 mt-1 line-clamp-1">
+                                            {isRtl ? act.description_ar : act.description_en}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                                      <div className="flex flex-col items-center justify-center py-8 opacity-50">
+                                          <CheckCircle2 className="w-12 h-12 text-emerald-500 mb-3" />
+                                          <p className="text-sm font-bold text-gray-400">{isRtl ? "لا توجد نشاطات حالياً" : "System idling"}</p>
                             </div>
-                        </div>
-                    </div>
+                        )}
+                          </div>
                 </div>
+            </div>
+              </motion.div>
+
+      </motion.div>
+    </SchoolDashboardLayout>
+  );
+}
+
+function SchoolDashboardLayout({ children, user, header }: any) {
+    return (
+        <SchoolAuthenticatedLayout user={user} header={header}>
+            <div className="max-w-[1600px] mx-auto pb-16 px-4 md:px-8 pt-6">
+                {children}
             </div>
         </SchoolAuthenticatedLayout>
     );
+}
+
+function LiveKpiCard({ title, value, sub, icon: Icon, accent }: any) {
+    const accentMap: Record<string, { bg: string; text: string; iconBg: string }> = {
+        green: { bg: 'bg-white dark:bg-[#1a2845]', text: 'text-emerald-500', iconBg: 'bg-emerald-500/10' },
+        blue: { bg: 'bg-white dark:bg-[#1a2845]', text: 'text-sky-500', iconBg: 'bg-sky-500/10' },
+        gold: { bg: 'bg-white dark:bg-[#1a2845]', text: 'text-[#f5b800]', iconBg: 'bg-[#f5b800]/10' },
+        navy: { bg: 'bg-white dark:bg-[#1a2845]', text: 'text-[#0f2044] dark:text-white', iconBg: 'bg-[#0f2044]/5 dark:bg-white/5 text-[#0f2044] dark:text-white' },
+        rose: { bg: 'bg-rose-500/5', text: 'text-rose-600 dark:text-rose-400', iconBg: 'bg-rose-500/20 text-rose-600' },
+    };
+    const style = accentMap[accent] ?? accentMap.navy;
+
+    return (
+      <motion.div
+          whileHover={{ y: -4, scale: 1.01 }}
+          className={`relative p-6 rounded-[24px] ${style.bg} border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-lg transition-all duration-300`}
+      >
+          <div className="flex items-center gap-4 mb-4">
+              <div className={`p-3 rounded-xl ${style.iconBg}`}>
+                  <Icon className={`w-5 h-5 ${accent === 'rose' ? '' : style.text}`} />
+              </div>
+              <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{title}</p>
+          </div>
+          <div>
+              <h4 className={`text-3xl font-black ${style.text}`}>{value}</h4>
+              {sub && <p className="text-[11px] font-semibold text-gray-400 mt-2">{sub}</p>}
+          </div>
+      </motion.div>
+  );
+}
+
+function QuickAction({ icon: Icon, label, link, accent }: any) {
+  return (
+    <Link
+      href={link}
+          className={`group relative flex flex-col items-center justify-center p-6 rounded-[24px] transition-all duration-300 hover:-translate-y-1 active:scale-95 border overflow-hidden ${
+          accent === 'navy' 
+          ? 'bg-[#0f2044] border-transparent text-white shadow-lg shadow-[#0f2044]/20'
+          : 'bg-gray-50 dark:bg-[#243460] border-gray-100 dark:border-white/5 text-[#0f2044] dark:text-white hover:border-[#f5b800]/40'
+      }`}
+    >
+          <div className={`mb-3 p-3.5 rounded-2xl transition-all duration-500 group-hover:scale-110 ${accent === 'navy' ? 'bg-white/10 text-[#f5b800]' : 'bg-white dark:bg-white/5 text-[#0f2044] dark:text-[#f5b800] shadow-sm'
+      }`}>
+        <Icon className="w-6 h-6" />
+      </div>
+          <span className="text-[13px] font-black text-center leading-tight tracking-wide group-hover:text-[#f5b800] transition-colors">
+          {label}
+          </span>
+    </Link>
+  );
 }
