@@ -28,6 +28,7 @@ Thumbs.db
 /storage/framework/testing/
 /storage/logs/
 .agents/
+graphify-out
 
 # Clockwork data
 .clockwork/
