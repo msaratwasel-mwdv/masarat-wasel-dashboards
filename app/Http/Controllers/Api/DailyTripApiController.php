@@ -490,7 +490,21 @@ class DailyTripApiController extends Controller
             ], 422);
         }
 
-        // ④ التحقق من الحالة: يجب أن يكون onBus
+        // ④ في رحلة العودة: يجب أن يكون السائق قد أرسل إشعار "قرب المنزل" أولاً (حالة waiting)
+        if ($trip->type === 'back') {
+            $attendanceStatus = TripAttendance::where('trip_id', $trip->id)
+                ->where('student_id', $student->id)
+                ->value('status');
+
+            if ($attendanceStatus !== 'waiting' && $attendanceStatus !== 'dropped') {
+                return response()->json([
+                    'message' => 'لا يمكن تسجيل وصول الطالب إلى المنزل حتى يؤكد السائق وصول الحافلة بجوار المنزل.',
+                    'error_code' => 'driver_not_near_house',
+                ], 422);
+            }
+        }
+
+        // ⑤ التحقق من الحالة: يجب أن يكون onBus
         $currentStatus = $this->getStudentCurrentStatus($student, $trip);
         $expectedNewStatus = $direction === 'to_school' ? 'atSchool' : 'atHome';
 
@@ -607,6 +621,18 @@ class DailyTripApiController extends Controller
                     ->exists();
 
                 if (! $alreadyDropped) {
+                    // في رحلة العودة: يجب أن يكون السائق قد أرسل «قرب المنزل» (حالة waiting)
+                    if ($trip->type === 'back') {
+                        $attendanceStatus = TripAttendance::where('trip_id', $trip->id)
+                            ->where('student_id', $studentId)
+                            ->value('status');
+
+                        if ($attendanceStatus !== 'waiting') {
+                            // تخطى هذا الطالب بصمت — لم يصل السائق بجوار منزله بعد
+                            continue;
+                        }
+                    }
+
                     $newlyDroppedStudentIds[] = $studentId;
                     TripAttendance::updateOrCreate(
                         ['trip_id' => $trip->id, 'student_id' => $studentId],
