@@ -138,6 +138,77 @@ const createBusMarkerSvg = (bus: Bus, isSelected: boolean, isRtl: boolean = true
 };
 
 // -------------------------------------------------------------
+// HELPER: Smooth Animated Bus Marker for Web
+// -------------------------------------------------------------
+const AnimatedBusMarker = React.memo(({
+    bus,
+    targetLat,
+    targetLng,
+    isSelected,
+    isRtl = true,
+    onClick,
+}: {
+    bus: Bus;
+    targetLat: number;
+    targetLng: number;
+    isSelected: boolean;
+    isRtl?: boolean;
+    onClick: () => void;
+}) => {
+    const [pos, setPos] = useState({ lat: targetLat, lng: targetLng });
+    const animRef = useRef<number | null>(null);
+    const startPosRef = useRef({ lat: targetLat, lng: targetLng });
+    const targetPosRef = useRef({ lat: targetLat, lng: targetLng });
+    const startTimeRef = useRef<number>(0);
+    const duration = 1500; // 1.5s smooth easing
+
+    useEffect(() => {
+        if (targetLat !== targetPosRef.current.lat || targetLng !== targetPosRef.current.lng) {
+            startPosRef.current = { ...pos };
+            targetPosRef.current = { lat: targetLat, lng: targetLng };
+            startTimeRef.current = performance.now();
+
+            if (animRef.current) {
+                cancelAnimationFrame(animRef.current);
+            }
+
+            const step = (currentTime: number) => {
+                const elapsed = currentTime - startTimeRef.current;
+                const progress = Math.min(elapsed / duration, 1);
+                const ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+
+                const currentLat = startPosRef.current.lat + (targetPosRef.current.lat - startPosRef.current.lat) * ease;
+                const currentLng = startPosRef.current.lng + (targetPosRef.current.lng - startPosRef.current.lng) * ease;
+
+                setPos({ lat: currentLat, lng: currentLng });
+
+                if (progress < 1) {
+                    animRef.current = requestAnimationFrame(step);
+                }
+            };
+
+            animRef.current = requestAnimationFrame(step);
+        }
+
+        return () => {
+            if (animRef.current) {
+                cancelAnimationFrame(animRef.current);
+            }
+        };
+    }, [targetLat, targetLng]);
+
+    return (
+        <Marker 
+            position={pos}
+            icon={createBusMarkerSvg(bus, isSelected, isRtl)}
+            title={`${isRtl ? 'حافلة' : 'Bus'} ${bus.bus_number} (${bus.plate_number})`}
+            zIndex={isSelected ? 90 : 50}
+            onClick={onClick}
+        />
+    );
+});
+
+// -------------------------------------------------------------
 // SVG MARKER: Student Pickup Stop Pin with Numbered Sequence
 // -------------------------------------------------------------
 const createStudentMarkerSvg = (status: string, studentName: string, stopNumber: number) => {
@@ -415,6 +486,7 @@ export default function LiveTrackingMap({
                         setSelectedStudent(null);
                     }}
                 >
+<<<<<<< HEAD
                     {/* OPTIONAL ROUTE LINE (Disabled by default to avoid unrealistic straight lines) */}
                     {showRoutePath && busRoutes.map((route: any) => (
                         <Polyline
@@ -541,12 +613,13 @@ export default function LiveTrackingMap({
                         const isSelected = selectedBus?.id === bus.id;
 
                         return (
-                            <Marker
+                            <AnimatedBusMarker
                                 key={`bus-marker-${bus.id}`}
-                                position={{ lat, lng }}
-                                icon={createBusMarkerSvg(bus, isSelected, isRtl)}
-                                title={`${isRtl ? 'حافلة' : 'Bus'} ${bus.bus_number} (${bus.plate_number})`}
-                                zIndex={isSelected ? 90 : 50}
+                                bus={bus}
+                                targetLat={lat}
+                                targetLng={lng}
+                                isSelected={isSelected}
+                                isRtl={isRtl}
                                 onClick={() => handleSelectBus(bus.id)}
                             />
                         );

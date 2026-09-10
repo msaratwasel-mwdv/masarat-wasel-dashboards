@@ -128,7 +128,8 @@ class TripObserver
                         };
 
                         // 3. حساب مدة الانتظار الفعلية
-                        $totalWaitMinutes = (int) $trip->attendances()->sum('extra_wait_time');
+                        $totalWaitSeconds = (int) $trip->attendances()->sum('extra_wait_time');
+                        $totalWaitMinutes = (int) round($totalWaitSeconds / 60);
                         if ($isEn) {
                             $waitingStr = $totalWaitMinutes > 0 ? "{$totalWaitMinutes} mins" : '0 mins';
                         } else {

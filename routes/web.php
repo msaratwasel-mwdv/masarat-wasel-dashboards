@@ -351,6 +351,8 @@ Route::middleware(['auth', 'verified', 'role:school_admin'])
             Route::get('live-tracking', [\App\Http\Controllers\School\BusController::class, 'liveTracking'])->name('live-tracking.index');
             Route::get('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'assignStudentsPage'])->name('buses.students.assign');
             Route::post('bus-assignments', [\App\Http\Controllers\School\BusController::class, 'saveAssignedStudents'])->name('buses.students.save');
+            Route::post('buses/optimize-route', [\App\Http\Controllers\School\BusController::class, 'optimizeRouteWithGoogle'])->name('buses.optimize-route');
+            Route::post('buses/save-stop-order', [\App\Http\Controllers\School\BusController::class, 'saveStopOrder'])->name('buses.save-stop-order');
 
             // السائقون والمشرفات
             Route::get('drivers', [\App\Http\Controllers\School\DriverController::class, 'index'])->name('drivers.index');

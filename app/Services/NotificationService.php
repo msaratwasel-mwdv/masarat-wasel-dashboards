@@ -465,15 +465,26 @@ class NotificationService
         // 3. Android optimizations
         $androidNotificationConfig = [
             'sound' => 'default',
-            'channel_id' => 'msarat_wasel_high_importance_v4',
+            'channel_id' => 'msarat_wasel_high_importance_v5',
             'notification_priority' => 'PRIORITY_MAX',
             'visibility' => 'PUBLIC',
         ];
 
         // Custom channel and tags based on notification type
         if ($type === 'chat_message' && isset($data['conversation_id'])) {
-            $androidNotificationConfig['channel_id'] = 'chat_messages_v3';
+            $androidNotificationConfig['channel_id'] = 'chat_messages_v4';
             $androidNotificationConfig['tag'] = 'conversation_'.$data['conversation_id'];
+        } elseif ($type === 'admin_announcement' || $type === 'school_alert') {
+            $androidNotificationConfig['channel_id'] = 'school_announcements_v2';
+        } elseif (in_array($type, [
+            'bus_boarding', 'bus_boarding_morning', 'bus_boarding_afternoon',
+            'bus_alighting', 'student_alighted', 'bus_approaching', 'near_me',
+            'bus_proximity', 'student_absent', 'check_in', 'check_out',
+            'absence_approved', 'absence_rejected', 'absence_request_processed',
+            'location_approved', 'location_rejected', 'trip_started', 'trip_ended',
+            'late_boarding', 'school_attendance', 'attendance_update',
+        ])) {
+            $androidNotificationConfig['channel_id'] = 'student_status_v2';
         }
 
         $apnsPayloadAps = [

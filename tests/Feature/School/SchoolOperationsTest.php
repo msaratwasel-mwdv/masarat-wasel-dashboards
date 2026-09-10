@@ -125,4 +125,41 @@ class SchoolOperationsTest extends TestCase
             'status' => 'present',
         ]);
     }
+
+    public function test_school_admin_can_save_bus_stop_order(): void
+    {
+        $school = School::factory()->create(['is_active' => true]);
+        $schoolAdmin = $this->createSchoolAdmin($school);
+
+        $grade = Grade::factory()->create(['school_id' => $school->id]);
+        $classroom = Classroom::factory()->create(['grade_id' => $grade->id]);
+
+        $bus = Bus::factory()->create([
+            'school_id' => $school->id,
+        ]);
+
+        $student1 = Student::factory()->enrolled($school, $classroom)->create([
+            'forth_bus_id' => $bus->id,
+            'forth_stop_order' => 0,
+        ]);
+        $student2 = Student::factory()->enrolled($school, $classroom)->create([
+            'forth_bus_id' => $bus->id,
+            'forth_stop_order' => 0,
+        ]);
+
+        $response = $this->actingAs($schoolAdmin)->postJson(route('school.buses.save-stop-order'), [
+            'bus_id' => $bus->id,
+            'trip_type' => 'morning',
+            'orders' => [
+                ['student_id' => $student1->id, 'order' => 1],
+                ['student_id' => $student2->id, 'order' => 2],
+            ],
+        ]);
+
+        $response->assertSuccessful();
+        $response->assertJson(['success' => true]);
+
+        $this->assertEquals(1, $student1->fresh()->forth_stop_order);
+        $this->assertEquals(2, $student2->fresh()->forth_stop_order);
+    }
 }

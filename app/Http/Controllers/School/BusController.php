@@ -314,7 +314,7 @@ class BusController extends Controller
         $students = \App\Models\Student::inSchool($schoolId)
             ->where('is_active', true)
             ->orderBy('first_name_ar')
-            ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id', 'gender', 'forth_bus_id', 'back_bus_id'])
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'student_code', 'national_id', 'gender', 'forth_bus_id', 'back_bus_id', 'forth_stop_order', 'back_stop_order', 'latitude', 'longitude'])
             ->map(fn ($s) => [
                 'id' => $s->id,
                 'name' => $s->full_name,
@@ -323,6 +323,10 @@ class BusController extends Controller
                 'gender' => $s->gender,
                 'forth_bus_id' => $s->forth_bus_id,
                 'back_bus_id' => $s->back_bus_id,
+                'forth_stop_order' => $s->forth_stop_order ?? 0,
+                'back_stop_order' => $s->back_stop_order ?? 0,
+                'latitude' => $s->latitude,
+                'longitude' => $s->longitude,
             ]);
 
         return Inertia::render('School/Buses/AssignStudents', [
@@ -460,5 +464,143 @@ class BusController extends Controller
         }
 
         return redirect()->back()->with('success', 'تم حفظ تعيينات الطلاب بنجاح');
+    }
+
+    /**
+     * Optimize student stop order via Google Directions waypoint optimization.
+     */
+    public function optimizeRouteWithGoogle(Request $request)
+    {
+        $validated = $request->validate([
+            'bus_id' => 'required|exists:buses,id',
+            'trip_type' => 'required|in:morning,afternoon',
+        ]);
+
+        $busId = $validated['bus_id'];
+        $tripType = $validated['trip_type'];
+        $schoolId = Auth::user()->getSchoolId();
+
+        $bus = Bus::where('id', $busId)->where('school_id', $schoolId)->firstOrFail();
+        $school = $bus->school ?? Auth::user()->school;
+
+        $schoolLat = $school?->latitude ?? 23.5859;
+        $schoolLng = $school?->longitude ?? 58.4059;
+
+        // Fetch students assigned to this bus for this trip
+        $column = $tripType === 'morning' ? 'forth_bus_id' : 'back_bus_id';
+        $students = \App\Models\Student::inSchool($schoolId)
+            ->where($column, $busId)
+            ->where('is_active', true)
+            ->get();
+
+        if ($students->count() < 2) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يجب أن يكون هناك طالبان على الأقل لتحسين المسار',
+            ], 422);
+        }
+
+        // Filter students with valid coordinates
+        $validStudents = $students->filter(function ($s) {
+            return ! empty($s->latitude) && ! empty($s->longitude) && (float) $s->latitude != 0.0;
+        })->values();
+
+        if ($validStudents->count() < 2) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الطلاب لا يملكون إحداثيات موقع صالحة',
+            ], 422);
+        }
+
+        $apiKey = config('services.google_maps.key') ?: env('Maps_API_KEY') ?: 'AIzaSyA2ZcFQqhauhU3l-Rj36fbRYomIO7L-ahs';
+
+        try {
+            $origin = $tripType === 'morning'
+                ? "{$validStudents->first()->latitude},{$validStudents->first()->longitude}"
+                : "{$schoolLat},{$schoolLng}";
+
+            $destination = $tripType === 'morning'
+                ? "{$schoolLat},{$schoolLng}"
+                : "{$validStudents->last()->latitude},{$validStudents->last()->longitude}";
+
+            $waypoints = 'optimize:true|'.$validStudents->map(fn ($s) => "{$s->latitude},{$s->longitude}")->implode('|');
+
+            $response = \Illuminate\Support\Facades\Http::get('https://maps.googleapis.com/maps/api/directions/json', [
+                'origin' => $origin,
+                'destination' => $destination,
+                'waypoints' => $waypoints,
+                'departure_time' => 'now',
+                'mode' => 'driving',
+                'key' => $apiKey,
+            ]);
+
+            if ($response->successful() && ($response->json('status') === 'OK')) {
+                $waypointOrder = $response->json('routes.0.waypoint_order', []);
+                $orderedStudents = [];
+                foreach ($waypointOrder as $newIdx => $origIdx) {
+                    if (isset($validStudents[$origIdx])) {
+                        $orderedStudents[] = [
+                            'student_id' => $validStudents[$origIdx]->id,
+                            'order' => $newIdx + 1,
+                        ];
+                    }
+                }
+
+                // If any students were not covered in waypointOrder (e.g. edge elements), append them
+                $orderedIds = collect($orderedStudents)->pluck('student_id')->toArray();
+                $remainingStudents = $validStudents->whereNotIn('id', $orderedIds);
+                $currOrder = count($orderedStudents) + 1;
+                foreach ($remainingStudents as $remStudent) {
+                    $orderedStudents[] = [
+                        'student_id' => $remStudent->id,
+                        'order' => $currOrder++,
+                    ];
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'ordered_students' => $orderedStudents,
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Google route optimization failed: '.$e->getMessage());
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'تعذر تحسين المسار عبر Google، يرجى المحاولة لاحقاً',
+        ], 500);
+    }
+
+    /**
+     * Save custom or optimized stop order for students on a bus.
+     */
+    public function saveStopOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'bus_id' => 'required|exists:buses,id',
+            'trip_type' => 'required|in:morning,afternoon',
+            'orders' => 'required|array',
+            'orders.*.student_id' => 'required|exists:students,id',
+            'orders.*.order' => 'required|integer|min:1',
+        ]);
+
+        $schoolId = Auth::user()->getSchoolId();
+        Bus::where('id', $validated['bus_id'])->where('school_id', $schoolId)->firstOrFail();
+
+        $orderColumn = $validated['trip_type'] === 'morning' ? 'forth_stop_order' : 'back_stop_order';
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $orderColumn, $schoolId) {
+            foreach ($validated['orders'] as $item) {
+                \App\Models\Student::inSchool($schoolId)
+                    ->where('id', $item['student_id'])
+                    ->update([$orderColumn => $item['order']]);
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم حفظ ترتيب المحطات بنجاح',
+        ]);
     }
 }

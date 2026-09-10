@@ -124,4 +124,17 @@ class StudentModelTest extends TestCase
         $this->assertTrue($school1Students->contains('id', $student1->id));
         $this->assertFalse($school1Students->contains('id', $student2->id));
     }
+
+    public function test_student_stop_order_attributes_and_casting(): void
+    {
+        $student = Student::factory()->create([
+            'forth_stop_order' => 3,
+            'back_stop_order' => 5,
+        ]);
+
+        $this->assertIsInt($student->forth_stop_order);
+        $this->assertIsInt($student->back_stop_order);
+        $this->assertEquals(3, $student->forth_stop_order);
+        $this->assertEquals(5, $student->back_stop_order);
+    }
 }

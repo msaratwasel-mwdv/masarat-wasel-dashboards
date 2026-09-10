@@ -85,7 +85,7 @@ class TripAttendanceObserver
                         $diffSeconds = abs($attendance->check_in_time->diffInSeconds($attendance->waiting_start_time));
                         $waitMinutes = (int) round($diffSeconds / 60);
                     } elseif ($attendance->extra_wait_time) {
-                        $waitMinutes = (int) $attendance->extra_wait_time;
+                        $waitMinutes = (int) round($attendance->extra_wait_time / 60);
                     }
 
                     if ($isEn) {
