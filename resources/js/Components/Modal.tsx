@@ -16,7 +16,7 @@ export default function Modal({
   zIndex = 50,
 }: PropsWithChildren<{
   show: boolean;
-  maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl";
+  maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "6xl" | "7xl";
   closeable?: boolean;
   onClose: CallableFunction;
   zIndex?: number;
@@ -36,6 +36,8 @@ export default function Modal({
     "3xl": "sm:max-w-3xl",
     "4xl": "sm:max-w-4xl",
     "5xl": "sm:max-w-5xl",
+    "6xl": "sm:max-w-6xl",
+    "7xl": "sm:max-w-7xl",
   }[maxWidth];
 
   // Portal root – create a div at the end of body if not existing

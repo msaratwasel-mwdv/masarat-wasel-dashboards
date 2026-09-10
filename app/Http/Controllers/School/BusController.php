@@ -329,10 +329,18 @@ class BusController extends Controller
                 'longitude' => $s->longitude,
             ]);
 
+        $school = Auth::user()->school;
+        $schoolData = [
+            'name' => $school?->name ?? 'المدرسة',
+            'latitude' => $school?->latitude ? (float) $school->latitude : 23.5859,
+            'longitude' => $school?->longitude ? (float) $school->longitude : 58.4059,
+        ];
+
         return Inertia::render('School/Buses/AssignStudents', [
             'buses' => $buses,
             'students' => $students,
             'selectedBusId' => $request->query('bus_id'),
+            'school' => $schoolData,
         ]);
     }
 

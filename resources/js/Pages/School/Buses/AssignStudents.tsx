@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Head, usePage, router, Link } from "@inertiajs/react";
 import SchoolAuthenticatedLayout from "@/Layouts/SchoolAuthenticatedLayout";
 import useTranslation from "@/hooks/useTranslation";
@@ -24,8 +24,14 @@ import {
     ArrowUp,
     ArrowDown,
     Sparkles,
-    Loader2
+    Loader2,
+    MapPin,
+    Layers,
+    Navigation,
+    School as SchoolIcon,
+    Maximize2
 } from "lucide-react";
+import { GoogleMap, Marker, Polyline, useJsApiLoader, InfoWindow } from "@react-google-maps/api";
 
 // ─── Print CSS ───────────────────────────────────────────────────
 const PRINT_STYLES = `
@@ -95,6 +101,7 @@ interface PageProps {
   buses: Bus[];
   students: Student[];
   selectedBusId?: string | number;
+  school?: { name: string; latitude: number; longitude: number };
   flash?: { success?: string; error?: string };
   auth: any;
 }
@@ -273,16 +280,60 @@ function ConfirmModal({
   );
 }
 
+// ─── SVG Marker Helpers ───────────────────────────────────────────────────────
+const createNumberedMarkerIcon = (orderNumber: number, isMorning: boolean, isSelected: boolean = false) => {
+  const bg = isSelected ? "#f5b800" : (isMorning ? "#4f46e5" : "#d97706");
+  const textColor = isSelected ? "#0f2044" : "#ffffff";
+  const strokeColor = isSelected ? "#0f2044" : "#ffffff";
+  const size = isSelected ? 40 : 34;
+  const height = isSelected ? 50 : 42;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${height}" viewBox="0 0 34 42">
+    <defs>
+      <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.3"/>
+      </filter>
+    </defs>
+    <path d="M17 0 C7.6 0 0 7.6 0 17 C0 28 17 42 17 42 C17 42 34 28 34 17 C34 7.6 26.4 0 17 0 Z" fill="${bg}" stroke="${strokeColor}" stroke-width="2.5" filter="url(#sh)"/>
+    <circle cx="17" cy="17" r="11" fill="#ffffff"/>
+    <text x="17" y="21" font-size="11" font-weight="900" fill="${bg}" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">${orderNumber}</text>
+  </svg>`;
+  return {
+    url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
+    scaledSize: typeof window !== "undefined" && window.google ? new window.google.maps.Size(size, height) : { width: size, height } as any,
+    anchor: typeof window !== "undefined" && window.google ? new window.google.maps.Point(size / 2, height) : { x: size / 2, y: height } as any,
+  };
+};
+
+const createSchoolMarkerIcon = () => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="52" viewBox="0 0 44 52">
+    <defs>
+      <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.35"/>
+      </filter>
+    </defs>
+    <path d="M22 0 C9.8 0 0 9.8 0 22 C0 35 22 52 22 52 C22 52 44 35 44 22 C44 9.8 34.2 0 22 0 Z" fill="#0f2044" stroke="#f5b800" stroke-width="3" filter="url(#sh)"/>
+    <circle cx="22" cy="21" r="14" fill="#ffffff"/>
+    <text x="22" y="27" font-size="15" text-anchor="middle">🏫</text>
+  </svg>`;
+  return {
+    url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
+    scaledSize: typeof window !== "undefined" && window.google ? new window.google.maps.Size(44, 52) : { width: 44, height: 52 } as any,
+    anchor: typeof window !== "undefined" && window.google ? new window.google.maps.Point(22, 52) : { x: 22, y: 52 } as any,
+  };
+};
+
 // ─── Stop Order Management Modal ─────────────────────────────────────────────
 function StopOrderModal({
   bus,
   students,
+  school,
   isOpen,
   onClose,
   isRtl,
 }: {
   bus: Bus;
   students: Student[];
+  school?: { name: string; latitude: number; longitude: number };
   isOpen: boolean;
   onClose: () => void;
   isRtl: boolean;
@@ -293,9 +344,25 @@ function StopOrderModal({
   const [isSaving, setIsSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Map States
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [mapType, setMapType] = useState<"roadmap" | "hybrid">("roadmap");
+  const [activeStudentId, setActiveStudentId] = useState<number | null>(null);
+
+  const { isLoaded } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+  });
+
+  const schoolCoord = useMemo(() => ({
+    lat: Number(school?.latitude) || 23.5859,
+    lng: Number(school?.longitude) || 58.4059,
+  }), [school]);
+
   useEffect(() => {
     if (!isOpen) {
       setStatusMsg(null);
+      setActiveStudentId(null);
       return;
     }
     const filtered = students.filter((s) =>
@@ -313,6 +380,56 @@ function StopOrderModal({
     setStatusMsg(null);
   }, [isOpen, tripType, students, bus.id]);
 
+  // Valid coordinates extraction for current ordered list
+  const validStudentsWithCoords = useMemo(() => {
+    return orderedList
+      .map((s, idx) => {
+        const lat = typeof s.latitude === "string" ? parseFloat(s.latitude) : s.latitude;
+        const lng = typeof s.longitude === "string" ? parseFloat(s.longitude) : s.longitude;
+        return {
+          student: s,
+          orderIdx: idx + 1,
+          lat,
+          lng,
+        };
+      })
+      .filter((item): item is { student: Student; orderIdx: number; lat: number; lng: number } =>
+        item.lat != null && item.lng != null && !isNaN(item.lat) && !isNaN(item.lng) && item.lat !== 0 && item.lng !== 0
+      );
+  }, [orderedList]);
+
+  // Route path coordinates:
+  // Morning: Student 1 -> Student 2 -> ... -> School
+  // Afternoon: School -> Student 1 -> Student 2 -> ...
+  const pathCoordinates = useMemo(() => {
+    if (validStudentsWithCoords.length === 0) return [];
+    const studentPoints = validStudentsWithCoords.map((item) => ({
+      lat: item.lat,
+      lng: item.lng,
+    }));
+    return tripType === "morning"
+      ? [...studentPoints, schoolCoord]
+      : [schoolCoord, ...studentPoints];
+  }, [validStudentsWithCoords, schoolCoord, tripType]);
+
+  // Fit bounds helper
+  const fitAllBounds = useCallback(() => {
+    if (!map || typeof window === "undefined" || !window.google) return;
+    const bounds = new window.google.maps.LatLngBounds();
+    bounds.extend(schoolCoord);
+    validStudentsWithCoords.forEach((s) => bounds.extend({ lat: s.lat, lng: s.lng }));
+    map.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
+  }, [map, schoolCoord, validStudentsWithCoords]);
+
+  useEffect(() => {
+    if (map && isOpen) {
+      const timer = setTimeout(() => {
+        fitAllBounds();
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [map, isOpen, tripType, validStudentsWithCoords.length, fitAllBounds]);
+
   const moveUp = (index: number) => {
     if (index <= 0) return;
     const next = [...orderedList];
@@ -329,6 +446,16 @@ function StopOrderModal({
     next[index] = next[index + 1];
     next[index + 1] = temp;
     setOrderedList(next);
+  };
+
+  const handleStudentClick = (student: Student) => {
+    setActiveStudentId(student.id);
+    const lat = typeof student.latitude === "string" ? parseFloat(student.latitude) : student.latitude;
+    const lng = typeof student.longitude === "string" ? parseFloat(student.longitude) : student.longitude;
+    if (lat && lng && !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0 && map) {
+      map.panTo({ lat, lng });
+      map.setZoom(16);
+    }
   };
 
   const handleOptimize = async () => {
@@ -363,7 +490,7 @@ function StopOrderModal({
         setOrderedList(reordered);
         setStatusMsg({
           type: "success",
-          text: isRtl ? "تم ترتيب المحطات ذكياً وفق Google Maps مع مراعاة الزحام الحقيقي!" : "Route optimized smartly with Google Maps traffic!",
+          text: isRtl ? "تم تحسين مسار وترتيب الطلاب تلقائياً وفق Google Maps!" : "Route and sequence optimized via Google Maps!",
         });
       } else {
         setStatusMsg({
@@ -417,135 +544,337 @@ function StopOrderModal({
     }
   };
 
+  const activeStudent = useMemo(() => {
+    return orderedList.find((s) => s.id === activeStudentId) || null;
+  }, [orderedList, activeStudentId]);
+
   return (
-    <Modal show={isOpen} onClose={onClose} maxWidth="2xl">
+    <Modal show={isOpen} onClose={onClose} maxWidth="6xl">
+      {/* Modal Header */}
       <div className={DS_modalHeader(isRtl)}>
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-[12px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600">
+          <div className="p-2.5 rounded-[14px] bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 shadow-sm border border-indigo-100 dark:border-indigo-800">
             <ListOrdered className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-[#0f2044] dark:text-white">
-              {isRtl ? "ترتيب تسلسل الطلاب في المسار (من الأول للأخير)" : "Student Route Sequence (1st to Last)"}
+            <h3 className="text-lg font-black text-[#0f2044] dark:text-white flex items-center gap-2">
+              <span>{isRtl ? "ترتيب تسلسل الطلاب والمسار على الخريطة" : "Student Route Sequence & Interactive Map"}</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f5b800]/20 text-[#7a5c00] dark:text-[#f5b800] border border-[#f5b800]/30">
+                {tripType === "morning" ? (isRtl ? "رحلة ذهاب" : "Morning") : (isRtl ? "رحلة عودة" : "Afternoon")}
+              </span>
             </h3>
-            <p className="text-xs font-semibold text-gray-500">
-              {bus.bus_number} — {bus.plate_number} • {isRtl ? "حدد ترتيب صعود ونزول الطلاب بالتسلسل" : "Set pickup/drop-off order"}
+            <p className="text-xs font-semibold text-gray-500 flex items-center gap-2 mt-0.5">
+              <span>{bus.bus_number} — {bus.plate_number}</span>
+              <span>•</span>
+              <span>{school?.name || (isRtl ? "المدرسة" : "School")}</span>
             </p>
           </div>
         </div>
-        <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600">
+        <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 transition-colors">
           <XCircle className="w-6 h-6" />
         </button>
       </div>
 
-      <div className="p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50 dark:bg-[#0f2044]/30 p-3 rounded-[16px] border border-gray-200 dark:border-[#243460]">
-          <div className="flex bg-white dark:bg-[#1a2845] rounded-[12px] p-1 shadow-sm border border-gray-200 dark:border-[#243460] w-full sm:w-auto">
-            <button
-              onClick={() => setTripType("morning")}
-              className={`flex-1 sm:flex-none px-4 py-2 rounded-[10px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                tripType === "morning"
-                  ? "bg-[#0f2044] text-white shadow"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-300"
-              }`}
-            >
-              <Sunrise className="w-4 h-4 text-[#7ba7e8]" />
-              {isRtl ? "رحلة الصباح (ذهاب)" : "Morning (Forth)"}
-            </button>
-            <button
-              onClick={() => setTripType("afternoon")}
-              className={`flex-1 sm:flex-none px-4 py-2 rounded-[10px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                tripType === "afternoon"
-                  ? "bg-[#f5b800] text-[#0f2044] shadow"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-300"
-              }`}
-            >
-              <Sunset className="w-4 h-4 text-[#0f2044]" />
-              {isRtl ? "رحلة المساء (عودة)" : "Afternoon (Return)"}
-            </button>
-          </div>
-
-          <button
-            onClick={handleOptimize}
-            disabled={isOptimizing || orderedList.length < 2}
-            className={`w-full sm:w-auto px-4 py-2 rounded-[12px] text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm ${
-              isOptimizing || orderedList.length < 2
-                ? "bg-gray-200 text-gray-400 dark:bg-gray-800 cursor-not-allowed"
-                : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 dark:shadow-none"
-            }`}
-          >
-            {isOptimizing ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{isRtl ? "جارٍ التحسين عبر Google..." : "Optimizing via Google..."}</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 text-amber-300" />
-                <span>{isRtl ? "تحسين الترتيب عبر Google Maps" : "Optimize with Google Maps"}</span>
-              </>
-            )}
-          </button>
-        </div>
-
+      {/* Modal Body: Split 2-Column Responsive Layout */}
+      <div className="p-4 sm:p-6">
+        {/* Status Alerts */}
         {statusMsg && (
           <div
-            className={`p-3 rounded-[12px] text-xs font-bold flex items-center gap-2 border ${
+            className={`p-3.5 mb-4 rounded-[14px] text-xs font-bold flex items-center gap-2.5 border transition-all ${
               statusMsg.type === "success"
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800"
-                : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-800"
+                ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800"
+                : "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800"
             }`}
           >
-            {statusMsg.type === "success" ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+            {statusMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> : <AlertTriangle className="w-4 h-4 flex-shrink-0" />}
             <span>{statusMsg.text}</span>
           </div>
         )}
 
-        <div className="max-h-96 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-          {orderedList.length === 0 ? (
-            <div className="text-center py-10 text-gray-400 font-bold text-sm">
-              {isRtl ? "لا يوجد طلاب مخصصين لهذه الحافلة في هذا التوقيت" : "No students assigned to this trip"}
-            </div>
-          ) : (
-            orderedList.map((student, idx) => (
-              <div
-                key={student.id}
-                className="flex items-center justify-between p-3 rounded-[14px] bg-gray-50 dark:bg-[#0f2044]/20 border border-gray-100 dark:border-[#243460] hover:border-gray-200 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-black text-xs flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <div>
-                    <h4 className="font-bold text-sm text-[#0f2044] dark:text-white">{student.name}</h4>
-                    <p className="text-[11px] text-gray-400 font-mono">{student.student_code || student.national_id}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => moveUp(idx)}
-                    disabled={idx === 0}
-                    className="p-1.5 rounded-[8px] hover:bg-gray-200 dark:hover:bg-[#1a2845] text-gray-500 disabled:opacity-30 disabled:hover:bg-transparent"
-                    title={isRtl ? "تحريك لأعلى" : "Move up"}
-                  >
-                    <ArrowUp className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => moveDown(idx)}
-                    disabled={idx === orderedList.length - 1}
-                    className="p-1.5 rounded-[8px] hover:bg-gray-200 dark:hover:bg-[#1a2845] text-gray-500 disabled:opacity-30 disabled:hover:bg-transparent"
-                    title={isRtl ? "تحريك لأسفل" : "Move down"}
-                  >
-                    <ArrowDown className="w-4 h-4" />
-                  </button>
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* ─── Column 1: Ordered Students List (5 cols) ─── */}
+          <div className="lg:col-span-5 space-y-3">
+            {/* Trip Type Selector & Smart Optimize */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 bg-gray-50 dark:bg-[#0f2044]/30 p-2.5 rounded-[16px] border border-gray-200 dark:border-[#243460]">
+              <div className="flex bg-white dark:bg-[#1a2845] rounded-[10px] p-1 shadow-sm border border-gray-200 dark:border-[#243460] w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setTripType("morning")}
+                  className={`flex-1 sm:flex-none px-3 py-1.5 rounded-[8px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    tripType === "morning"
+                      ? "bg-[#0f2044] text-white shadow"
+                      : "text-gray-500 hover:text-gray-700 dark:text-gray-300"
+                  }`}
+                >
+                  <Sunrise className="w-3.5 h-3.5 text-yellow-400" />
+                  <span>{isRtl ? "الذهاب (صباحاً)" : "Morning"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTripType("afternoon")}
+                  className={`flex-1 sm:flex-none px-3 py-1.5 rounded-[8px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    tripType === "afternoon"
+                      ? "bg-[#0f2044] text-white shadow"
+                      : "text-gray-500 hover:text-gray-700 dark:text-gray-300"
+                  }`}
+                >
+                  <Sunset className="w-3.5 h-3.5 text-orange-400" />
+                  <span>{isRtl ? "العودة (ظهراً)" : "Afternoon"}</span>
+                </button>
               </div>
-            ))
-          )}
+
+              <button
+                type="button"
+                onClick={handleOptimize}
+                disabled={isOptimizing || orderedList.length < 2}
+                className="w-full sm:w-auto px-3 py-1.5 rounded-[10px] text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                title={isRtl ? "ترتيب ذكي حسب مسار الشوارع الواقعي عبر Google Maps" : "Smart optimize via Google Maps"}
+              >
+                {isOptimizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-yellow-300" />}
+                <span>{isOptimizing ? (isRtl ? "جاري التحسين..." : "Optimizing...") : (isRtl ? "تحسين ذكي (خرائط Google)" : "Smart Optimize")}</span>
+              </button>
+            </div>
+
+            {/* Scrollable List of Ordered Students */}
+            <div className="space-y-2 max-h-[480px] overflow-y-auto custom-scrollbar p-1">
+              {orderedList.length === 0 ? (
+                <div className="p-8 text-center text-gray-400 bg-gray-50/50 dark:bg-[#0f2044]/20 rounded-[16px] border border-dashed border-gray-200 dark:border-[#243460]">
+                  <Users className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                  <p className="font-bold text-sm text-gray-500">
+                    {isRtl ? "لا يوجد طلاب مخصصين لهذه الحافلة في هذا الاتجاه" : "No students assigned to this bus for this trip"}
+                  </p>
+                </div>
+              ) : (
+                orderedList.map((student, idx) => {
+                  const hasCoords = student.latitude != null && student.longitude != null && !isNaN(Number(student.latitude)) && Number(student.latitude) !== 0;
+                  const isSelected = student.id === activeStudentId;
+
+                  return (
+                    <div
+                      key={student.id}
+                      onClick={() => handleStudentClick(student)}
+                      className={`flex items-center justify-between p-3 rounded-[16px] transition-all cursor-pointer border ${
+                        isSelected
+                          ? "bg-amber-50 dark:bg-[#f5b800]/10 border-[#f5b800] ring-2 ring-[#f5b800]/30 shadow-md"
+                          : "bg-white dark:bg-[#1a2845] hover:bg-gray-50 dark:hover:bg-[#1f3154] border-gray-100 dark:border-[#243460] shadow-sm"
+                      }`}
+                    >
+                      {/* Left: Stop Number + Student Info */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs shadow-sm flex-shrink-0 ${
+                            isSelected
+                              ? "bg-[#f5b800] text-[#0f2044]"
+                              : tripType === "morning"
+                              ? "bg-indigo-600 text-white"
+                              : "bg-amber-600 text-white"
+                          }`}
+                        >
+                          {idx + 1}
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="font-black text-xs sm:text-sm text-[#0f2044] dark:text-white truncate">
+                            {student.name}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] font-mono text-gray-400">
+                              {student.student_code || student.national_id || "—"}
+                            </span>
+                            {hasCoords ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 flex items-center gap-0.5">
+                                <MapPin className="w-2.5 h-2.5" /> GPS
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400">
+                                {isRtl ? "بدون إحداثيات" : "No GPS"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Reorder Up/Down Buttons */}
+                      <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => moveUp(idx)}
+                          disabled={idx === 0}
+                          className="p-1.5 rounded-[8px] bg-gray-100 dark:bg-[#0f2044] text-gray-600 dark:text-gray-300 hover:bg-[#0f2044] hover:text-white disabled:opacity-20 disabled:hover:bg-gray-100 disabled:hover:text-gray-600 transition-colors shadow-sm"
+                          title={isRtl ? "تقديم المحطة للأعلى" : "Move up"}
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveDown(idx)}
+                          disabled={idx === orderedList.length - 1}
+                          className="p-1.5 rounded-[8px] bg-gray-100 dark:bg-[#0f2044] text-gray-600 dark:text-gray-300 hover:bg-[#0f2044] hover:text-white disabled:opacity-20 disabled:hover:bg-gray-100 disabled:hover:text-gray-600 transition-colors shadow-sm"
+                          title={isRtl ? "تأخير المحطة للأسفل" : "Move down"}
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* ─── Column 2: Google Maps Route & Stops Preview (7 cols) ─── */}
+          <div className="lg:col-span-7 flex flex-col gap-2.5">
+            {/* Map Header Card & Toolbar */}
+            <div className="flex items-center justify-between bg-white dark:bg-[#1a2845] p-3 rounded-[16px] border border-gray-200 dark:border-[#243460] shadow-sm">
+              <div className="flex items-center gap-2">
+                <Navigation className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span className="text-xs font-black text-[#0f2044] dark:text-white">
+                  {isRtl ? "خريطة مسار الحافلة والمحطات" : "Bus Route & Stop Sequence"}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
+                  {validStudentsWithCoords.length} / {orderedList.length} {isRtl ? "طالب محدد الموقع" : "mapped"}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setMapType(mapType === "roadmap" ? "hybrid" : "roadmap")}
+                  className="px-2.5 py-1 rounded-[8px] text-[11px] font-bold bg-gray-100 dark:bg-[#0f2044] hover:bg-gray-200 dark:hover:bg-[#243460] text-gray-700 dark:text-gray-200 transition-colors flex items-center gap-1 shadow-sm"
+                  title={isRtl ? "تبديل نمط الخريطة (قمر صناعي / عادي)" : "Toggle satellite/roadmap"}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>{mapType === "roadmap" ? (isRtl ? "قمر صناعي" : "Satellite") : (isRtl ? "خريطة" : "Roadmap")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={fitAllBounds}
+                  className="p-1.5 rounded-[8px] bg-gray-100 dark:bg-[#0f2044] hover:bg-gray-200 dark:hover:bg-[#243460] text-gray-700 dark:text-gray-200 transition-colors shadow-sm"
+                  title={isRtl ? "إعادة ضبط العرض لجميع المحطات" : "Fit all stops"}
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Map Container */}
+            <div className="relative w-full h-[460px] rounded-[20px] overflow-hidden border border-gray-200 dark:border-[#243460] shadow-inner bg-slate-100 dark:bg-[#0b1428]">
+              {isLoaded ? (
+                <GoogleMap
+                  mapContainerStyle={{ width: "100%", height: "100%" }}
+                  center={schoolCoord}
+                  zoom={12}
+                  mapTypeId={mapType}
+                  onLoad={(mapInstance) => setMap(mapInstance)}
+                  onUnmount={() => setMap(null)}
+                  options={{
+                    disableDefaultUI: false,
+                    zoomControl: true,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    fullscreenControl: false,
+                  }}
+                >
+                  {/* Polyline Route */}
+                  {pathCoordinates.length > 1 && (
+                    <Polyline
+                      path={pathCoordinates}
+                      options={{
+                        strokeColor: tripType === "morning" ? "#4f46e5" : "#d97706",
+                        strokeOpacity: 0.85,
+                        strokeWeight: 4,
+                        geodesic: true,
+                        icons: [
+                          {
+                            icon: {
+                              path: (typeof window !== "undefined" && window.google) ? window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW : 1,
+                              scale: 2.5,
+                              strokeColor: tripType === "morning" ? "#4f46e5" : "#d97706",
+                              fillColor: "#ffffff",
+                              fillOpacity: 1,
+                            },
+                            offset: "50%",
+                            repeat: "100px",
+                          },
+                        ],
+                      }}
+                    />
+                  )}
+
+                  {/* School Marker */}
+                  <Marker
+                    position={schoolCoord}
+                    icon={createSchoolMarkerIcon()}
+                    title={school?.name || (isRtl ? "المدرسة" : "School")}
+                    zIndex={999}
+                  />
+
+                  {/* Student Markers */}
+                  {validStudentsWithCoords.map((item) => (
+                    <Marker
+                      key={item.student.id}
+                      position={{ lat: item.lat, lng: item.lng }}
+                      icon={createNumberedMarkerIcon(item.orderIdx, tripType === "morning", item.student.id === activeStudentId)}
+                      title={`${item.orderIdx}. ${item.student.name}`}
+                      zIndex={item.student.id === activeStudentId ? 1000 : 100 + item.orderIdx}
+                      onClick={() => handleStudentClick(item.student)}
+                    />
+                  ))}
+
+                  {/* InfoWindow for Active Student */}
+                  {activeStudent && activeStudent.latitude && activeStudent.longitude && (
+                    <InfoWindow
+                      position={{
+                        lat: Number(activeStudent.latitude),
+                        lng: Number(activeStudent.longitude),
+                      }}
+                      onCloseClick={() => setActiveStudentId(null)}
+                    >
+                      <div className="p-2 text-right" dir={isRtl ? "rtl" : "ltr"}>
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-[#0f2044]">
+                          <span className="w-5 h-5 rounded-full bg-[#f5b800] text-[#0f2044] flex items-center justify-center text-[10px] font-black">
+                            {orderedList.findIndex((s) => s.id === activeStudent.id) + 1}
+                          </span>
+                          <span>{activeStudent.name}</span>
+                        </div>
+                        <p className="text-[10px] font-mono text-gray-500 mt-1">
+                          {activeStudent.student_code || activeStudent.national_id || "—"}
+                        </p>
+                      </div>
+                    </InfoWindow>
+                  )}
+                </GoogleMap>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-gray-400">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#f5b800] mb-3" />
+                  <p className="text-xs font-bold">{isRtl ? "جاري تحميل خريطة Google Maps..." : "Loading Google Maps..."}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Map Legend */}
+            <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 bg-gray-50 dark:bg-[#0f2044]/30 rounded-[14px] border border-gray-200 dark:border-[#243460] text-[11px] font-bold text-gray-600 dark:text-gray-300">
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-base">🏫</span>
+                  <span>{school?.name || (isRtl ? "المدرسة (نقطة الوصول/الانطلاق)" : "School")}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className={`w-3 h-3 rounded-full ${tripType === "morning" ? "bg-indigo-600" : "bg-amber-600"} inline-block`} />
+                  <span>{isRtl ? "محطات الطلاب المتسلسلة" : "Sequential Stops"}</span>
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-400 font-semibold">
+                {tripType === "morning"
+                  ? (isRtl ? "الاتجاه: محطة 1 ← ... ← المدرسة" : "Direction: Stop 1 → ... → School")
+                  : (isRtl ? "الاتجاه: المدرسة ← محطة 1 ← ..." : "Direction: School → Stop 1 → ...")}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Modal Footer */}
       <div className={`flex gap-3 px-6 py-4 border-t border-gray-100 dark:border-[#243460] bg-gray-50/50 dark:bg-[#1a2845] ${isRtl ? "justify-start" : "justify-end"}`}>
         <button onClick={onClose} className={DS_cancelBtn}>
           {isRtl ? "إغلاق" : "Close"}
@@ -554,10 +883,10 @@ function StopOrderModal({
           <button
             onClick={handleSaveOrder}
             disabled={isSaving}
-            className="px-6 py-2 rounded-[12px] text-sm font-bold bg-[#f5b800] hover:bg-[#e0a900] text-[#0f2044] shadow transition-all flex items-center gap-2"
+            className="px-6 py-2 rounded-[12px] text-sm font-bold bg-[#f5b800] hover:bg-[#e0a900] text-[#0f2044] shadow transition-all flex items-center gap-2 disabled:opacity-50"
           >
             {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-            <span>{isRtl ? "حفظ الترتيب" : "Save Sequence"}</span>
+            <span>{isRtl ? "حفظ الترتيب والمسار" : "Save Sequence & Route"}</span>
           </button>
         )}
       </div>
@@ -567,7 +896,7 @@ function StopOrderModal({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AssignStudents() {
-  const { auth, buses, students, selectedBusId: initialBusId, flash } =
+  const { auth, buses, students, selectedBusId: initialBusId, school, flash } =
     usePage().props as unknown as PageProps;
   const { t, isRtl } = useTranslation();
 
@@ -777,6 +1106,7 @@ export default function AssignStudents() {
         <StopOrderModal
           bus={selectedBus}
           students={students}
+          school={school || auth.user?.school}
           isOpen={showStopOrderModal}
           onClose={() => setShowStopOrderModal(false)}
           isRtl={isRtl}
