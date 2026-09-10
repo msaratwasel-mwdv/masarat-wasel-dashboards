@@ -45,9 +45,11 @@ class Student extends Model
         'image',
         'is_active',
         'forth_bus_id',
+        'forth_stop_order',
         'forth_latitude',
         'forth_longitude',
         'back_bus_id',
+        'back_stop_order',
         'back_latitude',
         'back_longitude',
         'address',
@@ -55,6 +57,18 @@ class Student extends Model
         'longitude',
         'location_note',
     ];
+
+    /**
+     * Get the attributes that should be cast.
+     */
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+            'forth_stop_order' => 'integer',
+            'back_stop_order' => 'integer',
+        ];
+    }
 
     /**
      * The "booted" method of the model.

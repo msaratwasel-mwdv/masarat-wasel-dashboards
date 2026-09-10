@@ -54,13 +54,17 @@ class BusLocationController extends Controller
         $isStaleTarget = false;
         if ($tLat !== null && $tLng !== null) {
             $today = now()->startOfDay();
-            $trip = \App\Models\Trip::where('bus_id', $bus->id)
-                ->whereDate('trip_date', $today)
-                ->whereIn('status', ['in_progress', 'started'])
-                ->first();
+            $processedCoords = cache()->remember("bus_{$bus->id}_stale_coords", 15, function () use ($bus, $today) {
+                $trip = \App\Models\Trip::where('bus_id', $bus->id)
+                    ->whereDate('trip_date', $today)
+                    ->whereIn('status', ['in_progress', 'started'])
+                    ->first();
 
-            if ($trip) {
-                $processedStudents = \App\Models\Student::where(function ($q) use ($bus) {
+                if (! $trip) {
+                    return [];
+                }
+
+                $students = \App\Models\Student::where(function ($q) use ($bus) {
                     $q->where('forth_bus_id', $bus->id)
                         ->orWhere('back_bus_id', $bus->id);
                 })
@@ -68,24 +72,30 @@ class BusLocationController extends Controller
                         $q->where('trip_id', $trip->id)
                             ->whereIn('status', ['boarded', 'dropped', 'absent', 'excused']);
                     })
-                    ->get();
+                    ->get(['latitude', 'longitude', 'forth_latitude', 'forth_longitude', 'back_latitude', 'back_longitude']);
 
-                foreach ($processedStudents as $student) {
-                    $coords = [
-                        ['lat' => $student->latitude, 'lng' => $student->longitude],
-                        ['lat' => $student->forth_latitude, 'lng' => $student->forth_longitude],
-                        ['lat' => $student->back_latitude, 'lng' => $student->back_longitude],
-                    ];
-                    foreach ($coords as $coord) {
-                        if ($coord['lat'] && $coord['lng']) {
-                            $latDiff = abs((float) $coord['lat'] - (float) $tLat);
-                            $lngDiff = abs((float) $coord['lng'] - (float) $tLng);
-                            if ($latDiff < 0.00015 && $lngDiff < 0.00015) {
-                                $isStaleTarget = true;
-                                break 2;
-                            }
-                        }
+                $list = [];
+                foreach ($students as $student) {
+                    if ($student->latitude && $student->longitude) {
+                        $list[] = [(float) $student->latitude, (float) $student->longitude];
                     }
+                    if ($student->forth_latitude && $student->forth_longitude) {
+                        $list[] = [(float) $student->forth_latitude, (float) $student->forth_longitude];
+                    }
+                    if ($student->back_latitude && $student->back_longitude) {
+                        $list[] = [(float) $student->back_latitude, (float) $student->back_longitude];
+                    }
+                }
+
+                return $list;
+            });
+
+            foreach ($processedCoords as $coord) {
+                $latDiff = abs((float) $coord[0] - (float) $tLat);
+                $lngDiff = abs((float) $coord[1] - (float) $tLng);
+                if ($latDiff < 0.00015 && $lngDiff < 0.00015) {
+                    $isStaleTarget = true;
+                    break;
                 }
             }
         }
@@ -158,50 +168,33 @@ class BusLocationController extends Controller
 
         // 🔔 بث الموقع فورياً لجميع المتابعين (تطبيق السائق، المشرف، ولي الأمر)
         try {
-            $today = now()->startOfDay();
-            $trip = \App\Models\Trip::where('bus_id', $bus->id)->whereDate('trip_date', $today)->where('status', 'in_progress')->first();
+            $onBoardCount = (int) cache()->remember("bus_{$bus->id}_onboard_count", 15, function () use ($bus) {
+                $today = now()->startOfDay();
+                $trip = \App\Models\Trip::where('bus_id', $bus->id)->whereDate('trip_date', $today)->where('status', 'in_progress')->first();
 
-            $onBoardCount = 0;
-            $etaData = null;
-
-            if ($trip) {
-                $onBoardStudents = \App\Models\TripAttendance::where('trip_id', $trip->id)
-                    ->where('status', 'boarded')
-                    ->with('student.guardians')
-                    ->get();
-
-                $onBoardCount = $onBoardStudents->count();
-
-                // حساب الوقت المتوقع للطلاب الموجودين في الباص حالياً
-                $destinations = [];
-                foreach ($onBoardStudents as $attendance) {
-                    $guardian = $attendance->student->guardians->first();
-                    if ($guardian && $guardian->latitude && $guardian->longitude) {
-                        $destinations[] = "{$guardian->latitude},{$guardian->longitude}";
-                    }
-                }
-
-                if (! empty($destinations)) {
-                    $etaData = $this->googleMapsService->getDistanceAndETA("{$request->latitude},{$request->longitude}", $destinations);
-                }
-            }
+                return $trip ? \App\Models\TripAttendance::where('trip_id', $trip->id)->where('status', 'boarded')->count() : 0;
+            });
 
             // الحدث القديم للتوافق
-            broadcast(new BusLocationUpdated($bus, $request->latitude, $request->longitude, $heading, $onBoardCount, $targetLat, $targetLng));
+            broadcast(new BusLocationUpdated($bus, (float) $request->latitude, (float) $request->longitude, (float) $heading, $onBoardCount, $targetLat, $targetLng));
 
-            // الحدث الجديد المطلوب للتتبع اللحظي مع بيانات ETA
-            broadcast(new DriverLocationUpdated($bus, $request->latitude, $request->longitude, $heading, $etaData, $targetLat, $targetLng));
+            // الحدث الجديد للتتبع اللحظي الفوري
+            broadcast(new DriverLocationUpdated($bus, (float) $request->latitude, (float) $request->longitude, (float) $heading, null, $targetLat, $targetLng));
 
-            \Log::debug("✅ [DRIVER] Broadcast Successful for Bus {$bus->id}");
+            \Log::debug("✅ [DRIVER] Instant Broadcast Successful for Bus {$bus->id}");
 
         } catch (\Exception $e) {
             report($e);
             \Illuminate\Support\Facades\Log::error('Location broadcast error: '.$e->getMessage());
         }
 
-        // التحقق من اقتراب الباص من بيوت الطلاب (فقط لو الباص في رحلة نشطة)
+        // التحقق من اقتراب الباص من بيوت الطلاب في الخلفية دون تعطيل مسار الـ GPS
         if (in_array($bus->trip_status, ['on_route', 'to_school', 'to_home'])) {
-            $this->checkProximityToHomes($bus, $request->latitude, $request->longitude);
+            $proximityThrottleKey = "bus_proximity_dispatch_{$bus->id}";
+            if (! cache()->has($proximityThrottleKey)) {
+                cache()->put($proximityThrottleKey, true, now()->addSeconds(30));
+                \App\Jobs\CheckBusProximityJob::dispatch($bus->id, (float) $request->latitude, (float) $request->longitude);
+            }
         }
 
         return response()->json([

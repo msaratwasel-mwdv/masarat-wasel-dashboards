@@ -845,16 +845,18 @@ class DailyTripApiController extends Controller
                 $q->whereDate('date', today())->where('status', '!=', 'rejected');
             }]);
 
-        // فلترة الطلاب حسب نوع الرحلة (صباحي/مسائي/كلاهما)
+        // فلترة الطلاب حسب نوع الرحلة (صباحي/مسائي/كلاهما) مع الترتيب الثابت للمحطات
         if ($filterTripType === 'morning') {
-            $query->where('forth_bus_id', $bus->id);
+            $query->where('forth_bus_id', $bus->id)
+                ->orderByRaw('CASE WHEN forth_stop_order > 0 THEN 0 ELSE 1 END, forth_stop_order ASC, id ASC');
         } elseif ($filterTripType === 'afternoon') {
-            $query->where('back_bus_id', $bus->id);
+            $query->where('back_bus_id', $bus->id)
+                ->orderByRaw('CASE WHEN back_stop_order > 0 THEN 0 ELSE 1 END, back_stop_order ASC, id ASC');
         } else {
             $query->where(function ($q) use ($bus) {
                 $q->where('forth_bus_id', $bus->id)
                     ->orWhere('back_bus_id', $bus->id);
-            });
+            })->orderBy('id', 'asc');
         }
 
         $students = $query->get()->map(function ($student) use ($filterTripType, $activeTrip) {
@@ -933,8 +935,9 @@ class DailyTripApiController extends Controller
                 'forth_longitude' => $forthLng,
                 'back_latitude' => $backLat,
                 'back_longitude' => $backLng,
-                'latitude' => $generalLat,
-                'longitude' => $generalLng,
+                'forth_stop_order' => $student->forth_stop_order,
+                'back_stop_order' => $student->back_stop_order,
+                'stop_order' => $filterTripType === 'morning' ? $student->forth_stop_order : $student->back_stop_order,
                 'grade' => $student->grade ?? 'متوسط',
                 'classroom' => [
                     'id' => $student->currentEnrollment?->classroom_id,
@@ -1607,9 +1610,15 @@ class DailyTripApiController extends Controller
             ], 422);
         }
 
+        // ✅ الملف الثالث: تسجيل وقت الوصول الفعلي فور وصول الطلاب وقبل بدء تصوير ورفع الفيديو
+        if (! $trip->arrival_time) {
+            $trip->update(['arrival_time' => now()]);
+        }
+
         return response()->json([
             'can_end' => true,
             'message' => 'جميع الطلاب تم تسجيل نزولهم، يمكنك بدء التوثيق.',
+            'arrival_time' => $trip->arrival_time?->toIso8601String() ?? now()->toIso8601String(),
         ]);
     }
 
@@ -1747,6 +1756,35 @@ class DailyTripApiController extends Controller
                             } catch (\Exception $e) {
                                 Log::error('Broadcast error (end trip student alight): '.$e->getMessage());
                             }
+
+                            // 📱 إشعار Push لأولياء الأمور بالوصول الآمن للمدرسة
+                            $attendance->student->loadMissing('guardians');
+                            foreach ($attendance->student->guardians as $guardian) {
+                                $studentNameEn = ! empty($attendance->student->full_name_en) ? $attendance->student->full_name_en : $attendance->student->full_name;
+                                try {
+                                    $this->notificationService->sendTranslatedToUser(
+                                        userId: $guardian->id,
+                                        type: 'student_alighted',
+                                        titleKey: 'notifications.student_status_title',
+                                        messageKey: 'notifications.student_dropped_off',
+                                        translationParams: ['student' => $attendance->student->full_name],
+                                        data: [
+                                            'attendance_id' => $attendance->id,
+                                            'bus_id' => $bus->id,
+                                            'student_id' => $attendance->student->id,
+                                            'student_name_en' => $studentNameEn,
+                                            'direction' => 'to_school',
+                                            'type' => 'student_alighted',
+                                            'category' => 'student_tracking',
+                                            'target_screen' => 'children_status',
+                                        ],
+                                        fromUserName: 'نظام النقل',
+                                        translationParamsEn: ['student' => $studentNameEn]
+                                    );
+                                } catch (\Exception $e) {
+                                    Log::error('End trip push notification error: '.$e->getMessage());
+                                }
+                            }
                         }
                     }
 
@@ -1780,7 +1818,7 @@ class DailyTripApiController extends Controller
 
                 $trip->update([
                     'status' => 'finished',
-                    'arrival_time' => now(),
+                    'arrival_time' => $trip->arrival_time ?: now(),
                     'video_check' => true,
                     'video_path' => $path,
                     'end_qr_scanned_at' => now(),

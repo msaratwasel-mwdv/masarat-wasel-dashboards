@@ -5,6 +5,7 @@ import useTranslation from "@/hooks/useTranslation";
 import Modal from "@/Components/Modal";
 import { motion, AnimatePresence } from "framer-motion";
 import PrintReportHeader from "@/Components/PrintReportHeader";
+import axios from "axios";
 import { 
     Bus as BusIcon, 
     ArrowRight, 
@@ -18,7 +19,12 @@ import {
     Info,
     Users,
     Printer,
-    ChevronDown
+    ChevronDown,
+    ListOrdered,
+    ArrowUp,
+    ArrowDown,
+    Sparkles,
+    Loader2
 } from "lucide-react";
 
 // ─── Print CSS ───────────────────────────────────────────────────
@@ -70,6 +76,10 @@ interface Student {
   gender: string;
   forth_bus_id: number | null;
   back_bus_id: number | null;
+  forth_stop_order?: number;
+  back_stop_order?: number;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
 }
 
 interface ChangeSet {
@@ -263,6 +273,298 @@ function ConfirmModal({
   );
 }
 
+// ─── Stop Order Management Modal ─────────────────────────────────────────────
+function StopOrderModal({
+  bus,
+  students,
+  isOpen,
+  onClose,
+  isRtl,
+}: {
+  bus: Bus;
+  students: Student[];
+  isOpen: boolean;
+  onClose: () => void;
+  isRtl: boolean;
+}) {
+  const [tripType, setTripType] = useState<"morning" | "afternoon">("morning");
+  const [orderedList, setOrderedList] = useState<Student[]>([]);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setStatusMsg(null);
+      return;
+    }
+    const filtered = students.filter((s) =>
+      tripType === "morning" ? s.forth_bus_id === bus.id : s.back_bus_id === bus.id
+    );
+
+    const sorted = [...filtered].sort((a, b) => {
+      const orderA = tripType === "morning" ? (a.forth_stop_order || 9999) : (a.back_stop_order || 9999);
+      const orderB = tripType === "morning" ? (b.forth_stop_order || 9999) : (b.back_stop_order || 9999);
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name, "ar");
+    });
+
+    setOrderedList(sorted);
+    setStatusMsg(null);
+  }, [isOpen, tripType, students, bus.id]);
+
+  const moveUp = (index: number) => {
+    if (index <= 0) return;
+    const next = [...orderedList];
+    const temp = next[index];
+    next[index] = next[index - 1];
+    next[index - 1] = temp;
+    setOrderedList(next);
+  };
+
+  const moveDown = (index: number) => {
+    if (index >= orderedList.length - 1) return;
+    const next = [...orderedList];
+    const temp = next[index];
+    next[index] = next[index + 1];
+    next[index + 1] = temp;
+    setOrderedList(next);
+  };
+
+  const handleOptimize = async () => {
+    if (orderedList.length < 2) {
+      setStatusMsg({
+        type: "error",
+        text: isRtl ? "يجب أن يكون هناك طالبان على الأقل في هذا المسار" : "At least 2 students required to optimize",
+      });
+      return;
+    }
+    setIsOptimizing(true);
+    setStatusMsg(null);
+
+    try {
+      const res = await axios.post("/school/buses/optimize-route", {
+        bus_id: bus.id,
+        trip_type: tripType,
+      });
+
+      if (res.data && res.data.success && res.data.ordered_students) {
+        const orderMap = new Map<number, number>();
+        res.data.ordered_students.forEach((item: { student_id: number; order: number }) => {
+          orderMap.set(item.student_id, item.order);
+        });
+
+        const reordered = [...orderedList].sort((a, b) => {
+          const ordA = orderMap.get(a.id) ?? 9999;
+          const ordB = orderMap.get(b.id) ?? 9999;
+          return ordA - ordB;
+        });
+
+        setOrderedList(reordered);
+        setStatusMsg({
+          type: "success",
+          text: isRtl ? "تم ترتيب المحطات ذكياً وفق Google Maps مع مراعاة الزحام الحقيقي!" : "Route optimized smartly with Google Maps traffic!",
+        });
+      } else {
+        setStatusMsg({
+          type: "error",
+          text: res.data?.message || (isRtl ? "فشل طلب التحسين" : "Optimization request failed"),
+        });
+      }
+    } catch (e: any) {
+      setStatusMsg({
+        type: "error",
+        text: e.response?.data?.message || (isRtl ? "حدث خطأ أثناء الاتصال بجوجل ماب" : "Error connecting to Google Maps"),
+      });
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  const handleSaveOrder = async () => {
+    setIsSaving(true);
+    setStatusMsg(null);
+
+    try {
+      const orders = orderedList.map((s, idx) => ({
+        student_id: s.id,
+        order: idx + 1,
+      }));
+
+      const res = await axios.post("/school/buses/save-stop-order", {
+        bus_id: bus.id,
+        trip_type: tripType,
+        orders,
+      });
+
+      if (res.data && res.data.success) {
+        setStatusMsg({
+          type: "success",
+          text: isRtl ? "تم حفظ ترتيب المحطات وتثبيته بنجاح!" : "Stop order saved successfully!",
+        });
+        setTimeout(() => {
+          router.reload({ only: ["students"] });
+          onClose();
+        }, 800);
+      }
+    } catch (e: any) {
+      setStatusMsg({
+        type: "error",
+        text: e.response?.data?.message || (isRtl ? "تعذر حفظ الترتيب" : "Failed to save stop order"),
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Modal show={isOpen} onClose={onClose} maxWidth="2xl">
+      <div className={DS_modalHeader}>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-[12px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600">
+            <ListOrdered className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-[#0f2044] dark:text-white">
+              {isRtl ? "ترتيب محطات الطلاب للحافلة" : "Bus Student Stop Order"}
+            </h3>
+            <p className="text-xs font-semibold text-gray-500">
+              {bus.bus_number} — {bus.plate_number}
+            </p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600">
+          <XCircle className="w-6 h-6" />
+        </button>
+      </div>
+
+      <div className="p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50 dark:bg-[#0f2044]/30 p-3 rounded-[16px] border border-gray-200 dark:border-[#243460]">
+          <div className="flex bg-white dark:bg-[#1a2845] rounded-[12px] p-1 shadow-sm border border-gray-200 dark:border-[#243460] w-full sm:w-auto">
+            <button
+              onClick={() => setTripType("morning")}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-[10px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                tripType === "morning"
+                  ? "bg-[#0f2044] text-white shadow"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-300"
+              }`}
+            >
+              <Sunrise className="w-4 h-4 text-[#7ba7e8]" />
+              {isRtl ? "رحلة الصباح (ذهاب)" : "Morning (Forth)"}
+            </button>
+            <button
+              onClick={() => setTripType("afternoon")}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-[10px] text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                tripType === "afternoon"
+                  ? "bg-[#f5b800] text-[#0f2044] shadow"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-300"
+              }`}
+            >
+              <Sunset className="w-4 h-4 text-[#0f2044]" />
+              {isRtl ? "رحلة المساء (عودة)" : "Afternoon (Return)"}
+            </button>
+          </div>
+
+          <button
+            onClick={handleOptimize}
+            disabled={isOptimizing || orderedList.length < 2}
+            className={`w-full sm:w-auto px-4 py-2 rounded-[12px] text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm ${
+              isOptimizing || orderedList.length < 2
+                ? "bg-gray-200 text-gray-400 dark:bg-gray-800 cursor-not-allowed"
+                : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 dark:shadow-none"
+            }`}
+          >
+            {isOptimizing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>{isRtl ? "جارٍ التحسين عبر Google..." : "Optimizing via Google..."}</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>{isRtl ? "تحسين الترتيب عبر Google Maps" : "Optimize with Google Maps"}</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {statusMsg && (
+          <div
+            className={`p-3 rounded-[12px] text-xs font-bold flex items-center gap-2 border ${
+              statusMsg.type === "success"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800"
+                : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-800"
+            }`}
+          >
+            {statusMsg.type === "success" ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+            <span>{statusMsg.text}</span>
+          </div>
+        )}
+
+        <div className="max-h-96 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+          {orderedList.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 font-bold text-sm">
+              {isRtl ? "لا يوجد طلاب مخصصين لهذه الحافلة في هذا التوقيت" : "No students assigned to this trip"}
+            </div>
+          ) : (
+            orderedList.map((student, idx) => (
+              <div
+                key={student.id}
+                className="flex items-center justify-between p-3 rounded-[14px] bg-gray-50 dark:bg-[#0f2044]/20 border border-gray-100 dark:border-[#243460] hover:border-gray-200 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-black text-xs flex items-center justify-center">
+                    {idx + 1}
+                  </span>
+                  <div>
+                    <h4 className="font-bold text-sm text-[#0f2044] dark:text-white">{student.name}</h4>
+                    <p className="text-[11px] text-gray-400 font-mono">{student.student_code || student.national_id}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => moveUp(idx)}
+                    disabled={idx === 0}
+                    className="p-1.5 rounded-[8px] hover:bg-gray-200 dark:hover:bg-[#1a2845] text-gray-500 disabled:opacity-30 disabled:hover:bg-transparent"
+                    title={isRtl ? "تحريك لأعلى" : "Move up"}
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => moveDown(idx)}
+                    disabled={idx === orderedList.length - 1}
+                    className="p-1.5 rounded-[8px] hover:bg-gray-200 dark:hover:bg-[#1a2845] text-gray-500 disabled:opacity-30 disabled:hover:bg-transparent"
+                    title={isRtl ? "تحريك لأسفل" : "Move down"}
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className={`flex gap-3 px-6 py-4 border-t border-gray-100 dark:border-[#243460] bg-gray-50/50 dark:bg-[#1a2845] ${isRtl ? "justify-start" : "justify-end"}`}>
+        <button onClick={onClose} className={DS_cancelBtn}>
+          {isRtl ? "إغلاق" : "Close"}
+        </button>
+        {orderedList.length > 0 && (
+          <button
+            onClick={handleSaveOrder}
+            disabled={isSaving}
+            className="px-6 py-2 rounded-[12px] text-sm font-bold bg-[#f5b800] hover:bg-[#e0a900] text-[#0f2044] shadow transition-all flex items-center gap-2"
+          >
+            {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+            <span>{isRtl ? "حفظ الترتيب" : "Save Sequence"}</span>
+          </button>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AssignStudents() {
   const { auth, buses, students, selectedBusId: initialBusId, flash } =
@@ -278,6 +580,7 @@ export default function AssignStudents() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [genderFilter, setGenderFilter] = useState<"all" | "male" | "female">("all");
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showStopOrderModal, setShowStopOrderModal] = useState(false);
   const [savedFlash, setSavedFlash] = useState<string | null>(null);
 
   // Custom Dropdown State
@@ -469,6 +772,17 @@ export default function AssignStudents() {
         />
       )}
 
+      {/* Stop Order Modal */}
+      {showStopOrderModal && selectedBus && (
+        <StopOrderModal
+          bus={selectedBus}
+          students={students}
+          isOpen={showStopOrderModal}
+          onClose={() => setShowStopOrderModal(false)}
+          isRtl={isRtl}
+        />
+      )}
+
       <div className={DS_pageWrapper}>
         {/* Header Actions (Sticky) */}
         <div className="sticky top-2 sm:top-[10px] z-40 bg-white/95 dark:bg-[#0b1428]/95 backdrop-blur-xl p-3 sm:p-4 rounded-[16px] sm:rounded-[20px] shadow-lg border border-gray-100 dark:border-[#243460] mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -499,13 +813,23 @@ export default function AssignStudents() {
             )}
 
             {selectedBus && (
-                <button
-                    onClick={handlePrint}
-                    className="p-2 sm:px-4 sm:py-2 bg-gray-100 hover:bg-gray-200 dark:bg-[#0f2044] dark:hover:bg-[#1a2845] text-gray-700 dark:text-gray-300 rounded-[10px] sm:rounded-[14px] font-bold text-sm transition-all flex items-center justify-center gap-2 border border-gray-200 dark:border-[#243460]"
-                >
-                    <Printer className="w-4 h-4 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">{isRtl ? "طباعة السجل" : "Print Roster"}</span>
-                </button>
+                <>
+                    <button
+                        onClick={() => setShowStopOrderModal(true)}
+                        className="p-2 sm:px-4 sm:py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-[10px] sm:rounded-[14px] font-bold text-sm transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800"
+                    >
+                        <ListOrdered className="w-4 h-4 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400" />
+                        <span className="hidden sm:inline">{isRtl ? "ترتيب المحطات" : "Stop Order"}</span>
+                    </button>
+
+                    <button
+                        onClick={handlePrint}
+                        className="p-2 sm:px-4 sm:py-2 bg-gray-100 hover:bg-gray-200 dark:bg-[#0f2044] dark:hover:bg-[#1a2845] text-gray-700 dark:text-gray-300 rounded-[10px] sm:rounded-[14px] font-bold text-sm transition-all flex items-center justify-center gap-2 border border-gray-200 dark:border-[#243460]"
+                    >
+                        <Printer className="w-4 h-4 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">{isRtl ? "طباعة السجل" : "Print Roster"}</span>
+                    </button>
+                </>
             )}
 
             <button

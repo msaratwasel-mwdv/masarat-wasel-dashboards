@@ -67,6 +67,73 @@ const createBusIconSvg = (status: string, isSelected: boolean) => {
 };
 
 // -------------------------------------------------------------
+// HELPER: Smooth Animated Bus Marker for Web
+// -------------------------------------------------------------
+const AnimatedBusMarker = React.memo(({
+    bus,
+    targetLat,
+    targetLng,
+    isSelected,
+    onClick,
+}: {
+    bus: Bus;
+    targetLat: number;
+    targetLng: number;
+    isSelected: boolean;
+    onClick: () => void;
+}) => {
+    const [pos, setPos] = useState({ lat: targetLat, lng: targetLng });
+    const animRef = useRef<number | null>(null);
+    const startPosRef = useRef({ lat: targetLat, lng: targetLng });
+    const targetPosRef = useRef({ lat: targetLat, lng: targetLng });
+    const startTimeRef = useRef<number>(0);
+    const duration = 1500; // 1.5s smooth easing
+
+    useEffect(() => {
+        if (targetLat !== targetPosRef.current.lat || targetLng !== targetPosRef.current.lng) {
+            startPosRef.current = { ...pos };
+            targetPosRef.current = { lat: targetLat, lng: targetLng };
+            startTimeRef.current = performance.now();
+
+            if (animRef.current) {
+                cancelAnimationFrame(animRef.current);
+            }
+
+            const step = (currentTime: number) => {
+                const elapsed = currentTime - startTimeRef.current;
+                const progress = Math.min(elapsed / duration, 1);
+                const ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+
+                const currentLat = startPosRef.current.lat + (targetPosRef.current.lat - startPosRef.current.lat) * ease;
+                const currentLng = startPosRef.current.lng + (targetPosRef.current.lng - startPosRef.current.lng) * ease;
+
+                setPos({ lat: currentLat, lng: currentLng });
+
+                if (progress < 1) {
+                    animRef.current = requestAnimationFrame(step);
+                }
+            };
+
+            animRef.current = requestAnimationFrame(step);
+        }
+
+        return () => {
+            if (animRef.current) {
+                cancelAnimationFrame(animRef.current);
+            }
+        };
+    }, [targetLat, targetLng]);
+
+    return (
+        <Marker 
+            position={pos}
+            icon={createBusIconSvg(bus.status || 'inactive', isSelected)}
+            onClick={onClick}
+        />
+    );
+});
+
+// -------------------------------------------------------------
 // MAIN COMPONENT
 // -------------------------------------------------------------
 export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, centerLng = 35.2332 }: Props) {
@@ -271,6 +338,7 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
                         setSelectedBus(null);
                     }}
                 >
+
                     {busesWithLocation.map(bus => {
                         const busLat = parseCoord(bus.current_latitude ?? bus.latitude);
                         const busLng = parseCoord(bus.current_longitude ?? bus.longitude);
@@ -278,10 +346,12 @@ export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, cente
                         
                         const isSelected = selectedBus?.id === bus.id;
                         return (
-                            <Marker 
+                            <AnimatedBusMarker 
                                 key={`bus-${bus.id}`}
-                                position={{ lat: busLat, lng: busLng }}
-                                icon={createBusIconSvg(bus.status || 'inactive', isSelected)}
+                                bus={bus}
+                                targetLat={busLat}
+                                targetLng={busLng}
+                                isSelected={isSelected}
                                 onClick={() => setSelectedBus(bus)}
                             />
                         );
