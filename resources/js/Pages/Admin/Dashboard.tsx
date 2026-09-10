@@ -1,15 +1,17 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, router } from "@inertiajs/react";
 import { useTheme } from "@/Contexts/ThemeContext";
-import GoogleMapContainer from "@/Components/GoogleMapContainer";
-import { useEffect, useState, useMemo } from "react";
+import LiveTrackingMap, { Bus as LiveBus, SchoolItem } from "@/Components/LiveTrackingMap";
+import axios from "axios";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Bus, School as SchoolIcon, Users, GraduationCap, 
   Activity, AlertTriangle, ShieldCheck, TrendingUp, 
   Map as MapIcon, Plus, FileText, Settings, 
   Navigation, CheckCircle2, Clock, ArrowUpRight,
-  Info, Bell, Zap, Sun, Moon, Calendar as CalendarIcon, Sparkles, XCircle
+  Info, Bell, Zap, Sun, Moon, Calendar as CalendarIcon, Sparkles, XCircle,
+  Maximize2, Minimize2
 } from "lucide-react";
 import { usePage } from "@inertiajs/react";
 import { DS_card, DS_pageTitle, DS_statLabel, DS_statValue, DS_btnGold, DS_btnPrimary } from "@/lib/DS";
@@ -35,8 +37,17 @@ interface DashboardProps {
     daily_trips_today: { pending: number; ongoing: number; completed: number };
   };
   alerts: Array<{ type: "warning" | "critical"; category?: string; message: string }>;
-  mapData: Array<{ id: number; code: string; lat: number; lng: number; status: string; speed: string; school_id?: number }>;
-  filterSchools: Array<{ id: number; name: string }>;
+  mapData?: Array<{ id: number; code: string; lat: number; lng: number; status: string; speed: string; school_id?: number }>;
+  liveBuses?: LiveBus[];
+  liveStats?: {
+    total_buses: number;
+    active_buses: number;
+    moving_buses: number;
+    total_students: number;
+    students_on_board?: number;
+  };
+  filterSchools: Array<{ id: number; name: string; lat?: number | null; lng?: number | null }>;
+  filterBuses?: Array<{ id: number; bus_number: string; plate_number: string; school_id?: number }>;
   tripsTrend: Array<{ date: string; count: number }>;
   fleetDistribution: Array<{ name: string; value: number; color: string }>;
   recentActivities: Array<{ id: number; type: string; title: string; description: string; time: string; status: string; link: string }>;
@@ -62,7 +73,10 @@ export default function Dashboard({
   stats,
   alerts,
   mapData,
-  filterSchools,
+  liveBuses,
+  liveStats,
+  filterSchools = [],
+  filterBuses = [],
   tripsTrend,
   fleetDistribution,
   recentActivities,
@@ -93,17 +107,130 @@ export default function Dashboard({
     day: 'numeric'
   });
 
+  // Real-time Live Fleet Tracking State
+  const [buses, setBuses] = useState<LiveBus[]>(liveBuses || []);
+  const [trackingStats, setTrackingStats] = useState(
+    liveStats || {
+      total_buses: liveBuses?.length || 0,
+      active_buses: liveBuses?.filter((b) => b.status === "active").length || 0,
+      moving_buses: liveBuses?.filter((b) => (b.speed_kmh || 0) > 0 && b.is_moving).length || 0,
+      total_students: stats?.total_students || 0,
+      students_on_board: liveBuses?.reduce((acc, b) => acc + (b.students_on_board || 0), 0) || 0,
+    }
+  );
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [isTrackingEnabled, setIsTrackingEnabled] = useState(false);
-  const [selectedSchool, setSelectedSchool] = useState<string>("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSchoolId, setSelectedSchoolId] = useState<number | 'all'>('all');
+  const [isFullscreenTracking, setIsFullscreenTracking] = useState(false);
+  const isMountedRef = useRef<boolean>(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const filteredMapData = useMemo(() => {
-    return mapData.filter((bus) => {
-      if (selectedSchool && bus.school_id?.toString() !== selectedSchool) return false;
-      if (searchQuery && !bus.code.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      return true;
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (liveBuses) setBuses(liveBuses);
+    if (liveStats) setTrackingStats(liveStats);
+  }, [liveBuses, liveStats]);
+
+  // 1. WebSocket Live Tracking (Laravel Reverb / Echo)
+  useEffect(() => {
+    if (!window.Echo || !buses || buses.length === 0) return;
+
+    buses.forEach((bus) => {
+      window.Echo.private(`bus.${bus.id}`).listen(".bus.location.updated", (e: any) => {
+        if (!isMountedRef.current) return;
+        setBuses((prev) =>
+          prev.map((b) => {
+            if (b.id === e.bus_id) {
+              const speed = (e.speed_kmh && e.speed_kmh >= 3.0) ? Math.round(e.speed_kmh) : 0;
+              return {
+                ...b,
+                current_latitude: e.latitude,
+                current_longitude: e.longitude,
+                latitude: e.latitude,
+                longitude: e.longitude,
+                trip_status: e.trip_status ?? b.trip_status,
+                students_on_board: e.students_on_board ?? b.students_on_board,
+                speed_kmh: speed,
+                is_moving: speed > 0,
+                heading: e.heading ?? b.heading,
+              };
+            }
+            return b;
+          })
+        );
+        setLastSyncTime(new Date());
+      });
     });
-  }, [mapData, selectedSchool, searchQuery]);
+
+    return () => {
+      if (!window.Echo) return;
+      buses.forEach((bus) => {
+        window.Echo.leave(`bus.${bus.id}`);
+      });
+    };
+  }, [buses?.length]);
+
+  // 2. Hybrid Background Polling with AbortController
+  useEffect(() => {
+    if (!isTrackingEnabled) return;
+
+    const pollTracking = async () => {
+      try {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const response = await axios.get("/admin/buses/tracking/api", {
+          signal: abortControllerRef.current.signal,
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+        });
+
+        if (isMountedRef.current && response.data?.buses) {
+          setBuses(response.data.buses);
+          if (response.data.stats) {
+            setTrackingStats(response.data.stats);
+          }
+          setLastSyncTime(new Date());
+        }
+      } catch (err: any) {
+        if (axios.isCancel(err) || err?.name === "CanceledError") {
+          return;
+        }
+      }
+    };
+
+    const intervalId = setInterval(pollTracking, 4000);
+    return () => clearInterval(intervalId);
+  }, [isTrackingEnabled]);
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await axios.get("/admin/buses/tracking/api");
+      if (response.data?.buses) {
+        setBuses(response.data.buses);
+        if (response.data.stats) {
+          setTrackingStats(response.data.stats);
+        }
+        setLastSyncTime(new Date());
+      }
+    } catch (err) {
+      console.debug("Manual sync error:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [selectedSub, setSelectedSub] = useState<any>(null);
@@ -404,53 +531,77 @@ export default function Dashboard({
             <div className={`p-6 rounded-3xl border backdrop-blur-md overflow-hidden ${isDark ? 'bg-slate-800/40 border-slate-700 shadow-xl' : 'bg-white border-slate-100 shadow-sm shadow-slate-200/50'}`}>
                <div className={`flex flex-col md:flex-row justify-between items-center mb-6 gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                  <div className="flex items-center gap-3 w-full md:w-auto">
-                    <div className="p-2 bg-blue-500/10 rounded-xl">
-                       <Navigation className="w-6 h-6 text-blue-500" />
+                    <div className="p-2.5 bg-blue-500/10 rounded-2xl text-blue-500 flex items-center justify-center">
+                       <Navigation className="w-6 h-6 animate-pulse" />
                     </div>
                     <div className={isRTL ? 'text-right' : 'text-left'}>
-                      <h3 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>{isRTL ? "التتبع المباشر" : "Live Tracking"}</h3>
-                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isRTL ? "رصد حركة الحافلات في سلطنة عمان" : "Active fleet monitoring in Oman"}</p>
+                      <div className="flex items-center gap-2">
+                        <h3 className={`font-black text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>{isRTL ? "التتبع المباشر لأسطول الحافلات" : "Live Bus Fleet Tracking"}</h3>
+                        <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                          isTrackingEnabled 
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                            : 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isTrackingEnabled ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
+                          {isTrackingEnabled 
+                            ? (isRTL ? "بيانات حقيقية حية" : "Real-Time Telemetry") 
+                            : (isRTL ? "وضع الاستعداد" : "Standby Mode")}
+                        </span>
+                      </div>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isRTL ? "مراقبة لحظية لحركة الحافلات ومحطات الطلاب في سلطنة عمان" : "Real-time monitoring of school buses and student stops in Oman"}</p>
                     </div>
                  </div>
                  
-                 <div className={`flex items-center gap-3 w-full md:w-auto`}>
-                    <select 
-                      value={selectedSchool}
-                      onChange={(e) => setSelectedSchool(e.target.value)}
-                      className={`text-xs font-black rounded-xl py-2 px-6 appearance-none focus:ring-2 ring-[#f5b800]/50 border-0 ${isDark ? 'bg-slate-700 text-white' : 'bg-gray-100 text-slate-900'}`}
-                    >
-                      <option value="">{isRTL ? "كل المدارس" : "All Schools"}</option>
-                      {filterSchools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
+                 <div className={`flex items-center gap-2.5 w-full md:w-auto`}>
+                    {isTrackingEnabled && (
+                      <button 
+                        onClick={() => setIsFullscreenTracking(!isFullscreenTracking)}
+                        className={`text-xs font-bold px-3.5 py-2.5 rounded-xl transition-all border flex items-center gap-1.5 active:scale-95 ${
+                          isDark ? 'bg-slate-800 border-slate-700 text-slate-200 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700 hover:text-slate-900'
+                        }`}
+                        title={isRTL ? "عرض الخريطة بملء الشاشة" : "Toggle Fullscreen"}
+                      >
+                        {isFullscreenTracking ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                        <span>{isFullscreenTracking ? (isRTL ? "تصغير" : "Exit") : (isRTL ? "توسيع" : "Expand")}</span>
+                      </button>
+                    )}
 
                     <button 
                       onClick={() => setIsTrackingEnabled(!isTrackingEnabled)}
-                      className={`text-xs font-black px-6 py-2 rounded-xl transition-all shadow-xl ${
+                      className={`text-xs font-black px-5 py-2.5 rounded-xl transition-all shadow-lg active:scale-95 flex items-center gap-2 ${
                         isTrackingEnabled 
-                          ? 'bg-red-500 text-white shadow-red-500/30' 
-                          : 'bg-[#0f2044] text-[#f5b800] shadow-[#0f2044]/20'
+                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25' 
+                          : 'bg-[#0f2044] text-[#f5b800] hover:bg-[#1a3266] shadow-[#0f2044]/20'
                       }`}
                     >
-                      {isTrackingEnabled ? (isRTL ? "إغلاق الخريطة" : "Pause Tracking") : (isRTL ? "بدء الرصد" : "Start Tracking")}
+                      <Zap className="w-3.5 h-3.5 fill-current" />
+                      <span>{isTrackingEnabled ? (isRTL ? "إيقاف مؤقت" : "Pause Tracking") : (isRTL ? "بدء الرصد المباشر" : "Start Live Tracking")}</span>
                     </button>
                  </div>
                </div>
 
-               <div className="relative h-[450px] w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
+               <div className="relative w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
                   <AnimatePresence mode="wait">
                     {isTrackingEnabled ? (
                       <motion.div 
-                        key="map-active"
+                        key="map-live-active"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0"
+                        className="w-full"
                       >
-                         <GoogleMapContainer 
-                             apiKey=""
-                             data={filteredMapData}
-                             isDark={isDark}
-                             isRTL={isRTL}
+                         <LiveTrackingMap 
+                            buses={buses}
+                            schools={filterSchools}
+                            selectedSchoolId={selectedSchoolId}
+                            onSelectSchool={(schoolId) => setSelectedSchoolId(schoolId)}
+                            stats={trackingStats}
+                            lastSyncTime={lastSyncTime}
+                            isSyncing={isSyncing}
+                            onRefresh={handleManualSync}
+                            height="560px"
+                            isFullscreen={isFullscreenTracking}
+                            onToggleFullscreen={() => setIsFullscreenTracking(!isFullscreenTracking)}
                          />
                       </motion.div>
                     ) : (
@@ -459,7 +610,7 @@ export default function Dashboard({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className={`absolute inset-0 flex flex-col items-center justify-center gap-6 p-12 text-center z-10 ${isDark ? 'bg-slate-900/40' : 'bg-slate-50'}`}
+                        className={`w-full h-[450px] flex flex-col items-center justify-center gap-6 p-12 text-center z-10 ${isDark ? 'bg-slate-900/40' : 'bg-slate-50'}`}
                       >
                          <div className={`p-6 rounded-full ${isDark ? 'bg-slate-800' : 'bg-white shadow-xl shadow-slate-200'}`}>
                             <div className="relative">
@@ -469,14 +620,14 @@ export default function Dashboard({
                          </div>
                          <div>
                            <h4 className={`text-xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{isRTL ? "نظام التتبع في وضع الاستعداد" : "Tracking System on Standby"}</h4>
-                           <p className={`text-sm max-w-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isRTL ? "تم إيقاف تفعيل الخريطة لتسريع تحميل الصفحة وتوفير موارد النظام. قم بتفعيلها لمراقبة حركة الأسطول في عُمان." : "Map tracking is disabled to optimize performance. Enable it to monitor real-time fleet movement in Oman."}</p>
+                           <p className={`text-sm max-w-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isRTL ? "تم إيقاف تفعيل الخريطة مؤقتاً. قم باستئنافها لمراقبة حركة الأسطول المباشر في سلطنة عُمان." : "Map tracking is paused. Enable it to monitor real-time fleet movement in Oman."}</p>
                          </div>
                           <button 
                             onClick={() => setIsTrackingEnabled(true)}
-                            className="px-10 py-4 bg-[#f5b800] hover:bg-[#0f2044] hover:text-[#f5b800] text-[#0f2044] rounded-[22px] font-black text-sm tracking-widest uppercase transition-all shadow-2xl shadow-[#f5b800]/20 active:scale-95 flex items-center gap-3"
+                            className="px-8 py-3.5 bg-[#f5b800] hover:bg-[#0f2044] hover:text-[#f5b800] text-[#0f2044] rounded-[20px] font-black text-xs tracking-wider uppercase transition-all shadow-xl shadow-[#f5b800]/20 active:scale-95 flex items-center gap-2.5"
                           >
-                             <Zap className="w-5 h-5 fill-current" />
-                             {isRTL ? "تفعيل الرصد المباشر الآن" : "Enable Live Tracking"}
+                             <Zap className="w-4 h-4 fill-current" />
+                             {isRTL ? "استئناف الرصد المباشر الآن" : "Resume Live Tracking"}
                           </button>
                       </motion.div>
                     )}

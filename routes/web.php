@@ -194,6 +194,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
             ->parameters(['field-supervisors' => 'field_supervisor'])
             ->except(['create', 'edit', 'show']);
         // الحافلات - شامل جميع الوظائف
+        Route::get('buses/tracking/api', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'trackingApi'])->name('buses.tracking.api');
         Route::resource('buses', BusController::class);
         Route::post('buses/{bus}/assign', [BusController::class, 'assignToSchool'])->name('buses.assign');
         Route::post('buses/{bus}/assign-route', [BusController::class, 'assignRoute'])->name('buses.assign-route');
