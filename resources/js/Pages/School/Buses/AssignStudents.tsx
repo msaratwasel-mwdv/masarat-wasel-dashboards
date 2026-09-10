@@ -419,7 +419,7 @@ function StopOrderModal({
 
   return (
     <Modal show={isOpen} onClose={onClose} maxWidth="2xl">
-      <div className={DS_modalHeader}>
+      <div className={DS_modalHeader(isRtl)}>
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-[12px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600">
             <ListOrdered className="w-6 h-6" />

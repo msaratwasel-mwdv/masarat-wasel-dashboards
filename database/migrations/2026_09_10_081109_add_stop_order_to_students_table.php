@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('students', function (Blueprint $table) {
-            $table->unsignedInteger('forth_stop_order')->default(0)->after('school_id')->index();
-            $table->unsignedInteger('back_stop_order')->default(0)->after('forth_stop_order')->index();
+            $table->unsignedInteger('forth_stop_order')->default(0)->after('forth_bus_id')->index();
+            $table->unsignedInteger('back_stop_order')->default(0)->after('back_bus_id')->index();
         });
     }
 
