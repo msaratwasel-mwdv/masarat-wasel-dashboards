@@ -285,9 +285,9 @@ class BusLocationController extends Controller
             }
         }
 
-        // ─── Resolve Next Destination ────────────────────────────────────────
-        // The Flutter app should never guess the name from coordinates.
-        // We resolve it server-side so the label is always accurate.
+        // ─── Resolve Next Destination (Privacy-Aware) ─────────────────────────
+        // - School staff / crew  → see exact student name (needed for operations)
+        // - Guardian             → sees their child's name only; other stops show "في الطريق إليك"
         $nextDestination = null;
 
         $targetLat = $bus->target_latitude ? (float) $bus->target_latitude : null;
@@ -297,26 +297,27 @@ class BusLocationController extends Controller
             $tripType = $activeTrip->type; // 'forth' | 'back'
             $busColumn = $tripType === 'forth' ? 'forth_bus_id' : 'back_bus_id';
 
-            // Tolerance: 15 metres (~0.000135°)
+            // Tolerance: ~15 metres
             $tolerance = 0.000135;
 
             // 1. Check if target matches the school
             $school = $bus->school;
             if ($school && $school->latitude && $school->longitude) {
-                $latDiff = abs((float) $school->latitude - $targetLat);
-                $lngDiff = abs((float) $school->longitude - $targetLng);
-                if ($latDiff <= $tolerance && $lngDiff <= $tolerance) {
+                if (
+                    abs((float) $school->latitude - $targetLat) <= $tolerance &&
+                    abs((float) $school->longitude - $targetLng) <= $tolerance
+                ) {
                     $nextDestination = [
                         'type' => 'school',
                         'name' => $school->name ?? 'المدرسة',
                         'name_en' => $school->name_en ?? 'School',
+                        'is_my_stop' => false,
                     ];
                 }
             }
 
-            // 2. If not the school, match against pending (not-yet-boarded/dropped) students
+            // 2. Match against pending students
             if ($nextDestination === null) {
-                // Fetch students still pending on this trip
                 $pendingStudentIds = \App\Models\TripAttendance::where('trip_id', $activeTrip->id)
                     ->where('status', 'pending')
                     ->pluck('student_id');
@@ -324,10 +325,17 @@ class BusLocationController extends Controller
                 $pendingStudents = \App\Models\Student::whereIn('id', $pendingStudentIds)
                     ->where($busColumn, $bus->id)
                     ->get(['id', 'first_name', 'last_name', 'first_name_en', 'last_name_en',
-                        'latitude', 'longitude', 'forth_latitude', 'forth_longitude', 'back_latitude', 'back_longitude']);
+                        'latitude', 'longitude', 'forth_latitude', 'forth_longitude',
+                        'back_latitude', 'back_longitude']);
+
+                // Guardian's own children IDs (for privacy filtering)
+                $myChildIds = $isGuardian
+                    ? \App\Models\Student::whereHas('guardians', fn ($q) => $q->where('users.id', $user->id))
+                        ->pluck('id')
+                        ->toArray()
+                    : [];
 
                 foreach ($pendingStudents as $student) {
-                    // Check all coordinate fields the student might have
                     $candidateCoords = [];
                     if ($student->latitude && $student->longitude) {
                         $candidateCoords[] = [(float) $student->latitude, (float) $student->longitude];
@@ -341,22 +349,36 @@ class BusLocationController extends Controller
 
                     foreach ($candidateCoords as [$sLat, $sLng]) {
                         if (abs($sLat - $targetLat) <= $tolerance && abs($sLng - $targetLng) <= $tolerance) {
-                            $nextDestination = [
-                                'type' => 'student',
-                                'name' => trim($student->first_name.' '.$student->last_name),
-                                'name_en' => trim(($student->first_name_en ?? '').' '.($student->last_name_en ?? '')),
-                            ];
+                            $isMyChild = in_array($student->id, $myChildIds);
+
+                            if ($isGuardian && ! $isMyChild) {
+                                // Privacy: guardian sees a generic message for another child's stop
+                                $nextDestination = [
+                                    'type' => 'other_stop',
+                                    'name' => 'في الطريق إليك',
+                                    'name_en' => 'On the way to you',
+                                    'is_my_stop' => false,
+                                ];
+                            } else {
+                                // Crew / school staff / guardian viewing their own child
+                                $nextDestination = [
+                                    'type' => 'student',
+                                    'name' => trim($student->first_name.' '.$student->last_name),
+                                    'name_en' => trim(($student->first_name_en ?? '').' '.($student->last_name_en ?? '')),
+                                    'is_my_stop' => $isMyChild,
+                                ];
+                            }
                             break 2;
                         }
                     }
                 }
             }
 
-            // 3. Fallback: if no match found, use "المدرسة" for forth trips and student name still unknown for back
+            // 3. Fallback
             if ($nextDestination === null) {
                 $nextDestination = $tripType === 'forth'
-                    ? ['type' => 'school', 'name' => 'المدرسة', 'name_en' => 'School']
-                    : ['type' => 'unknown', 'name' => 'الوجهة القادمة', 'name_en' => 'Next Stop'];
+                    ? ['type' => 'school',   'name' => 'المدرسة',         'name_en' => 'School',   'is_my_stop' => false]
+                    : ['type' => 'unknown',  'name' => 'في الطريق إليك', 'name_en' => 'On the way', 'is_my_stop' => false];
             }
         }
         // ─────────────────────────────────────────────────────────────────────
