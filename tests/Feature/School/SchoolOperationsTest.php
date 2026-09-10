@@ -162,4 +162,87 @@ class SchoolOperationsTest extends TestCase
         $this->assertEquals(1, $student1->fresh()->forth_stop_order);
         $this->assertEquals(2, $student2->fresh()->forth_stop_order);
     }
+
+    public function test_live_tracking_api_returns_optimal_waypoints_and_stops(): void
+    {
+        $school = School::factory()->create([
+            'is_active' => true,
+            'latitude' => 23.5859,
+            'longitude' => 58.4059,
+        ]);
+        $schoolAdmin = $this->createSchoolAdmin($school);
+
+        $grade = Grade::factory()->create(['school_id' => $school->id]);
+        $classroom = Classroom::factory()->create(['grade_id' => $grade->id]);
+
+        $bus = Bus::factory()->create([
+            'school_id' => $school->id,
+            'latitude' => 23.5859,
+            'longitude' => 58.4059,
+        ]);
+
+        $student = Student::factory()->enrolled($school, $classroom)->create([
+            'forth_bus_id' => $bus->id,
+            'back_bus_id' => $bus->id,
+            'latitude' => 23.6000,
+            'longitude' => 58.4200,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($schoolAdmin)->getJson('/school/buses/tracking/api');
+
+        $response->assertSuccessful();
+        $response->assertJson(['success' => true]);
+
+        $buses = $response->json('buses');
+        $this->assertNotEmpty($buses);
+
+        $trackingBus = collect($buses)->firstWhere('id', $bus->id);
+        $this->assertNotNull($trackingBus);
+        $this->assertNotNull($trackingBus['active_trip']);
+        $this->assertNotEmpty($trackingBus['active_trip']['students']);
+        $this->assertNotEmpty($trackingBus['active_trip']['waypoints']);
+    }
+
+    public function test_school_admin_can_optimize_route_with_automatic_fallback(): void
+    {
+        $school = School::factory()->create([
+            'is_active' => true,
+            'latitude' => 23.5859,
+            'longitude' => 58.4059,
+        ]);
+        $schoolAdmin = $this->createSchoolAdmin($school);
+
+        $grade = Grade::factory()->create(['school_id' => $school->id]);
+        $classroom = Classroom::factory()->create(['grade_id' => $grade->id]);
+
+        $bus = Bus::factory()->create([
+            'school_id' => $school->id,
+            'latitude' => 23.5880,
+            'longitude' => 58.4080,
+        ]);
+
+        $student1 = Student::factory()->enrolled($school, $classroom)->create([
+            'forth_bus_id' => $bus->id,
+            'is_active' => true,
+            'latitude' => 23.6000,
+            'longitude' => 58.4200,
+        ]);
+
+        $student2 = Student::factory()->enrolled($school, $classroom)->create([
+            'forth_bus_id' => $bus->id,
+            'is_active' => true,
+            'latitude' => 23.5900,
+            'longitude' => 58.4100,
+        ]);
+
+        $response = $this->actingAs($schoolAdmin)->postJson(route('school.buses.optimize-route'), [
+            'bus_id' => $bus->id,
+            'trip_type' => 'morning',
+        ]);
+
+        $response->assertSuccessful();
+        $response->assertJson(['success' => true]);
+        $this->assertCount(2, $response->json('ordered_students'));
+    }
 }

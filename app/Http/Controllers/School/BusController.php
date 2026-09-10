@@ -6,13 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Bus;
 use App\Models\School;
 use App\Models\Student;
+use App\Traits\HasLocation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class BusController extends Controller
 {
+    use HasLocation;
+
     /**
      * Display the unified bus management interface.
      */
@@ -174,26 +179,47 @@ class BusController extends Controller
         $isMoving = ($speed > 0.0) && $isPingingRecently;
         $heading = (float) cache()->get('bus_heading_'.$bus->id, 0);
 
-        // ONLY retrieve trip that is currently IN_PROGRESS for TODAY
-        $activeTrip = $bus->trips()
+        // 1. Retrieve today's trip (priority: in_progress > awaiting_confirmation > pending)
+        $currentTrip = $bus->trips()
             ->whereDate('trip_date', today())
-            ->where('status', 'in_progress')
+            ->whereIn('status', ['in_progress', 'awaiting_confirmation', 'pending'])
             ->with(['attendances.student', 'route'])
+            ->orderByRaw("CASE WHEN status = 'in_progress' THEN 1 WHEN status = 'awaiting_confirmation' THEN 2 ELSE 3 END")
             ->latest('id')
             ->first();
+
+        // Determine trip direction (forth / back)
+        $tripType = $currentTrip ? $currentTrip->type : (now()->hour < 13 ? 'forth' : 'back');
+        $busColumn = ($tripType === 'forth') ? 'forth_bus_id' : 'back_bus_id';
 
         $studentsData = [];
         $waypoints = [];
 
-        if ($activeTrip) {
-            $isForth = ($activeTrip->type === 'forth');
-
-            foreach ($activeTrip->attendances as $att) {
+        if ($currentTrip && $currentTrip->attendances->isNotEmpty()) {
+            $attendanceStudents = $currentTrip->attendances->map(function ($att) {
                 $student = $att->student;
-                if (! $student) {
-                    continue;
+                if ($student) {
+                    $student->setRelation('_attendance', $att);
                 }
 
+                return $student;
+            })->filter();
+
+            $busLat = $bus->latitude ? (float) $bus->latitude : null;
+            $busLng = $bus->longitude ? (float) $bus->longitude : null;
+
+            $sortedStudents = $this->sortStudentsByOptimalSequence(
+                $attendanceStudents,
+                $schoolLat,
+                $schoolLng,
+                $tripType,
+                $busLat,
+                $busLng
+            );
+
+            foreach ($sortedStudents as $student) {
+                $att = $student->_attendance ?? $student->getRelation('_attendance');
+                $isForth = ($tripType === 'forth');
                 $lat = $isForth
                     ? ($student->forth_latitude ?? $student->latitude)
                     : ($student->back_latitude ?? $student->latitude);
@@ -202,14 +228,14 @@ class BusController extends Controller
                     : ($student->back_longitude ?? $student->longitude);
 
                 $studentItem = [
-                    'attendance_id' => $att->id,
+                    'attendance_id' => $att?->id ?? 0,
                     'student_id' => $student->id,
                     'name' => trim(($student->first_name_ar ?? '').' '.($student->last_name_ar ?? '')) ?: ($student->first_name_en ?? 'طالب'),
                     'student_code' => $student->student_code,
-                    'status' => $att->status,
-                    'check_in_time' => $att->check_in_time?->format('H:i'),
-                    'check_out_time' => $att->check_out_time?->format('H:i'),
-                    'extra_wait_time' => $att->extra_wait_time ?? 0,
+                    'status' => $att?->status ?? 'pending',
+                    'check_in_time' => $att?->check_in_time?->format('H:i'),
+                    'check_out_time' => $att?->check_out_time?->format('H:i'),
+                    'extra_wait_time' => $att?->extra_wait_time ?? 0,
                     'lat' => $lat ? (float) $lat : null,
                     'lng' => $lng ? (float) $lng : null,
                     'address' => $student->address,
@@ -223,12 +249,69 @@ class BusController extends Controller
                         'lng' => (float) $lng,
                         'student_id' => $student->id,
                         'name' => $studentItem['name'],
-                        'status' => $att->status,
+                        'status' => $att?->status ?? 'pending',
                     ];
                 }
             }
+        } else {
+            // Bus is idle: load scheduled students assigned to this bus shift
+            $assignedStudents = Student::inSchool($schoolId)
+                ->where('is_active', true)
+                ->where($busColumn, $bus->id)
+                ->get();
 
-            if ($isForth) {
+            $busLat = $bus->latitude ? (float) $bus->latitude : null;
+            $busLng = $bus->longitude ? (float) $bus->longitude : null;
+
+            $sortedStudents = $this->sortStudentsByOptimalSequence(
+                $assignedStudents,
+                $schoolLat,
+                $schoolLng,
+                $tripType,
+                $busLat,
+                $busLng
+            );
+
+            foreach ($sortedStudents as $student) {
+                $isForth = ($tripType === 'forth');
+                $lat = $isForth
+                    ? ($student->forth_latitude ?? $student->latitude)
+                    : ($student->back_latitude ?? $student->latitude);
+                $lng = $isForth
+                    ? ($student->forth_longitude ?? $student->longitude)
+                    : ($student->back_longitude ?? $student->longitude);
+
+                $studentItem = [
+                    'attendance_id' => 0,
+                    'student_id' => $student->id,
+                    'name' => trim(($student->first_name_ar ?? '').' '.($student->last_name_ar ?? '')) ?: ($student->first_name_en ?? 'طالب'),
+                    'student_code' => $student->student_code,
+                    'status' => 'pending',
+                    'check_in_time' => null,
+                    'check_out_time' => null,
+                    'extra_wait_time' => 0,
+                    'lat' => $lat ? (float) $lat : null,
+                    'lng' => $lng ? (float) $lng : null,
+                    'address' => $student->address,
+                ];
+
+                $studentsData[] = $studentItem;
+
+                if ($lat && $lng) {
+                    $waypoints[] = [
+                        'lat' => (float) $lat,
+                        'lng' => (float) $lng,
+                        'student_id' => $student->id,
+                        'name' => $studentItem['name'],
+                        'status' => 'pending',
+                    ];
+                }
+            }
+        }
+
+        // Add School landmark to waypoints
+        if (! empty($waypoints)) {
+            if ($tripType === 'forth') {
                 $waypoints[] = [
                     'lat' => $schoolLat,
                     'lng' => $schoolLng,
@@ -254,6 +337,8 @@ class BusController extends Controller
             })
             ->count();
 
+        $tripStatus = $currentTrip ? $currentTrip->status : 'idle';
+
         return [
             'id' => $bus->id,
             'bus_number' => $bus->bus_number,
@@ -264,12 +349,12 @@ class BusController extends Controller
             'longitude' => $bus->longitude ? (float) $bus->longitude : null,
             'current_latitude' => $bus->latitude ? (float) $bus->latitude : null,
             'current_longitude' => $bus->longitude ? (float) $bus->longitude : null,
-            'trip_status' => $activeTrip ? 'in_progress' : 'idle',
+            'trip_status' => $tripStatus,
             'speed_kmh' => $speed,
             'is_moving' => $isMoving,
             'heading' => $heading,
             'students_count' => $assignedStudentsCount,
-            'students_on_board' => $activeTrip ? $activeTrip->attendances->whereIn('status', ['boarded', 'present'])->count() : 0,
+            'students_on_board' => $currentTrip ? $currentTrip->attendances->whereIn('status', ['boarded', 'present'])->count() : 0,
             'driver' => $bus->driver?->user ? [
                 'id' => $bus->driver->user->id,
                 'name' => $bus->driver->user->name,
@@ -279,13 +364,13 @@ class BusController extends Controller
                 'id' => $bus->route->id,
                 'name' => $bus->route->name,
             ] : null,
-            'active_trip' => $activeTrip ? [
-                'id' => $activeTrip->id,
-                'type' => $activeTrip->type,
-                'status' => $activeTrip->status,
+            'active_trip' => [
+                'id' => $currentTrip?->id ?? 0,
+                'type' => $tripType,
+                'status' => $tripStatus,
                 'students' => $studentsData,
                 'waypoints' => $waypoints,
-            ] : null,
+            ],
             'last_update' => $bus->last_location_update ? $bus->last_location_update->diffForHumans() : null,
         ];
     }
@@ -427,44 +512,52 @@ class BusController extends Controller
             if (! empty($newlyAssignedForthIds)) {
                 $students = \App\Models\Student::whereIn('id', $newlyAssignedForthIds)->get();
                 foreach ($students as $student) {
-                    $studentName = $student->full_name;
-                    $studentNameEn = $student->full_name_en ?: $student->student_code;
+                    try {
+                        $studentName = $student->full_name;
+                        $studentNameEn = $student->full_name_en ?: $student->student_code;
 
-                    $notificationService->notifyBusCrew(
-                        busId: $busId,
-                        type: 'student_added_to_route',
-                        title: '👤 إضافة طالب جديد',
-                        message: "تم إضافة طالب جديد للمسار الصباحي: {$studentName}",
-                        data: [
-                            'student_id' => (string) $student->id,
-                            'category' => 'students',
-                            'target_screen' => 'student_details',
-                        ],
-                        titleEn: '👤 New Student Added',
-                        messageEn: "A new student has been added to the morning route: {$studentNameEn}"
-                    );
+                        $notificationService->notifyBusCrew(
+                            busId: $busId,
+                            type: 'student_added_to_route',
+                            title: '👤 إضافة طالب جديد',
+                            message: "تم إضافة طالب جديد للمسار الصباحي: {$studentName}",
+                            data: [
+                                'student_id' => (string) $student->id,
+                                'category' => 'students',
+                                'target_screen' => 'student_details',
+                            ],
+                            titleEn: '👤 New Student Added',
+                            messageEn: "A new student has been added to the morning route: {$studentNameEn}"
+                        );
+                    } catch (\Exception $e) {
+                        \Log::warning("Failed to notify crew for student #{$student->id}: ".$e->getMessage());
+                    }
                 }
             }
 
             if (! empty($newlyAssignedBackIds)) {
                 $students = \App\Models\Student::whereIn('id', $newlyAssignedBackIds)->get();
                 foreach ($students as $student) {
-                    $studentName = $student->full_name;
-                    $studentNameEn = $student->full_name_en ?: $student->student_code;
+                    try {
+                        $studentName = $student->full_name;
+                        $studentNameEn = $student->full_name_en ?: $student->student_code;
 
-                    $notificationService->notifyBusCrew(
-                        busId: $busId,
-                        type: 'student_added_to_route',
-                        title: '👤 إضافة طالب جديد',
-                        message: "تم إضافة طالب جديد لمسار العودة: {$studentName}",
-                        data: [
-                            'student_id' => (string) $student->id,
-                            'category' => 'students',
-                            'target_screen' => 'student_details',
-                        ],
-                        titleEn: '👤 New Student Added',
-                        messageEn: "A new student has been added to the return route: {$studentNameEn}"
-                    );
+                        $notificationService->notifyBusCrew(
+                            busId: $busId,
+                            type: 'student_added_to_route',
+                            title: '👤 إضافة طالب جديد',
+                            message: "تم إضافة طالب جديد لمسار العودة: {$studentName}",
+                            data: [
+                                'student_id' => (string) $student->id,
+                                'category' => 'students',
+                                'target_screen' => 'student_details',
+                            ],
+                            titleEn: '👤 New Student Added',
+                            messageEn: "A new student has been added to the return route: {$studentNameEn}"
+                        );
+                    } catch (\Exception $e) {
+                        \Log::warning("Failed to notify crew for student #{$student->id}: ".$e->getMessage());
+                    }
                 }
             }
         } catch (\Exception $e) {
@@ -475,7 +568,8 @@ class BusController extends Controller
     }
 
     /**
-     * Optimize student stop order via Google Directions waypoint optimization.
+     * Optimize student stop order via Google Directions waypoint optimization
+     * with automatic fallback to internal nearest-neighbor spatial algorithm.
      */
     public function optimizeRouteWithGoogle(Request $request)
     {
@@ -491,12 +585,12 @@ class BusController extends Controller
         $bus = Bus::where('id', $busId)->where('school_id', $schoolId)->firstOrFail();
         $school = $bus->school ?? Auth::user()->school;
 
-        $schoolLat = $school?->latitude ?? 23.5859;
-        $schoolLng = $school?->longitude ?? 58.4059;
+        $schoolLat = (float) ($school?->latitude ?? 23.5859);
+        $schoolLng = (float) ($school?->longitude ?? 58.4059);
 
         // Fetch students assigned to this bus for this trip
         $column = $tripType === 'morning' ? 'forth_bus_id' : 'back_bus_id';
-        $students = \App\Models\Student::inSchool($schoolId)
+        $students = Student::inSchool($schoolId)
             ->where($column, $busId)
             ->where('is_active', true)
             ->get();
@@ -520,64 +614,122 @@ class BusController extends Controller
             ], 422);
         }
 
-        $apiKey = config('services.google_maps.key') ?: env('Maps_API_KEY') ?: 'AIzaSyA2ZcFQqhauhU3l-Rj36fbRYomIO7L-ahs';
+        $apiKey = config('services.google_maps.key') ?: env('Maps_API_KEY');
 
-        try {
-            $origin = $tripType === 'morning'
-                ? "{$validStudents->first()->latitude},{$validStudents->first()->longitude}"
-                : "{$schoolLat},{$schoolLng}";
+        // 1. Attempt Google Directions API if key exists and waypoints limit is respected (<= 25)
+        if (! empty($apiKey) && $validStudents->count() <= 25) {
+            try {
+                if ($tripType === 'morning') {
+                    $startStudent = $validStudents->first();
+                    $origin = "{$startStudent->latitude},{$startStudent->longitude}";
+                    $destination = "{$schoolLat},{$schoolLng}";
+                    $intermediate = $validStudents->filter(fn ($s) => $s->id !== $startStudent->id);
+                } else {
+                    $endStudent = $validStudents->last();
+                    $origin = "{$schoolLat},{$schoolLng}";
+                    $destination = "{$endStudent->latitude},{$endStudent->longitude}";
+                    $intermediate = $validStudents->filter(fn ($s) => $s->id !== $endStudent->id);
+                }
 
-            $destination = $tripType === 'morning'
-                ? "{$schoolLat},{$schoolLng}"
-                : "{$validStudents->last()->latitude},{$validStudents->last()->longitude}";
+                $params = [
+                    'origin' => $origin,
+                    'destination' => $destination,
+                    'departure_time' => 'now',
+                    'mode' => 'driving',
+                    'key' => $apiKey,
+                ];
 
-            $waypoints = 'optimize:true|'.$validStudents->map(fn ($s) => "{$s->latitude},{$s->longitude}")->implode('|');
+                if ($intermediate->isNotEmpty()) {
+                    $params['waypoints'] = 'optimize:true|'.$intermediate->map(fn ($s) => "{$s->latitude},{$s->longitude}")->implode('|');
+                }
 
-            $response = \Illuminate\Support\Facades\Http::get('https://maps.googleapis.com/maps/api/directions/json', [
-                'origin' => $origin,
-                'destination' => $destination,
-                'waypoints' => $waypoints,
-                'departure_time' => 'now',
-                'mode' => 'driving',
-                'key' => $apiKey,
-            ]);
+                $response = \Illuminate\Support\Facades\Http::timeout(5)->get('https://maps.googleapis.com/maps/api/directions/json', $params);
 
-            if ($response->successful() && ($response->json('status') === 'OK')) {
-                $waypointOrder = $response->json('routes.0.waypoint_order', []);
-                $orderedStudents = [];
-                foreach ($waypointOrder as $newIdx => $origIdx) {
-                    if (isset($validStudents[$origIdx])) {
+                if ($response->successful() && ($response->json('status') === 'OK')) {
+                    $waypointOrder = $response->json('routes.0.waypoint_order', []);
+                    $intermediateList = $intermediate->values();
+                    $orderedStudents = [];
+
+                    if ($tripType === 'morning') {
                         $orderedStudents[] = [
-                            'student_id' => $validStudents[$origIdx]->id,
-                            'order' => $newIdx + 1,
+                            'student_id' => $startStudent->id,
+                            'order' => 1,
+                        ];
+                        foreach ($waypointOrder as $newIdx => $origIdx) {
+                            if (isset($intermediateList[$origIdx])) {
+                                $orderedStudents[] = [
+                                    'student_id' => $intermediateList[$origIdx]->id,
+                                    'order' => count($orderedStudents) + 1,
+                                ];
+                            }
+                        }
+                    } else {
+                        foreach ($waypointOrder as $newIdx => $origIdx) {
+                            if (isset($intermediateList[$origIdx])) {
+                                $orderedStudents[] = [
+                                    'student_id' => $intermediateList[$origIdx]->id,
+                                    'order' => count($orderedStudents) + 1,
+                                ];
+                            }
+                        }
+                        $orderedStudents[] = [
+                            'student_id' => $endStudent->id,
+                            'order' => count($orderedStudents) + 1,
                         ];
                     }
+
+                    // Append any remaining students not covered
+                    $orderedIds = collect($orderedStudents)->pluck('student_id')->toArray();
+                    $remainingStudents = $validStudents->whereNotIn('id', $orderedIds);
+                    $currOrder = count($orderedStudents) + 1;
+                    foreach ($remainingStudents as $remStudent) {
+                        $orderedStudents[] = [
+                            'student_id' => $remStudent->id,
+                            'order' => $currOrder++,
+                        ];
+                    }
+
+                    return response()->json([
+                        'success' => true,
+                        'source' => 'google',
+                        'ordered_students' => $orderedStudents,
+                    ]);
                 }
 
-                // If any students were not covered in waypointOrder (e.g. edge elements), append them
-                $orderedIds = collect($orderedStudents)->pluck('student_id')->toArray();
-                $remainingStudents = $validStudents->whereNotIn('id', $orderedIds);
-                $currOrder = count($orderedStudents) + 1;
-                foreach ($remainingStudents as $remStudent) {
-                    $orderedStudents[] = [
-                        'student_id' => $remStudent->id,
-                        'order' => $currOrder++,
-                    ];
-                }
-
-                return response()->json([
-                    'success' => true,
-                    'ordered_students' => $orderedStudents,
-                ]);
+                Log::info('Google Directions returned non-OK status: '.$response->json('status', 'unknown').'. Using fallback.');
+            } catch (\Exception $e) {
+                Log::warning('Google route optimization failed: '.$e->getMessage().'. Using fallback.');
             }
-        } catch (\Exception $e) {
-            \Log::error('Google route optimization failed: '.$e->getMessage());
+        }
+
+        // 2. Fallback: Run internal Nearest-Neighbor spatial algorithm
+        $busLat = ($bus->latitude && (float) $bus->latitude != 0.0) ? (float) $bus->latitude : null;
+        $busLng = ($bus->longitude && (float) $bus->longitude != 0.0) ? (float) $bus->longitude : null;
+
+        $sortedStudents = $this->sortStudentsByOptimalSequence(
+            $validStudents,
+            $schoolLat,
+            $schoolLng,
+            $tripType,
+            $busLat,
+            $busLng
+        );
+
+        $orderedStudents = [];
+        $currOrder = 1;
+        foreach ($sortedStudents as $student) {
+            $orderedStudents[] = [
+                'student_id' => $student->id,
+                'order' => $currOrder++,
+            ];
         }
 
         return response()->json([
-            'success' => false,
-            'message' => 'تعذر تحسين المسار عبر Google، يرجى المحاولة لاحقاً',
-        ], 500);
+            'success' => true,
+            'source' => 'nearest_neighbor',
+            'ordered_students' => $orderedStudents,
+            'message' => 'تم تحسين المسار بنجاح وفق خوارزمية المسافة الأقرب.',
+        ]);
     }
 
     /**
@@ -598,9 +750,9 @@ class BusController extends Controller
 
         $orderColumn = $validated['trip_type'] === 'morning' ? 'forth_stop_order' : 'back_stop_order';
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $orderColumn, $schoolId) {
+        DB::transaction(function () use ($validated, $orderColumn, $schoolId) {
             foreach ($validated['orders'] as $item) {
-                \App\Models\Student::inSchool($schoolId)
+                Student::inSchool($schoolId)
                     ->where('id', $item['student_id'])
                     ->update([$orderColumn => $item['order']]);
             }

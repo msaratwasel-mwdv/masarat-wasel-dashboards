@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Storage;
 
 class DailyTripApiController extends Controller
 {
+    use \App\Traits\HasLocation;
+
     protected NotificationService $notificationService;
 
     protected \App\Services\TripService $tripService;
@@ -845,21 +847,39 @@ class DailyTripApiController extends Controller
                 $q->whereDate('date', today())->where('status', '!=', 'rejected');
             }]);
 
-        // فلترة الطلاب حسب نوع الرحلة (صباحي/مسائي/كلاهما) مع الترتيب الثابت للمحطات
+        // فلترة الطلاب حسب نوع الرحلة (صباحي/مسائي/كلاهما)
         if ($filterTripType === 'morning') {
-            $query->where('forth_bus_id', $bus->id)
-                ->orderByRaw('CASE WHEN forth_stop_order > 0 THEN 0 ELSE 1 END, forth_stop_order ASC, id ASC');
+            $query->where('forth_bus_id', $bus->id);
         } elseif ($filterTripType === 'afternoon') {
-            $query->where('back_bus_id', $bus->id)
-                ->orderByRaw('CASE WHEN back_stop_order > 0 THEN 0 ELSE 1 END, back_stop_order ASC, id ASC');
+            $query->where('back_bus_id', $bus->id);
         } else {
             $query->where(function ($q) use ($bus) {
                 $q->where('forth_bus_id', $bus->id)
                     ->orWhere('back_bus_id', $bus->id);
-            })->orderBy('id', 'asc');
+            });
         }
 
-        $students = $query->get()->map(function ($student) use ($filterTripType, $activeTrip) {
+        $rawStudents = $query->get();
+
+        // الترتيب الأقرب جغرافياً تلقائياً مع مراعاة الترتيب اليدوي إن وُجد
+        $bus->loadMissing('school');
+        $school = $bus->school;
+        $schoolLat = $school && $school->latitude ? (float) $school->latitude : 23.5859;
+        $schoolLng = $school && $school->longitude ? (float) $school->longitude : 58.4059;
+
+        $busLat = $bus->latitude ? (float) $bus->latitude : null;
+        $busLng = $bus->longitude ? (float) $bus->longitude : null;
+
+        $sortedStudents = $this->sortStudentsByOptimalSequence(
+            $rawStudents,
+            $schoolLat,
+            $schoolLng,
+            $filterTripType,
+            $busLat,
+            $busLng
+        );
+
+        $students = $sortedStudents->map(function ($student, $idx) use ($filterTripType, $activeTrip) {
             $lastAttendance = $student->lastTripAttendance;
             if ($activeTrip) {
                 $activeAttendance = $student->tripAttendances->firstWhere('trip_id', $activeTrip->id);
@@ -937,7 +957,9 @@ class DailyTripApiController extends Controller
                 'back_longitude' => $backLng,
                 'forth_stop_order' => $student->forth_stop_order,
                 'back_stop_order' => $student->back_stop_order,
-                'stop_order' => $filterTripType === 'morning' ? $student->forth_stop_order : $student->back_stop_order,
+                'stop_order' => (($filterTripType === 'morning' ? $student->forth_stop_order : $student->back_stop_order) > 0)
+                    ? ($filterTripType === 'morning' ? (int) $student->forth_stop_order : (int) $student->back_stop_order)
+                    : ($idx + 1),
                 'grade' => $student->grade ?? 'متوسط',
                 'classroom' => [
                     'id' => $student->currentEnrollment?->classroom_id,
@@ -1299,6 +1321,13 @@ class DailyTripApiController extends Controller
 
         // Sync attendances on confirmation
         $this->tripService->syncTripAttendances($trip);
+
+        if ($request->filled('latitude') && $request->filled('longitude')) {
+            $bus->update([
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+            ]);
+        }
 
         DB::transaction(function () use ($trip, $bus) {
             $trip->update([
@@ -1743,7 +1772,7 @@ class DailyTripApiController extends Controller
             $path = $request->file('video')->store("trip_videos/{$dateFolder}", 'public');
 
             // ✅ T-05: تغليف تحديث الرحلة والباص بـ Transaction
-            DB::transaction(function () use ($trip, $bus, $path, $tripType) {
+            DB::transaction(function () use ($trip, $bus, $path, $tripType, $request) {
                 // For Morning trips: auto-update boarded students to 'at school' (dropped status)
                 if ($tripType === 'forth') {
                     $boardedAttendances = TripAttendance::where('trip_id', $trip->id)

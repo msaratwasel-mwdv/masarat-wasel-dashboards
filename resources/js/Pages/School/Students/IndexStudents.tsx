@@ -23,8 +23,9 @@ import {
   Users, CheckCircle2, UserX, UserPlus, Printer, Edit2, Trash2, Search, Loader2,
   UserCheck, ClipboardCheck, HelpCircle, ArrowRight, Camera, ShieldCheck,
   Bus as BusIcon, GraduationCap, Plus, Eye, MoreVertical, Mail, Phone, MapPin,
-  Fingerprint, X, Download, Upload
+  Fingerprint, X, Download, Upload, AlertCircle, ExternalLink
 } from "lucide-react";
+import LocationPickerModal from "@/Components/LocationPickerModal";
 import {
   DS_card, DS_pageWrapper, DS_pageTitle, DS_statLabel, DS_statValue,
   DS_avatar, DS_tableWrapper, DS_tableBase, DS_tableHead, DS_tableRow, DS_tableTd,
@@ -43,6 +44,8 @@ interface Guardian {
   phone?: string;
   national_id?: string;
   address?: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   home_number?: string;
   image?: string;
   email?: string;
@@ -142,6 +145,9 @@ interface Student {
     classroom: Classroom;
     classroom_id?: number;
   } | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  address?: string | null;
 }
 
 interface Props {
@@ -171,6 +177,12 @@ interface Props {
   buses?: Bus[];
   guardians?: any[];
   storage_url: string;
+  school?: {
+    id: number;
+    name: string;
+    latitude?: number | null;
+    longitude?: number | null;
+  } | null;
 }
 
 // ─── Print CSS ───────────────────────────────────────────────────
@@ -259,6 +271,7 @@ export default function IndexStudents({
   buses = [],
   guardians = [],
   storage_url,
+  school,
 }: Props) {
   const { t, isRtl } = useTranslation();
   const [search, setSearch] = useState(filters.search || "");
@@ -275,6 +288,7 @@ export default function IndexStudents({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"view" | "edit" | "create">("view");
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
+  const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
 
   // Form states & Smart Guardian states
   const [studentImagePreview, setStudentImagePreview] = useState<string | null>(null);
@@ -289,6 +303,9 @@ export default function IndexStudents({
     national_id: "", gender: "male", classroom_id: "",
     forth_bus_id: "", back_bus_id: "", image: null as File | null,
     is_active: true,
+    latitude: null as number | string | null,
+    longitude: null as number | string | null,
+    address: "",
   });
 
   const updatePrimaryGuardian = (data: Partial<GuardianEntry>) => {
@@ -395,6 +412,14 @@ export default function IndexStudents({
     if (Boolean(sf.is_active) !== Boolean(cs.is_active)) return true;
     if (sf.image !== null) return true;
 
+    const initialLat = cs.latitude != null && cs.latitude !== "" ? Number(cs.latitude) : (cs.guardians?.[0]?.latitude != null && cs.guardians[0].latitude !== "" ? Number(cs.guardians[0].latitude) : null);
+    const initialLng = cs.longitude != null && cs.longitude !== "" ? Number(cs.longitude) : (cs.guardians?.[0]?.longitude != null && cs.guardians[0].longitude !== "" ? Number(cs.guardians[0].longitude) : null);
+    const initialAddr = cs.address || cs.guardians?.[0]?.address || "";
+
+    if ((sf.latitude != null ? Number(sf.latitude) : null) !== initialLat) return true;
+    if ((sf.longitude != null ? Number(sf.longitude) : null) !== initialLng) return true;
+    if ((sf.address || "").trim() !== initialAddr.trim()) return true;
+
     const initialGuardianId = cs.guardians?.[0]?.id?.toString() || "";
     if (selectedGuardianId.toString() !== initialGuardianId) return true;
     if (showNewGuardianForm) return true;
@@ -466,6 +491,10 @@ export default function IndexStudents({
       setShowNewGuardianForm(false);
     }
 
+    const studentLat = student.latitude != null && student.latitude !== "" ? Number(student.latitude) : (student.guardians?.[0]?.latitude != null && student.guardians[0].latitude !== "" ? Number(student.guardians[0].latitude) : null);
+    const studentLng = student.longitude != null && student.longitude !== "" ? Number(student.longitude) : (student.guardians?.[0]?.longitude != null && student.guardians[0].longitude !== "" ? Number(student.guardians[0].longitude) : null);
+    const studentAddress = student.address || student.guardians?.[0]?.address || '';
+
     studentForm.setData({
       first_name_ar: student.first_name_ar || '',
       second_name_ar: student.second_name_ar || '',
@@ -481,6 +510,9 @@ export default function IndexStudents({
       forth_bus_id: student.forth_bus_id?.toString() || '',
       back_bus_id: student.back_bus_id?.toString() || '',
       is_active: student.is_active,
+      latitude: studentLat,
+      longitude: studentLng,
+      address: studentAddress,
     });
 
     setStudentImagePreview(student.image ? getImageUrl(student.image, "student") : null);
@@ -829,6 +861,9 @@ export default function IndexStudents({
       image: studentForm.data.image,
       is_active: studentForm.data.is_active,
       guardians: finalGuardians,
+      latitude: studentForm.data.latitude || null,
+      longitude: studentForm.data.longitude || null,
+      address: studentForm.data.address || null,
     };
 
     if (modalMode === "edit" && currentStudent) {
@@ -1269,6 +1304,28 @@ export default function IndexStudents({
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-150 dark:border-white/5">
                   <div className="w-9 h-9 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600 shrink-0"><BusIcon className="w-4.5 h-4.5" /></div>
                   <div><p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t("Afternoon Route")}</p><p className="font-bold text-xs text-[#0f2044] dark:text-white">{currentStudent?.back_bus?.route?.name || "—"}</p></div>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-150 dark:border-white/5 sm:col-span-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 shrink-0"><MapPin className="w-4.5 h-4.5" /></div>
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{isRtl ? "موقع المنزل" : "Home Location"}</p>
+                      <p className="font-bold text-xs text-[#0f2044] dark:text-white truncate">
+                        {currentStudent?.address || (currentStudent?.latitude && currentStudent?.longitude ? `${Number(currentStudent.latitude).toFixed(5)}, ${Number(currentStudent.longitude).toFixed(5)}` : (isRtl ? "غير محدد بعد" : "Not specified"))}
+                      </p>
+                    </div>
+                  </div>
+                  {currentStudent?.latitude && currentStudent?.longitude && (
+                    <a
+                      href={`https://www.google.com/maps?q=${currentStudent.latitude},${currentStudent.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 flex items-center gap-1 transition-all shrink-0"
+                    >
+                      <span>{isRtl ? "عرض في خرائط جوجل" : "Google Maps"}</span>
+                      <ExternalLink size={12} />
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -1827,6 +1884,104 @@ export default function IndexStudents({
                 </div>
               </div>
 
+              {/* SECTION 4: STUDENT LOCATION (FOR ROUTE OPTIMIZATION) */}
+              <div className="p-4 rounded-xl bg-gray-50/40 dark:bg-white/[0.02] border border-gray-150 dark:border-white/5 space-y-3 shadow-sm">
+                <div className="flex items-center justify-between border-b border-gray-150 dark:border-white/5 pb-2">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-amber-500" />
+                    <div>
+                      <h4 className="font-bold text-xs text-[#0f2044] dark:text-white uppercase tracking-wider">
+                        {isRtl ? "موقع منزل الطالب (لتحديد مسار الحافلة)" : "Student Home Location"}
+                      </h4>
+                    </div>
+                  </div>
+                  {studentForm.data.latitude && studentForm.data.longitude && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 size={10} />
+                      {isRtl ? "تم تحديد الموقع" : "Location Set"}
+                    </span>
+                  )}
+                </div>
+
+                {studentForm.data.latitude && studentForm.data.longitude ? (
+                  /* Location Configured Card */
+                  <div className="p-3 bg-white dark:bg-[#15223c] border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm transition-all">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <MapPin size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-xs text-gray-800 dark:text-white truncate">
+                            {studentForm.data.address || (isRtl ? "موقع المنزل محدد على الخريطة" : "Home Location Set on Map")}
+                          </p>
+                        </div>
+                        <p className="text-[10px] font-mono text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2">
+                          <span>{t("Lat")}: {Number(studentForm.data.latitude).toFixed(5)}</span>
+                          <span>•</span>
+                          <span>{t("Lng")}: {Number(studentForm.data.longitude).toFixed(5)}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                      <button
+                        type="button"
+                        onClick={() => setIsLocationPickerOpen(true)}
+                        className="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 transition-all flex items-center gap-1.5"
+                      >
+                        <MapPin size={12} />
+                        <span>{isRtl ? "تعديل على الخريطة" : "Change Location"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          studentForm.setData(prev => ({
+                            ...prev,
+                            latitude: null,
+                            longitude: null,
+                            address: "",
+                          }));
+                          toast.info(isRtl ? "تم إزالة الموقع" : "Location cleared");
+                        }}
+                        className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-all"
+                        title={isRtl ? "إزالة الموقع" : "Remove Location"}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* No Location Configured Banner */
+                  <div className="p-3.5 bg-gradient-to-r from-amber-500/[0.05] to-blue-500/[0.05] border border-dashed border-amber-300/60 dark:border-amber-500/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                        <AlertCircle size={16} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                          {isRtl ? "لم يتم تحديد موقع المنزل بعد" : "No home location specified"}
+                        </p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          {isRtl
+                            ? "حدد الموقع الآن ليتمكن سائق الحافلة من الوصول للطالب تلقائياً دون انتظار ولي الأمر"
+                            : "Set location now so the bus driver can route to student without waiting for parent"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsLocationPickerOpen(true)}
+                      className="px-3.5 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-[#0f2044] to-[#1e3a6e] hover:from-[#162f5e] hover:to-[#27498c] text-white shadow-sm flex items-center justify-center gap-1.5 transition-all shrink-0"
+                    >
+                      <MapPin size={13} className="text-[#f5b800]" />
+                      <span>{isRtl ? "تحديد الموقع على الخريطة" : "Pick on Map"}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Action Buttons with Bottom Row Status Toggle (Saves a whole section card!) */}
               <div className="flex items-center justify-between border-t border-gray-150 dark:border-white/5 pt-3 mt-4">
                 {/* Pure Clean Status Toggle (Independent, Zero formatting card) */}
@@ -1945,6 +2100,30 @@ export default function IndexStudents({
           </form>
         </div>
       </Modal>
+
+      {/* Location Picker Modal for Student Home */}
+      <LocationPickerModal
+        show={isLocationPickerOpen}
+        onClose={() => setIsLocationPickerOpen(false)}
+        initialLat={studentForm.data.latitude}
+        initialLng={studentForm.data.longitude}
+        initialAddress={studentForm.data.address}
+        defaultCenter={
+          school?.latitude && school?.longitude
+            ? { lat: Number(school.latitude), lng: Number(school.longitude) }
+            : undefined
+        }
+        studentName={getPreviewFullName(isRtl ? 'ar' : 'en')}
+        onConfirm={(lat, lng, addr) => {
+          studentForm.setData(prev => ({
+            ...prev,
+            latitude: lat,
+            longitude: lng,
+            address: addr,
+          }));
+          toast.success(isRtl ? "تم تعيين موقع منزل الطالب بنجاح" : "Student location set successfully");
+        }}
+      />
     </SchoolAuthenticatedLayout>
   );
 }

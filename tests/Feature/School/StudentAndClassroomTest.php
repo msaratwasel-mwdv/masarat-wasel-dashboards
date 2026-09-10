@@ -221,4 +221,91 @@ class StudentAndClassroomTest extends TestCase
             'last_name_en' => 'Smith',
         ]);
     }
+
+    public function test_student_can_be_created_with_location_coordinates_and_address(): void
+    {
+        $school = School::factory()->create(['is_active' => true]);
+        $schoolAdmin = $this->createSchoolAdmin($school);
+        $grade = Grade::factory()->create(['school_id' => $school->id]);
+        $classroom = Classroom::factory()->create(['grade_id' => $grade->id]);
+        $guardian = $this->createGuardian();
+
+        $response = $this->actingAs($schoolAdmin)->post('/school/students', [
+            'first_name_ar' => 'عمر',
+            'last_name_ar' => 'المعمري',
+            'national_id' => '1098765499',
+            'gender' => 'male',
+            'classroom_id' => $classroom->id,
+            'latitude' => 23.58821,
+            'longitude' => 58.41234,
+            'address' => 'حي الخوض، مسقط',
+            'guardians' => [
+                [
+                    'guardian_id' => $guardian->id,
+                    'relationship_type' => 'father',
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('students', [
+            'national_id' => '1098765499',
+            'latitude' => 23.58821,
+            'longitude' => 58.41234,
+            'address' => 'حي الخوض، مسقط',
+        ]);
+
+        // Verify guardian coordinates were synced as fallback
+        $this->assertDatabaseHas('users', [
+            'id' => $guardian->id,
+            'latitude' => 23.58821,
+            'longitude' => 58.41234,
+        ]);
+    }
+
+    public function test_student_location_can_be_updated_by_school_admin(): void
+    {
+        $school = School::factory()->create(['is_active' => true]);
+        $schoolAdmin = $this->createSchoolAdmin($school);
+        $grade = Grade::factory()->create(['school_id' => $school->id]);
+        $classroom = Classroom::factory()->create(['grade_id' => $grade->id]);
+        $guardian = $this->createGuardian();
+
+        $student = Student::factory()->enrolled($school, $classroom)->create([
+            'latitude' => null,
+            'longitude' => null,
+            'address' => null,
+        ]);
+        $student->guardians()->attach($guardian->id, ['relationship_type' => 'father']);
+
+        $response = $this->actingAs($schoolAdmin)->post("/school/students/{$student->id}/update", [
+            'first_name_ar' => $student->first_name_ar,
+            'last_name_ar' => $student->last_name_ar,
+            'national_id' => $student->national_id,
+            'gender' => 'male',
+            'classroom_id' => $classroom->id,
+            'is_active' => true,
+            'latitude' => 23.61005,
+            'longitude' => 58.35002,
+            'address' => 'الموالح الجنوبية، شارع النخيل',
+            'guardians' => [
+                [
+                    'guardian_id' => $guardian->id,
+                    'relationship_type' => 'father',
+                    'name' => 'ولي أمر الطالب',
+                    'phone' => '0509876543',
+                    'address' => 'الموالح الجنوبية',
+                    'home_number' => '12',
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('students', [
+            'id' => $student->id,
+            'latitude' => 23.61005,
+            'longitude' => 58.35002,
+            'address' => 'الموالح الجنوبية، شارع النخيل',
+        ]);
+    }
 }

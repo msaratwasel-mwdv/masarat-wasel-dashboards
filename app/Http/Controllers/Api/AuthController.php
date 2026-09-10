@@ -82,22 +82,22 @@ class AuthController extends Controller
             ]);
         }
 
-        // التحقق من وجود جلسات نشطة على أجهزة أخرى لتطبيق الخدمات
+        // التحقق من وجود جلسات نشطة على أجهزة أخرى لتطبيق الخدمات (البقاء للأول)
         if ($appContext === 'services') {
             $otherTokensCount = $user->tokens()->where('name', '!=', $request->device_name)->count();
             if ($otherTokensCount > 0) {
                 $bus = $this->getBusForUser($user);
 
-                // 🛡️ السائق: يُمنع من الدخول من جهاز آخر عند وجود أي رحلة نشطة
-                if ($user->role === 'driver' && $bus) {
+                // 1. السائق / المشرفة: منع الدخول عند وجود أي رحلة نشطة
+                if ($bus) {
                     $hasActiveTrip = \App\Models\Trip::where('bus_id', $bus->id)
                         ->whereDate('trip_date', today())
                         ->whereIn('status', ['in_progress', 'awaiting_confirmation', 'awaiting_video'])
                         ->exists();
 
                     if ($hasActiveTrip) {
-                        Log::warning('[Auth] Rejecting driver login: Active trip with existing session', [
-                            'user_id' => $user->id, 'bus_id' => $bus->id,
+                        Log::warning('[Auth] Rejecting services login: Active trip with existing session', [
+                            'user_id' => $user->id, 'bus_id' => $bus->id, 'device_name' => $request->device_name,
                         ]);
 
                         return response()->json([
@@ -108,32 +108,19 @@ class AuthController extends Controller
                     }
                 }
 
-                // 🛡️ مشرفة الحافلة (assistant):
-                // - مسموح بالدخول عندما الرحلة بانتظار موافقتها (awaiting_confirmation) → تحتاج للموافقة
-                // - ممنوع الدخول بعد الموافقة (in_progress / awaiting_video) → الرحلة تسير بالفعل
-                if ($user->role === 'assistant' && $bus) {
-                    $activeAfterApproval = \App\Models\Trip::where('bus_id', $bus->id)
-                        ->whereDate('trip_date', today())
-                        ->whereIn('status', ['in_progress', 'awaiting_video'])
-                        ->exists();
+                // 2. عندما لا توجد رحلة نشطة: البقاء للأول ومنع طرد الجهاز الأول
+                Log::warning('[Auth] Rejecting services login: Account already active on another device', [
+                    'user_id' => $user->id,
+                    'device_name' => $request->device_name,
+                ]);
 
-                    if ($activeAfterApproval) {
-                        Log::warning('[Auth] Rejecting assistant login: Trip already approved and in progress', [
-                            'user_id' => $user->id, 'bus_id' => $bus->id,
-                        ]);
-
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'لا يمكن تسجيل الدخول من جهاز آخر بعد الموافقة على الرحلة.',
-                            'errors' => ['national_id' => ['لا يمكن تسجيل الدخول من جهاز آخر بعد الموافقة على الرحلة.']],
-                        ], 422);
-                    }
-                    // إذا الرحلة awaiting_confirmation → يُسمح بالدخول (لتوافق عليها)
-                    // سيُكمل التنفيذ ويمسح التوكنات القديمة أدناه
-                }
-
-                // مسح التوكنات القديمة للجميع الذين وصلوا لهذه النقطة والسماح بالدخول
-                $user->tokens()->delete();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'هذا الحساب مسجل دخول بالفعل على جهاز آخر. يرجى تسجيل الخروج من الجهاز الآخر أولاً لتتمكن من تسجيل الدخول في هذا الجهاز.',
+                    'errors' => [
+                        'national_id' => ['هذا الحساب مسجل دخول بالفعل على جهاز آخر. يرجى تسجيل الخروج من الجهاز الآخر أولاً لتتمكن من تسجيل الدخول في هذا الجهاز.'],
+                    ],
+                ], 422);
             }
         }
 

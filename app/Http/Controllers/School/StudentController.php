@@ -89,13 +89,15 @@ class StudentController extends Controller
             'no_bus' => (clone $baseQuery)->whereNull('forth_bus_id')->whereNull('back_bus_id')->count(),
         ];
 
+        $school = Auth::user()->school;
+
         // ⬅️ أضف where لفلترة حسب المدرسة
         $query = Student::inSchool($schoolId)
             ->whereHas('enrollments', function ($q) {
                 $q->where('is_active', true);
             })
             ->with([
-                'guardians:id,first_name_ar,last_name_ar,first_name_en,last_name_en,phone,national_id,address,image,email',
+                'guardians:id,first_name_ar,last_name_ar,first_name_en,last_name_en,phone,national_id,address,image,email,latitude,longitude',
                 'currentEnrollment.classroom:id,name',
                 'forthBus.route', 'backBus.route',
             ])
@@ -134,7 +136,7 @@ class StudentController extends Controller
                     ->orWhereDoesntHave('students');
             })
             ->orderBy('first_name_ar')
-            ->get(['id', 'first_name_ar', 'last_name_ar', 'first_name_en', 'last_name_en', 'national_id', 'phone', 'email', 'address']);
+            ->get(['id', 'first_name_ar', 'last_name_ar', 'first_name_en', 'last_name_en', 'national_id', 'phone', 'email', 'address', 'latitude', 'longitude']);
 
         return Inertia::render('School/Students/IndexStudents', [
             'students' => $students,
@@ -148,6 +150,12 @@ class StudentController extends Controller
             'buses' => $buses,
             'guardians' => $guardiansList,
             'guardianResult' => session('guardianResult'),
+            'school' => $school ? [
+                'id' => $school->id,
+                'name' => $school->name,
+                'latitude' => $school->latitude,
+                'longitude' => $school->longitude,
+            ] : null,
         ]);
     }
 
@@ -298,6 +306,9 @@ class StudentController extends Controller
             'forth_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
             'back_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
             'image' => 'nullable|image|max:5120',
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'address' => ['nullable', 'string', 'max:500'],
             'guardians' => 'required|array|min:1',
             'guardians.*.guardian_id' => 'required|integer|exists:users,id',
             'guardians.*.relationship_type' => 'nullable|string|max:255',
@@ -332,6 +343,9 @@ class StudentController extends Controller
                 'gender' => $validated['gender'],
                 'forth_bus_id' => $validated['forth_bus_id'] ?? null,
                 'back_bus_id' => $validated['back_bus_id'] ?? null,
+                'latitude' => $validated['latitude'] ?? null,
+                'longitude' => $validated['longitude'] ?? null,
+                'address' => $validated['address'] ?? null,
             ];
 
             // ⬅️ معالجة صورة الطالب
@@ -346,6 +360,19 @@ class StudentController extends Controller
                 $student->guardians()->attach($g['guardian_id'], [
                     'relationship_type' => $g['relationship_type'],
                 ]);
+            }
+
+            // مزامنة إحداثيات الموقع لولي الأمر إن لم تكن مسجلة لديه مسبقاً
+            if (! empty($validated['latitude']) && ! empty($validated['longitude'])) {
+                foreach ($student->guardians as $gUser) {
+                    if (empty($gUser->latitude) || empty($gUser->longitude)) {
+                        $gUser->update([
+                            'latitude' => $validated['latitude'],
+                            'longitude' => $validated['longitude'],
+                            'address' => $gUser->address ?: ($validated['address'] ?? null),
+                        ]);
+                    }
+                }
             }
 
             $student->enrollments()->create([
@@ -422,6 +449,9 @@ class StudentController extends Controller
             'back_bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')->where('school_id', $schoolId)],
             'is_active' => 'required|boolean',
             'image' => 'nullable|image|max:5120',
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'address' => ['nullable', 'string', 'max:500'],
 
             // Multi-Guardian Data
             'guardians' => 'required|array|min:1',
@@ -459,6 +489,9 @@ class StudentController extends Controller
                 'forth_bus_id' => $validated['forth_bus_id'] ?? null,
                 'back_bus_id' => $validated['back_bus_id'] ?? null,
                 'is_active' => $validated['is_active'],
+                'latitude' => $validated['latitude'] ?? null,
+                'longitude' => $validated['longitude'] ?? null,
+                'address' => $validated['address'] ?? null,
             ];
 
             if ($request->hasFile('image')) {
@@ -494,7 +527,7 @@ class StudentController extends Controller
                     $arParts = \App\Models\User::parseFullName($gNameAr);
                     $enParts = \App\Models\User::parseFullName($gNameEn);
 
-                    $guardianUser->update([
+                    $guardianUpdate = [
                         'first_name_ar' => $arParts[0] ?: ($enParts[0] ?? ''),
                         'last_name_ar' => $arParts[3] ?: ($enParts[3] ?? ''),
                         'first_name_en' => $enParts[0] ?: ($arParts[0] ?? ''),
@@ -502,7 +535,17 @@ class StudentController extends Controller
                         'phone' => $g['phone'],
                         'address' => $g['address'],
                         'home_number' => $g['home_number'],
-                    ]);
+                    ];
+
+                    if (! empty($validated['latitude']) && ! empty($validated['longitude']) && (empty($guardianUser->latitude) || empty($guardianUser->longitude))) {
+                        $guardianUpdate['latitude'] = $validated['latitude'];
+                        $guardianUpdate['longitude'] = $validated['longitude'];
+                        if (empty($guardianUpdate['address'])) {
+                            $guardianUpdate['address'] = $validated['address'] ?? null;
+                        }
+                    }
+
+                    $guardianUser->update($guardianUpdate);
                 }
             }
             $student->guardians()->sync($syncData);
@@ -525,7 +568,7 @@ class StudentController extends Controller
             abort(403, 'لا يحق لك حذف طالب من مدرسة أخرى.');
         }
 
-        DB::transaction(function () use ($student) {
+        DB::transaction(function () use ($student, $studentSchoolId) {
             // Boot::deleting event يتكفل بـ:
             // 1. إلغاء تخصيص الباصات (forth_bus_id, back_bus_id → null)
             // 2. تعطيل التسجيل الأكاديمي (is_active → false)
