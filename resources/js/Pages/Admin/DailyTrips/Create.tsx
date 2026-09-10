@@ -53,21 +53,30 @@ export default function Create({ auth, buses, routes }: Props) {
         date: getLocalDate(),
     });
 
-    const busOptions = useMemo(() => buses.map(bus => ({
-        id: bus.id,
-        label: `${bus.bus_number} (${bus.plate_number})`,
-        subLabel: (!bus.driver_id || !bus.supervisor_id) ? (isRTL ? 'تفاصيل ناقصة' : 'Missing Info') : undefined
-    })), [buses, isRTL]);
+    const handleRouteChange = (val: string | number) => {
+        const rId = val.toString();
+        const selectedRoute = routes.find(r => r.id === Number(val));
+        const assignedBus = (selectedRoute as any)?.buses?.[0] || buses.find(b => b.route_id === Number(val));
+
+        setData(prev => ({
+            ...prev,
+            route_id: rId,
+            bus_id: assignedBus ? assignedBus.id.toString() : ''
+        }));
+    };
 
     const routeOptions = useMemo(() => routes.map(route => {
-        const selectedBus = buses.find(b => b.id === parseInt(data.bus_id));
-        const isDefault = selectedBus?.route_id === route.id;
+        const assignedBus = (route as any)?.buses?.[0] || buses.find(b => b.route_id === route.id);
+        const busText = assignedBus
+            ? ` - ${isRTL ? 'حافلة' : 'Bus'} ${assignedBus.bus_number}${assignedBus.plate_number ? ` (${assignedBus.plate_number})` : ''}`
+            : ` - (${isRTL ? 'بدون حافلة' : 'No bus'})`;
+
         return {
             id: route.id,
-            label: route.name,
-            subLabel: isDefault ? (isRTL ? 'المسار الافتراضي' : 'Bus Default') : undefined
+            label: `${route.name}${busText}`,
+            subLabel: assignedBus?.plate_number ? `${isRTL ? 'اللوحة:' : 'Plate:'} ${assignedBus.plate_number}` : undefined
         };
-    }), [routes, data.bus_id, buses, isRTL]);
+    }), [routes, buses, isRTL]);
 
     useEffect(() => {
         if (flash?.error) {
@@ -77,15 +86,6 @@ export default function Create({ auth, buses, routes }: Props) {
             toast.success(flash.success);
         }
     }, [flash]);
-
-    useEffect(() => {
-        if (data.bus_id) {
-            const bus = buses.find(b => b.id === parseInt(data.bus_id));
-            if (bus && bus.route_id) {
-                setData('route_id', bus.route_id.toString());
-            }
-        }
-    }, [data.bus_id]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -120,28 +120,21 @@ export default function Create({ auth, buses, routes }: Props) {
                         <div className="p-8">
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Bus Selection */}
-                                    <div>
+                                    {/* Route Selection (Bus is automatically determined) */}
+                                    <div className="col-span-1 md:col-span-2">
                                         <SearchableSelect
-                                            label={isRTL ? 'الحافلة' : 'Bus'}
-                                            options={busOptions}
-                                            value={data.bus_id}
-                                            onChange={val => setData('bus_id', val.toString())}
-                                            placeholder={isRTL ? 'اختر الحافلة' : 'Select Bus'}
-                                        />
-                                        {errors.bus_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.bus_id}</p>}
-                                    </div>
-
-                                    {/* Route Selection */}
-                                    <div>
-                                        <SearchableSelect
-                                            label={isRTL ? 'المسار' : 'Route'}
+                                            label={isRTL ? 'المسار (مع الحافلة المرتبطة به)' : 'Route (With linked bus)'}
                                             options={routeOptions}
                                             value={data.route_id}
-                                            onChange={val => setData('route_id', val.toString())}
-                                            placeholder={isRTL ? 'اختر المسار' : 'Select Route'}
+                                            onChange={handleRouteChange}
+                                            placeholder={isRTL ? 'اختر المسار...' : 'Select Route...'}
                                         />
                                         {errors.route_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors.route_id}</p>}
+                                        {errors.bus_id && !errors.route_id && (
+                                            <p className="text-amber-600 dark:text-amber-400 text-[10px] font-bold mt-1 uppercase">
+                                                {isRTL ? 'تنبيه: هذا المسار لا توجد حافلة مخصصة له حالياً' : 'Warning: This route currently has no bus assigned'}
+                                            </p>
+                                        )}
                                     </div>
 
                                     {/* Date */}

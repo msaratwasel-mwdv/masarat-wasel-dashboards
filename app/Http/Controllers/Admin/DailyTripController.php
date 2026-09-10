@@ -38,8 +38,8 @@ class DailyTripController extends Controller
         }
 
         $trips = $query->paginate(50)->withQueryString();
-        $buses = Bus::with(['driver.user', 'assistant'])->get();
-        $routes = Route::all();
+        $buses = Bus::with(['driver.user', 'assistant', 'route'])->get();
+        $routes = Route::with(['buses.driver.user'])->get();
 
         return Inertia::render('Admin/DailyTrips/Index', [
             'trips' => $trips,
@@ -55,8 +55,8 @@ class DailyTripController extends Controller
     public function create()
     {
         // Show all buses so the admin can select them and see specific error messages if data is missing
-        $buses = Bus::with(['driver.user', 'assistant'])->get();
-        $routes = Route::all();
+        $buses = Bus::with(['driver.user', 'assistant', 'route'])->get();
+        $routes = Route::with(['buses.driver.user'])->get();
 
         return Inertia::render('Admin/DailyTrips/Create', [
             'buses' => $buses,
@@ -70,6 +70,15 @@ class DailyTripController extends Controller
     public function store(Request $request)
     {
         Log::info('[DailyTrips] Manual creation attempt', $request->all());
+
+        if (! $request->filled('bus_id') && $request->filled('route_id')) {
+            $route = Route::with('buses')->find($request->route_id);
+            $bus = $route?->buses->first() ?? Bus::where('route_id', $request->route_id)->first();
+            if ($bus) {
+                $request->merge(['bus_id' => $bus->id]);
+            }
+        }
+
         $request->validate([
             'bus_id' => 'required|exists:buses,id',
             'route_id' => 'required|exists:routes,id',

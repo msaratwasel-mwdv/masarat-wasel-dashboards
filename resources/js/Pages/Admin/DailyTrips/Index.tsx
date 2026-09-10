@@ -58,10 +58,22 @@ interface Driver {
 interface Bus {
     id: number;
     bus_number: string;
+    plate_number?: string;
+    driver_id?: number | null;
+    supervisor_id?: number | null;
+    route_id?: number | null;
     driver?: Driver;
     route?: {
+        id?: number;
         name: string;
     };
+}
+
+interface Route {
+    id: number;
+    name: string;
+    code?: string;
+    buses?: Bus[];
 }
 
 interface Trip {
@@ -216,14 +228,18 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
         };
     }, []);
 
-    useEffect(() => {
-        if (createData.bus_id) {
-            const bus = buses.find(b => b.id === parseInt(createData.bus_id));
-            if (bus && bus.route_id) {
-                setCreateData('route_id', bus.route_id.toString());
-            }
-        }
-    }, [createData.bus_id]);
+    const handleRouteChange = (val: string | number) => {
+        const rId = val.toString();
+        const selectedRoute = routes.find(r => r.id === Number(val));
+        const assignedBus = (selectedRoute?.buses && selectedRoute.buses.length > 0 ? selectedRoute.buses[0] : null) 
+            || buses.find(b => b.route_id === Number(val));
+
+        setCreateData(prev => ({
+            ...prev,
+            route_id: rId,
+            bus_id: assignedBus ? assignedBus.id.toString() : ''
+        }));
+    };
 
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -235,21 +251,19 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
         });
     };
 
-    const busOptions = useMemo(() => buses.map(bus => ({
-        id: bus.id,
-        label: `${bus.bus_number} (${bus.plate_number})`,
-        subLabel: (!bus.driver_id || !bus.supervisor_id) ? (isRTL ? 'تفاصيل ناقصة' : 'Missing Info') : undefined
-    })), [buses, isRTL]);
-
     const routeOptions = useMemo(() => routes.map(route => {
-        const selectedBus = buses.find(b => b.id === parseInt(createData.bus_id));
-        const isDefault = selectedBus?.route_id === route.id;
+        const assignedBus = (route.buses && route.buses.length > 0 ? route.buses[0] : null) 
+            || buses.find(b => b.route_id === route.id);
+        const busText = assignedBus
+            ? ` - ${isRTL ? 'حافلة' : 'Bus'} ${assignedBus.bus_number}${assignedBus.plate_number ? ` (${assignedBus.plate_number})` : ''}`
+            : ` - (${isRTL ? 'بدون حافلة' : 'No bus'})`;
+
         return {
             id: route.id,
-            label: route.name,
-            subLabel: isDefault ? (isRTL ? 'المسار الافتراضي' : 'Bus Default') : undefined
+            label: `${route.name}${busText}`,
+            subLabel: assignedBus?.driver?.name ? `${isRTL ? 'السائق:' : 'Driver:'} ${assignedBus.driver.name}` : undefined
         };
-    }), [routes, createData.bus_id, buses, isRTL]);
+    }), [routes, buses, isRTL]);
 
     const handlePrint = () => window.print();
 
@@ -505,22 +519,7 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
                 </div>
             </div>
 
-            <div className={`${DS_pageWrapper} space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12`} dir={isRTL ? 'rtl' : 'ltr'}>
-                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2 border-b border-gray-100 dark:border-[#243460]">
-                    <div>
-                        <h1 className="text-3xl font-black text-[#0f2044] dark:text-white flex items-center gap-4">
-                            <div className="w-12 h-12 bg-[#0f2044] rounded-2xl flex items-center justify-center text-white shadow-xl shadow-[#0f2044]/20">
-                                <Zap size={24} fill="#f5b800" className="text-[#f5b800]" />
-                            </div>
-                            <div className="flex flex-col">
-                                <span>{isRTL ? 'الرحلات اليومية' : 'Daily Trips'}</span>
-                                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mt-1">
-                                    {isRTL ? 'إدارة ومتابعة الرحلات المجدولة' : 'Operational Schedule Management'}
-                                </span>
-                            </div>
-                        </h1>
-                    </div>
-                </div>
+            <div className={`${DS_pageWrapper} space-y-5 px-4 sm:px-6 lg:px-8 pt-2 pb-12`} dir={isRTL ? 'rtl' : 'ltr'}>
 
                 {/* Premium Statistics Grid */}
                 <div className="relative group/stats">
@@ -766,28 +765,21 @@ export default function Index({ auth, trips, filters, buses, routes }: Props) {
             <div className={`${DS_modalBody} !overflow-visible  pb-12`}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 !overflow-visible">
 
-                    {/* Bus Selection */}
-                    <div className="relative !overflow-visible">
+                    {/* Route Selection (Bus is automatically determined) */}
+                    <div className="relative !overflow-visible col-span-1 md:col-span-2">
                         <SearchableSelect
-                            label={isRTL ? 'الحافلة' : 'Bus'}
-                            options={busOptions}
-                            value={createData.bus_id}
-                            onChange={val => setCreateData('bus_id', val.toString())}
-                            placeholder={isRTL ? 'اختر الحافلة' : 'Select Bus'}
-                        />
-                        {createErrors.bus_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.bus_id}</p>}
-                    </div>
-
-                    {/* Route Selection */}
-                    <div className="relative !overflow-visible">
-                        <SearchableSelect
-                            label={isRTL ? 'المسار' : 'Route'}
+                            label={isRTL ? 'المسار (مع الحافلة المرتبطة به)' : 'Route (With linked bus)'}
                             options={routeOptions}
                             value={createData.route_id}
-                            onChange={val => setCreateData('route_id', val.toString())}
-                            placeholder={isRTL ? 'اختر المسار' : 'Select Route'}
+                            onChange={handleRouteChange}
+                            placeholder={isRTL ? 'اختر المسار...' : 'Select Route...'}
                         />
                         {createErrors.route_id && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{createErrors.route_id}</p>}
+                        {createErrors.bus_id && !createErrors.route_id && (
+                            <p className="text-amber-600 dark:text-amber-400 text-[10px] font-bold mt-1 uppercase">
+                                {isRTL ? 'تنبيه: هذا المسار لا توجد حافلة مخصصة له حالياً' : 'Warning: This route currently has no bus assigned'}
+                            </p>
+                        )}
                     </div>
 
                     {/* Date */}
