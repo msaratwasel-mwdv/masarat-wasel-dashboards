@@ -287,36 +287,44 @@ class BusLocationController extends Controller
 
         // ─── Resolve Next Destination (Privacy-Aware) ─────────────────────────
         // - School staff / crew  → see exact student name (needed for operations)
-        // - Guardian             → sees their child's name only; other stops show "في الطريق إليك"
+        // - Guardian             → sees their own child's name; other stops show "في الطريق إليك"
         $nextDestination = null;
 
         $targetLat = $bus->target_latitude ? (float) $bus->target_latitude : null;
         $targetLng = $bus->target_longitude ? (float) $bus->target_longitude : null;
 
-        if ($targetLat !== null && $targetLng !== null && $activeTrip) {
+        if ($activeTrip) {
             $tripType = $activeTrip->type; // 'forth' | 'back'
             $busColumn = $tripType === 'forth' ? 'forth_bus_id' : 'back_bus_id';
+            $orderCol = $tripType === 'forth' ? 'forth_stop_order' : 'back_stop_order';
+            $tolerance = 0.000135; // ~15 metres
 
-            // Tolerance: ~15 metres
-            $tolerance = 0.000135;
+            // Guardian's own children IDs — loaded once for privacy checks
+            $myChildIds = $isGuardian
+                ? \App\Models\Student::whereHas('guardians', fn ($q) => $q->where('users.id', $user->id))
+                    ->pluck('id')
+                    ->toArray()
+                : [];
 
-            // 1. Check if target matches the school
-            $school = $bus->school;
-            if ($school && $school->latitude && $school->longitude) {
-                if (
-                    abs((float) $school->latitude - $targetLat) <= $tolerance &&
-                    abs((float) $school->longitude - $targetLng) <= $tolerance
-                ) {
-                    $nextDestination = [
-                        'type' => 'school',
-                        'name' => $school->name ?? 'المدرسة',
-                        'name_en' => $school->name_en ?? 'School',
-                        'is_my_stop' => false,
-                    ];
+            // Step 1: If target coords are set and match the school → it's the school
+            if ($targetLat !== null && $targetLng !== null) {
+                $school = $bus->school;
+                if ($school && $school->latitude && $school->longitude) {
+                    if (
+                        abs((float) $school->latitude - $targetLat) <= $tolerance &&
+                        abs((float) $school->longitude - $targetLng) <= $tolerance
+                    ) {
+                        $nextDestination = [
+                            'type' => 'school',
+                            'name' => $school->name ?? 'المدرسة',
+                            'name_en' => $school->name_en ?? 'School',
+                            'is_my_stop' => false,
+                        ];
+                    }
                 }
             }
 
-            // 2. Match against pending students
+            // Step 2: Match target coords against pending students (or auto-detect when no target)
             if ($nextDestination === null) {
                 $pendingStudentIds = \App\Models\TripAttendance::where('trip_id', $activeTrip->id)
                     ->where('status', 'pending')
@@ -324,61 +332,61 @@ class BusLocationController extends Controller
 
                 $pendingStudents = \App\Models\Student::whereIn('id', $pendingStudentIds)
                     ->where($busColumn, $bus->id)
-                    ->get(['id', 'first_name', 'last_name', 'first_name_en', 'last_name_en',
-                        'latitude', 'longitude', 'forth_latitude', 'forth_longitude',
-                        'back_latitude', 'back_longitude']);
+                    ->orderBy($orderCol)
+                    ->get([
+                        'id', 'first_name_ar', 'last_name_ar', 'first_name_en', 'last_name_en',
+                        'latitude', 'longitude',
+                        'forth_latitude', 'forth_longitude',
+                        'back_latitude', 'back_longitude',
+                        'forth_stop_order', 'back_stop_order',
+                    ]);
 
-                // Guardian's own children IDs (for privacy filtering)
-                $myChildIds = $isGuardian
-                    ? \App\Models\Student::whereHas('guardians', fn ($q) => $q->where('users.id', $user->id))
-                        ->pluck('id')
-                        ->toArray()
-                    : [];
-
-                foreach ($pendingStudents as $student) {
-                    $candidateCoords = [];
-                    if ($student->latitude && $student->longitude) {
-                        $candidateCoords[] = [(float) $student->latitude, (float) $student->longitude];
-                    }
-                    if ($tripType === 'forth' && $student->forth_latitude && $student->forth_longitude) {
-                        $candidateCoords[] = [(float) $student->forth_latitude, (float) $student->forth_longitude];
-                    }
-                    if ($tripType === 'back' && $student->back_latitude && $student->back_longitude) {
-                        $candidateCoords[] = [(float) $student->back_latitude, (float) $student->back_longitude];
-                    }
-
-                    foreach ($candidateCoords as [$sLat, $sLng]) {
-                        if (abs($sLat - $targetLat) <= $tolerance && abs($sLng - $targetLng) <= $tolerance) {
-                            $isMyChild = in_array($student->id, $myChildIds);
-
-                            if ($isGuardian && ! $isMyChild) {
-                                // Privacy: guardian sees a generic message for another child's stop
-                                $nextDestination = [
-                                    'type' => 'other_stop',
-                                    'name' => 'في الطريق إليك',
-                                    'name_en' => 'On the way to you',
-                                    'is_my_stop' => false,
-                                ];
-                            } else {
-                                // Crew / school staff / guardian viewing their own child
-                                $nextDestination = [
-                                    'type' => 'student',
-                                    'name' => trim($student->first_name.' '.$student->last_name),
-                                    'name_en' => trim(($student->first_name_en ?? '').' '.($student->last_name_en ?? '')),
-                                    'is_my_stop' => $isMyChild,
-                                ];
+                if ($pendingStudents->isEmpty()) {
+                    // No pending students left → school is the final destination
+                    $school = $bus->school;
+                    $nextDestination = [
+                        'type' => 'school',
+                        'name' => $school->name ?? 'المدرسة',
+                        'name_en' => $school->name_en ?? 'School',
+                        'is_my_stop' => false,
+                    ];
+                } elseif ($targetLat !== null && $targetLng !== null) {
+                    // Coordinate-match: find the student whose location matches the driver's target
+                    foreach ($pendingStudents as $student) {
+                        $coords = [];
+                        if ($student->latitude && $student->longitude) {
+                            $coords[] = [(float) $student->latitude, (float) $student->longitude];
+                        }
+                        if ($tripType === 'forth' && $student->forth_latitude && $student->forth_longitude) {
+                            $coords[] = [(float) $student->forth_latitude, (float) $student->forth_longitude];
+                        }
+                        if ($tripType === 'back' && $student->back_latitude && $student->back_longitude) {
+                            $coords[] = [(float) $student->back_latitude, (float) $student->back_longitude];
+                        }
+                        foreach ($coords as [$sLat, $sLng]) {
+                            if (abs($sLat - $targetLat) <= $tolerance && abs($sLng - $targetLng) <= $tolerance) {
+                                $isMyChild = in_array($student->id, $myChildIds);
+                                $nextDestination = $this->buildStudentDestination($student, $isGuardian, $isMyChild);
+                                break 2;
                             }
-                            break 2;
                         }
                     }
+                } else {
+                    // No target set yet → auto-detect: first pending student by stop_order
+                    $nextStudent = $pendingStudents->first();
+                    $isMyChild = in_array($nextStudent->id, $myChildIds);
+                    $nextDestination = $this->buildStudentDestination($nextStudent, $isGuardian, $isMyChild);
                 }
             }
 
-            // 3. Fallback
+            // Step 3: Final fallback
             if ($nextDestination === null) {
-                $nextDestination = $tripType === 'forth'
-                    ? ['type' => 'school',   'name' => 'المدرسة',         'name_en' => 'School',   'is_my_stop' => false]
-                    : ['type' => 'unknown',  'name' => 'في الطريق إليك', 'name_en' => 'On the way', 'is_my_stop' => false];
+                $nextDestination = [
+                    'type' => 'unknown',
+                    'name' => 'في الطريق',
+                    'name_en' => 'On the way',
+                    'is_my_stop' => false,
+                ];
             }
         }
         // ─────────────────────────────────────────────────────────────────────
@@ -519,5 +527,28 @@ class BusLocationController extends Controller
                 cache()->put($cacheKey, true, now()->addMinutes(10));
             }
         }
+    }
+
+    /**
+     * بناء معلومات وجهة الطالب مع مراعاة خصوصية أولياء الأمور
+     */
+    private function buildStudentDestination(\App\Models\Student $student, bool $isGuardian, bool $isMyChild): array
+    {
+        if ($isGuardian && ! $isMyChild) {
+            return [
+                'type' => 'other_student',
+                'name' => 'محطة قادمة',
+                'name_en' => 'Upcoming stop',
+                'is_my_stop' => false,
+            ];
+        }
+
+        return [
+            'type' => 'student',
+            'student_id' => $student->id,
+            'name' => $student->full_name_ar ?: trim(($student->first_name_ar ?? '').' '.($student->last_name_ar ?? '')),
+            'name_en' => $student->full_name_en ?: trim(($student->first_name_en ?? '').' '.($student->last_name_en ?? '')),
+            'is_my_stop' => $isMyChild,
+        ];
     }
 }

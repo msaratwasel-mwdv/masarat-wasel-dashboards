@@ -1007,6 +1007,8 @@ class DailyTripApiController extends Controller
                 'trip_id' => $activeTrip?->id,
                 'school_lat' => $bus->school?->latitude,
                 'school_lng' => $bus->school?->longitude,
+                'school_name' => $bus->school?->name ?? 'المدرسة',
+                'school_name_en' => $bus->school?->name_en ?? 'School',
             ],
             'driver' => [
                 'id' => $driverUser?->id,
