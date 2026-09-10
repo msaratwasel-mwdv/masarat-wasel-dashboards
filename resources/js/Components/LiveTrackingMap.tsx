@@ -486,7 +486,6 @@ export default function LiveTrackingMap({
                         setSelectedStudent(null);
                     }}
                 >
-<<<<<<< HEAD
                     {/* OPTIONAL ROUTE LINE (Disabled by default to avoid unrealistic straight lines) */}
                     {showRoutePath && busRoutes.map((route: any) => (
                         <Polyline
