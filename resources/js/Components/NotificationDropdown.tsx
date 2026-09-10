@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
-import { Bell, CheckCircle, AlertTriangle, Info, Trash2, Bus as BusIcon, User } from "lucide-react";
+import { Bell, CheckCircle, AlertTriangle, Info, Trash2, Bus as BusIcon, User, ExternalLink } from "lucide-react";
 import { useEchoEvent } from '@/hooks/useEcho';
 import { useRealtimeToast } from '@/hooks/useRealtimeToast';
 
@@ -84,6 +84,19 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
         } catch (error) {
             console.error('Failed to delete notification:', error);
         }
+    };
+
+    // Navigate to full notifications page
+    const goToAllNotifications = () => {
+        const isAdmin = window.location.pathname.startsWith('/admin') || user?.role === 'admin';
+        const isSchool = window.location.pathname.startsWith('/school') || user?.role === 'school';
+        const targetUrl = isAdmin 
+            ? '/admin/notifications/all' 
+            : isSchool 
+            ? '/school/notifications/received' 
+            : '/notifications/all';
+        router.visit(targetUrl);
+        setIsOpen(false);
     };
 
     // Close dropdown when clicking outside
@@ -206,14 +219,24 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
                                 </span>
                                 {isRTL ? 'الإشعارات' : 'Notifications'}
                             </h3>
-                            {notifications.length > 0 && (
+                            <div className="flex items-center gap-2">
                                 <button
-                                    onClick={markAllAsRead}
-                                    className="text-[11px] font-bold text-brand-yellow bg-brand-yellow/10 hover:bg-brand-yellow/20 px-3 py-1.5 rounded-lg transition-all border border-brand-yellow/20"
+                                    onClick={goToAllNotifications}
+                                    className="text-[11px] font-bold text-white/90 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded-lg transition-all border border-white/15 flex items-center gap-1"
+                                    title={isRTL ? 'عرض كل الإشعارات' : 'View all notifications'}
                                 >
-                                    {isRTL ? 'تحديد الكل كمقروء' : 'Mark all read'}
+                                    <span>{isRTL ? 'عرض الكل' : 'View all'}</span>
+                                    <ExternalLink className="w-3 h-3" />
                                 </button>
-                            )}
+                                {unreadCount > 0 && (
+                                    <button
+                                        onClick={markAllAsRead}
+                                        className="text-[11px] font-bold text-brand-yellow bg-brand-yellow/10 hover:bg-brand-yellow/20 px-2.5 py-1.5 rounded-lg transition-all border border-brand-yellow/20"
+                                    >
+                                        {isRTL ? 'تحديد الكل كمقروء' : 'Mark all read'}
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         {unreadCount > 0 && (
                             <p className="text-xs text-brand-yellow/80 mt-2 font-medium bg-brand-yellow/10 inline-block px-2 py-0.5 rounded-full border border-brand-yellow/10">
@@ -232,16 +255,23 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
                                 </p>
                             </div>
                         ) : notifications.length === 0 ? (
-                            <div className="p-16 text-center">
-                                <div className="w-24 h-24 bg-gray-50 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
-                                    <Bell className="w-12 h-12 text-gray-400" />
+                            <div className="p-10 text-center">
+                                <div className="w-20 h-20 bg-gray-50 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Bell className="w-10 h-10 text-gray-400" />
                                 </div>
-                                <p className="text-gray-800 dark:text-white font-bold text-lg">
+                                <p className="text-gray-800 dark:text-white font-bold text-base">
                                     {isRTL ? 'القائمة فارغة' : 'Inbox is empty'}
                                 </p>
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-xs text-gray-400 mt-1 mb-5">
                                     {isRTL ? 'لا توجد إشعارات جديدة في سحابتك' : 'No new notifications in your cloud'}
                                 </p>
+                                <button
+                                    onClick={goToAllNotifications}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-brand-yellow/15 hover:bg-brand-yellow/25 text-brand-dark dark:text-brand-yellow text-xs font-bold rounded-xl transition-all border border-brand-yellow/30 shadow-sm"
+                                >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                    {isRTL ? 'عرض كل الإشعارات' : 'View all notifications'}
+                                </button>
                             </div>
                         ) : (
                             <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
@@ -359,23 +389,16 @@ export default function NotificationDropdown({ isRTL = false }: NotificationDrop
                         )}
                     </div>
 
-                    {/* Footer */}
-                    {notifications.length > 0 && (
-                        <div className="p-4 bg-gray-50 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700">
-                            <button
-                                onClick={() => {
-                                    const targetUrl = window.location.pathname.startsWith('/admin') 
-                                        ? '/admin/notifications/all' 
-                                        : '/school/notifications/received';
-                                    router.visit(targetUrl);
-                                    setIsOpen(false);
-                                }}
-                                className="w-full py-3 bg-white dark:bg-gray-800 text-sm text-brand-navy dark:text-white hover:text-brand-yellow dark:hover:text-brand-yellow font-bold rounded-xl transition-all shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700"
-                            >
-                                {isRTL ? 'عرض جميع الإشعارات' : 'View full history'}
-                            </button>
-                        </div>
-                    )}
+                    {/* Footer - Always visible so user can access full notifications list even when empty or marked read */}
+                    <div className="p-4 bg-gray-50 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700">
+                        <button
+                            onClick={goToAllNotifications}
+                            className="w-full py-3 bg-white dark:bg-gray-800 text-sm text-brand-navy dark:text-white hover:text-brand-yellow dark:hover:text-brand-yellow font-bold rounded-xl transition-all shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 flex items-center justify-center gap-2"
+                        >
+                            <span>{isRTL ? 'عرض جميع الإشعارات' : 'View full history'}</span>
+                            <ExternalLink className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
