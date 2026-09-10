@@ -285,6 +285,82 @@ class BusLocationController extends Controller
             }
         }
 
+        // ─── Resolve Next Destination ────────────────────────────────────────
+        // The Flutter app should never guess the name from coordinates.
+        // We resolve it server-side so the label is always accurate.
+        $nextDestination = null;
+
+        $targetLat = $bus->target_latitude ? (float) $bus->target_latitude : null;
+        $targetLng = $bus->target_longitude ? (float) $bus->target_longitude : null;
+
+        if ($targetLat !== null && $targetLng !== null && $activeTrip) {
+            $tripType = $activeTrip->type; // 'forth' | 'back'
+            $busColumn = $tripType === 'forth' ? 'forth_bus_id' : 'back_bus_id';
+
+            // Tolerance: 15 metres (~0.000135°)
+            $tolerance = 0.000135;
+
+            // 1. Check if target matches the school
+            $school = $bus->school;
+            if ($school && $school->latitude && $school->longitude) {
+                $latDiff = abs((float) $school->latitude - $targetLat);
+                $lngDiff = abs((float) $school->longitude - $targetLng);
+                if ($latDiff <= $tolerance && $lngDiff <= $tolerance) {
+                    $nextDestination = [
+                        'type' => 'school',
+                        'name' => $school->name ?? 'المدرسة',
+                        'name_en' => $school->name_en ?? 'School',
+                    ];
+                }
+            }
+
+            // 2. If not the school, match against pending (not-yet-boarded/dropped) students
+            if ($nextDestination === null) {
+                // Fetch students still pending on this trip
+                $pendingStudentIds = \App\Models\TripAttendance::where('trip_id', $activeTrip->id)
+                    ->where('status', 'pending')
+                    ->pluck('student_id');
+
+                $pendingStudents = \App\Models\Student::whereIn('id', $pendingStudentIds)
+                    ->where($busColumn, $bus->id)
+                    ->get(['id', 'first_name', 'last_name', 'first_name_en', 'last_name_en',
+                        'latitude', 'longitude', 'forth_latitude', 'forth_longitude', 'back_latitude', 'back_longitude']);
+
+                foreach ($pendingStudents as $student) {
+                    // Check all coordinate fields the student might have
+                    $candidateCoords = [];
+                    if ($student->latitude && $student->longitude) {
+                        $candidateCoords[] = [(float) $student->latitude, (float) $student->longitude];
+                    }
+                    if ($tripType === 'forth' && $student->forth_latitude && $student->forth_longitude) {
+                        $candidateCoords[] = [(float) $student->forth_latitude, (float) $student->forth_longitude];
+                    }
+                    if ($tripType === 'back' && $student->back_latitude && $student->back_longitude) {
+                        $candidateCoords[] = [(float) $student->back_latitude, (float) $student->back_longitude];
+                    }
+
+                    foreach ($candidateCoords as [$sLat, $sLng]) {
+                        if (abs($sLat - $targetLat) <= $tolerance && abs($sLng - $targetLng) <= $tolerance) {
+                            $nextDestination = [
+                                'type' => 'student',
+                                'name' => trim($student->first_name.' '.$student->last_name),
+                                'name_en' => trim(($student->first_name_en ?? '').' '.($student->last_name_en ?? '')),
+                            ];
+                            break 2;
+                        }
+                    }
+                }
+            }
+
+            // 3. Fallback: if no match found, use "المدرسة" for forth trips and student name still unknown for back
+            if ($nextDestination === null) {
+                $nextDestination = $tripType === 'forth'
+                    ? ['type' => 'school', 'name' => 'المدرسة', 'name_en' => 'School']
+                    : ['type' => 'unknown', 'name' => 'الوجهة القادمة', 'name_en' => 'Next Stop'];
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         return response()->json([
             'bus_id' => $bus->id,
             'latitude' => $bus->latitude ? (float) $bus->latitude : null,
@@ -292,6 +368,7 @@ class BusLocationController extends Controller
             'heading' => (float) cache()->get('bus_heading_'.$bus->id, 0),
             'target_lat' => $bus->target_latitude,
             'target_lng' => $bus->target_longitude,
+            'next_destination' => $nextDestination,
             'trip_status' => $bus->trip_status,
             'trip_type' => $activeTrip ? $activeTrip->type : null,
             'departure_time' => $activeTrip ? $activeTrip->departure_time?->toIso8601String() : null,
