@@ -426,10 +426,10 @@ function StopOrderModal({
           </div>
           <div>
             <h3 className="text-lg font-black text-[#0f2044] dark:text-white">
-              {isRtl ? "ترتيب محطات الطلاب للحافلة" : "Bus Student Stop Order"}
+              {isRtl ? "ترتيب تسلسل الطلاب في المسار (من الأول للأخير)" : "Student Route Sequence (1st to Last)"}
             </h3>
             <p className="text-xs font-semibold text-gray-500">
-              {bus.bus_number} — {bus.plate_number}
+              {bus.bus_number} — {bus.plate_number} • {isRtl ? "حدد ترتيب صعود ونزول الطلاب بالتسلسل" : "Set pickup/drop-off order"}
             </p>
           </div>
         </div>
@@ -816,10 +816,10 @@ export default function AssignStudents() {
                 <>
                     <button
                         onClick={() => setShowStopOrderModal(true)}
-                        className="p-2 sm:px-4 sm:py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-[10px] sm:rounded-[14px] font-bold text-sm transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800"
+                        className="p-2 sm:px-4 sm:py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-[10px] sm:rounded-[14px] font-bold text-sm transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 shadow-sm"
                     >
                         <ListOrdered className="w-4 h-4 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400" />
-                        <span className="hidden sm:inline">{isRtl ? "ترتيب المحطات" : "Stop Order"}</span>
+                        <span className="hidden sm:inline">{isRtl ? "ترتيب الطلاب في المسار" : "Order Route Students"}</span>
                     </button>
 
                     <button
@@ -993,6 +993,16 @@ export default function AssignStudents() {
                   </div>
                 </div>
 
+                {/* Order Students on Route Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowStopOrderModal(true)}
+                  className="w-full py-2.5 px-4 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-[14px] font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 shadow-sm hover:shadow"
+                >
+                  <ListOrdered className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>{isRtl ? "ترتيب الطلاب في المسار (1، 2، 3...)" : "Order Students (1, 2, 3...)"}</span>
+                </button>
+
                 {/* Capacity meter */}
                 <div className="bg-gray-50 dark:bg-[#0f2044]/10 p-5 rounded-[20px] border border-gray-100 dark:border-[#243460]">
                   <div className="flex justify-between items-end mb-3">
@@ -1073,6 +1083,17 @@ export default function AssignStudents() {
                   <button onClick={toggleAllBack} className="flex-1 lg:flex-none text-[#7a5c00] dark:text-[#f5b800] hover:opacity-70 bg-[#f5b800]/20 px-2 sm:px-3 py-2 sm:py-1.5 rounded-[10px] transition-all text-[10px] sm:text-xs font-bold text-center flex items-center justify-center">
                     {allBackSelected ? (isRtl ? "إلغاء الكل عودة" : "Clear Back") : (isRtl ? "تحديد الكل عودة" : "All Back")}
                   </button>
+                  {selectedBus && (
+                    <button
+                      type="button"
+                      onClick={() => setShowStopOrderModal(true)}
+                      className="flex-1 lg:flex-none text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 px-3 py-2 sm:py-1.5 rounded-[10px] transition-all text-[10px] sm:text-xs font-bold text-center flex items-center justify-center gap-1.5 shadow-sm"
+                      title={isRtl ? "ترتيب الطلاب في المسار من الأول للأخير" : "Order students from first to last"}
+                    >
+                      <ListOrdered className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>{isRtl ? "ترتيب المسار" : "Order Route"}</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
