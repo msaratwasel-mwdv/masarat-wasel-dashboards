@@ -64,15 +64,27 @@ class TripObserver
                         $query->where('school_id', $trip->school_id);
                     })->first();
 
-                    if ($schoolAdmin && $schoolAdmin->phone) {
-                        $isEn = ($schoolAdmin->preferred_language === 'en');
+                    $recipientPhone = $schoolAdmin?->phone ?: $school?->contact_phone;
+
+                    if ($recipientPhone) {
+                        $isEn = ($schoolAdmin && $schoolAdmin->preferred_language === 'en');
                         $lang = $isEn ? config('services.meta_whatsapp.english_code', 'en') : 'ar';
                         $templateName = $isEn
                             ? config('services.meta_whatsapp.templates.trip_summary_en', 'bus_trip_summary_en')
                             : config('services.meta_whatsapp.templates.trip_summary_ar', 'bus_trip_summary');
 
-                        $attendanceCount = $trip->attendances()->where('status', 'boarded')->count();
-                        $absenceCount = $trip->attendances()->where('status', 'absent')->count();
+                        // حساب الحضور الحقيقي: كل طالب استقل الحافلة (سواء نزل 'dropped' أو 'boarded' أو سُجل له وقت صعود)
+                        $attendanceCount = $trip->attendances()
+                            ->where(function ($q) {
+                                $q->whereIn('status', ['boarded', 'dropped'])
+                                    ->orWhereNotNull('check_in_time');
+                            })
+                            ->count();
+
+                        // حساب الغياب الحقيقي: الطلاب المسجل غيابهم أو اعتذارهم
+                        $absenceCount = $trip->attendances()
+                            ->whereIn('status', ['absent', 'excused'])
+                            ->count();
 
                         // 1. حساب وتنسيق مدة الرحلة بدون كسور
                         if ($isEn) {
@@ -123,21 +135,26 @@ class TripObserver
                             $waitingStr = $totalWaitMinutes > 0 ? "{$totalWaitMinutes} دقيقة" : '0 دقيقة';
                         }
 
-                        // 4. معالجة المسافة
+                        // 4. معالجة المسافة الحقيقية للرحلة (الفعلية أولاً، ثم مسافة المسار كاحتياط)
                         $route = $trip->route ?? $bus?->route;
-                        $distanceVal = $route?->estimated_distance_km ? (float) $route->estimated_distance_km : 0;
+                        $distanceVal = (float) ($trip->actual_distance_km > 0
+                            ? $trip->actual_distance_km
+                            : ($route?->estimated_distance_km ?? 0));
+
+                        $busDisplayName = $bus?->bus_number ?: ($bus?->plate_number ?: 'B-100');
+
                         if ($isEn) {
-                            $distanceStr = $distanceVal > 0 ? (round($distanceVal, 1).' km') : 'N/A';
+                            $distanceStr = $distanceVal > 0 ? (round($distanceVal, 1).' km') : '0 km';
                             $schoolName = ! empty($school?->name_en) ? $school->name_en : ($school?->name ?? 'Masarat Wasel');
                         } else {
-                            $distanceStr = $distanceVal > 0 ? (round($distanceVal, 1).' كم') : 'غير محدد';
+                            $distanceStr = $distanceVal > 0 ? (round($distanceVal, 1).' كم') : '0 كم';
                             $schoolName = $school?->name ?? 'مسارات واصل';
                         }
 
                         $parameters = [
                             $schoolName,
                             $trip->trip_date ? Carbon::parse($trip->trip_date)->format('Y/m/d') : date('Y/m/d'),
-                            $bus?->bus_number ?? 'B-202',
+                            $busDisplayName,
                             $formatTime($trip->departure_time, $isEn, '07:00 ص', '07:00 AM'),
                             $formatTime($trip->arrival_time, $isEn, '08:15 ص', '08:15 AM'),
                             $waitingStr,
@@ -145,7 +162,7 @@ class TripObserver
                             $distanceStr,
                             $attendanceCount,
                             $absenceCount,
-                            $bus?->bus_number ?? 'B-202',
+                            $busDisplayName,
                         ];
 
                         // تحديد رابط صورة تقرير الرحلة
@@ -156,13 +173,13 @@ class TripObserver
 
                         // إرسال التقرير عبر طابور المهام في الخلفية
                         \App\Jobs\SendWhatsAppTemplateJob::dispatch(
-                            to: $schoolAdmin->phone,
+                            to: $recipientPhone,
                             templateName: $templateName,
                             parameters: $parameters,
                             lang: $lang,
                             headerImageUrl: $imageUrl,
                             eventType: 'trip_finished_report',
-                            userId: $schoolAdmin->id
+                            userId: $schoolAdmin?->id
                         );
                     }
                 } catch (\Exception $e) {
@@ -196,10 +213,6 @@ class TripObserver
 
     protected function broadcastUpdate(): void
     {
-        try {
-            broadcast(new DashboardStatsUpdated('trips', ['admin.dashboard']));
-        } catch (\Throwable $e) {
-            \Log::warning('DashboardStatsUpdated broadcast failed: '.$e->getMessage());
-        }
+        \App\Helpers\BroadcastHelper::safeBroadcast(new DashboardStatsUpdated('trips', ['admin.dashboard']));
     }
 }

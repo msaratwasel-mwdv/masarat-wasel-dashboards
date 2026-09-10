@@ -87,17 +87,27 @@ class DashboardController extends Controller
             ->filter(fn ($trip) => Carbon::parse($trip->arrival_time)->addMinutes(15)->isPast())
             ->count();
 
-        // Distance covered today
-        $distanceToday = Trip::where('school_id', $schoolId)
+        // Distance covered today (Sum of actual recorded trip distances, or estimated route distance as fallback)
+        $distanceToday = (float) Trip::where('school_id', $schoolId)
             ->whereDate('trip_date', $today)
-            ->where('status', 'finished')
+            ->whereIn('status', ['finished', 'completed'])
             ->with('route')
             ->get()
-            ->sum(fn ($trip) => $trip->route?->estimated_distance_km ?? 0);
+            ->sum(fn ($trip) => (float) ($trip->actual_distance_km > 0 ? $trip->actual_distance_km : ($trip->route?->estimated_distance_km ?? 0)));
 
-        // Zero Incident Days (Days since last delay)
-        $lastDelay = Delay::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))->latest()->first();
-        $zeroIncidentDays = $lastDelay ? max(0, Carbon::now()->startOfDay()->diffInDays(Carbon::parse($lastDelay->created_at)->startOfDay())) : 30;
+        // Zero Incident Days (Real days since last reported road safety incident)
+        $lastIncident = \App\Models\Incident::whereHas('bus', fn ($q) => $q->where('school_id', $schoolId))
+            ->latest('created_at')
+            ->first();
+
+        $school = \App\Models\School::find($schoolId);
+
+        if ($lastIncident) {
+            $zeroIncidentDays = max(0, (int) Carbon::now()->startOfDay()->diffInDays(Carbon::parse($lastIncident->created_at)->startOfDay()));
+        } else {
+            $schoolStartDate = $school?->created_at ? Carbon::parse($school->created_at)->startOfDay() : Carbon::now()->startOfDay();
+            $zeroIncidentDays = max(1, (int) Carbon::now()->startOfDay()->diffInDays($schoolStartDate));
+        }
 
         // ─── 4. Attendance Trend (last 7 days) ───────────────────────────────
         $attendanceTrend = [];
@@ -123,46 +133,46 @@ class DashboardController extends Controller
         if ($hour >= 6 && $hour < 9) {
             $shift = [
                 'key' => 'morning_pickup',
-                'label_ar' => 'فترة الانطلاق والوصول الصباحي',
-                'label_en' => 'Morning Pickup & Arrival Shift',
-                'description_ar' => 'الحافلات تنقل الطلاب إلى المدرسة حالياً',
-                'description_en' => 'Buses are in transit delivering students to school',
+                'label_ar' => 'الفترة الصباحية',
+                'label_en' => 'Morning Shift',
+                'description_ar' => 'نقل الطلاب للمدرسة',
+                'description_en' => 'Morning pickup in progress',
                 'status_tone' => 'emerald',
-                'next_event_ar' => 'اكتمال الوصول بحلول 07:45 ص',
-                'next_event_en' => 'Estimated arrival completion by 07:45 AM',
+                'next_event_ar' => 'اكتمال الوصول 07:45 ص',
+                'next_event_en' => 'Arrival by 07:45 AM',
             ];
         } elseif ($hour >= 9 && $hour < 12) {
             $shift = [
                 'key' => 'in_school',
-                'label_ar' => 'الفترة المدرسية (داخل الفصول)',
-                'label_en' => 'School In-Session',
-                'description_ar' => 'الأسطول في وضع الانتظار بانتظار موعد الانصراف',
-                'description_en' => 'Fleet is parked on standby for afternoon dismissal',
+                'label_ar' => 'الفترة المدرسية',
+                'label_en' => 'School Hours',
+                'description_ar' => 'الأسطول متوقف',
+                'description_en' => 'Fleet on standby',
                 'status_tone' => 'blue',
-                'next_event_ar' => 'انطلاق رحلات العودة في 12:45 م',
-                'next_event_en' => 'Dismissal trips launch at 12:45 PM',
+                'next_event_ar' => 'الانصراف 12:45 م',
+                'next_event_en' => 'Dismissal at 12:45 PM',
             ];
         } elseif ($hour >= 12 && $hour < 16) {
             $shift = [
                 'key' => 'afternoon_dropoff',
-                'label_ar' => 'فترة الانصراف والعودة للمنازل',
-                'label_en' => 'Afternoon Dismissal & Drop-off',
-                'description_ar' => 'الحافلات تنقل الطلاب من المدرسة إلى منازلهم',
-                'description_en' => 'Buses are actively returning students to their homes',
+                'label_ar' => 'فترة الانصراف',
+                'label_en' => 'Afternoon Shift',
+                'description_ar' => 'إعادة الطلاب للمنازل',
+                'description_en' => 'Dropoff in progress',
                 'status_tone' => 'emerald',
-                'next_event_ar' => 'اكتمال توصيل جميع الطلاب بحلول 02:30 م',
-                'next_event_en' => 'Estimated dropoff completion by 02:30 PM',
+                'next_event_ar' => 'اكتمال التوصيل 02:30 م',
+                'next_event_en' => 'Dropoff completes ~02:30 PM',
             ];
         } else {
             $shift = [
                 'key' => 'standby',
-                'label_ar' => 'فترة الاستعداد والجاهزية للغد',
-                'label_en' => 'Fleet Standby & Night Readiness',
-                'description_ar' => 'جميع الحافلات متوقفة وجاهزة لانطلاق الرحلة الصباحية',
-                'description_en' => 'All buses parked in standby for morning route dispatch (06:30 AM)',
+                'label_ar' => 'خارج أوقات الدوام',
+                'label_en' => 'Standby',
+                'description_ar' => 'الحافلات متوقفة',
+                'description_en' => 'Fleet standby',
                 'status_tone' => 'slate',
-                'next_event_ar' => 'انطلاق الرحلة الصباحية القادمة في 06:30 ص',
-                'next_event_en' => 'Next morning dispatch at 06:30 AM',
+                'next_event_ar' => 'الرحلة القادمة 06:30 ص',
+                'next_event_en' => 'Next dispatch at 06:30 AM',
             ];
         }
 

@@ -20,6 +20,7 @@ class Trip extends Model
         'end_qr_scanned_at',
         'departure_time',
         'arrival_time',
+        'actual_distance_km',
         'status',
         'school_id',
         'driver_id',
@@ -32,6 +33,7 @@ class Trip extends Model
     protected $casts = [
         'trip_date' => 'date:Y-m-d',
         'video_check' => 'boolean',
+        'actual_distance_km' => 'decimal:2',
         'departure_time' => 'datetime:Y-m-d H:i',
         'arrival_time' => 'datetime:Y-m-d H:i',
         'end_qr_scanned_at' => 'datetime:Y-m-d H:i',

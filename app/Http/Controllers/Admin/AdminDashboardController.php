@@ -45,8 +45,8 @@ class AdminDashboardController extends Controller
                 'total_trips' => \App\Models\Trip::count(),
                 'daily_trips_today' => [
                     'pending' => \App\Models\Trip::whereDate('trip_date', \Carbon\Carbon::today())->where('status', 'pending')->count(),
-                    'ongoing' => \App\Models\Trip::whereDate('trip_date', \Carbon\Carbon::today())->where('status', 'ongoing')->count(),
-                    'completed' => \App\Models\Trip::whereDate('trip_date', \Carbon\Carbon::today())->where('status', 'finished')->count(),
+                    'ongoing' => \App\Models\Trip::whereDate('trip_date', \Carbon\Carbon::today())->whereIn('status', ['in_progress', 'ongoing'])->count(),
+                    'completed' => \App\Models\Trip::whereDate('trip_date', \Carbon\Carbon::today())->whereIn('status', ['finished', 'completed'])->count(),
                 ],
 
                 // Buses Detailed
@@ -83,28 +83,16 @@ class AdminDashboardController extends Controller
         // --- 5. Trends & Charts (US-REP-002) ---
         $sevenDaysAgo = Carbon::now()->subDays(6)->startOfDay();
 
-        // Trips Trend (Last 7 Days)
-        $tripsTrend = \App\Models\Trip::where('trip_date', '>=', $sevenDaysAgo)
-            ->selectRaw('trip_date, count(*) as count')
-            ->groupBy('trip_date')
-            ->orderBy('trip_date')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'date' => Carbon::parse($item->trip_date)->format('m/d'),
-                    'count' => $item->count,
-                ];
-            });
+        // Trips Trend (Last 7 Days - Real Database Records)
+        $tripsTrend = collect(range(0, 6))->map(function ($days) {
+            $targetDate = Carbon::now()->subDays(6 - $days)->startOfDay();
+            $count = \App\Models\Trip::whereDate('trip_date', $targetDate)->count();
 
-        // Ensure we have 7 points even if database is empty (Mock fallback for WOW factor)
-        if ($tripsTrend->count() < 7) {
-            $tripsTrend = collect(range(0, 6))->map(function ($days) {
-                return [
-                    'date' => Carbon::now()->subDays(6 - $days)->format('m/d'),
-                    'count' => rand(15, 60), // Mock data for empty systems
-                ];
-            });
-        }
+            return [
+                'date' => $targetDate->format('m/d'),
+                'count' => $count,
+            ];
+        });
 
         // Fleet Distribution (for Pie Chart)
         $fleetDistribution = [

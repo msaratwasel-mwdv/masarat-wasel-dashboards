@@ -1,13 +1,45 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+import { GoogleMap, Marker, Polyline, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
 import useTranslation from '@/hooks/useTranslation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
-    Search, Filter, Layers, X, Clock, Users, ChevronDown, Check 
+    Layers, X, Users, ChevronDown, Gauge, 
+    School as SchoolIcon, Navigation, MapPin, 
+    Bus as BusIcon, RefreshCw, Crosshair, Activity, Clock
 } from 'lucide-react';
-import { SlidersHorizontal } from 'lucide-react';
 
-interface Bus {
+export interface StudentAttendance {
+    attendance_id: number;
+    student_id: number;
+    name: string;
+    student_code?: string;
+    status: 'present' | 'boarded' | 'dropped' | 'absent' | 'late' | 'pending' | string;
+    check_in_time?: string | null;
+    check_out_time?: string | null;
+    extra_wait_time?: number;
+    lat?: number | null;
+    lng?: number | null;
+    address?: string | null;
+}
+
+export interface Waypoint {
+    lat: number;
+    lng: number;
+    student_id?: number;
+    name?: string;
+    status?: string;
+    is_school?: boolean;
+}
+
+export interface ActiveTrip {
+    id: number;
+    type: 'forth' | 'back' | string;
+    status: string;
+    students?: StudentAttendance[];
+    waypoints?: Waypoint[];
+}
+
+export interface Bus {
     id: number;
     bus_number: string;
     plate_number: string;
@@ -18,525 +50,803 @@ interface Bus {
     current_latitude?: number | string | null;
     current_longitude?: number | string | null;
     trip_status?: string | null;
-    driver?: { id: number; name?: string } | null;
+    driver?: { id: number; name?: string; phone?: string } | null;
+    route?: { id: number; name?: string } | null;
     students_count?: number;
+    students_on_board?: number;
+    speed_kmh?: number;
+    is_moving?: boolean;
+    heading?: number;
+    active_trip?: ActiveTrip | null;
+    last_update?: string | null;
+    last_update_seconds?: number | null;
+}
+
+interface Stats {
+    total_buses: number;
+    active_buses: number;
+    moving_buses: number;
+    total_students: number;
+    students_on_board?: number;
 }
 
 interface Props {
     buses: Bus[];
     centerLat?: number;
     centerLng?: number;
+    schoolLocation?: { lat: number; lng: number; name?: string };
+    stats?: Stats;
+    lastSyncTime?: Date;
+    isSyncing?: boolean;
+    onRefresh?: () => void;
 }
 
 // -------------------------------------------------------------
-// HELPER: Parse Coordinates Safely
+// HELPER: Coordinate Parser
 // -------------------------------------------------------------
-const parseCoord = (val: any) => {
+const parseCoord = (val: any): number | undefined => {
     if (val === null || val === undefined || val === '') return undefined;
     const parsed = typeof val === 'string' ? parseFloat(val) : val;
     return isNaN(parsed) ? undefined : parsed;
 };
 
 // -------------------------------------------------------------
-// HELPER: Create Custom Bus Google Marker Icon
+// SVG MARKER: Authentic Bus Marker with Live Green / Stopped Beacon
 // -------------------------------------------------------------
-const createBusIconSvg = (status: string, isSelected: boolean) => {
-    const colors: Record<string, string> = {
-        active: '#10b981', // Emerald
-        maintenance: '#f59e0b', // Amber
-        inactive: '#94a3b8', // Slate
-    };
-    const color = colors[status] || colors.inactive;
-    const bg = isSelected ? '#4f46e5' : color; // Indigo if selected
-    const size = isSelected ? 48 : 36;
-    const fontSize = isSelected ? 24 : 18;
-    
-    // SVG equivalent of the previous div icon
+const createBusMarkerSvg = (bus: Bus, isSelected: boolean, isRtl: boolean = true) => {
+    const isMoving = Boolean(bus.is_moving || (bus.speed_kmh && bus.speed_kmh >= 3.0));
+    const bgColor = isSelected ? '#4f46e5' : isMoving ? '#059669' : '#64748b';
+    const strokeColor = isSelected ? '#a5b4fc' : '#ffffff';
+    const speedVal = bus.speed_kmh ? Math.round(bus.speed_kmh) : 0;
+    const statusText = isRtl
+        ? (isMoving ? `${speedVal} كم/س` : 'متوقفة')
+        : (isMoving ? `${speedVal} km/h` : 'Stopped');
+    const busNum = bus.bus_number ? (isRtl ? `باص ${bus.bus_number}` : `Bus ${bus.bus_number}`) : (isRtl ? 'باص' : 'Bus');
+
+    const width = 100;
+    const height = 62;
+
     const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-            <rect width="${size}" height="${size}" rx="${isSelected ? 16 : 12}" fill="${bg}" stroke="white" stroke-width="3" />
-            <text x="50%" y="50%" font-size="${fontSize}" fill="white" font-family="sans-serif" text-anchor="middle" dominant-baseline="central">🚌</text>
+        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+            <defs>
+                <filter id="busShadow" x="-25%" y="-25%" width="150%" height="150%">
+                    <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#090d16" flood-opacity="0.45"/>
+                </filter>
+            </defs>
+            <!-- Badge Label with Bus ID & Live State -->
+            <g filter="url(#busShadow)">
+                <rect x="3" y="3" width="94" height="24" rx="12" fill="#0f172a" stroke="${bgColor}" stroke-width="2" />
+                <!-- Green beacon if moving, gray if stopped -->
+                <circle cx="16" cy="15" r="4.5" fill="${isMoving ? '#10b981' : '#94a3b8'}" />
+                <text x="56" y="17" fill="#ffffff" font-size="10" font-weight="800" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">
+                    ${busNum} • ${statusText}
+                </text>
+            </g>
+            <!-- Bus Circle Pin Body -->
+            <g filter="url(#busShadow)">
+                <circle cx="50" cy="44" r="15" fill="${bgColor}" stroke="${strokeColor}" stroke-width="2.5" />
+                <path d="M44 38 C44 36.5 45 36 46.5 36 L53.5 36 C55 36 56 36.5 56 38 L56 47 C56 47.5 55.5 48 55 48 L55 49.5 C55 50 54.5 50.5 54 50.5 L53.5 50.5 C53 50.5 52.5 50 52.5 49.5 L52.5 48 L47.5 48 L47.5 49.5 C47.5 50 47 50.5 46.5 50.5 L46 50.5 C45.5 50.5 45 50 45 49.5 L45 48 C44.5 48 44 47.5 44 47 Z M45.5 38 L45.5 41 L54.5 41 L54.5 38 Z M46.5 45 C47.3 45 48 44.3 48 43.5 C48 42.7 47.3 42 46.5 42 C45.7 42 45 42.7 45 43.5 C45 44.3 45.7 45 46.5 45 Z M53.5 45 C54.3 45 55 44.3 55 43.5 C55 42.7 54.3 42 53.5 42 C52.7 42 52 42.7 52 43.5 C52 44.3 52.7 45 53.5 45 Z" fill="#ffffff" />
+            </g>
         </svg>
     `;
-    
+
     return {
         url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-        scaledSize: typeof window !== 'undefined' && window.google ? new window.google.maps.Size(size, size) : { width: size, height: size } as any,
-        anchor: typeof window !== 'undefined' && window.google ? new window.google.maps.Point(size / 2, size / 2) : { x: size / 2, y: size / 2 } as any,
+        scaledSize: typeof window !== 'undefined' && window.google ? new window.google.maps.Size(width, height) : { width, height } as any,
+        anchor: typeof window !== 'undefined' && window.google ? new window.google.maps.Point(50, 44) : { x: 50, y: 44 } as any,
     };
 };
 
 // -------------------------------------------------------------
-// MAIN COMPONENT
+// SVG MARKER: Student Pickup Stop Pin with Numbered Sequence
 // -------------------------------------------------------------
-export default function LiveTrackingMap({ buses = [], centerLat = 31.9522, centerLng = 35.2332 }: Props) {
-    const { t, isRtl } = useTranslation();
-    const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
+const createStudentMarkerSvg = (status: string, studentName: string, stopNumber: number) => {
+    let pinColor = '#2563eb'; // Default Blue (مجدول)
 
-    // Google Maps Initialization
+    if (status === 'present' || status === 'boarded') {
+        pinColor = '#059669'; // Emerald (صعد)
+    } else if (status === 'dropped') {
+        pinColor = '#0284c7'; // Sky (تم التوصيل)
+    } else if (status === 'absent') {
+        pinColor = '#e11d48'; // Rose (غائب)
+    } else if (status === 'late') {
+        pinColor = '#d97706'; // Amber (بالانتظار)
+    }
+
+    const width = 40;
+    const height = 50;
+
+    const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+            <defs>
+                <filter id="stuShadow" x="-25%" y="-20%" width="150%" height="150%">
+                    <feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.35"/>
+                </filter>
+            </defs>
+            <g filter="url(#stuShadow)">
+                <!-- Teardrop Pin -->
+                <path d="M20 47 C20 47 35 31 35 19 C35 9.5 28.3 2 20 2 C11.7 2 5 9.5 5 19 C5 31 20 47 20 47 Z" fill="${pinColor}" stroke="#ffffff" stroke-width="2.2" />
+                <!-- Center Inner Circle -->
+                <circle cx="20" cy="19" r="10" fill="#ffffff" />
+                <!-- Stop Number inside -->
+                <text x="20" y="23.5" fill="${pinColor}" font-size="11.5" font-weight="900" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">
+                    ${stopNumber}
+                </text>
+            </g>
+        </svg>
+    `;
+
+    return {
+        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+        scaledSize: typeof window !== 'undefined' && window.google ? new window.google.maps.Size(width, height) : { width, height } as any,
+        anchor: typeof window !== 'undefined' && window.google ? new window.google.maps.Point(20, 47) : { x: 20, y: 47 } as any,
+    };
+};
+
+// -------------------------------------------------------------
+// SVG MARKER: School Landmark Pin
+// -------------------------------------------------------------
+const createSchoolMarkerSvg = (schoolName: string = 'المدرسة') => {
+    const width = 110;
+    const height = 58;
+    const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+            <defs>
+                <filter id="schShadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.4"/>
+                </filter>
+            </defs>
+            <g filter="url(#schShadow)">
+                <rect x="5" y="2" width="100" height="22" rx="11" fill="#dc2626" stroke="#ffffff" stroke-width="2" />
+                <text x="55" y="16" fill="#ffffff" font-size="10" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">
+                    ${schoolName}
+                </text>
+            </g>
+            <g filter="url(#schShadow)">
+                <circle cx="55" cy="42" r="14" fill="#dc2626" stroke="#ffffff" stroke-width="2.5" />
+                <path d="M55 35 L63 39 L55 43 L47 39 Z M49 41 L49 45 C49 46.5 51.5 48 55 48 C58.5 48 61 46.5 61 45 L61 41 L55 44 Z" fill="#ffffff" />
+            </g>
+        </svg>
+    `;
+    return {
+        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+        scaledSize: typeof window !== 'undefined' && window.google ? new window.google.maps.Size(width, height) : { width, height } as any,
+        anchor: typeof window !== 'undefined' && window.google ? new window.google.maps.Point(55, 42) : { x: 55, y: 42 } as any,
+    };
+};
+
+export default function LiveTrackingMap({ 
+    buses = [], 
+    centerLat = 13.9407, 
+    centerLng = 43.7873,
+    schoolLocation,
+    stats,
+    lastSyncTime,
+    isSyncing = false,
+    onRefresh
+}: Props) {
+    const { t, isRtl } = useTranslation();
+
+    // Active Selection State
+    const [selectedBusId, setSelectedBusId] = useState<number | 'all'>('all');
+    const [selectedStudent, setSelectedStudent] = useState<{ student: StudentAttendance; bus: Bus; stopNumber: number } | null>(null);
+
+    // Layer Controls
+    // By default: student stops are shown, auto-follow is available, and route straight line is optional
+    const [showStudentStops, setShowStudentStops] = useState<boolean>(true);
+    const [showRoutePath, setShowRoutePath] = useState<boolean>(false); // Off by default to avoid artificial straight lines
+    const [autoFollow, setAutoFollow] = useState<boolean>(false);
+    const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
+
+    // Google Maps Loader
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
     });
 
     const [map, setMap] = useState<google.maps.Map | null>(null);
+    const initialBoundsFittedRef = useRef<boolean>(false);
+
+    // Initial map centering ref (stable reference that NEVER triggers re-centering)
+    const initialCenterRef = useRef<{ lat: number; lng: number }>({
+        lat: schoolLocation?.lat || centerLat || 13.9407,
+        lng: schoolLocation?.lng || centerLng || 43.7873
+    });
 
     const onLoad = useCallback(function callback(mapInstance: google.maps.Map) {
         setMap(mapInstance);
-    }, []);
+        if (!initialBoundsFittedRef.current) {
+            initialBoundsFittedRef.current = true;
+            const refLat = schoolLocation?.lat || 13.9407;
+            const refLng = schoolLocation?.lng || 43.7873;
+            mapInstance.setCenter({ lat: refLat, lng: refLng });
+            mapInstance.setZoom(14);
+        }
+    }, [schoolLocation?.lat, schoolLocation?.lng]);
 
-    const onUnmount = useCallback(function callback(mapInstance: google.maps.Map) {
+    const onUnmount = useCallback(function callback() {
         setMap(null);
     }, []);
-    
-    // Main State applied to map
-    const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
-    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'maintenance' | 'inactive'>('all');
-    
-    // Local State for the Panel
-    const [isPanelOpen, setIsPanelOpen] = useState(false);
-    const [localMapType, setLocalMapType] = useState(mapType);
-    const [localStatusFilter, setLocalStatusFilter] = useState(statusFilter);
-    
-    // Select Search state
-    const [isSelectOpen, setIsSelectOpen] = useState(false);
-    const [selectSearch, setSelectSearch] = useState('');
 
-    // DOM Refs for Outside Click Detection
-    const panelRef = useRef<HTMLDivElement>(null);
-    const panelTriggerRef = useRef<HTMLButtonElement>(null);
-    const selectBusRef = useRef<HTMLDivElement>(null);
-    const busCardRef = useRef<HTMLDivElement>(null);
+    const safeBuses = useMemo(() => Array.isArray(buses) ? buses : [], [buses]);
 
-    // Click Outside listener to close panel, bus dropdown, and selected bus card
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-            const target = event.target as Node;
-
-            // Close select bus dropdown if clicked outside
-            if (isSelectOpen && selectBusRef.current && !selectBusRef.current.contains(target)) {
-                setIsSelectOpen(false);
-            }
-
-            // Close main control panel if clicked outside panel and not on trigger button
-            if (
-                isPanelOpen &&
-                panelRef.current &&
-                !panelRef.current.contains(target) &&
-                panelTriggerRef.current &&
-                !panelTriggerRef.current.contains(target)
-            ) {
-                setIsPanelOpen(false);
-            }
-
-            // Close selected bus card if clicked outside
-            if (
-                selectedBus &&
-                busCardRef.current &&
-                !busCardRef.current.contains(target)
-            ) {
-                setSelectedBus(null);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        document.addEventListener('touchstart', handleClickOutside);
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-            document.removeEventListener('touchstart', handleClickOutside);
-        };
-    }, [isPanelOpen, isSelectOpen, selectedBus]);
-
-    const openControlPanel = () => {
-        setLocalMapType(mapType);
-        setLocalStatusFilter(statusFilter);
-        setIsPanelOpen(prev => !prev);
-        setIsSelectOpen(false); // Reset internal dropdown
-    };
-
-    const applyFilters = () => {
-        setMapType(localMapType);
-        setStatusFilter(localStatusFilter);
-        setIsPanelOpen(false);
-    };
-
-    // Robust Fallback: Prevent any possible 'undefined' array crashes
-    const safeBuses = Array.isArray(buses) ? buses : [];
-
-    // Filter buses (using applied main state)
+    // Buses with valid coordinates
     const busesWithLocation = useMemo(() => {
         return safeBuses.filter(bus => {
             if (!bus) return false;
             const lat = parseCoord(bus.current_latitude ?? bus.latitude);
             const lng = parseCoord(bus.current_longitude ?? bus.longitude);
-            if (lat === undefined || lng === undefined) return false;
-            const matchesStatus = statusFilter === 'all' || bus.status === statusFilter;
-            return matchesStatus;
+            return lat !== undefined && lng !== undefined;
         });
-    }, [safeBuses, statusFilter]);
+    }, [safeBuses]);
 
-    // Target for map flyTo
-    const mapTarget = useMemo(() => {
-        if (!selectedBus) return undefined;
-        const lat = parseCoord(selectedBus.current_latitude ?? selectedBus.latitude);
-        const lng = parseCoord(selectedBus.current_longitude ?? selectedBus.longitude);
-        if (lat === undefined || lng === undefined) return undefined;
-        return { lat, lng };
-    }, [selectedBus]);
+    // Currently focused bus (if any)
+    const selectedBus = useMemo(() => {
+        if (selectedBusId === 'all') return null;
+        return safeBuses.find(b => b.id === selectedBusId) || null;
+    }, [safeBuses, selectedBusId]);
 
-    // Google Maps Bounds Management
+    // Active buses to show on map (either all buses with location, or the filtered one)
+    const visibleBuses = useMemo(() => {
+        if (selectedBusId === 'all') return busesWithLocation;
+        return busesWithLocation.filter(b => b.id === selectedBusId);
+    }, [busesWithLocation, selectedBusId]);
+
+    // -------------------------------------------------------------
+    // Auto Follow: Smoothly pan to selected bus coordinates
+    // -------------------------------------------------------------
     useEffect(() => {
-        if (map && busesWithLocation && busesWithLocation.length > 0 && !selectedBus) {
-            const bounds = new window.google.maps.LatLngBounds();
-            let hasValidBounds = false;
-            busesWithLocation.forEach(bus => {
+        if (map && selectedBus && autoFollow) {
+            const lat = parseCoord(selectedBus.current_latitude ?? selectedBus.latitude);
+            const lng = parseCoord(selectedBus.current_longitude ?? selectedBus.longitude);
+            if (lat !== undefined && lng !== undefined) {
+                map.panTo({ lat, lng });
+            }
+        }
+    }, [map, selectedBus?.current_latitude, selectedBus?.current_longitude, selectedBus?.latitude, selectedBus?.longitude, autoFollow]);
+
+    // -------------------------------------------------------------
+    // OPTIONAL DUAL-TONE ROUTE (If user manually enables it)
+    // -------------------------------------------------------------
+    const busRoutes = useMemo(() => {
+        if (!showRoutePath) return [];
+
+        const targets = selectedBus ? [selectedBus] : busesWithLocation;
+
+        return targets.map(bus => {
+            const busLat = parseCoord(bus.current_latitude ?? bus.latitude);
+            const busLng = parseCoord(bus.current_longitude ?? bus.longitude);
+            if (busLat === undefined || busLng === undefined) return null;
+
+            const waypoints = bus.active_trip?.waypoints || [];
+            if (waypoints.length === 0) return null;
+
+            const currentPos = { lat: busLat, lng: busLng };
+
+            const traveledPoints: { lat: number; lng: number }[] = [
+                ...waypoints.map(w => ({ lat: w.lat, lng: w.lng })),
+                currentPos
+            ];
+
+            return {
+                busId: bus.id,
+                traveledPoints,
+            };
+        }).filter(Boolean);
+    }, [showRoutePath, selectedBus, busesWithLocation]);
+
+    // -------------------------------------------------------------
+    // STUDENT STOPS: NUMBERED SEQUENTIAL STATIONS
+    // -------------------------------------------------------------
+    const studentStops = useMemo(() => {
+        if (!showStudentStops) return [];
+
+        const targets = selectedBus ? [selectedBus] : visibleBuses;
+        const stops: { student: StudentAttendance; bus: Bus; lat: number; lng: number; stopNumber: number }[] = [];
+
+        targets.forEach(bus => {
+            const students = bus.active_trip?.students || [];
+            let stopCounter = 1;
+            students.forEach(st => {
+                const lat = parseCoord(st.lat);
+                const lng = parseCoord(st.lng);
+                if (lat !== undefined && lng !== undefined) {
+                    stops.push({ 
+                        student: st, 
+                        bus, 
+                        lat, 
+                        lng, 
+                        stopNumber: stopCounter++ 
+                    });
+                }
+            });
+        });
+
+        return stops;
+    }, [showStudentStops, selectedBus, visibleBuses]);
+
+
+    const handleSelectBus = (busId: number | 'all') => {
+        setSelectedBusId(busId);
+        setSelectedStudent(null);
+
+        if (busId !== 'all') {
+            const bus = safeBuses.find(b => b.id === busId);
+            if (bus && map) {
                 const lat = parseCoord(bus.current_latitude ?? bus.latitude);
                 const lng = parseCoord(bus.current_longitude ?? bus.longitude);
                 if (lat !== undefined && lng !== undefined) {
-                    bounds.extend(new window.google.maps.LatLng(lat, lng));
-                    hasValidBounds = true;
-                }
-            });
-            if (hasValidBounds) {
-                map.fitBounds(bounds);
-            }
-        }
-    }, [map, busesWithLocation, selectedBus]);
-
-    // Google Maps Pan Management
-    useEffect(() => {
-        if (map && mapTarget) {
-            map.panTo({ lat: mapTarget.lat, lng: mapTarget.lng });
-            map.setZoom(16);
-        }
-    }, [map, mapTarget]);
-
-    // Navigation between buses
-    const navigateBus = (direction: 'next' | 'prev') => {
-        if (!busesWithLocation || busesWithLocation.length <= 1) return;
-        
-        try {
-            const currentIndex = selectedBus ? busesWithLocation.findIndex(b => b.id === selectedBus.id) : -1;
-            let nextIndex = 0;
-            
-            if (currentIndex !== -1) {
-                if (direction === 'next') {
-                    nextIndex = (currentIndex + 1) % busesWithLocation.length;
-                } else {
-                    nextIndex = (currentIndex - 1 + busesWithLocation.length) % busesWithLocation.length;
+                    map.panTo({ lat, lng });
+                    map.setZoom(16);
                 }
             }
-            
-            const nextBus = busesWithLocation[nextIndex];
-            if (nextBus) setSelectedBus(nextBus);
-        } catch (e) {
-            console.error("Navigation error:", e);
         }
     };
 
-    // Filtered list for the Select dropdown
-    const filteredSelectBuses = useMemo(() => {
-        return safeBuses.filter(bus => {
-            if (!bus) return false;
-            const bNum = bus.bus_number || '';
-            const pNum = bus.plate_number || '';
-            const sQuery = selectSearch || '';
-            return `${bNum} ${pNum}`.toLowerCase().includes(sQuery.toLowerCase());
-        });
-    }, [safeBuses, selectSearch]);
-
-    const isNavDisabled = busesWithLocation.length <= 1;
-    const initialCenter = { lat: centerLat, lng: centerLng };
-
     return (
-        <div className="relative bg-[#f8fafc] overflow-hidden transition-all duration-300 w-full h-full md:rounded-[30px] md:border-4 md:border-white md:shadow-inner md:mx-4 md:my-4 md:h-[calc(100vh-120px)] md:w-[calc(100%-32px)]">
+        <div className="relative w-full h-[calc(100vh-80px)] overflow-hidden bg-slate-900 select-none">
             
-            {/* --- GOOGLE MAPS --- */}
+            {/* --- GOOGLE MAP CANVAS --- */}
             {isLoaded ? (
                 <GoogleMap
-                    mapContainerStyle={{ width: '100%', height: '100%', zIndex: 0 }}
-                    center={initialCenter}
-                    zoom={13}
+                    mapContainerStyle={{ width: '100%', height: '100%' }}
+                    center={initialCenterRef.current}
+                    zoom={14}
                     options={{
                         mapTypeId: mapType,
-                        disableDefaultUI: true, // We use custom overlays
-                        zoomControl: true, // Optional default control
+                        disableDefaultUI: false,
+                        zoomControl: true,
+                        streetViewControl: false,
+                        mapTypeControl: false,
+                        fullscreenControl: false,
+                        styles: mapType === 'roadmap' ? [
+                            { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+                            { featureType: 'transit', stylers: [{ visibility: 'simplified' }] }
+                        ] : undefined,
                     }}
                     onLoad={onLoad}
                     onUnmount={onUnmount}
+                    onDragStart={() => {
+                        if (autoFollow) {
+                            setAutoFollow(false);
+                        }
+                    }}
                     onClick={() => {
-                        setIsPanelOpen(false);
-                        setIsSelectOpen(false);
-                        setSelectedBus(null);
+                        setSelectedStudent(null);
                     }}
                 >
-                    {busesWithLocation.map(bus => {
-                        const busLat = parseCoord(bus.current_latitude ?? bus.latitude);
-                        const busLng = parseCoord(bus.current_longitude ?? bus.longitude);
-                        if (busLat === undefined || busLng === undefined) return null;
-                        
+                    {/* OPTIONAL ROUTE LINE (Disabled by default to avoid unrealistic straight lines) */}
+                    {showRoutePath && busRoutes.map((route: any) => (
+                        <Polyline
+                            key={`route-${route.busId}`}
+                            path={route.traveledPoints}
+                            options={{
+                                strokeColor: '#2563eb',
+                                strokeOpacity: 0.75,
+                                strokeWeight: 4,
+                                zIndex: 10,
+                                geodesic: true,
+                            }}
+                        />
+                    ))}
+
+                    {/* SCHOOL LANDMARK PIN */}
+                    {schoolLocation && schoolLocation.lat && schoolLocation.lng && (
+                        <Marker
+                            key="school-landmark"
+                            position={{ lat: schoolLocation.lat, lng: schoolLocation.lng }}
+                            icon={createSchoolMarkerSvg(schoolLocation.name || (isRtl ? 'مقر المدرسة' : 'School Campus'))}
+                            title={schoolLocation.name || (isRtl ? 'المدرسة' : 'School')}
+                            zIndex={100}
+                            onClick={() => {
+                                if (map) {
+                                    map.panTo({ lat: schoolLocation.lat, lng: schoolLocation.lng });
+                                    map.setZoom(16);
+                                }
+                            }}
+                        />
+                    )}
+
+                    {/* NUMBERED STUDENT PICKUP STOP MARKERS */}
+                    {studentStops.map(({ student, bus, lat, lng, stopNumber }) => (
+                        <Marker
+                            key={`stop-${student.attendance_id}-${student.student_id}`}
+                            position={{ lat, lng }}
+                            icon={createStudentMarkerSvg(student.status, student.name, stopNumber)}
+                            title={`${isRtl ? 'محطة' : 'Stop'} ${stopNumber}: ${student.name}`}
+                            zIndex={40}
+                            onClick={() => setSelectedStudent({ student, bus, stopNumber })}
+                        />
+                    ))}
+
+                    {/* STUDENT INFO WINDOW */}
+                    {selectedStudent && selectedStudent.student.lat && selectedStudent.student.lng && (
+                        <InfoWindow
+                            position={{ 
+                                lat: Number(selectedStudent.student.lat), 
+                                lng: Number(selectedStudent.student.lng) 
+                            }}
+                            onCloseClick={() => setSelectedStudent(null)}
+                        >
+                            <div className={`p-2.5 min-w-[220px] ${isRtl ? 'text-right' : 'text-left'} font-sans`} dir={isRtl ? 'rtl' : 'ltr'}>
+                                <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2 mb-2">
+                                    <div>
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                            <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-slate-900 text-white font-mono">
+                                                {isRtl ? 'محطة' : 'Stop'} {selectedStudent.stopNumber}
+                                            </span>
+                                            <h4 className="font-bold text-xs text-slate-900 leading-tight">
+                                                {selectedStudent.student.name}
+                                            </h4>
+                                        </div>
+                                        <p className="text-[10px] font-mono text-slate-500">
+                                            {selectedStudent.student.student_code || (isRtl ? 'كود غير متوفر' : 'No Code')}
+                                        </p>
+                                    </div>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                        selectedStudent.student.status === 'present' || selectedStudent.student.status === 'boarded'
+                                            ? 'bg-emerald-100 text-emerald-700'
+                                            : selectedStudent.student.status === 'dropped'
+                                            ? 'bg-sky-100 text-sky-700'
+                                            : selectedStudent.student.status === 'absent'
+                                            ? 'bg-rose-100 text-rose-700'
+                                            : selectedStudent.student.status === 'late'
+                                            ? 'bg-amber-100 text-amber-700'
+                                            : 'bg-blue-100 text-blue-700'
+                                    }`}>
+                                        {selectedStudent.student.status === 'present' || selectedStudent.student.status === 'boarded' ? (isRtl ? 'صعد للحافلة' : 'Boarded') :
+                                         selectedStudent.student.status === 'dropped' ? (isRtl ? 'تم التوصيل' : 'Dropped') :
+                                         selectedStudent.student.status === 'absent' ? (isRtl ? 'غائب' : 'Absent') :
+                                         selectedStudent.student.status === 'late' ? (isRtl ? 'في الانتظار' : 'Waiting') : (isRtl ? 'مجدول' : 'Scheduled')}
+                                    </span>
+                                </div>
+
+                                <div className="space-y-1.5 text-[11px] text-slate-600">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-slate-400">{isRtl ? 'الحافلة:' : 'Bus:'}</span>
+                                        <span className="font-bold text-slate-800">{selectedStudent.bus.bus_number}</span>
+                                    </div>
+
+                                    {selectedStudent.student.extra_wait_time ? (
+                                        <div className="flex items-center justify-between text-amber-600 font-semibold">
+                                            <span>{isRtl ? 'وقت الانتظار الإضافي:' : 'Extra wait time:'}</span>
+                                            <span className="font-mono">+{selectedStudent.student.extra_wait_time} {isRtl ? 'دقيقة' : 'min'}</span>
+                                        </div>
+                                    ) : null}
+
+                                    {selectedStudent.student.check_in_time ? (
+                                        <div className="flex items-center justify-between text-emerald-600 font-semibold">
+                                            <span>{isRtl ? 'وقت الصعود:' : 'Boarding time:'}</span>
+                                            <span className="font-mono">{selectedStudent.student.check_in_time}</span>
+                                        </div>
+                                    ) : null}
+
+                                    {selectedStudent.student.address && (
+                                        <div className="pt-1 text-[10px] text-slate-500 border-t border-slate-100 truncate flex items-center gap-1">
+                                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                            <span>{selectedStudent.student.address}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </InfoWindow>
+                    )}
+
+                    {/* BUS MARKERS WITH LIVE GREEN / STOPPED INDICATOR */}
+                    {visibleBuses.map(bus => {
+                        const lat = parseCoord(bus.current_latitude ?? bus.latitude);
+                        const lng = parseCoord(bus.current_longitude ?? bus.longitude);
+                        if (lat === undefined || lng === undefined) return null;
+
                         const isSelected = selectedBus?.id === bus.id;
+
                         return (
-                            <Marker 
-                                key={`bus-${bus.id}`}
-                                position={{ lat: busLat, lng: busLng }}
-                                icon={createBusIconSvg(bus.status || 'inactive', isSelected)}
-                                onClick={() => setSelectedBus(bus)}
+                            <Marker
+                                key={`bus-marker-${bus.id}`}
+                                position={{ lat, lng }}
+                                icon={createBusMarkerSvg(bus, isSelected, isRtl)}
+                                title={`${isRtl ? 'حافلة' : 'Bus'} ${bus.bus_number} (${bus.plate_number})`}
+                                zIndex={isSelected ? 90 : 50}
+                                onClick={() => handleSelectBus(bus.id)}
                             />
                         );
                     })}
                 </GoogleMap>
             ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+                <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-400 gap-3">
+                    <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-xs font-bold tracking-wide">{isRtl ? 'جاري تحميل خريطة الأسطول الميداني...' : 'Loading live fleet tracking map...'}</p>
                 </div>
             )}
 
-            {/* --- 1. SMART CONTROL BUTTON --- */}
-            <div className={`absolute top-4 md:top-6 ${isRtl ? 'right-4 md:right-6' : 'left-4 md:left-6'} z-[50]`}>
-                <motion.button
-                    ref={panelTriggerRef}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={openControlPanel}
-                    className="flex items-center gap-3 px-5 py-3.5 bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl text-slate-800 dark:text-white rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/20 group transition-all"
-                >
-                    <div className="w-8 h-8 rounded-[12px] bg-slate-100 dark:bg-white/10 flex items-center justify-center text-indigo-500 dark:text-[#f5b800]">
-                        <SlidersHorizontal className="w-4 h-4 group-hover:rotate-180 transition-transform duration-700" />
-                    </div>
-                    <span className="font-black text-sm tracking-wide pr-2">{isRtl ? 'أدوات التحكم' : 'Controls'}</span>
-                </motion.button>
-            </div>
-
-
-
-            {/* --- 2. COMPACT FLOATING CONTROL PANEL (No AnimatePresence for extreme stability) --- */}
-            {isPanelOpen && (
-                <motion.div
-                    ref={panelRef}
-                    initial={{ y: -10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    className={`absolute top-20 md:top-24 left-4 right-4 md:w-[320px] bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] rounded-[28px] border border-white/20 dark:border-white/10 z-[101] flex flex-col ${
-                        isRtl ? 'md:right-6 md:left-auto' : 'md:left-6 md:right-auto'
-                    }`}
-                >
-                    <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 dark:border-white/5">
-                        <span className="font-black text-sm text-slate-800 dark:text-white">
-                            {isRtl ? 'الإعدادات والبحث' : 'Settings & Search'}
-                        </span>
-                        <button 
-                            onClick={() => setIsPanelOpen(false)}
-                            className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-rose-500 transition-colors"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                    </div>
-
-                    <div className="p-5 space-y-5">
-                        {/* Map Type */}
-                        <div className="bg-slate-100 dark:bg-white/5 rounded-[16px] p-1 flex">
-                            <button 
-                                onClick={() => setLocalMapType('roadmap')}
-                                className={`flex-1 py-2 rounded-[12px] text-[11px] font-black transition-all ${localMapType === 'roadmap' ? 'bg-white dark:bg-[#1e293b] text-indigo-600 dark:text-[#f5b800] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                {t('Standard') || 'Standard'}
-                            </button>
-                            <button 
-                                onClick={() => setLocalMapType('satellite')}
-                                className={`flex-1 py-2 rounded-[12px] text-[11px] font-black transition-all ${localMapType === 'satellite' ? 'bg-white dark:bg-[#1e293b] text-indigo-600 dark:text-[#f5b800] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                {t('Satellite') || 'Satellite'}
-                            </button>
+            {/* --- TOP COMMAND BAR (HUD & CONTROLS) --- */}
+            <div className="absolute top-4 inset-x-4 md:inset-x-6 z-[45] flex justify-center pointer-events-none">
+                <div className="flex items-center justify-between gap-2 lg:gap-3 p-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-2xl shadow-[0_12px_36px_rgba(0,0,0,0.18)] border border-slate-200/80 dark:border-white/10 pointer-events-auto max-w-7xl w-full flex-nowrap overflow-x-auto no-scrollbar">
+                    
+                    {/* Live Telemetry Metrics */}
+                    <div className="flex items-center gap-1.5 md:gap-2 shrink-0 flex-nowrap">
+                        {/* Live Ping Beacon */}
+                        <div className="flex items-center gap-1.5 px-2 py-1 md:px-2.5 md:py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-black shrink-0">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            <span className="hidden sm:inline">{isRtl ? "بث حي فوري" : "Live Stream"}</span>
                         </div>
 
-                        {/* Status Filter */}
-                        <div className="relative">
-                            <select
-                                value={localStatusFilter}
-                                onChange={e => setLocalStatusFilter(e.target.value as any)}
-                                className="w-full px-4 py-3 rounded-[16px] bg-slate-100 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 text-xs font-bold appearance-none cursor-pointer text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-colors"
-                            >
-                                <option value="all" className="bg-white dark:bg-[#1e293b] text-slate-900 dark:text-white py-1">{t('All Status') || 'All Status'}</option>
-                                <option value="active" className="bg-white dark:bg-[#1e293b] text-slate-900 dark:text-white py-1">{t('Active Only') || 'Active Only'}</option>
-                                <option value="maintenance" className="bg-white dark:bg-[#1e293b] text-slate-900 dark:text-white py-1">{t('Maintenance') || 'Maintenance'}</option>
-                                <option value="inactive" className="bg-white dark:bg-[#1e293b] text-slate-900 dark:text-white py-1">{t('Inactive') || 'Inactive'}</option>
-                            </select>
-                            <ChevronDown className={`absolute ${isRtl ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none`} />
-                        </div>
-
-                        {/* Select Bus Search */}
-                        <div ref={selectBusRef} className="relative z-50">
-                            <button 
-                                onClick={() => setIsSelectOpen(!isSelectOpen)}
-                                className="w-full px-4 py-3 rounded-[16px] bg-slate-50 dark:bg-white/5 border border-transparent flex justify-between items-center text-slate-700 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20 hover:bg-slate-100"
-                            >
-                                <span className="text-xs font-bold truncate">
-                                    {selectedBus ? `${selectedBus.bus_number || ''} - ${selectedBus.plate_number || ''}` : isRtl ? 'اختر حافلة للتركيز عليها...' : 'Select bus...'}
-                                </span>
-                                <Search className="w-3.5 h-3.5 text-slate-400" />
-                            </button>
-
-                            {/* Dropdown Overlay (Simple conditional, ultra-safe) */}
-                            {isSelectOpen && (
-                                <div className="absolute top-[110%] left-0 right-0 bg-white dark:bg-[#1e293b] rounded-[20px] shadow-[0_10px_40px_rgba(0,0,0,0.2)] border border-slate-100 dark:border-white/10 z-[100] overflow-hidden flex flex-col max-h-[260px] animate-in fade-in zoom-in-95 duration-200">
-                                    <div className="p-2 border-b border-slate-50 dark:border-white/5">
-                                        <input
-                                            type="text"
-                                            placeholder={isRtl ? 'بحث...' : 'Search...'}
-                                            value={selectSearch}
-                                            onChange={e => setSelectSearch(e.target.value)}
-                                            className="w-full px-3 py-2 rounded-[12px] bg-slate-50 dark:bg-white/5 border-none text-xs font-bold text-slate-700 dark:text-white outline-none focus:ring-1 focus:ring-indigo-500/30"
-                                            autoFocus
-                                        />
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto p-1 custom-scrollbar">
-                                        {filteredSelectBuses.map(bus => (
-                                            <button
-                                                key={`dropdown-bus-${bus.id}`}
-                                                onClick={() => {
-                                                    setSelectedBus(bus);
-                                                    setIsSelectOpen(false);
-                                                    setSelectSearch('');
-                                                }}
-                                                className="w-full p-2.5 rounded-[12px] flex items-center gap-3 transition-all hover:bg-slate-50 dark:hover:bg-white/5 text-start"
-                                            >
-                                                <div className="w-6 h-6 flex-shrink-0 rounded-md bg-indigo-50 dark:bg-white/10 flex items-center justify-center text-[10px]">
-                                                    🚌
-                                                </div>
-                                                <div className="flex-1 overflow-hidden">
-                                                    <p className="text-xs font-black truncate text-slate-700 dark:text-slate-200">{bus.bus_number || 'N/A'}</p>
-                                                </div>
-                                                {selectedBus?.id === bus.id && (
-                                                    <Check className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
-                                                )}
-                                            </button>
-                                        ))}
-                                        {filteredSelectBuses.length === 0 && (
-                                            <p className="text-[10px] text-slate-400 text-center py-4 font-bold">{t('No buses found') || 'Not found'}</p>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-[#0f172a]/50 backdrop-blur-xl rounded-b-[28px]">
-                        <button 
-                            onClick={applyFilters}
-                            className="w-full py-3 rounded-[14px] bg-indigo-600 dark:bg-[#f5b800] text-white dark:text-slate-900 font-black text-xs shadow-md hover:scale-[1.02] active:scale-95 transition-transform flex items-center justify-center gap-2"
-                        >
-                            <Filter className="w-3.5 h-3.5" />
-                            {isRtl ? 'تطبيق الفلاتر' : 'Apply Filters'}
-                        </button>
-                    </div>
-                </motion.div>
-            )}
-
-            {/* --- 3. ULTRA COMPACT SELECTED BUS CARD --- */}
-            {selectedBus && (
-                <motion.div 
-                    ref={busCardRef}
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    className={`absolute bottom-4 left-4 right-4 md:bottom-auto md:top-6 md:w-[280px] bg-white/95 backdrop-blur-3xl dark:bg-[#0f172a]/95 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 dark:border-white/10 z-[60] flex flex-col ${
-                        isRtl ? 'md:left-6 md:right-auto' : 'md:right-6 md:left-auto'
-                    }`}
-                >
-                    {/* Horizontal Compact Header */}
-                    <div className="p-4 border-b border-slate-100 dark:border-white/5 flex items-center gap-3 relative">
-                        <div className="w-12 h-12 flex-shrink-0 rounded-[14px] bg-indigo-50 dark:bg-[#1e293b] text-xl flex items-center justify-center shadow-sm">
-                            🚌
-                        </div>
-                        <div className="flex-1 pr-6">
-                            <h3 className="text-sm font-black text-slate-800 dark:text-white leading-tight mb-0.5 truncate">{selectedBus.bus_number || 'No Number'}</h3>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">{selectedBus.plate_number || '-'}</p>
-                        </div>
-                        <button 
-                            onClick={() => setSelectedBus(null)}
-                            className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} p-1.5 rounded-full bg-slate-50 text-slate-400 hover:bg-rose-100 hover:text-rose-500 transition-colors`}
-                        >
-                            <X className="w-3.5 h-3.5" />
-                        </button>
-                    </div>
-
-                    {/* Compact Details */}
-                    <div className="p-4 space-y-2 bg-slate-50/50 dark:bg-transparent">
-                        <CompactInfo 
-                            icon={Layers} 
-                            label={isRtl ? 'الحالة' : 'Status'} 
-                            value={t(selectedBus.status || 'inactive') || 'Inactive'} 
-                            color={selectedBus.status === 'active' ? 'text-emerald-500' : 'text-slate-500'} 
-                        />
-                        <CompactInfo 
-                            icon={Clock} 
-                            label={isRtl ? 'الرحلة' : 'Trip'} 
-                            value={selectedBus.trip_status ? t(selectedBus.trip_status) : (t('idle') || 'Idle')} 
-                            color="text-indigo-600 dark:text-indigo-400"
-                        />
-                        <CompactInfo 
-                            icon={Users} 
-                            label={isRtl ? 'الطلاب' : 'Students'} 
-                            value={`${selectedBus.students_count || 0} / ${selectedBus.capacity || 0}`} 
-                            color="text-slate-700 dark:text-slate-300"
-                        />
-                        
-                        {selectedBus.driver && selectedBus.driver.name && (
-                            <div className="mt-3 p-2.5 rounded-[14px] bg-white dark:bg-[#1e293b] border border-slate-100 dark:border-white/5 flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-black text-[10px]">
-                                    {selectedBus.driver.name.charAt(0) || 'D'}
-                                </div>
-                                <div className="flex-1 overflow-hidden">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{isRtl ? 'السائق' : 'Driver'}</p>
-                                    <p className="text-[11px] font-black text-slate-800 dark:text-white truncate">{selectedBus.driver.name}</p>
-                                </div>
+                        {/* Metric: Moving Buses */}
+                        {stats && (
+                            <div className="flex items-center gap-1 px-2 py-1 md:px-2.5 md:py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/20 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span>{isRtl ? "متحركة:" : "Moving:"}</span>
+                                <span className="font-mono text-emerald-600 dark:text-emerald-400">{stats.moving_buses}</span>
                             </div>
+                        )}
+
+                        {/* Metric: Stopped Buses */}
+                        {stats && (
+                            <div className="flex items-center gap-1 px-2 py-1 md:px-2.5 md:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-600 dark:text-slate-400 shrink-0">
+                                <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                                <span>{isRtl ? "متوقفة:" : "Stopped:"}</span>
+                                <span className="font-mono">{stats.total_buses - stats.moving_buses}</span>
+                            </div>
+                        )}
+
+                        {/* Metric: Students Onboard */}
+                        {stats && stats.students_on_board !== undefined && (
+                            <div className="flex items-center gap-1 px-2 py-1 md:px-2.5 md:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
+                                <Users className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                                <span className="hidden md:inline">{isRtl ? "على المتن:" : "Onboard:"}</span>
+                                <span className="font-mono text-amber-600 dark:text-amber-400">{stats.students_on_board}</span>
+                            </div>
+                        )}
+
+                        {/* Refresh */}
+                        {onRefresh && (
+                            <button
+                                onClick={onRefresh}
+                                disabled={isSyncing}
+                                title={lastSyncTime ? (isRtl ? `آخر تحديث: ${lastSyncTime.toLocaleTimeString('ar-SA')}` : `Last sync: ${lastSyncTime.toLocaleTimeString('en-US')}`) : (isRtl ? 'تحديث فوري' : 'Sync now')}
+                                className="p-1.5 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                            >
+                                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
+                            </button>
                         )}
                     </div>
 
-                    {/* Navigation */}
-                    <div className="p-3 border-t border-slate-100 dark:border-white/5 bg-white dark:bg-[#0f172a] grid grid-cols-2 gap-2 rounded-b-[24px]">
-                        <button 
-                            onClick={() => navigateBus('prev')}
-                            disabled={isNavDisabled}
-                            className={`py-2 rounded-[12px] font-black text-[11px] flex items-center justify-center transition-all ${isNavDisabled ? 'bg-slate-50 text-slate-300 cursor-not-allowed' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                    {/* Filter Controls */}
+                    <div className="flex items-center gap-1.5 md:gap-2 shrink-0 flex-nowrap">
+                        
+                        {/* Bus Filter Dropdown */}
+                        <div className="relative shrink-0">
+                            <select
+                                value={selectedBusId}
+                                onChange={(e) => handleSelectBus(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                                aria-label={isRtl ? "فلترة الحافلة" : "Filter bus"}
+                                className={`text-xs font-bold ${isRtl ? 'pl-7 pr-2.5' : 'pr-7 pl-2.5'} py-1 md:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white border-0 cursor-pointer outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none`}
+                            >
+                                <option value="all">{isRtl ? `كل الأسطول (${safeBuses.length})` : `All Fleet (${safeBuses.length})`}</option>
+                                {safeBuses.map(b => {
+                                    const isM = Boolean(b.is_moving || (b.speed_kmh && b.speed_kmh >= 3.0));
+                                    return (
+                                        <option key={`hud-bus-${b.id}`} value={b.id}>
+                                            {isRtl ? `حافلة ${b.bus_number}` : `Bus ${b.bus_number}`} ({isM ? (isRtl ? '🟢 متحركة' : '🟢 Moving') : (isRtl ? '⚪ متوقفة' : '⚪ Stopped')})
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                            <ChevronDown className={`absolute ${isRtl ? 'left-2' : 'right-2'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none`} />
+                        </div>
+
+                        {/* School Center Button */}
+                        {schoolLocation && schoolLocation.lat && schoolLocation.lng && (
+                            <button
+                                onClick={() => {
+                                    if (map && schoolLocation.lat && schoolLocation.lng) {
+                                        map.panTo({ lat: schoolLocation.lat, lng: schoolLocation.lng });
+                                        map.setZoom(16);
+                                        setSelectedBusId('all');
+                                    }
+                                }}
+                                title={isRtl ? 'الانتقال لمقر المدرسة' : 'Go to School Campus'}
+                                className="px-2 py-1 md:px-2.5 md:py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold flex items-center gap-1.5 transition-all shrink-0"
+                            >
+                                <SchoolIcon className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">{schoolLocation.name || (isRtl ? 'المدرسة' : 'School')}</span>
+                            </button>
+                        )}
+
+                        {/* Student Stops Toggle */}
+                        <button
+                            onClick={() => setShowStudentStops(prev => !prev)}
+                            title={showStudentStops ? (isRtl ? 'إخفاء محطات الطلاب' : 'Hide student stops') : (isRtl ? 'إظهار محطات الطلاب المرقمة' : 'Show numbered student stops')}
+                            className={`px-2 py-1 md:px-2.5 md:py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
+                                showStudentStops
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                            }`}
                         >
-                            {isRtl ? 'السابق' : 'Prev'}
+                            <MapPin className="w-3.5 h-3.5" />
+                            <span>{isRtl ? `المحطات (${studentStops.length})` : `Stops (${studentStops.length})`}</span>
                         </button>
-                        <button 
-                            onClick={() => navigateBus('next')}
-                            disabled={isNavDisabled}
-                            className={`py-2 rounded-[12px] font-black text-[11px] flex items-center justify-center transition-all ${isNavDisabled ? 'bg-slate-50 text-slate-300 cursor-not-allowed' : 'bg-indigo-600 text-white hover:scale-[1.02] active:scale-95 shadow-sm'}`}
+
+                        {/* Route Line Toggle */}
+                        <button
+                            onClick={() => setShowRoutePath(prev => !prev)}
+                            title={showRoutePath ? (isRtl ? 'إخفاء خط المسار' : 'Hide route line') : (isRtl ? 'إظهار خط المسار التوصيلي' : 'Show connected route line')}
+                            className={`px-2 py-1 md:px-2.5 md:py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
+                                showRoutePath
+                                    ? 'bg-indigo-600 text-white shadow-sm'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                            }`}
                         >
-                            {isRtl ? 'التالي' : 'Next'}
+                            <Navigation className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">{isRtl ? "خط المسار" : "Route"}</span>
+                        </button>
+
+                        {/* Auto-Follow Toggle */}
+                        {selectedBus && (
+                            <button
+                                onClick={() => setAutoFollow(prev => !prev)}
+                                title={autoFollow ? (isRtl ? 'إلغاء المتابعة التلقائية للكاميرا' : 'Disable auto camera tracking') : (isRtl ? 'متابعة حركة الحافلة بالكاميرا تلقائياً' : 'Follow bus with camera')}
+                                className={`px-2 py-1 md:px-2.5 md:py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
+                                    autoFollow
+                                        ? 'bg-emerald-600 text-white shadow-sm animate-pulse'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                            >
+                                <Crosshair className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">{isRtl ? "متابعة" : "Follow"}</span>
+                            </button>
+                        )}
+
+                        {/* Map Mode (Roadmap vs Satellite) */}
+                        <button
+                            onClick={() => setMapType(prev => prev === 'roadmap' ? 'satellite' : 'roadmap')}
+                            title={mapType === 'roadmap' ? (isRtl ? 'عرض القمر الصناعي' : 'Satellite view') : (isRtl ? 'عرض الخريطة العادية' : 'Roadmap view')}
+                            className="px-2 py-1 md:px-2.5 md:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 text-xs font-bold flex items-center gap-1 transition-all shrink-0"
+                        >
+                            <Layers className="w-3.5 h-3.5" />
+                            <span className="hidden md:inline">{mapType === 'roadmap' ? (isRtl ? 'قمر صناعي' : 'Satellite') : (isRtl ? 'عادي' : 'Map')}</span>
                         </button>
                     </div>
-                </motion.div>
-            )}
 
-        </div>
-    );
-}
-
-function CompactInfo({ icon: Icon, label, value, color }: any) {
-    return (
-        <div className="flex items-center justify-between p-3.5 rounded-[16px] bg-white dark:bg-[#1e293b] border border-slate-100 dark:border-white/5 shadow-sm">
-            <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-[10px] bg-slate-50 dark:bg-white/5 flex items-center justify-center">
-                    <Icon className="w-4 h-4 text-slate-400" />
                 </div>
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
             </div>
-            <p className={`text-xs font-black ${color} truncate max-w-[120px] text-end`}>{value}</p>
-        </div>
-    );
-}
 
-function LegendItem({ dotColor, label }: { dotColor: string, label: string }) {
-    return (
-        <div className="flex items-center gap-2">
-            <div className={`w-2.5 h-2.5 rounded-full ${dotColor} shadow-sm`} />
-            <span className="text-[10px] font-black tracking-widest text-slate-600 dark:text-slate-300 uppercase">{label}</span>
+            {/* --- SELECTED BUS TELEMETRY DRAWER CARD --- */}
+            <AnimatePresence>
+                {selectedBus && (
+                    <motion.div
+                        initial={{ opacity: 0, x: isRtl ? -30 : 30, scale: 0.95 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: isRtl ? -30 : 30, scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 120, damping: 20 }}
+                        className={`absolute top-20 ${isRtl ? 'left-4 md:left-6' : 'right-4 md:right-6'} z-[46] w-72 md:w-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.25)] border border-slate-200/80 dark:border-white/10`}
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3 mb-3">
+                            <div className="flex items-center gap-2.5">
+                                <div className={`w-9 h-9 rounded-2xl flex items-center justify-center font-bold ${
+                                    selectedBus.is_moving ? 'bg-emerald-500/10 text-emerald-600' : 'bg-slate-100 text-slate-500'
+                                }`}>
+                                    <BusIcon className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white leading-none">
+                                        {isRtl ? `حافلة ${selectedBus.bus_number}` : `Bus ${selectedBus.bus_number}`}
+                                    </h3>
+                                    <p className="text-[10px] font-mono font-bold text-slate-400 mt-1 uppercase">
+                                        {selectedBus.plate_number}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedBusId('all')}
+                                className="p-1 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Prominent Live Movement Banner */}
+                        <div className={`p-2.5 rounded-2xl mb-3 flex items-center justify-between ${
+                            selectedBus.is_moving
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
+                                : 'bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-300'
+                        }`}>
+                            <div className="flex items-center gap-2 text-xs font-bold">
+                                <span className={`w-2.5 h-2.5 rounded-full ${
+                                    selectedBus.is_moving ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'
+                                }`}></span>
+                                <span>
+                                    {selectedBus.is_moving 
+                                        ? (isRtl ? 'الحافلة متحركة ميدانياً' : 'Bus in motion') 
+                                        : (isRtl ? 'الحافلة متوقفة' : 'Bus is stopped')}
+                                </span>
+                            </div>
+                            <span className="font-mono font-black text-xs">
+                                {selectedBus.is_moving 
+                                    ? `${Math.round(selectedBus.speed_kmh || 0)} ${isRtl ? 'كم/س' : 'km/h'}` 
+                                    : `0 ${isRtl ? 'كم/س' : 'km/h'}`}
+                            </span>
+                        </div>
+
+                        {/* Telemetry Metrics Grid */}
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-white/5">
+                                <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold mb-1">
+                                    <Gauge className="w-3.5 h-3.5 text-emerald-500" />
+                                    <span>{isRtl ? "السرعة الحقيقية" : "Live Speed"}</span>
+                                </div>
+                                <div className="font-mono font-black text-sm text-slate-800 dark:text-white">
+                                    {selectedBus.speed_kmh && selectedBus.speed_kmh > 0 
+                                        ? `${Math.round(selectedBus.speed_kmh)} ${isRtl ? 'كم/س' : 'km/h'}` 
+                                        : `0 ${isRtl ? 'كم/س' : 'km/h'}`}
+                                </div>
+                            </div>
+
+                            <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-white/5">
+                                <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold mb-1">
+                                    <Users className="w-3.5 h-3.5 text-amber-500" />
+                                    <span>{isRtl ? "على المتن" : "Onboard"}</span>
+                                </div>
+                                <div className="font-mono font-black text-sm text-slate-800 dark:text-white">
+                                    {selectedBus.students_on_board ?? 0} / {selectedBus.capacity}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Driver & Trip Info */}
+                        <div className="space-y-2 text-xs">
+                            {selectedBus.driver && (
+                                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-200">
+                                    <span className="text-slate-400 text-[11px]">{isRtl ? "السائق:" : "Driver:"}</span>
+                                    <span className="font-bold">{selectedBus.driver.name}</span>
+                                </div>
+                            )}
+
+                            {selectedBus.route && (
+                                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-200">
+                                    <span className="text-slate-400 text-[11px]">{isRtl ? "المسار:" : "Route:"}</span>
+                                    <span className="font-bold truncate max-w-[140px]">{selectedBus.route.name}</span>
+                                </div>
+                            )}
+
+                            {selectedBus.last_update && (
+                                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-500 text-[11px]">
+                                    <span className="flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        <span>{isRtl ? "آخر إشارة:" : "Last Ping:"}</span>
+                                    </span>
+                                    <span className="font-semibold">{selectedBus.last_update}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Action: Center Camera */}
+                        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 flex gap-2">
+                            <button
+                                onClick={() => {
+                                    if (map) {
+                                        const lat = parseCoord(selectedBus.current_latitude ?? selectedBus.latitude);
+                                        const lng = parseCoord(selectedBus.current_longitude ?? selectedBus.longitude);
+                                        if (lat !== undefined && lng !== undefined) {
+                                            map.panTo({ lat, lng });
+                                            map.setZoom(16);
+                                        }
+                                    }
+                                }}
+                                className="flex-1 py-2 px-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                            >
+                                <Crosshair className="w-3.5 h-3.5" />
+                                <span>{isRtl ? "تركيز الكاميرا" : "Focus Camera"}</span>
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
         </div>
     );
 }

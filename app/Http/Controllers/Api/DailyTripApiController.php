@@ -1631,6 +1631,8 @@ class DailyTripApiController extends Controller
             'end_qr_scanned' => 'required|boolean',
             'start_qr_data' => 'required|string',
             'end_qr_data' => 'required|string',
+            'actual_distance_km' => 'nullable|numeric|min:0',
+            'distance_km' => 'nullable|numeric|min:0',
         ]);
 
         // Validation of QR data - Case-insensitive and trimmed
@@ -1778,9 +1780,13 @@ class DailyTripApiController extends Controller
                     ->where('status', 'pending')
                     ->update(['status' => 'absent']);
 
+                $passedDistance = $request->input('actual_distance_km') ?? $request->input('distance_km');
+                $finalDistance = $passedDistance !== null ? (float) $passedDistance : (float) $trip->actual_distance_km;
+
                 $trip->update([
                     'status' => 'finished',
                     'arrival_time' => now(),
+                    'actual_distance_km' => $finalDistance,
                     'video_check' => true,
                     'video_path' => $path,
                     'end_qr_scanned_at' => now(),

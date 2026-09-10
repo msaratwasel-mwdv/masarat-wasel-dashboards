@@ -10,7 +10,10 @@ class BusObserver
 {
     public function saved(Bus $bus): void
     {
-        $this->clearCaches();
+        // Only clear caches and broadcast if structural attributes changed (ignore GPS location pings)
+        if ($bus->isDirty(['status', 'school_id', 'driver_id', 'assistant_id', 'route_id'])) {
+            $this->clearCaches();
+        }
     }
 
     public function deleted(Bus $bus): void
@@ -31,10 +34,6 @@ class BusObserver
         $monthKey = now()->format('Y-m');
         Cache::forget("analytics:kpis:{$monthKey}");
 
-        try {
-            broadcast(new DashboardStatsUpdated('buses', ['admin.dashboard']));
-        } catch (\Throwable $e) {
-            \Log::warning('DashboardStatsUpdated broadcast failed: '.$e->getMessage());
-        }
+        \App\Helpers\BroadcastHelper::safeBroadcast(new DashboardStatsUpdated('buses', ['admin.dashboard']));
     }
 }

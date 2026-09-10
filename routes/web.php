@@ -426,4 +426,20 @@ Route::middleware('auth')->group(function () {
     });
 });
 
+// 🛠️ محاكي الرحلات والحافلات للمطورين (Standalone Dev Trip Simulator)
+Route::redirect('/simulator', '/dev/trip-simulator');
+Route::prefix('dev/trip-simulator')->name('dev.simulator.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Dev\TripSimulatorController::class, 'index'])->name('index');
+    Route::get('/school-data', [\App\Http\Controllers\Dev\TripSimulatorController::class, 'getSchoolData'])->name('school-data');
+    Route::get('/trips', [\App\Http\Controllers\Dev\TripSimulatorController::class, 'getScheduledTrips'])->name('trips');
+    Route::post('/create-trip', [\App\Http\Controllers\Dev\TripSimulatorController::class, 'createTrip'])->name('create-trip');
+    Route::post('/start-trip', [\App\Http\Controllers\Dev\TripSimulatorController::class, 'startTrip'])->name('start-trip');
+    Route::post('/ping-location', [\App\Http\Controllers\Dev\TripSimulatorController::class, 'pingLocation'])->name('ping-location');
+    Route::post('/update-attendance', [\App\Http\Controllers\Dev\TripSimulatorController::class, 'updateStudentAttendance'])->name('update-attendance');
+    Route::post('/smart-batch-attendance', [\App\Http\Controllers\Dev\TripSimulatorController::class, 'smartBatchAttendance'])->name('smart-batch-attendance');
+    Route::post('/end-trip', [\App\Http\Controllers\Dev\TripSimulatorController::class, 'endTrip'])->name('end-trip');
+    Route::post('/reset-trip', [\App\Http\Controllers\Dev\TripSimulatorController::class, 'resetTrip'])->name('reset-trip');
+    Route::get('/whatsapp-logs', [\App\Http\Controllers\Dev\TripSimulatorController::class, 'getWhatsAppLogs'])->name('whatsapp-logs');
+});
+
 require __DIR__.'/auth.php';

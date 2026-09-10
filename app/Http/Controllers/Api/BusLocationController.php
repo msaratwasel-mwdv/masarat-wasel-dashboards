@@ -165,6 +165,11 @@ class BusLocationController extends Controller
             $etaData = null;
 
             if ($trip) {
+                // تجميع المسافة المقطوعة الحقيقية للرحلة بناء على إحداثيات GPS (أكثر من 5 أمتار لتفادي اهتزاز GPS الثابت)
+                if (isset($distance) && $distance > 5 && $distance < 5000) {
+                    $trip->increment('actual_distance_km', round($distance / 1000, 3));
+                }
+
                 $onBoardStudents = \App\Models\TripAttendance::where('trip_id', $trip->id)
                     ->where('status', 'boarded')
                     ->with('student.guardians')

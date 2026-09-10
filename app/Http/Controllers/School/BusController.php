@@ -4,6 +4,8 @@ namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bus;
+use App\Models\School;
+use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -94,34 +96,36 @@ class BusController extends Controller
     public function liveTracking()
     {
         $schoolId = Auth::user()->getSchoolId();
+        $school = \App\Models\School::find($schoolId);
+        $schoolLat = $school && $school->latitude ? (float) $school->latitude : 13.9407;
+        $schoolLng = $school && $school->longitude ? (float) $school->longitude : 43.7873;
+        $schoolName = $school?->name ?? 'مدرسة مسارات واصل';
+
+        $totalSchoolStudents = Student::inSchool($schoolId)->where('is_active', true)->count();
 
         $buses = Bus::where('school_id', $schoolId)
-            ->with(['driver.user'])
-            ->withStudentsCount()
+            ->with(['driver.user', 'route'])
             ->get()
-            ->map(function ($bus) {
-                return [
-                    'id' => $bus->id,
-                    'bus_number' => $bus->bus_number,
-                    'plate_number' => $bus->plate_number,
-                    'capacity' => $bus->capacity,
-                    'status' => $bus->status,
-                    'latitude' => (float) $bus->latitude,
-                    'longitude' => (float) $bus->longitude,
-                    'trip_status' => $bus->trip_status,
-                    'driver' => $bus->driver?->user,
-                    'students_count' => $bus->students_count ?? 0,
-                ];
-            });
+            ->map(fn ($bus) => $this->formatLiveTrackingBus($bus, $schoolId, $schoolLat, $schoolLng));
 
         $schoolLocation = [
-            'lat' => 23.5859, // Default Muscat, Oman
-            'lng' => 58.4059,
+            'lat' => $schoolLat,
+            'lng' => $schoolLng,
+            'name' => $schoolName,
+        ];
+
+        $stats = [
+            'total_buses' => $buses->count(),
+            'active_buses' => $buses->where('status', 'active')->count(),
+            'moving_buses' => $buses->filter(fn ($b) => ($b['speed_kmh'] ?? 0) > 0 && ($b['is_moving'] ?? false))->count(),
+            'total_students' => $totalSchoolStudents,
+            'students_on_board' => $buses->sum('students_on_board'),
         ];
 
         return Inertia::render('School/LiveTracking/Index', [
             'buses' => $buses,
             'schoolLocation' => $schoolLocation,
+            'stats' => $stats,
         ]);
     }
 
@@ -131,26 +135,159 @@ class BusController extends Controller
     public function trackingApi()
     {
         $schoolId = Auth::user()->getSchoolId();
+        $school = \App\Models\School::find($schoolId);
+        $schoolLat = $school && $school->latitude ? (float) $school->latitude : 13.9407;
+        $schoolLng = $school && $school->longitude ? (float) $school->longitude : 43.7873;
+
+        $totalSchoolStudents = Student::inSchool($schoolId)->where('is_active', true)->count();
 
         $buses = Bus::where('school_id', $schoolId)
-            ->whereNotNull('latitude')
-            ->whereNotNull('longitude')
+            ->with(['driver.user', 'route'])
             ->get()
-            ->map(function ($bus) {
-                return [
-                    'id' => $bus->id,
-                    'lat' => (float) $bus->latitude,
-                    'lng' => (float) $bus->longitude,
-                    'status' => $bus->trip_status ?? 'idle',
-                    'bus_number' => $bus->bus_number,
-                    'last_update' => $bus->last_location_update ? $bus->last_location_update->diffForHumans() : null,
-                ];
-            });
+            ->map(fn ($bus) => $this->formatLiveTrackingBus($bus, $schoolId, $schoolLat, $schoolLng));
+
+        $stats = [
+            'total_buses' => $buses->count(),
+            'active_buses' => $buses->where('status', 'active')->count(),
+            'moving_buses' => $buses->filter(fn ($b) => ($b['speed_kmh'] ?? 0) > 0 && ($b['is_moving'] ?? false))->count(),
+            'total_students' => $totalSchoolStudents,
+            'students_on_board' => $buses->sum('students_on_board'),
+        ];
 
         return response()->json([
             'success' => true,
             'buses' => $buses,
+            'stats' => $stats,
         ]);
+    }
+
+    protected function formatLiveTrackingBus(Bus $bus, $schoolId, float $schoolLat, float $schoolLng): array
+    {
+        $lastUpdate = $bus->last_location_update;
+        $secondsAgo = $lastUpdate ? $lastUpdate->diffInSeconds(now()) : null;
+        // Active ping check: only considered active if an update arrived within the last 60 seconds
+        $isPingingRecently = ($secondsAgo !== null && $secondsAgo <= 60);
+
+        $rawSpeed = $isPingingRecently ? (float) cache()->get('bus_speed_'.$bus->id, 0) : 0.0;
+        // Filter out micro GPS noise (speeds under 3 km/h are considered stopped)
+        $speed = ($rawSpeed >= 3.0) ? round($rawSpeed, 1) : 0.0;
+        $isMoving = ($speed > 0.0) && $isPingingRecently;
+        $heading = (float) cache()->get('bus_heading_'.$bus->id, 0);
+
+        // ONLY retrieve trip that is currently IN_PROGRESS for TODAY
+        $activeTrip = $bus->trips()
+            ->whereDate('trip_date', today())
+            ->where('status', 'in_progress')
+            ->with(['attendances.student', 'route'])
+            ->latest('id')
+            ->first();
+
+        $studentsData = [];
+        $waypoints = [];
+
+        if ($activeTrip) {
+            $isForth = ($activeTrip->type === 'forth');
+
+            foreach ($activeTrip->attendances as $att) {
+                $student = $att->student;
+                if (! $student) {
+                    continue;
+                }
+
+                $lat = $isForth
+                    ? ($student->forth_latitude ?? $student->latitude)
+                    : ($student->back_latitude ?? $student->latitude);
+                $lng = $isForth
+                    ? ($student->forth_longitude ?? $student->longitude)
+                    : ($student->back_longitude ?? $student->longitude);
+
+                $studentItem = [
+                    'attendance_id' => $att->id,
+                    'student_id' => $student->id,
+                    'name' => trim(($student->first_name_ar ?? '').' '.($student->last_name_ar ?? '')) ?: ($student->first_name_en ?? 'طالب'),
+                    'student_code' => $student->student_code,
+                    'status' => $att->status,
+                    'check_in_time' => $att->check_in_time?->format('H:i'),
+                    'check_out_time' => $att->check_out_time?->format('H:i'),
+                    'extra_wait_time' => $att->extra_wait_time ?? 0,
+                    'lat' => $lat ? (float) $lat : null,
+                    'lng' => $lng ? (float) $lng : null,
+                    'address' => $student->address,
+                ];
+
+                $studentsData[] = $studentItem;
+
+                if ($lat && $lng) {
+                    $waypoints[] = [
+                        'lat' => (float) $lat,
+                        'lng' => (float) $lng,
+                        'student_id' => $student->id,
+                        'name' => $studentItem['name'],
+                        'status' => $att->status,
+                    ];
+                }
+            }
+
+            if ($isForth) {
+                $waypoints[] = [
+                    'lat' => $schoolLat,
+                    'lng' => $schoolLng,
+                    'is_school' => true,
+                    'name' => 'المدرسة',
+                ];
+            } else {
+                array_unshift($waypoints, [
+                    'lat' => $schoolLat,
+                    'lng' => $schoolLng,
+                    'is_school' => true,
+                    'name' => 'المدرسة',
+                ]);
+            }
+        }
+
+        // Count enrolled students belonging to this school that are assigned to this bus
+        $assignedStudentsCount = Student::inSchool($schoolId)
+            ->where('is_active', true)
+            ->where(function ($q) use ($bus) {
+                $q->where('forth_bus_id', $bus->id)
+                    ->orWhere('back_bus_id', $bus->id);
+            })
+            ->count();
+
+        return [
+            'id' => $bus->id,
+            'bus_number' => $bus->bus_number,
+            'plate_number' => $bus->plate_number,
+            'capacity' => $bus->capacity,
+            'status' => $bus->status,
+            'latitude' => $bus->latitude ? (float) $bus->latitude : null,
+            'longitude' => $bus->longitude ? (float) $bus->longitude : null,
+            'current_latitude' => $bus->latitude ? (float) $bus->latitude : null,
+            'current_longitude' => $bus->longitude ? (float) $bus->longitude : null,
+            'trip_status' => $activeTrip ? 'in_progress' : 'idle',
+            'speed_kmh' => $speed,
+            'is_moving' => $isMoving,
+            'heading' => $heading,
+            'students_count' => $assignedStudentsCount,
+            'students_on_board' => $activeTrip ? $activeTrip->attendances->whereIn('status', ['boarded', 'present'])->count() : 0,
+            'driver' => $bus->driver?->user ? [
+                'id' => $bus->driver->user->id,
+                'name' => $bus->driver->user->name,
+                'phone' => $bus->driver->user->phone,
+            ] : null,
+            'route' => $bus->route ? [
+                'id' => $bus->route->id,
+                'name' => $bus->route->name,
+            ] : null,
+            'active_trip' => $activeTrip ? [
+                'id' => $activeTrip->id,
+                'type' => $activeTrip->type,
+                'status' => $activeTrip->status,
+                'students' => $studentsData,
+                'waypoints' => $waypoints,
+            ] : null,
+            'last_update' => $bus->last_location_update ? $bus->last_location_update->diffForHumans() : null,
+        ];
     }
 
     /**
