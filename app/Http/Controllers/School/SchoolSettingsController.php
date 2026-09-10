@@ -39,7 +39,7 @@ class SchoolSettingsController extends Controller
                     Storage::disk('public')->delete($oldPath);
                 }
             }
-            $path = $request->file('logo')->store('schools/logos', 'public');
+            $path = $request->file('logo')->storeOptimized('schools/logos', 'public');
             $validated['logo'] = $path;
         }
 

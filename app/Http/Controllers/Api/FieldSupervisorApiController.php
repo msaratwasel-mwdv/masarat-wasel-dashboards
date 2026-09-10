@@ -108,7 +108,7 @@ class FieldSupervisorApiController extends Controller
         $photoPaths = [];
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $photo) {
-                $photoPaths[] = $photo->store('inspections', 'public');
+                $photoPaths[] = $photo->storeOptimized('inspections', 'public');
             }
         }
 
@@ -154,7 +154,7 @@ class FieldSupervisorApiController extends Controller
         $photoPaths = [];
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $photo) {
-                $photoPaths[] = $photo->store('incidents', 'public');
+                $photoPaths[] = $photo->storeOptimized('incidents', 'public');
             }
         }
 
@@ -193,7 +193,7 @@ class FieldSupervisorApiController extends Controller
         $photoPaths = [];
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $photo) {
-                $photoPaths[] = $photo->store('violations', 'public');
+                $photoPaths[] = $photo->storeOptimized('violations', 'public');
             }
         }
 

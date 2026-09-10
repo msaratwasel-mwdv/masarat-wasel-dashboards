@@ -100,7 +100,7 @@ class AssistantController extends Controller
                 if ($assistant->image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($assistant->image);
                 }
-                $data['image'] = $request->file('image')->store('avatars', 'public');
+                $data['image'] = $request->file('image')->storeOptimized('avatars', 'public');
             }
 
             $assistant->update($data);
@@ -117,14 +117,14 @@ class AssistantController extends Controller
                 if ($assistantExtRecord->id_card_front_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($assistantExtRecord->id_card_front_image);
                 }
-                $assistantExtData['id_card_front_image'] = $request->file('id_card_front_image')->store('assistants/id_cards', 'public');
+                $assistantExtData['id_card_front_image'] = $request->file('id_card_front_image')->storeOptimized('assistants/id_cards', 'public');
             }
 
             if ($request->hasFile('id_card_back_image')) {
                 if ($assistantExtRecord->id_card_back_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($assistantExtRecord->id_card_back_image);
                 }
-                $assistantExtData['id_card_back_image'] = $request->file('id_card_back_image')->store('assistants/id_cards', 'public');
+                $assistantExtData['id_card_back_image'] = $request->file('id_card_back_image')->storeOptimized('assistants/id_cards', 'public');
             }
 
             $assistant->assistant()->updateOrCreate(

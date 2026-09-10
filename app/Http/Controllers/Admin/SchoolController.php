@@ -42,7 +42,7 @@ class SchoolController extends Controller
             $data = $request->validated();
 
             if ($request->hasFile('logo')) {
-                $data['logo'] = $request->file('logo')->store('schools/logos', 'public');
+                $data['logo'] = $request->file('logo')->storeOptimized('schools/logos', 'public');
             }
 
             // Default service flags
@@ -150,7 +150,7 @@ class SchoolController extends Controller
                 if ($school->logo) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($school->logo);
                 }
-                $data['logo'] = $request->file('logo')->store('schools/logos', 'public');
+                $data['logo'] = $request->file('logo')->storeOptimized('schools/logos', 'public');
             }
 
             $school->update($data);

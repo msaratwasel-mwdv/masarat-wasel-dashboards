@@ -107,7 +107,7 @@ class BusExpenseApiController extends Controller
         $photoPath = null;
         if ($request->hasFile('receipt_photo')) {
             // Store in storage/app/public/expenses and return public path
-            $path = $request->file('receipt_photo')->store('expenses', 'public');
+            $path = $request->file('receipt_photo')->storeOptimized('expenses', 'public');
             $photoPath = $path;
         }
 

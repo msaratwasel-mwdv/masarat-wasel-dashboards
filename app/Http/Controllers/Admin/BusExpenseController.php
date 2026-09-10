@@ -55,7 +55,7 @@ class BusExpenseController extends Controller
         ]);
 
         if ($request->hasFile('receipt_photo')) {
-            $validated['receipt_photo'] = $request->file('receipt_photo')->store('expenses', 'public');
+            $validated['receipt_photo'] = $request->file('receipt_photo')->storeOptimized('expenses', 'public');
         }
 
         BusExpense::create($validated);
@@ -80,7 +80,7 @@ class BusExpenseController extends Controller
             if ($bus_expense->receipt_photo && \Storage::disk('public')->exists($bus_expense->receipt_photo)) {
                 \Storage::disk('public')->delete($bus_expense->receipt_photo);
             }
-            $validated['receipt_photo'] = $request->file('receipt_photo')->store('expenses', 'public');
+            $validated['receipt_photo'] = $request->file('receipt_photo')->storeOptimized('expenses', 'public');
         }
 
         $bus_expense->update($validated);

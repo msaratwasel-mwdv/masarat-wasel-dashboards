@@ -92,7 +92,7 @@ class SchoolUserController extends Controller
                 'national_id' => $request->national_id,
                 'address' => $request->address,
                 'password' => Hash::make($request->password),
-                'image' => $request->hasFile('image') ? $request->file('image')->store('users/images', 'public') : null,
+                'image' => $request->hasFile('image') ? $request->file('image')->storeOptimized('users/images', 'public') : null,
             ]);
 
             $user->roles()->syncWithoutDetaching([$roleId]);
@@ -128,7 +128,7 @@ class SchoolUserController extends Controller
             if ($user->image) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($user->image);
             }
-            $updateData['image'] = $request->file('image')->store('users/images', 'public');
+            $updateData['image'] = $request->file('image')->storeOptimized('users/images', 'public');
         }
 
         if ($request->filled('password')) {

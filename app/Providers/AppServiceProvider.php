@@ -64,5 +64,24 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Delay::observe($analyticsObserver);
         \Log::debug('AppServiceProvider: Booting... Registering Broadcast routes with Sanctum.');
         \Illuminate\Support\Facades\Broadcast::routes(['middleware' => ['api', 'auth:sanctum']]);
+
+        // Register macro for automated image optimization & WebP conversion on upload
+        \Illuminate\Http\UploadedFile::macro('storeOptimized', function (
+            string $folder = '',
+            string $disk = 'public',
+            ?int $maxWidth = null,
+            ?int $maxHeight = null,
+            int $quality = 82
+        ): string {
+            /** @var \Illuminate\Http\UploadedFile $this */
+            return app(\App\Services\ImageOptimizerService::class)->optimizeAndStore(
+                $this,
+                $folder,
+                $disk,
+                $maxWidth,
+                $maxHeight,
+                $quality
+            );
+        });
     }
 }

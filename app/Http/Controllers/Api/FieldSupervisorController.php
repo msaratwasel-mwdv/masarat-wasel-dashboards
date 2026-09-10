@@ -192,7 +192,7 @@ class FieldSupervisorController extends Controller
             $photos = [];
             if ($request->hasFile('photos')) {
                 foreach ($request->file('photos') as $photo) {
-                    $photos[] = $photo->store('inspections', 'public');
+                    $photos[] = $photo->storeOptimized('inspections', 'public');
                 }
             }
 
@@ -247,11 +247,11 @@ class FieldSupervisorController extends Controller
         $photos = [];
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $photo) {
-                $photos[] = $photo->store('incidents', 'public');
+                $photos[] = $photo->storeOptimized('incidents', 'public');
             }
         }
         if ($request->hasFile('photo')) {
-            $photos[] = $request->file('photo')->store('incidents', 'public');
+            $photos[] = $request->file('photo')->storeOptimized('incidents', 'public');
         }
 
         $incident = Incident::create([
@@ -409,7 +409,7 @@ class FieldSupervisorController extends Controller
         $photos = [];
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $photo) {
-                $photos[] = $photo->store('violations', 'public');
+                $photos[] = $photo->storeOptimized('violations', 'public');
             }
         }
 

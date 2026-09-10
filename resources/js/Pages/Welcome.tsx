@@ -798,6 +798,8 @@ export default function Welcome({
                     <div className={`relative w-20 h-20 rounded-full border-4 border-brand-yellow shadow-[0_0_40px_rgba(255,191,0,0.4)] overflow-hidden hover:scale-110 transition-transform duration-500 hover:rotate-6 ${
                         theme === 'dark' ? 'bg-slate-800' : 'bg-white'
                     }`}>
+                        <picture className="w-full h-full">
+                        <source srcSet="/assets/images/omani-support-avatar.webp" type="image/webp" />
                         <img
                             src="/assets/images/omani-support-avatar.png"
                             alt="Support"
@@ -808,6 +810,7 @@ export default function Welcome({
                                 target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-3xl">👨‍💼</div>';
                             }}
                         />
+                    </picture>
                         {/* Live Status Indicator */}
                         <div className="absolute bottom-2 right-2 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse" />
                     </div>

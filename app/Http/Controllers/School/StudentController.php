@@ -244,7 +244,7 @@ class StudentController extends Controller
             ];
 
             if ($request->hasFile('image')) {
-                $guardianData['image'] = $request->file('image')->store('guardians', 'public');
+                $guardianData['image'] = $request->file('image')->storeOptimized('guardians', 'public');
             }
 
             if ($guardian) {
@@ -350,7 +350,7 @@ class StudentController extends Controller
 
             // ⬅️ معالجة صورة الطالب
             if ($request->hasFile('image')) {
-                $studentData['image'] = $request->file('image')->store('students', 'public');
+                $studentData['image'] = $request->file('image')->storeOptimized('students', 'public');
             }
 
             $student = Student::create($studentData);
@@ -495,7 +495,7 @@ class StudentController extends Controller
             ];
 
             if ($request->hasFile('image')) {
-                $studentData['image'] = $request->file('image')->store('students', 'public');
+                $studentData['image'] = $request->file('image')->storeOptimized('students', 'public');
             }
 
             $student->update($studentData);

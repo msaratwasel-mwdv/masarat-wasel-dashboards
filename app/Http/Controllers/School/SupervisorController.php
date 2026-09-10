@@ -109,7 +109,7 @@ class SupervisorController extends Controller
             // رفع الصورة إن وجدت
             $imagePath = null;
             if ($request->hasFile('image')) {
-                $imagePath = $request->file('image')->store('users', 'public');
+                $imagePath = $request->file('image')->storeOptimized('users', 'public');
             }
 
             // Split names
@@ -218,7 +218,7 @@ class SupervisorController extends Controller
                 if ($imagePath && Storage::disk('public')->exists($imagePath)) {
                     Storage::disk('public')->delete($imagePath);
                 }
-                $imagePath = $request->file('image')->store('users', 'public');
+                $imagePath = $request->file('image')->storeOptimized('users', 'public');
             }
 
             // Split names

@@ -108,7 +108,7 @@ class DriverController extends Controller
                 if ($driver->image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver->image);
                 }
-                $updateData['image'] = $request->file('image')->store('avatars', 'public');
+                $updateData['image'] = $request->file('image')->storeOptimized('avatars', 'public');
             }
 
             $driver->update($updateData);
@@ -130,7 +130,7 @@ class DriverController extends Controller
                 if ($driver_ext->license_front_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_front_image);
                 }
-                $driverExtData['license_front_image'] = $request->file('license_front_image')->store('drivers/licenses', 'public');
+                $driverExtData['license_front_image'] = $request->file('license_front_image')->storeOptimized('drivers/licenses', 'public');
             }
 
             if ($request->remove_license_back_image) {
@@ -142,7 +142,7 @@ class DriverController extends Controller
                 if ($driver_ext->license_back_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->license_back_image);
                 }
-                $driverExtData['license_back_image'] = $request->file('license_back_image')->store('drivers/licenses', 'public');
+                $driverExtData['license_back_image'] = $request->file('license_back_image')->storeOptimized('drivers/licenses', 'public');
             }
 
             if ($request->remove_id_card_front_image) {
@@ -154,7 +154,7 @@ class DriverController extends Controller
                 if ($driver_ext->id_card_front_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->id_card_front_image);
                 }
-                $driverExtData['id_card_front_image'] = $request->file('id_card_front_image')->store('drivers/id_cards', 'public');
+                $driverExtData['id_card_front_image'] = $request->file('id_card_front_image')->storeOptimized('drivers/id_cards', 'public');
             }
 
             if ($request->remove_id_card_back_image) {
@@ -166,7 +166,7 @@ class DriverController extends Controller
                 if ($driver_ext->id_card_back_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($driver_ext->id_card_back_image);
                 }
-                $driverExtData['id_card_back_image'] = $request->file('id_card_back_image')->store('drivers/id_cards', 'public');
+                $driverExtData['id_card_back_image'] = $request->file('id_card_back_image')->storeOptimized('drivers/id_cards', 'public');
             }
 
             $driver_ext->update($driverExtData);

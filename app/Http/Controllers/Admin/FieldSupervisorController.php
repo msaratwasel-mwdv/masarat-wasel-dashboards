@@ -113,7 +113,7 @@ class FieldSupervisorController extends Controller
                 'password' => Hash::make($request->phone),
                 'address' => $request->address,
                 'preferred_language' => $request->preferred_language ?? 'ar',
-                'image' => $request->hasFile('image') ? $request->file('image')->store('avatars', 'public') : null,
+                'image' => $request->hasFile('image') ? $request->file('image')->storeOptimized('avatars', 'public') : null,
             ]);
 
             $role = \App\Models\Role::firstOrCreate(['name' => 'field_supervisor']);
@@ -170,7 +170,7 @@ class FieldSupervisorController extends Controller
                 if ($field_supervisor->image) {
                     Storage::disk('public')->delete($field_supervisor->image);
                 }
-                $data['image'] = $request->file('image')->store('avatars', 'public');
+                $data['image'] = $request->file('image')->storeOptimized('avatars', 'public');
             }
 
             $field_supervisor->update($data);

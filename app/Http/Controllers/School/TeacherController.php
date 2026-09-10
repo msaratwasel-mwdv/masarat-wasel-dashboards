@@ -97,7 +97,7 @@ class TeacherController extends Controller
 
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('teachers', 'public');
+            $imagePath = $request->file('image')->storeOptimized('teachers', 'public');
         }
 
         $schoolId = $user->getSchoolId();
@@ -198,7 +198,7 @@ class TeacherController extends Controller
             if ($teacher->image) {
                 Storage::disk('public')->delete($teacher->image);
             }
-            $updateData['image'] = $request->file('image')->store('teachers', 'public');
+            $updateData['image'] = $request->file('image')->storeOptimized('teachers', 'public');
         } elseif ($request->boolean('remove_image')) {
             if ($teacher->image) {
                 Storage::disk('public')->delete($teacher->image);

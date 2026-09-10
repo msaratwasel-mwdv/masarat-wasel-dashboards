@@ -69,7 +69,7 @@ class EventController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('events', 'public');
+            $path = $request->file('image')->storeOptimized('events', 'public');
             $validated['image'] = '/storage/'.$path;
         }
 
@@ -110,7 +110,7 @@ class EventController extends Controller
             if ($event->image) {
                 Storage::disk('public')->delete(str_replace('/storage/', '', $event->image));
             }
-            $path = $request->file('image')->store('events', 'public');
+            $path = $request->file('image')->storeOptimized('events', 'public');
             $validated['image'] = '/storage/'.$path;
         }
 

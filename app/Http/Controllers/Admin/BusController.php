@@ -215,7 +215,7 @@ class BusController extends Controller
     {
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $photo) {
-                $path = $photo->store('bus_photos', 'public');
+                $path = $photo->storeOptimized('bus_photos', 'public');
                 BusDocument::create([
                     'bus_id' => $bus->id,
                     'type' => 'photo',
@@ -225,7 +225,7 @@ class BusController extends Controller
         }
 
         if ($request->hasFile('registration_file')) {
-            $path = $request->file('registration_file')->store('bus_docs', 'public');
+            $path = $request->file('registration_file')->storeOptimized('bus_docs', 'public');
             BusDocument::create([
                 'bus_id' => $bus->id,
                 'type' => 'registration',

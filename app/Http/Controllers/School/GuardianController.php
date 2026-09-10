@@ -132,7 +132,7 @@ class GuardianController extends Controller
             ];
 
             if ($request->hasFile('image')) {
-                $userData['image'] = $request->file('image')->store('users', 'public');
+                $userData['image'] = $request->file('image')->storeOptimized('users', 'public');
             }
 
             if ($user) {
@@ -197,7 +197,7 @@ class GuardianController extends Controller
                 if ($parent->image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($parent->image);
                 }
-                $parent->update(['image' => $request->file('image')->store('users', 'public')]);
+                $parent->update(['image' => $request->file('image')->storeOptimized('users', 'public')]);
             }
 
             if ($parent->guardian) {

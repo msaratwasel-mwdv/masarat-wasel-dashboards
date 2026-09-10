@@ -48,7 +48,7 @@ class SubscriptionController extends Controller
         }
 
         if ($request->hasFile('receipt')) {
-            $path = $request->file('receipt')->store('receipts', 'public');
+            $path = $request->file('receipt')->storeOptimized('receipts', 'public');
             $installment->update([
                 'receipt_path' => $path,
                 'verification_status' => 'pending',

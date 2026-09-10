@@ -82,7 +82,7 @@ class ParentController extends Controller
             Storage::disk('public')->delete($user->image);
         }
 
-        $path = $request->file('avatar')->store('avatars', 'public');
+        $path = $request->file('avatar')->storeOptimized('avatars', 'public');
         $user->update(['image' => $path]);
 
         $imageUrl = url(Storage::url($path));
