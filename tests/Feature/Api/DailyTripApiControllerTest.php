@@ -91,6 +91,44 @@ class DailyTripApiControllerTest extends TestCase
         $this->assertEquals('awaiting_video', $trip->status);
     }
 
+    public function test_driver_can_start_trip_even_with_mismatched_cached_bus_id(): void
+    {
+        $school = School::factory()->create(['is_active' => true]);
+        Subscription::factory()->create(['school_id' => $school->id, 'status' => 'active']);
+
+        $driver = $this->createDriver();
+        $otherDriver = $this->createDriver();
+        $assignedBus = Bus::factory()->create([
+            'school_id' => $school->id,
+            'driver_id' => $driver->id,
+        ]);
+        $otherBus = Bus::factory()->create([
+            'school_id' => $school->id,
+            'driver_id' => $otherDriver->id,
+        ]);
+
+        $trip = Trip::factory()->create([
+            'school_id' => $school->id,
+            'bus_id' => $assignedBus->id,
+            'driver_id' => $driver->id,
+            'trip_date' => today()->toDateString(),
+            'status' => 'pending',
+            'type' => 'forth',
+        ]);
+
+        Sanctum::actingAs($driver, ['*']);
+
+        // Driver sends request with the other bus ID (e.g. stale client cache)
+        $responseStart = $this->postJson("/api/bus/{$otherBus->id}/start-trip", [
+            'latitude' => 24.7136,
+            'longitude' => 46.6753,
+        ]);
+        $responseStart->assertSuccessful();
+
+        $trip->refresh();
+        $this->assertEquals('awaiting_confirmation', $trip->status);
+    }
+
     public function test_driver_can_mark_student_boarded_and_dropped(): void
     {
         $school = School::factory()->create(['is_active' => true]);

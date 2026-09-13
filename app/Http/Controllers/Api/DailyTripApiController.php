@@ -689,6 +689,28 @@ class DailyTripApiController extends Controller
     }
 
     /**
+     * Resolve bus for crew member, redirecting to their assigned bus if mismatching.
+     */
+    private function resolveCrewBus(\App\Models\User $user, Bus $bus): ?Bus
+    {
+        if ($bus->hasCrewMember($user->id)) {
+            return $bus;
+        }
+
+        $assignedBus = Bus::where('driver_id', $user->id)
+            ->orWhere('assistant_id', $user->id)
+            ->first();
+
+        if ($assignedBus) {
+            Log::info("DailyTripApiController: Redirected crew member {$user->id} from requested bus {$bus->id} to assigned bus {$assignedBus->id}");
+
+            return $assignedBus;
+        }
+
+        return null;
+    }
+
+    /**
      * الوصول لآخر نقطة (إنزال جميع الركاب وإنهاء الرحلة)
      * POST /api/bus/{bus}/arrive
      */
@@ -696,8 +718,9 @@ class DailyTripApiController extends Controller
     {
         /** @var Bus $bus */
         $user = $request->user();
-        if (! $bus->hasCrewMember($user->id)) {
-            return response()->json(['message' => 'غير مصرح لك.'], 403);
+        $bus = $this->resolveCrewBus($user, $bus);
+        if (! $bus) {
+            return response()->json(['message' => 'غير مصرح لك. لم يتم إسناد هذه الحافلة لحسابك.'], 403);
         }
 
         $trip = $this->getActiveTrip($bus);
@@ -1212,8 +1235,9 @@ class DailyTripApiController extends Controller
     {
         /** @var Bus $bus */
         $user = $request->user();
-        if (! $bus->hasCrewMember($user->id)) {
-            return response()->json(['message' => 'غير مصرح لك.'], 403);
+        $bus = $this->resolveCrewBus($user, $bus);
+        if (! $bus) {
+            return response()->json(['message' => 'غير مصرح لك. لم يتم إسناد هذه الحافلة لحسابك.'], 403);
         }
 
         $request->validate([
@@ -1297,8 +1321,9 @@ class DailyTripApiController extends Controller
     {
         /** @var Bus $bus */
         $user = $request->user();
-        if (! $bus->hasCrewMember($user->id)) {
-            return response()->json(['message' => 'غير مصرح لك.'], 403);
+        $bus = $this->resolveCrewBus($user, $bus);
+        if (! $bus) {
+            return response()->json(['message' => 'غير مصرح لك. لم يتم إسناد هذه الحافلة لحسابك.'], 403);
         }
 
         // Find the trip: either by ID or first awaiting confirmation
@@ -1661,8 +1686,9 @@ class DailyTripApiController extends Controller
     {
         /** @var Bus $bus */
         $user = $request->user();
-        if (! $bus->hasCrewMember($user->id)) {
-            return response()->json(['message' => 'غير مصرح لك.'], 403);
+        $bus = $this->resolveCrewBus($user, $bus);
+        if (! $bus) {
+            return response()->json(['message' => 'غير مصرح لك. لم يتم إسناد هذه الحافلة لحسابك.'], 403);
         }
 
         $request->validate([

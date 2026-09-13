@@ -23,15 +23,28 @@ class CheckTransportAccess
         $school = $user->school;
 
         if (! $school) {
-            if ($user->hasRole('field_supervisor') || $user->hasRole('admin')) {
-                return $next($request);
+            // Check if request has a bus route parameter with a school
+            $bus = $request->route('bus');
+            if ($bus instanceof \App\Models\Bus) {
+                $school = $bus->school;
+            } elseif (is_numeric($bus)) {
+                $school = \App\Models\Bus::find($bus)?->school;
+            }
+
+            if ($user->hasRole('field_supervisor') || $user->hasRole('admin') || $user->hasRole('driver') || $user->hasRole('assistant')) {
+                // If school is still not resolved, allow crew member to proceed to the controller where hasCrewMember checks assignment
+                if (! $school) {
+                    return $next($request);
+                }
             }
 
             if ($request->is('api/driver/my-trips')) {
                 return $next($request);
             }
 
-            return $this->errorResponse($request, 'School not found.', 403);
+            if (! $school) {
+                return $this->errorResponse($request, 'School not found.', 403);
+            }
         }
 
         // Check if modifying request (POST, PUT, DELETE)
@@ -55,7 +68,10 @@ class CheckTransportAccess
     protected function errorResponse(Request $request, string $message, int $status = 403)
     {
         if ($request->wantsJson() || str_starts_with($request->path(), 'api/')) {
-            return response()->json(['error' => $message], $status);
+            return response()->json([
+                'message' => $message,
+                'error' => $message,
+            ], $status);
         }
 
         return redirect()->back()->with('error', $message);
