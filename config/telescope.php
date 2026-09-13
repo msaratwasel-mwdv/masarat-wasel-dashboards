@@ -118,6 +118,7 @@ return [
         'pulse*',
         '_boost*',
         '.well-known*',
+        '*buses/tracking/api*',
     ],
 
     'ignore_commands' => [

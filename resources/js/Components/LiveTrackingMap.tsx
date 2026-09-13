@@ -7,14 +7,27 @@ import {
     Layers, X, Users, ChevronDown, Gauge, 
     School as SchoolIcon, Navigation, MapPin, 
     Bus as BusIcon, RefreshCw, Crosshair, Activity, Clock,
-    Search, Maximize2, Minimize2, Filter, SlidersHorizontal, RotateCcw
+    Search, Maximize2, Minimize2, Filter, SlidersHorizontal, RotateCcw,
+    Download, Phone, PhoneCall, MessageCircle, User as UserIcon, ExternalLink, Backpack,
+    Building2,
 } from 'lucide-react';
+import { 
+    createSchoolMarkerSvg, 
+    createBusMarkerSvg, 
+    createStudentMarkerSvg 
+} from './MapMarkerIcons';
 
 export interface StudentAttendance {
     attendance_id: number;
     student_id: number;
     name: string;
     student_code?: string;
+    gender?: 'male' | 'female' | string | null;
+    photo_url?: string | null;
+    grade?: string | null;
+    classroom?: string | null;
+    guardian_name?: string | null;
+    guardian_phone?: string | null;
     status: 'present' | 'boarded' | 'dropped' | 'absent' | 'late' | 'pending' | string;
     check_in_time?: string | null;
     check_out_time?: string | null;
@@ -31,6 +44,8 @@ export interface Waypoint {
     name?: string;
     status?: string;
     is_school?: boolean;
+    photo_url?: string | null;
+    gender?: string | null;
 }
 
 export interface ActiveTrip {
@@ -63,7 +78,7 @@ export interface Bus {
     last_update?: string | null;
     last_update_seconds?: number | null;
     school_id?: number;
-    school?: { id: number; name: string; lat?: number | null; lng?: number | null } | null;
+    school?: { id: number; name: string; lat?: number | null; lng?: number | null; logo_url?: string | null; address?: string | null } | null;
 }
 
 export interface SchoolItem {
@@ -73,6 +88,8 @@ export interface SchoolItem {
     lng?: number | null;
     latitude?: number | null;
     longitude?: number | null;
+    logo_url?: string | null;
+    address?: string | null;
 }
 
 interface Stats {
@@ -87,7 +104,14 @@ interface Props {
     buses: Bus[];
     centerLat?: number;
     centerLng?: number;
-    schoolLocation?: { lat: number; lng: number; name?: string };
+    schoolLocation?: {
+        id?: number;
+        lat: number;
+        lng: number;
+        name?: string;
+        logo_url?: string | null;
+        address?: string | null;
+    };
     schools?: SchoolItem[];
     selectedSchoolId?: number | 'all';
     onSelectSchool?: (schoolId: number | 'all') => void;
@@ -111,53 +135,6 @@ const parseCoord = (val: any): number | undefined => {
 };
 
 // -------------------------------------------------------------
-// SVG MARKER: Authentic Bus Marker with Live Green / Stopped Beacon
-// -------------------------------------------------------------
-const createBusMarkerSvg = (bus: Bus, isSelected: boolean, isRtl: boolean = true) => {
-    const isMoving = Boolean(bus.is_moving || (bus.speed_kmh && bus.speed_kmh >= 3.0));
-    const bgColor = isSelected ? '#4f46e5' : isMoving ? '#059669' : '#64748b';
-    const strokeColor = isSelected ? '#a5b4fc' : '#ffffff';
-    const speedVal = bus.speed_kmh ? Math.round(bus.speed_kmh) : 0;
-    const statusText = isRtl
-        ? (isMoving ? `${speedVal} كم/س` : 'متوقفة')
-        : (isMoving ? `${speedVal} km/h` : 'Stopped');
-    const busNum = bus.bus_number ? (isRtl ? `باص ${bus.bus_number}` : `Bus ${bus.bus_number}`) : (isRtl ? 'باص' : 'Bus');
-
-    const width = 100;
-    const height = 62;
-
-    const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-            <defs>
-                <filter id="busShadow" x="-25%" y="-25%" width="150%" height="150%">
-                    <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#090d16" flood-opacity="0.45"/>
-                </filter>
-            </defs>
-            <!-- Badge Label with Bus ID & Live State -->
-            <g filter="url(#busShadow)">
-                <rect x="3" y="3" width="94" height="24" rx="12" fill="#0f172a" stroke="${bgColor}" stroke-width="2" />
-                <!-- Green beacon if moving, gray if stopped -->
-                <circle cx="16" cy="15" r="4.5" fill="${isMoving ? '#10b981' : '#94a3b8'}" />
-                <text x="56" y="17" fill="#ffffff" font-size="10" font-weight="800" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">
-                    ${busNum} • ${statusText}
-                </text>
-            </g>
-            <!-- Bus Circle Pin Body -->
-            <g filter="url(#busShadow)">
-                <circle cx="50" cy="44" r="15" fill="${bgColor}" stroke="${strokeColor}" stroke-width="2.5" />
-                <path d="M44 38 C44 36.5 45 36 46.5 36 L53.5 36 C55 36 56 36.5 56 38 L56 47 C56 47.5 55.5 48 55 48 L55 49.5 C55 50 54.5 50.5 54 50.5 L53.5 50.5 C53 50.5 52.5 50 52.5 49.5 L52.5 48 L47.5 48 L47.5 49.5 C47.5 50 47 50.5 46.5 50.5 L46 50.5 C45.5 50.5 45 50 45 49.5 L45 48 C44.5 48 44 47.5 44 47 Z M45.5 38 L45.5 41 L54.5 41 L54.5 38 Z M46.5 45 C47.3 45 48 44.3 48 43.5 C48 42.7 47.3 42 46.5 42 C45.7 42 45 42.7 45 43.5 C45 44.3 45.7 45 46.5 45 Z M53.5 45 C54.3 45 55 44.3 55 43.5 C55 42.7 54.3 42 53.5 42 C52.7 42 52 42.7 52 43.5 C52 44.3 52.7 45 53.5 45 Z" fill="#ffffff" />
-            </g>
-        </svg>
-    `;
-
-    return {
-        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-        scaledSize: typeof window !== 'undefined' && window.google ? new window.google.maps.Size(width, height) : { width, height } as any,
-        anchor: typeof window !== 'undefined' && window.google ? new window.google.maps.Point(50, 44) : { x: 50, y: 44 } as any,
-    };
-};
-
-// -------------------------------------------------------------
 // HELPER: Smooth Animated Bus Marker for Web
 // -------------------------------------------------------------
 const AnimatedBusMarker = React.memo(({
@@ -165,15 +142,21 @@ const AnimatedBusMarker = React.memo(({
     targetLat,
     targetLng,
     isSelected,
+    isHovered = false,
     isRtl = true,
     onClick,
+    onMouseOver,
+    onMouseOut,
 }: {
     bus: Bus;
     targetLat: number;
     targetLng: number;
     isSelected: boolean;
+    isHovered?: boolean;
     isRtl?: boolean;
     onClick: () => void;
+    onMouseOver?: () => void;
+    onMouseOut?: () => void;
 }) => {
     const [pos, setPos] = useState({ lat: targetLat, lng: targetLng });
     const animRef = useRef<number | null>(null);
@@ -217,93 +200,85 @@ const AnimatedBusMarker = React.memo(({
         };
     }, [targetLat, targetLng]);
 
+    const isMoving = Boolean(bus.is_moving || (bus.speed_kmh && bus.speed_kmh >= 3.0));
+    const zIndex = isSelected ? 3000 : isHovered ? 2500 : isMoving ? 150 : 120;
+
     return (
         <Marker 
             position={pos}
-            icon={createBusMarkerSvg(bus, isSelected, isRtl)}
+            icon={createBusMarkerSvg(bus, isSelected, isHovered, isRtl)}
             title={`${isRtl ? 'حافلة' : 'Bus'} ${bus.bus_number} (${bus.plate_number})`}
-            zIndex={isSelected ? 90 : 50}
+            zIndex={zIndex}
             onClick={onClick}
+            onMouseOver={onMouseOver}
+            onMouseOut={onMouseOut}
         />
     );
 });
 
 // -------------------------------------------------------------
-// SVG MARKER: Student Pickup Stop Pin with Numbered Sequence
+// HELPER: Student Avatar with on-demand Lazy Image & Gender Fallback
 // -------------------------------------------------------------
-const createStudentMarkerSvg = (status: string, studentName: string, stopNumber: number) => {
-    let pinColor = '#2563eb'; // Default Blue (مجدول)
+const StudentAvatar = ({ 
+    photoUrl, 
+    name, 
+    gender, 
+    size = "md",
+    onClick
+}: { 
+    photoUrl?: string | null; 
+    name: string; 
+    gender?: string | null; 
+    size?: "sm" | "md" | "lg" | "xl";
+    onClick?: () => void;
+}) => {
+    const [imgError, setImgError] = useState(false);
+    const sizeClasses = {
+        sm: "w-8 h-8 text-[11px]",
+        md: "w-11 h-11 text-xs",
+        lg: "w-16 h-16 text-base",
+        xl: "w-24 h-24 text-2xl",
+    }[size];
 
-    if (status === 'present' || status === 'boarded') {
-        pinColor = '#059669'; // Emerald (صعد)
-    } else if (status === 'dropped') {
-        pinColor = '#0284c7'; // Sky (تم التوصيل)
-    } else if (status === 'absent') {
-        pinColor = '#e11d48'; // Rose (غائب)
-    } else if (status === 'late') {
-        pinColor = '#d97706'; // Amber (بالانتظار)
+    const isFemale = gender === 'female';
+    const initials = name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('') || 'ط';
+
+    if (photoUrl && !imgError) {
+        return (
+            <div 
+                onClick={onClick} 
+                className={`relative group rounded-2xl overflow-hidden shrink-0 border-2 border-white/90 dark:border-slate-700 shadow-md ${sizeClasses} ${onClick ? 'cursor-pointer' : ''}`}
+            >
+                <img 
+                    src={photoUrl} 
+                    alt={name} 
+                    loading="lazy" 
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    onError={() => setImgError(true)}
+                />
+                {onClick && (
+                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                        <Maximize2 className="w-3.5 h-3.5" />
+                    </div>
+                )}
+            </div>
+        );
     }
 
-    const width = 40;
-    const height = 50;
-
-    const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-            <defs>
-                <filter id="stuShadow" x="-25%" y="-20%" width="150%" height="150%">
-                    <feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.35"/>
-                </filter>
-            </defs>
-            <g filter="url(#stuShadow)">
-                <!-- Teardrop Pin -->
-                <path d="M20 47 C20 47 35 31 35 19 C35 9.5 28.3 2 20 2 C11.7 2 5 9.5 5 19 C5 31 20 47 20 47 Z" fill="${pinColor}" stroke="#ffffff" stroke-width="2.2" />
-                <!-- Center Inner Circle -->
-                <circle cx="20" cy="19" r="10" fill="#ffffff" />
-                <!-- Stop Number inside -->
-                <text x="20" y="23.5" fill="${pinColor}" font-size="11.5" font-weight="900" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">
-                    ${stopNumber}
-                </text>
-            </g>
-        </svg>
-    `;
-
-    return {
-        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-        scaledSize: typeof window !== 'undefined' && window.google ? new window.google.maps.Size(width, height) : { width, height } as any,
-        anchor: typeof window !== 'undefined' && window.google ? new window.google.maps.Point(20, 47) : { x: 20, y: 47 } as any,
-    };
-};
-
-// -------------------------------------------------------------
-// SVG MARKER: School Landmark Pin
-// -------------------------------------------------------------
-const createSchoolMarkerSvg = (schoolName: string = 'المدرسة') => {
-    const width = 110;
-    const height = 58;
-    const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-            <defs>
-                <filter id="schShadow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.4"/>
-                </filter>
-            </defs>
-            <g filter="url(#schShadow)">
-                <rect x="5" y="2" width="100" height="22" rx="11" fill="#dc2626" stroke="#ffffff" stroke-width="2" />
-                <text x="55" y="16" fill="#ffffff" font-size="10" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">
-                    ${schoolName}
-                </text>
-            </g>
-            <g filter="url(#schShadow)">
-                <circle cx="55" cy="42" r="14" fill="#dc2626" stroke="#ffffff" stroke-width="2.5" />
-                <path d="M55 35 L63 39 L55 43 L47 39 Z M49 41 L49 45 C49 46.5 51.5 48 55 48 C58.5 48 61 46.5 61 45 L61 41 L55 44 Z" fill="#ffffff" />
-            </g>
-        </svg>
-    `;
-    return {
-        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-        scaledSize: typeof window !== 'undefined' && window.google ? new window.google.maps.Size(width, height) : { width, height } as any,
-        anchor: typeof window !== 'undefined' && window.google ? new window.google.maps.Point(55, 42) : { x: 55, y: 42 } as any,
-    };
+    return (
+        <div 
+            onClick={onClick} 
+            className={`relative rounded-2xl flex flex-col items-center justify-center font-black text-white shrink-0 border-2 border-white/90 dark:border-slate-700 shadow-md ${sizeClasses} ${
+                isFemale 
+                    ? 'bg-gradient-to-br from-rose-500 to-pink-600' 
+                    : 'bg-gradient-to-br from-blue-600 to-indigo-700'
+            } ${onClick ? 'cursor-pointer' : ''}`}
+            title={name}
+        >
+            <Backpack className={size === 'xl' ? 'w-8 h-8 mb-1 opacity-85' : size === 'lg' ? 'w-5 h-5 mb-0.5 opacity-85' : 'w-3.5 h-3.5 opacity-80'} />
+            <span className="leading-none">{initials}</span>
+        </div>
+    );
 };
 
 export default function LiveTrackingMap({ 
@@ -330,7 +305,23 @@ export default function LiveTrackingMap({
     const [selectedBusId, setSelectedBusId] = useState<number | 'all'>('all');
     const [statusFilter, setStatusFilter] = useState<'all' | 'moving' | 'stopped' | 'trip'>('all');
     const [searchQuery, setSearchQuery] = useState<string>('');
+    const [hoveredBusId, setHoveredBusId] = useState<number | null>(null);
+    const [hoveredSchoolId, setHoveredSchoolId] = useState<number | null>(null);
     const [selectedStudent, setSelectedStudent] = useState<{ student: StudentAttendance; bus: Bus; stopNumber: number } | null>(null);
+    const [selectedSchoolModal, setSelectedSchoolModal] = useState<{
+        id?: number;
+        name: string;
+        lat: number;
+        lng: number;
+        logo_url?: string | null;
+        address?: string | null;
+    } | null>(null);
+    const [previewPhoto, setPreviewPhoto] = useState<{
+        url: string;
+        title: string;
+        subtitle?: string;
+    } | null>(null);
+    const [drawerTab, setDrawerTab] = useState<'buses' | 'students'>('buses');
 
     // Collapsible Drawer State (Default closed so the map is 100% visible and clean)
     const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
@@ -506,6 +497,149 @@ export default function LiveTrackingMap({
     }, [busesWithLocation, selectedBusId]);
 
     // -------------------------------------------------------------
+    // SMART ANTI-COLLISION & SCHOOL PARKING BAY DISPERSION
+    // Solves bus-under-school occlusion and co-located bus stacking
+    // -------------------------------------------------------------
+    const activeSchoolsWithCoords = useMemo(() => {
+        const list: { id: number; name: string; lat: number; lng: number }[] = [];
+        if (schools && schools.length > 0) {
+            schools.forEach(s => {
+                const lat = parseCoord(s.lat ?? s.latitude);
+                const lng = parseCoord(s.lng ?? s.longitude);
+                if (lat !== undefined && lng !== undefined) {
+                    list.push({ id: s.id, name: s.name, lat, lng });
+                }
+            });
+        } else if (schoolLocation && schoolLocation.lat && schoolLocation.lng) {
+            list.push({
+                id: schoolLocation.id || 0,
+                name: schoolLocation.name || 'المدرسة',
+                lat: schoolLocation.lat,
+                lng: schoolLocation.lng,
+            });
+        }
+        return list;
+    }, [schools, schoolLocation]);
+
+    const { positionedBuses, parkedBusesBySchool } = useMemo(() => {
+        const schoolBusMap = new Map<number, Bus[]>();
+        const regularBuses: { bus: Bus; lat: number; lng: number }[] = [];
+
+        // Helper: Euclidean distance in meters
+        const calcDistMeters = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+            const dLat = (lat2 - lat1) * 111320;
+            const dLng = (lng2 - lng1) * 111320 * Math.cos((lat1 * Math.PI) / 180);
+            return Math.sqrt(dLat * dLat + dLng * dLng);
+        };
+
+        visibleBuses.forEach(bus => {
+            const lat = parseCoord(bus.current_latitude ?? bus.latitude);
+            const lng = parseCoord(bus.current_longitude ?? bus.longitude);
+            if (lat === undefined || lng === undefined) return;
+
+            const isMoving = Boolean(bus.is_moving || (bus.speed_kmh && bus.speed_kmh >= 3.0));
+
+            // Check if bus is parked at/near any school
+            let matchedSchool: { id: number; name: string; lat: number; lng: number } | null = null;
+            for (const sch of activeSchoolsWithCoords) {
+                const dist = calcDistMeters(lat, lng, sch.lat, sch.lng);
+                if (dist < 65 || (dist < 90 && !isMoving && bus.school_id === sch.id)) {
+                    matchedSchool = sch;
+                    break;
+                }
+            }
+
+            if (matchedSchool && !isMoving) {
+                const list = schoolBusMap.get(matchedSchool.id) || [];
+                list.push(bus);
+                schoolBusMap.set(matchedSchool.id, list);
+            } else {
+                regularBuses.push({ bus, lat, lng });
+            }
+        });
+
+        const result: { bus: Bus; lat: number; lng: number }[] = [];
+        const parkedCounts = new Map<number, number>();
+
+        // 1. Position buses parked at school in a clean orbital parking fan-out
+        schoolBusMap.forEach((busesAtSchool, schoolId) => {
+            parkedCounts.set(schoolId, busesAtSchool.length);
+            const sch = activeSchoolsWithCoords.find(s => s.id === schoolId);
+            if (!sch) return;
+
+            const count = busesAtSchool.length;
+            const radiusMeters = 38; // 38 meters clear of school building center
+            const rad = Math.PI / 180;
+            const cosLat = Math.cos(sch.lat * rad);
+
+            busesAtSchool.forEach((bus, index) => {
+                let angleDeg = 180; // South
+                if (count === 1) {
+                    angleDeg = 135; // South-East
+                } else if (count === 2) {
+                    angleDeg = index === 0 ? 120 : 240;
+                } else if (count === 3) {
+                    angleDeg = 90 + index * 90; // 90° (E), 180° (S), 270° (W)
+                } else {
+                    const startAngle = 60;
+                    const endAngle = 300;
+                    angleDeg = startAngle + (index / (count - 1)) * (endAngle - startAngle);
+                }
+
+                const dLat = (radiusMeters * Math.cos(angleDeg * rad)) / 111320;
+                const dLng = (radiusMeters * Math.sin(angleDeg * rad)) / (111320 * cosLat);
+
+                result.push({
+                    bus,
+                    lat: sch.lat + dLat,
+                    lng: sch.lng + dLng,
+                });
+            });
+        });
+
+        // 2. Position regular buses (and disperse any co-located < 12m)
+        const groupedByCoord: { bus: Bus; lat: number; lng: number }[][] = [];
+        regularBuses.forEach(item => {
+            let placed = false;
+            for (const grp of groupedByCoord) {
+                const first = grp[0];
+                if (calcDistMeters(item.lat, item.lng, first.lat, first.lng) < 12) {
+                    grp.push(item);
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                groupedByCoord.push([item]);
+            }
+        });
+
+        groupedByCoord.forEach(grp => {
+            if (grp.length === 1) {
+                result.push(grp[0]);
+            } else {
+                const count = grp.length;
+                const radiusMeters = 18;
+                const rad = Math.PI / 180;
+                const cosLat = Math.cos(grp[0].lat * rad);
+
+                grp.forEach((item, idx) => {
+                    const angleDeg = (idx / count) * 360;
+                    const dLat = (radiusMeters * Math.cos(angleDeg * rad)) / 111320;
+                    const dLng = (radiusMeters * Math.sin(angleDeg * rad)) / (111320 * cosLat);
+                    result.push({
+                        bus: item.bus,
+                        lat: item.lat + dLat,
+                        lng: item.lng + dLng,
+                    });
+                });
+            }
+        });
+
+        return { positionedBuses: result, parkedBusesBySchool: parkedCounts };
+    }, [visibleBuses, activeSchoolsWithCoords]);
+
+    // -------------------------------------------------------------
     // Auto Follow: Smoothly pan to selected bus coordinates
     // -------------------------------------------------------------
     useEffect(() => {
@@ -578,6 +712,37 @@ export default function LiveTrackingMap({
         return stops;
     }, [showStudentStops, selectedBus, visibleBuses]);
 
+    // -------------------------------------------------------------
+    // ALL TRIP STUDENTS: For the Fleet Drawer Students Tab
+    // -------------------------------------------------------------
+    const allStudentsList = useMemo(() => {
+        const list: { student: StudentAttendance; bus: Bus; stopNumber?: number }[] = [];
+        filteredBuses.forEach(bus => {
+            const students = bus.active_trip?.students || [];
+            let counter = 1;
+            students.forEach(st => {
+                list.push({
+                    student: st,
+                    bus,
+                    stopNumber: counter++,
+                });
+            });
+        });
+        return list;
+    }, [filteredBuses]);
+
+    const filteredStudents = useMemo(() => {
+        if (!searchQuery.trim()) return allStudentsList;
+        const q = searchQuery.toLowerCase().trim();
+        return allStudentsList.filter(({ student, bus }) => {
+            const nameMatch = student.name?.toLowerCase().includes(q);
+            const codeMatch = student.student_code?.toLowerCase().includes(q);
+            const classMatch = student.classroom?.toLowerCase().includes(q);
+            const guardianMatch = student.guardian_name?.toLowerCase().includes(q);
+            const busMatch = bus.bus_number?.toLowerCase().includes(q);
+            return Boolean(nameMatch || codeMatch || classMatch || guardianMatch || busMatch);
+        });
+    }, [allStudentsList, searchQuery]);
 
     const handleSelectBus = (busId: number | 'all') => {
         setSelectedBusId(busId);
@@ -654,21 +819,36 @@ export default function LiveTrackingMap({
                         />
                     ))}
 
-                    {/* SCHOOL LANDMARK PINS */}
+                    {/* SCHOOL LANDMARK PINS (CLEAN VECTOR WITH FLOATING NAME BADGE & FLEET COUNT) */}
                     {schools && schools.length > 0 ? (
                         schools.map((sch) => {
                             const sLat = parseCoord(sch.lat ?? sch.latitude);
                             const sLng = parseCoord(sch.lng ?? sch.longitude);
                             if (sLat === undefined || sLng === undefined) return null;
-                            const isSelected = currentSchoolId === sch.id;
+                            const isSelected = currentSchoolId === sch.id || selectedSchoolModal?.id === sch.id;
+                            const isHovered = hoveredSchoolId === sch.id;
+                            const parkedCount = parkedBusesBySchool.get(sch.id) || 0;
                             return (
                                 <Marker
                                     key={`school-landmark-${sch.id}`}
                                     position={{ lat: sLat, lng: sLng }}
-                                    icon={createSchoolMarkerSvg(sch.name)}
+                                    icon={createSchoolMarkerSvg(sch.name, isSelected, isHovered, isRtl, parkedCount)}
                                     title={sch.name}
-                                    zIndex={isSelected ? 105 : 98}
-                                    onClick={() => handleSelectSchool(sch.id)}
+                                    zIndex={isSelected ? 2200 : isHovered ? 2000 : 100}
+                                    onMouseOver={() => setHoveredSchoolId(sch.id)}
+                                    onMouseOut={() => setHoveredSchoolId(null)}
+                                    onClick={() => {
+                                        handleSelectSchool(sch.id);
+                                        setSelectedSchoolModal({
+                                            id: sch.id,
+                                            name: sch.name,
+                                            lat: sLat,
+                                            lng: sLng,
+                                            logo_url: sch.logo_url,
+                                            address: sch.address,
+                                        });
+                                        setSelectedStudent(null);
+                                    }}
                                 />
                             );
                         })
@@ -676,109 +856,57 @@ export default function LiveTrackingMap({
                         <Marker
                             key="school-landmark"
                             position={{ lat: schoolLocation.lat, lng: schoolLocation.lng }}
-                            icon={createSchoolMarkerSvg(schoolLocation.name || (isRtl ? 'مقر المدرسة' : 'School Campus'))}
+                            icon={createSchoolMarkerSvg(
+                                schoolLocation.name || (isRtl ? 'مقر المدرسة' : 'School Campus'), 
+                                selectedSchoolModal !== null,
+                                hoveredSchoolId === (schoolLocation.id || 0),
+                                isRtl,
+                                parkedBusesBySchool.get(schoolLocation.id || 0) || 0
+                            )}
                             title={schoolLocation.name || (isRtl ? 'المدرسة' : 'School')}
-                            zIndex={100}
+                            zIndex={selectedSchoolModal !== null ? 2200 : hoveredSchoolId === (schoolLocation.id || 0) ? 2000 : 100}
+                            onMouseOver={() => setHoveredSchoolId(schoolLocation.id || 0)}
+                            onMouseOut={() => setHoveredSchoolId(null)}
                             onClick={() => {
                                 if (map) {
                                     map.panTo({ lat: schoolLocation.lat, lng: schoolLocation.lng });
                                     map.setZoom(16);
                                 }
+                                setSelectedSchoolModal({
+                                    id: schoolLocation.id || 0,
+                                    name: schoolLocation.name || (isRtl ? 'مقر المدرسة' : 'School Campus'),
+                                    lat: schoolLocation.lat,
+                                    lng: schoolLocation.lng,
+                                    logo_url: schoolLocation.logo_url,
+                                    address: schoolLocation.address,
+                                });
+                                setSelectedStudent(null);
                             }}
                         />
                     ) : null}
 
-                    {/* NUMBERED STUDENT PICKUP STOP MARKERS */}
-                    {studentStops.map(({ student, bus, lat, lng, stopNumber }) => (
-                        <Marker
-                            key={`stop-${student.attendance_id}-${student.student_id}`}
-                            position={{ lat, lng }}
-                            icon={createStudentMarkerSvg(student.status, student.name, stopNumber)}
-                            title={`${isRtl ? 'محطة' : 'Stop'} ${stopNumber}: ${student.name}`}
-                            zIndex={40}
-                            onClick={() => setSelectedStudent({ student, bus, stopNumber })}
-                        />
-                    ))}
+                    {/* NUMBERED STUDENT PICKUP STOP MARKERS (PROFESSIONAL STUDENT ICONS) */}
+                    {studentStops.map(({ student, bus, lat, lng, stopNumber }) => {
+                        const isSelected = selectedStudent?.student.student_id === student.student_id;
+                        return (
+                            <Marker
+                                key={`stop-${student.attendance_id}-${student.student_id}`}
+                                position={{ lat, lng }}
+                                icon={createStudentMarkerSvg(student.status, stopNumber, isSelected)}
+                                title={`${isRtl ? 'محطة طالب' : 'Student Stop'} #${stopNumber}: ${student.name}`}
+                                zIndex={isSelected ? 65 : 40}
+                                onClick={() => {
+                                    setSelectedStudent({ student, bus, stopNumber });
+                                    setSelectedSchoolModal(null);
+                                }}
+                            />
+                        );
+                    })}
 
-                    {/* STUDENT INFO WINDOW */}
-                    {selectedStudent && selectedStudent.student.lat && selectedStudent.student.lng && (
-                        <InfoWindow
-                            position={{ 
-                                lat: Number(selectedStudent.student.lat), 
-                                lng: Number(selectedStudent.student.lng) 
-                            }}
-                            onCloseClick={() => setSelectedStudent(null)}
-                        >
-                            <div className={`p-2.5 min-w-[220px] ${isRtl ? 'text-right' : 'text-left'} font-sans`} dir={isRtl ? 'rtl' : 'ltr'}>
-                                <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2 mb-2">
-                                    <div>
-                                        <div className="flex items-center gap-1.5 mb-0.5">
-                                            <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-slate-900 text-white font-mono">
-                                                {isRtl ? 'محطة' : 'Stop'} {selectedStudent.stopNumber}
-                                            </span>
-                                            <h4 className="font-bold text-xs text-slate-900 leading-tight">
-                                                {selectedStudent.student.name}
-                                            </h4>
-                                        </div>
-                                        <p className="text-[10px] font-mono text-slate-500">
-                                            {selectedStudent.student.student_code || (isRtl ? 'كود غير متوفر' : 'No Code')}
-                                        </p>
-                                    </div>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                        selectedStudent.student.status === 'present' || selectedStudent.student.status === 'boarded'
-                                            ? 'bg-emerald-100 text-emerald-700'
-                                            : selectedStudent.student.status === 'dropped'
-                                            ? 'bg-sky-100 text-sky-700'
-                                            : selectedStudent.student.status === 'absent'
-                                            ? 'bg-rose-100 text-rose-700'
-                                            : selectedStudent.student.status === 'late'
-                                            ? 'bg-amber-100 text-amber-700'
-                                            : 'bg-blue-100 text-blue-700'
-                                    }`}>
-                                        {selectedStudent.student.status === 'present' || selectedStudent.student.status === 'boarded' ? (isRtl ? 'صعد للحافلة' : 'Boarded') :
-                                         selectedStudent.student.status === 'dropped' ? (isRtl ? 'تم التوصيل' : 'Dropped') :
-                                         selectedStudent.student.status === 'absent' ? (isRtl ? 'غائب' : 'Absent') :
-                                         selectedStudent.student.status === 'late' ? (isRtl ? 'في الانتظار' : 'Waiting') : (isRtl ? 'مجدول' : 'Scheduled')}
-                                    </span>
-                                </div>
 
-                                <div className="space-y-1.5 text-[11px] text-slate-600">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-slate-400">{isRtl ? 'الحافلة:' : 'Bus:'}</span>
-                                        <span className="font-bold text-slate-800">{selectedStudent.bus.bus_number}</span>
-                                    </div>
 
-                                    {selectedStudent.student.extra_wait_time ? (
-                                        <div className="flex items-center justify-between text-amber-600 font-semibold">
-                                            <span>{isRtl ? 'وقت الانتظار الإضافي:' : 'Extra wait time:'}</span>
-                                            <span className="font-mono">+{selectedStudent.student.extra_wait_time} {isRtl ? 'دقيقة' : 'min'}</span>
-                                        </div>
-                                    ) : null}
-
-                                    {selectedStudent.student.check_in_time ? (
-                                        <div className="flex items-center justify-between text-emerald-600 font-semibold">
-                                            <span>{isRtl ? 'وقت الصعود:' : 'Boarding time:'}</span>
-                                            <span className="font-mono">{selectedStudent.student.check_in_time}</span>
-                                        </div>
-                                    ) : null}
-
-                                    {selectedStudent.student.address && (
-                                        <div className="pt-1 text-[10px] text-slate-500 border-t border-slate-100 truncate flex items-center gap-1">
-                                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                                            <span>{selectedStudent.student.address}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </InfoWindow>
-                    )}
-
-                    {/* BUS MARKERS WITH LIVE GREEN / STOPPED INDICATOR */}
-                    {visibleBuses.map(bus => {
-                        const lat = parseCoord(bus.current_latitude ?? bus.latitude);
-                        const lng = parseCoord(bus.current_longitude ?? bus.longitude);
-                        if (lat === undefined || lng === undefined) return null;
-
+                    {/* BUS MARKERS WITH LIVE SMART POSITIONING (ANTI-COLLISION / SCHOOL PARKING BAY) */}
+                    {positionedBuses.map(({ bus, lat, lng }) => {
                         const isSelected = selectedBus?.id === bus.id;
 
                         return (
@@ -788,8 +916,11 @@ export default function LiveTrackingMap({
                                 targetLat={lat}
                                 targetLng={lng}
                                 isSelected={isSelected}
+                                isHovered={hoveredBusId === bus.id}
                                 isRtl={isRtl}
                                 onClick={() => handleSelectBus(bus.id)}
+                                onMouseOver={() => setHoveredBusId(bus.id)}
+                                onMouseOut={() => setHoveredBusId(null)}
                             />
                         );
                     })}
@@ -1091,79 +1222,213 @@ export default function LiveTrackingMap({
                             </div>
                         </div>
 
-                        {/* Interactive Bus Cards (Scrollable Fleet List) */}
-                        <div className="flex-1 overflow-y-auto max-h-64 sm:max-h-72 p-2 space-y-1.5 divide-y divide-slate-100/50 dark:divide-white/5">
-                            {filteredBuses.length === 0 ? (
-                                <div className="py-8 text-center text-slate-400 text-xs">
-                                    <BusIcon className="w-8 h-8 mx-auto mb-2 opacity-30 text-slate-400" />
-                                    <p className="font-bold">{isRtl ? 'لا توجد حافلات مطابقة للفلترة' : 'No matching buses found'}</p>
-                                    <button
-                                        onClick={handleResetFilters}
-                                        className="mt-2 text-[11px] text-blue-500 font-bold hover:underline"
-                                    >
-                                        {isRtl ? 'إعادة تعيين الفلاتر' : 'Reset filters'}
-                                    </button>
-                                </div>
-                            ) : (
-                                filteredBuses.map(bus => {
-                                    const isSelected = selectedBusId === bus.id;
-                                    const isMoving = Boolean(bus.is_moving || (bus.speed_kmh && bus.speed_kmh >= 3.0));
-                                    return (
-                                        <div
-                                            key={`drawer-bus-${bus.id}`}
-                                            onClick={() => {
-                                                handleSelectBus(isSelected ? 'all' : bus.id);
-                                            }}
-                                            className={`p-2.5 rounded-2xl cursor-pointer transition-all flex items-center justify-between gap-2.5 ${
-                                                isSelected
-                                                    ? 'bg-blue-50 dark:bg-blue-950/60 border border-blue-500/40 shadow-sm ring-1 ring-blue-500/20'
-                                                    : 'hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent'
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-2.5 min-w-0">
-                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                                                    isMoving 
-                                                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' 
-                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                                                }`}>
-                                                    <BusIcon className="w-4 h-4" />
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                                                            {isRtl ? `حافلة ${bus.bus_number}` : `Bus ${bus.bus_number}`}
-                                                        </span>
-                                                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold">
-                                                            {bus.plate_number}
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-[10px] text-slate-400 truncate mt-0.5">
-                                                        {bus.school?.name || (bus.driver?.name ? (isRtl ? `السائق: ${bus.driver.name}` : `Driver: ${bus.driver.name}`) : (isRtl ? 'بدون سائق' : 'No driver'))}
-                                                    </div>
-                                                </div>
-                                            </div>
+                        {/* Drawer Tabs (Buses vs Students) */}
+                        <div className="flex border-b border-slate-100 dark:border-white/10 px-3 pt-2 gap-2 bg-slate-50/50 dark:bg-slate-900/50">
+                            <button
+                                onClick={() => setDrawerTab('buses')}
+                                className={`pb-2 text-xs font-bold transition-all relative ${
+                                    drawerTab === 'buses'
+                                        ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                }`}
+                            >
+                                <span className="flex items-center gap-1.5">
+                                    <BusIcon className="w-3.5 h-3.5" />
+                                    <span>{isRtl ? 'الحافلات' : 'Buses'}</span>
+                                    <span className="px-1.5 py-0.2 rounded-full bg-slate-200/70 dark:bg-slate-800 text-[10px] font-mono">
+                                        {filteredBuses.length}
+                                    </span>
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setDrawerTab('students')}
+                                className={`pb-2 text-xs font-bold transition-all relative ${
+                                    drawerTab === 'students'
+                                        ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                }`}
+                            >
+                                <span className="flex items-center gap-1.5">
+                                    <Backpack className="w-3.5 h-3.5" />
+                                    <span>{isRtl ? 'الطلاب والمحطات' : 'Students'}</span>
+                                    <span className="px-1.5 py-0.2 rounded-full bg-slate-200/70 dark:bg-slate-800 text-[10px] font-mono">
+                                        {allStudentsList.length}
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
 
-                                            <div className="flex flex-col items-end shrink-0 text-right">
-                                                {isMoving ? (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                                        <span>{Math.round(bus.speed_kmh || 0)} {isRtl ? 'كم/س' : 'km/h'}</span>
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                                                        <span>{isRtl ? 'متوقفة' : 'Stopped'}</span>
-                                                    </span>
-                                                )}
-                                                {isSelected && (
-                                                    <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 mt-1">
-                                                        {isRtl ? 'مُحددة ومتبوعة ✓' : 'Tracked ✓'}
-                                                    </span>
-                                                )}
+                        {/* Interactive List (Buses or Students based on tab) */}
+                        <div className="flex-1 overflow-y-auto max-h-64 sm:max-h-72 p-2 space-y-1.5 divide-y divide-slate-100/50 dark:divide-white/5">
+                            {drawerTab === 'buses' ? (
+                                filteredBuses.length === 0 ? (
+                                    <div className="py-8 text-center text-slate-400 text-xs">
+                                        <BusIcon className="w-8 h-8 mx-auto mb-2 opacity-30 text-slate-400" />
+                                        <p className="font-bold">{isRtl ? 'لا توجد حافلات مطابقة للفلترة' : 'No matching buses found'}</p>
+                                        <button
+                                            onClick={handleResetFilters}
+                                            className="mt-2 text-[11px] text-blue-500 font-bold hover:underline"
+                                        >
+                                            {isRtl ? 'إعادة تعيين الفلاتر' : 'Reset filters'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    filteredBuses.map(bus => {
+                                        const isSelected = selectedBusId === bus.id;
+                                        const isMoving = Boolean(bus.is_moving || (bus.speed_kmh && bus.speed_kmh >= 3.0));
+                                        return (
+                                            <div
+                                                key={`drawer-bus-${bus.id}`}
+                                                onClick={() => {
+                                                    handleSelectBus(isSelected ? 'all' : bus.id);
+                                                }}
+                                                className={`p-2.5 rounded-2xl cursor-pointer transition-all flex items-center justify-between gap-2.5 ${
+                                                    isSelected
+                                                        ? 'bg-blue-50 dark:bg-blue-950/60 border border-blue-500/40 shadow-sm ring-1 ring-blue-500/20'
+                                                        : 'hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                                                        isMoving 
+                                                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' 
+                                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                                    }`}>
+                                                        <BusIcon className="w-4 h-4" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                                                                {isRtl ? `حافلة ${bus.bus_number}` : `Bus ${bus.bus_number}`}
+                                                            </span>
+                                                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold">
+                                                                {bus.plate_number}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                                                            {bus.school?.name || (bus.driver?.name ? (isRtl ? `السائق: ${bus.driver.name}` : `Driver: ${bus.driver.name}`) : (isRtl ? 'بدون سائق' : 'No driver'))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col items-end shrink-0 text-right">
+                                                    {isMoving ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                            <span>{Math.round(bus.speed_kmh || 0)} {isRtl ? 'كم/س' : 'km/h'}</span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                                            <span>{isRtl ? 'متوقفة' : 'Stopped'}</span>
+                                                        </span>
+                                                    )}
+                                                    {isSelected && (
+                                                        <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 mt-1">
+                                                            {isRtl ? 'مُحددة ومتبوعة ✓' : 'Tracked ✓'}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    );
-                                })
+                                        );
+                                    })
+                                )
+                            ) : (
+                                filteredStudents.length === 0 ? (
+                                    <div className="py-8 text-center text-slate-400 text-xs">
+                                        <Backpack className="w-8 h-8 mx-auto mb-2 opacity-30 text-slate-400" />
+                                        <p className="font-bold">{isRtl ? 'لا يوجد طلاب مطابقين للبحث' : 'No matching students found'}</p>
+                                    </div>
+                                ) : (
+                                    filteredStudents.map(({ student, bus, stopNumber }) => {
+                                        const isSelected = selectedStudent?.student.student_id === student.student_id;
+                                        return (
+                                            <div
+                                                key={`drawer-st-${student.attendance_id}-${student.student_id}`}
+                                                onClick={() => {
+                                                    const lat = parseCoord(student.lat);
+                                                    const lng = parseCoord(student.lng);
+                                                    if (lat !== undefined && lng !== undefined && map) {
+                                                        map.panTo({ lat, lng });
+                                                        map.setZoom(17);
+                                                    } else if (map) {
+                                                        const bLat = parseCoord(bus.current_latitude ?? bus.latitude);
+                                                        const bLng = parseCoord(bus.current_longitude ?? bus.longitude);
+                                                        if (bLat !== undefined && bLng !== undefined) {
+                                                            map.panTo({ lat: bLat, lng: bLng });
+                                                            map.setZoom(16);
+                                                        }
+                                                    }
+                                                    setSelectedStudent({ student, bus, stopNumber: stopNumber || 1 });
+                                                    setSelectedSchoolModal(null);
+                                                }}
+                                                className={`p-2.5 rounded-2xl cursor-pointer transition-all flex items-center justify-between gap-2.5 ${
+                                                    isSelected
+                                                        ? 'bg-blue-50 dark:bg-blue-950/60 border border-blue-500/40 shadow-sm ring-1 ring-blue-500/20'
+                                                        : 'hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <StudentAvatar
+                                                        photoUrl={student.photo_url}
+                                                        name={student.name}
+                                                        gender={student.gender}
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            if (student.photo_url) {
+                                                                setPreviewPhoto({
+                                                                    url: student.photo_url,
+                                                                    title: student.name,
+                                                                    subtitle: student.student_code ? `#${student.student_code}` : undefined
+                                                                });
+                                                            }
+                                                        }}
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-1.5">
+                                                            {stopNumber && (
+                                                                <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-slate-900 text-white font-mono shrink-0">
+                                                                    #{stopNumber}
+                                                                </span>
+                                                            )}
+                                                            <h5 className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                                                                {student.name}
+                                                            </h5>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 truncate mt-0.5">
+                                                            <span>{isRtl ? `حافلة ${bus.bus_number}` : `Bus ${bus.bus_number}`}</span>
+                                                            {student.classroom && <span>• {student.classroom}</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col items-end shrink-0 text-right">
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                                        student.status === 'present' || student.status === 'boarded'
+                                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                                            : student.status === 'dropped'
+                                                            ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                                                            : student.status === 'absent'
+                                                            ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                                                            : student.status === 'late'
+                                                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                                                            : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
+                                                    }`}>
+                                                        {student.status === 'present' || student.status === 'boarded' ? (isRtl ? 'صعد' : 'Boarded') :
+                                                         student.status === 'dropped' ? (isRtl ? 'تم التوصيل' : 'Dropped') :
+                                                         student.status === 'absent' ? (isRtl ? 'غائب' : 'Absent') :
+                                                         student.status === 'late' ? (isRtl ? 'في الانتظار' : 'Waiting') : (isRtl ? 'مجدول' : 'Scheduled')}
+                                                    </span>
+                                                    {isSelected && (
+                                                        <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 mt-1">
+                                                            {isRtl ? 'محدد ✓' : 'Selected ✓'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )
                             )}
                         </div>
 
@@ -1325,6 +1590,316 @@ export default function LiveTrackingMap({
                             </button>
                         </div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* --- SELECTED STUDENT FLOATING DETAIL CARD --- */}
+            <AnimatePresence>
+                {selectedStudent && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 30, scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                        className={`absolute bottom-6 ${isRtl ? 'right-4 md:right-8' : 'left-4 md:left-8'} z-[47] w-80 sm:w-96 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl p-4 sm:p-5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] border border-slate-200/90 dark:border-white/10 pointer-events-auto`}
+                    >
+                        <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-white/10 pb-3 mb-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <StudentAvatar
+                                    photoUrl={selectedStudent.student.photo_url}
+                                    name={selectedStudent.student.name}
+                                    gender={selectedStudent.student.gender}
+                                    size="lg"
+                                    onClick={() => {
+                                        if (selectedStudent.student.photo_url) {
+                                            setPreviewPhoto({
+                                                url: selectedStudent.student.photo_url,
+                                                title: selectedStudent.student.name,
+                                                subtitle: selectedStudent.student.student_code ? `#${selectedStudent.student.student_code}` : undefined
+                                            });
+                                        }
+                                    }}
+                                />
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                        <span className="px-2 py-0.5 rounded-md bg-slate-900 text-white font-mono text-[10px] font-black shrink-0">
+                                            #{selectedStudent.stopNumber}
+                                        </span>
+                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 ${
+                                            selectedStudent.student.status === 'present' || selectedStudent.student.status === 'boarded'
+                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                                : selectedStudent.student.status === 'dropped'
+                                                ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                                                : selectedStudent.student.status === 'absent'
+                                                ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                                                : selectedStudent.student.status === 'late'
+                                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                                                : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
+                                        }`}>
+                                            {selectedStudent.student.status === 'present' || selectedStudent.student.status === 'boarded' ? (isRtl ? 'صعد للحافلة' : 'Boarded') :
+                                             selectedStudent.student.status === 'dropped' ? (isRtl ? 'تم التوصيل' : 'Dropped') :
+                                             selectedStudent.student.status === 'absent' ? (isRtl ? 'غائب' : 'Absent') :
+                                             selectedStudent.student.status === 'late' ? (isRtl ? 'في الانتظار' : 'Waiting') : (isRtl ? 'مجدول' : 'Scheduled')}
+                                        </span>
+                                    </div>
+                                    <h3 className="font-black text-sm text-slate-900 dark:text-white leading-tight truncate">
+                                        {selectedStudent.student.name}
+                                    </h3>
+                                    <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                        {selectedStudent.student.classroom && <span>{selectedStudent.student.classroom}</span>}
+                                        {selectedStudent.student.student_code && <span className="font-mono">#{selectedStudent.student.student_code}</span>}
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedStudent(null)}
+                                className="p-1 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Info list */}
+                        <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300 mb-3">
+                            <div className="flex items-center justify-between p-1.5 px-2 rounded-xl bg-slate-50 dark:bg-slate-800/40">
+                                <span className="text-slate-400 text-[11px]">{isRtl ? 'الحافلة المخصصة:' : 'Assigned Bus:'}</span>
+                                <span className="font-bold text-slate-900 dark:text-white">
+                                    {isRtl ? `حافلة ${selectedStudent.bus.bus_number}` : `Bus ${selectedStudent.bus.bus_number}`} ({selectedStudent.bus.plate_number})
+                                </span>
+                            </div>
+
+                            {selectedStudent.student.guardian_name && (
+                                <div className="flex items-center justify-between p-1.5 px-2 rounded-xl bg-slate-50 dark:bg-slate-800/40">
+                                    <span className="text-slate-400 text-[11px]">{isRtl ? 'ولي الأمر:' : 'Guardian:'}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-slate-900 dark:text-white truncate max-w-[110px]">
+                                            {selectedStudent.student.guardian_name}
+                                        </span>
+                                        {selectedStudent.student.guardian_phone && (
+                                            <div className="flex items-center gap-1">
+                                                <a
+                                                    href={`tel:${selectedStudent.student.guardian_phone}`}
+                                                    title={isRtl ? 'اتصال هاتفياً' : 'Call'}
+                                                    className="p-1 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-100"
+                                                >
+                                                    <PhoneCall className="w-3.5 h-3.5" />
+                                                </a>
+                                                <a
+                                                    href={`https://wa.me/${selectedStudent.student.guardian_phone.replace(/[^0-9]/g, '')}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    title={isRtl ? 'محادثة واتساب' : 'WhatsApp'}
+                                                    className="p-1 rounded-lg bg-green-50 text-green-600 dark:bg-green-950/60 dark:text-green-300 hover:bg-green-100"
+                                                >
+                                                    <MessageCircle className="w-3.5 h-3.5" />
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedStudent.student.address && (
+                                <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 p-1">
+                                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <span className="truncate">{selectedStudent.student.address}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Actions: Download Photo + Center Map */}
+                        <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-white/10">
+                            {selectedStudent.student.photo_url ? (
+                                <a
+                                    href={selectedStudent.student.photo_url}
+                                    download={`student_${selectedStudent.student.student_code || selectedStudent.student.student_id}.jpg`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 py-2 px-3 rounded-2xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                                >
+                                    <Download className="w-3.5 h-3.5" />
+                                    <span>{isRtl ? 'تحميل الصورة' : 'Download Photo'}</span>
+                                </a>
+                            ) : null}
+                            <button
+                                onClick={() => {
+                                    if (map && selectedStudent.student.lat && selectedStudent.student.lng) {
+                                        map.panTo({ 
+                                            lat: Number(selectedStudent.student.lat), 
+                                            lng: Number(selectedStudent.student.lng) 
+                                        });
+                                        map.setZoom(17);
+                                    }
+                                }}
+                                className="flex-1 py-2 px-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 transition-all"
+                            >
+                                <Crosshair className="w-3.5 h-3.5" />
+                                <span>{isRtl ? 'تركيز المحطة' : 'Focus Stop'}</span>
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* --- SELECTED SCHOOL MODAL / CARD --- */}
+            <AnimatePresence>
+                {selectedSchoolModal && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 30, scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                        className={`absolute bottom-6 ${isRtl ? 'right-4 md:right-8' : 'left-4 md:left-8'} z-[47] w-80 sm:w-96 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl p-4 sm:p-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-200/90 dark:border-white/10 pointer-events-auto`}
+                    >
+                        <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-white/10 pb-3 mb-3">
+                            <div className="flex items-center gap-3">
+                                {selectedSchoolModal.logo_url ? (
+                                    <div 
+                                        onClick={() => setPreviewPhoto({
+                                            url: selectedSchoolModal.logo_url!,
+                                            title: selectedSchoolModal.name,
+                                            subtitle: isRtl ? 'شعار / صورة المدرسة' : 'School Logo / Campus Image'
+                                        })}
+                                        className="relative group w-12 h-12 rounded-2xl overflow-hidden shrink-0 border-2 border-amber-500/40 shadow-md cursor-pointer bg-white"
+                                        title={isRtl ? 'انقر لتكبير الشعار' : 'Click to enlarge'}
+                                    >
+                                        <img 
+                                            src={selectedSchoolModal.logo_url} 
+                                            alt={selectedSchoolModal.name}
+                                            loading="lazy"
+                                            className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform" 
+                                        />
+                                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                            <Maximize2 className="w-3.5 h-3.5" />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center border-2 border-amber-500/30 shrink-0">
+                                        <Building2 className="w-6 h-6" />
+                                    </div>
+                                )}
+                                <div>
+                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                        <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[10px] font-black uppercase tracking-wider">
+                                            {isRtl ? 'منشأة تعليمية' : 'School Campus'}
+                                        </span>
+                                    </div>
+                                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">
+                                        {selectedSchoolModal.name}
+                                    </h3>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedSchoolModal(null)}
+                                className="p-1 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {selectedSchoolModal.address && (
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-3">
+                                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span className="truncate">{selectedSchoolModal.address}</span>
+                            </div>
+                        )}
+
+                        {/* Quick Actions */}
+                        <div className="flex items-center gap-2 pt-1">
+                            {selectedSchoolModal.logo_url && (
+                                <a
+                                    href={selectedSchoolModal.logo_url}
+                                    download={`${selectedSchoolModal.name.replace(/\s+/g, '_')}_logo.jpg`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 py-2 px-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                                >
+                                    <Download className="w-3.5 h-3.5" />
+                                    <span>{isRtl ? 'تحميل الشعار' : 'Download Logo'}</span>
+                                </a>
+                            )}
+                            <button
+                                onClick={() => {
+                                    if (selectedSchoolModal.id) {
+                                        handleSelectSchool(selectedSchoolModal.id);
+                                    }
+                                    if (map) {
+                                        map.panTo({ lat: selectedSchoolModal.lat, lng: selectedSchoolModal.lng });
+                                        map.setZoom(16);
+                                    }
+                                }}
+                                className="flex-1 py-2 px-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 transition-all"
+                            >
+                                <Crosshair className="w-3.5 h-3.5" />
+                                <span>{isRtl ? 'تركيز وتصفية الحافلات' : 'Focus & Filter'}</span>
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* --- FULLSCREEN PHOTO PREVIEW LIGHTBOX MODAL --- */}
+            <AnimatePresence>
+                {previewPhoto && (
+                    <div 
+                        className="fixed inset-0 z-[9999999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md"
+                        onClick={() => setPreviewPhoto(null)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="relative max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col"
+                        >
+                            {/* Header */}
+                            <div className="p-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">
+                                        {previewPhoto.title}
+                                    </h3>
+                                    {previewPhoto.subtitle && (
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
+                                            {previewPhoto.subtitle}
+                                        </p>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => setPreviewPhoto(null)}
+                                    className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Photo Body */}
+                            <div className="p-6 flex items-center justify-center bg-slate-950/50 min-h-[220px]">
+                                <img 
+                                    src={previewPhoto.url} 
+                                    alt={previewPhoto.title}
+                                    className="max-h-[55vh] max-w-full object-contain rounded-2xl shadow-xl border border-white/10"
+                                />
+                            </div>
+
+                            {/* Footer with Download */}
+                            <div className="p-4 border-t border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between gap-3">
+                                <span className="text-xs text-slate-400">
+                                    {isRtl ? 'عرض مباشر للصورة' : 'Direct photo preview'}
+                                </span>
+                                <a
+                                    href={previewPhoto.url}
+                                    download={`${previewPhoto.title.replace(/\s+/g, '_')}.jpg`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-500/25 transition-all"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    <span>{isRtl ? 'تحميل الصورة' : 'Download Photo'}</span>
+                                </a>
+                            </div>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
 

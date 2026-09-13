@@ -16,6 +16,12 @@ interface StudentAttendance {
   student_id: number;
   name: string;
   student_code?: string;
+  gender?: "male" | "female" | string | null;
+  photo_url?: string | null;
+  grade?: string | null;
+  classroom?: string | null;
+  guardian_name?: string | null;
+  guardian_phone?: string | null;
   status: "present" | "boarded" | "dropped" | "absent" | "late" | "pending" | string;
   check_in_time?: string | null;
   check_out_time?: string | null;
@@ -32,6 +38,8 @@ interface Waypoint {
   name?: string;
   status?: string;
   is_school?: boolean;
+  photo_url?: string | null;
+  gender?: string | null;
 }
 
 interface ActiveTrip {
@@ -71,10 +79,19 @@ interface Stats {
   students_on_board?: number;
 }
 
+interface SchoolLocation {
+  id?: number;
+  lat: number;
+  lng: number;
+  name?: string;
+  logo_url?: string | null;
+  address?: string | null;
+}
+
 interface Props {
   auth: any;
   buses: Bus[];
-  schoolLocation: { lat: number; lng: number; name?: string };
+  schoolLocation: SchoolLocation;
   stats?: Stats;
 }
 
@@ -94,6 +111,9 @@ export default function LiveTracking({ auth, buses, schoolLocation, stats }: Pro
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const lastEtagRef = useRef<string>("");
+  const isPollingBusyRef = useRef<boolean>(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -121,15 +141,13 @@ export default function LiveTracking({ auth, buses, schoolLocation, stats }: Pro
         if (!isMountedRef.current) return;
         setLiveBuses((prev) =>
           prev.map((b) => {
-            if (b.id === e.bus_id) {
+            if (b.id === bus.id) {
               return {
                 ...b,
-                current_latitude: e.latitude,
-                current_longitude: e.longitude,
-                latitude: e.latitude,
-                longitude: e.longitude,
-                trip_status: e.trip_status ?? b.trip_status,
-                students_on_board: e.students_on_board ?? b.students_on_board,
+                current_latitude: e.latitude ?? b.current_latitude,
+                current_longitude: e.longitude ?? b.current_longitude,
+                latitude: e.latitude ?? b.latitude,
+                longitude: e.longitude ?? b.longitude,
                 speed_kmh: e.speed_kmh ?? b.speed_kmh,
                 heading: e.heading ?? b.heading,
               };
@@ -149,19 +167,44 @@ export default function LiveTracking({ auth, buses, schoolLocation, stats }: Pro
     };
   }, [liveBuses?.length]);
 
-  // 2. High-Performance Hybrid Auto-Polling with Non-Blocking AbortController
+  // 2. High-Performance Smart Auto-Polling with ETag Caching, Visibility Awareness & WebSocket Coexistence
   useEffect(() => {
     const pollTracking = async () => {
+      // Skip if browser tab is hidden or backgrounded
+      if (typeof document !== "undefined" && document.hidden) {
+        return;
+      }
+      // Prevent overlapping concurrent polling
+      if (isPollingBusyRef.current) {
+        return;
+      }
+
       try {
+        isPollingBusyRef.current = true;
         if (abortControllerRef.current) {
           abortControllerRef.current.abort();
         }
         abortControllerRef.current = new AbortController();
 
+        const headers: Record<string, string> = { "X-Requested-With": "XMLHttpRequest" };
+        if (lastEtagRef.current) {
+          headers["If-None-Match"] = lastEtagRef.current;
+        }
+
         const response = await axios.get("/school/buses/tracking/api", {
           signal: abortControllerRef.current.signal,
-          headers: { "X-Requested-With": "XMLHttpRequest" },
+          headers,
         });
+
+        if (response.data?.etag) {
+          lastEtagRef.current = response.data.etag;
+        }
+
+        // If data hasn't changed on server, refresh sync time without re-rendering DOM
+        if (response.data?.not_modified) {
+          setLastSyncTime(new Date());
+          return;
+        }
 
         if (isMountedRef.current && response.data?.buses) {
           setLiveBuses(response.data.buses);
@@ -175,11 +218,27 @@ export default function LiveTracking({ auth, buses, schoolLocation, stats }: Pro
           return;
         }
         console.debug("Live tracking poll error:", err);
+      } finally {
+        isPollingBusyRef.current = false;
       }
     };
 
-    const intervalId = setInterval(pollTracking, 3000);
-    return () => clearInterval(intervalId);
+    // Polling rate: relaxed 8s when WebSocket is active, or 5s backup
+    const pollInterval = window.Echo ? 8000 : 5000;
+    const intervalId = setInterval(pollTracking, pollInterval);
+
+    // Trigger instant refresh as soon as user returns to the tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        pollTracking();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   const handleManualSync = async () => {
@@ -192,7 +251,12 @@ export default function LiveTracking({ auth, buses, schoolLocation, stats }: Pro
 
       const response = await axios.get("/school/buses/tracking/api", {
         signal: abortControllerRef.current.signal,
+        headers: { "X-Requested-With": "XMLHttpRequest" },
       });
+
+      if (response.data?.etag) {
+        lastEtagRef.current = response.data.etag;
+      }
 
       if (response.data?.buses) {
         setLiveBuses(response.data.buses);

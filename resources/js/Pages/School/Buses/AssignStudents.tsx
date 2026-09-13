@@ -32,6 +32,7 @@ import {
     Maximize2
 } from "lucide-react";
 import { GoogleMap, Marker, Polyline, useJsApiLoader, InfoWindow } from "@react-google-maps/api";
+import { createSchoolMarkerSvg } from "@/Components/MapMarkerIcons";
 
 // ─── Print CSS ───────────────────────────────────────────────────
 const PRINT_STYLES = `
@@ -304,22 +305,8 @@ const createNumberedMarkerIcon = (orderNumber: number, isMorning: boolean, isSel
   };
 };
 
-const createSchoolMarkerIcon = () => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="52" viewBox="0 0 44 52">
-    <defs>
-      <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
-        <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.35"/>
-      </filter>
-    </defs>
-    <path d="M22 0 C9.8 0 0 9.8 0 22 C0 35 22 52 22 52 C22 52 44 35 44 22 C44 9.8 34.2 0 22 0 Z" fill="#0f2044" stroke="#f5b800" stroke-width="3" filter="url(#sh)"/>
-    <circle cx="22" cy="21" r="14" fill="#ffffff"/>
-    <text x="22" y="27" font-size="15" text-anchor="middle">🏫</text>
-  </svg>`;
-  return {
-    url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
-    scaledSize: typeof window !== "undefined" && window.google ? new window.google.maps.Size(44, 52) : { width: 44, height: 52 } as any,
-    anchor: typeof window !== "undefined" && window.google ? new window.google.maps.Point(22, 52) : { x: 22, y: 52 } as any,
-  };
+const createSchoolMarkerIcon = (name: string = 'المدرسة', isRtl: boolean = true) => {
+  return createSchoolMarkerSvg(name, false, false, isRtl);
 };
 
 // ─── Stop Order Management Modal ─────────────────────────────────────────────
@@ -348,6 +335,7 @@ function StopOrderModal({
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [mapType, setMapType] = useState<"roadmap" | "hybrid">("roadmap");
   const [activeStudentId, setActiveStudentId] = useState<number | null>(null);
+  const [isSchoolHovered, setIsSchoolHovered] = useState(false);
 
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
@@ -804,9 +792,11 @@ function StopOrderModal({
                   {/* School Marker */}
                   <Marker
                     position={schoolCoord}
-                    icon={createSchoolMarkerIcon()}
+                    icon={createSchoolMarkerSvg(school?.name || (isRtl ? "المدرسة" : "School"), false, isSchoolHovered, isRtl, 0)}
                     title={school?.name || (isRtl ? "المدرسة" : "School")}
-                    zIndex={999}
+                    zIndex={isSchoolHovered ? 1200 : 999}
+                    onMouseOver={() => setIsSchoolHovered(true)}
+                    onMouseOut={() => setIsSchoolHovered(false)}
                   />
 
                   {/* Student Markers */}

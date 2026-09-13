@@ -209,13 +209,15 @@ class AdminDashboardController extends Controller
         ];
 
         // 4. بيانات الفلترة ومعالم المدارس على الخريطة
-        $filterSchools = School::select('id', 'name', 'latitude', 'longitude')
+        $filterSchools = School::select('id', 'name', 'latitude', 'longitude', 'logo', 'address')
             ->get()
             ->map(fn ($s) => [
                 'id' => $s->id,
                 'name' => $s->name,
                 'lat' => $s->latitude ? (float) $s->latitude : null,
                 'lng' => $s->longitude ? (float) $s->longitude : null,
+                'logo_url' => $s->logo_url,
+                'address' => $s->address,
             ]);
 
         $filterBuses = Bus::where('status', 'active')
@@ -257,9 +259,12 @@ class AdminDashboardController extends Controller
     /**
      * API for Admin Real-time Tracking Data with School and Bus filtering.
      */
+    /**
+     * API for Admin Real-time Tracking Data with School and Bus filtering.
+     */
     public function trackingApi(Request $request)
     {
-        $query = Bus::with(['school:id,name,latitude,longitude', 'driver.user:id,first_name_ar,last_name_ar,first_name_en,last_name_en,phone', 'route:id,name']);
+        $query = Bus::with(['school:id,name,latitude,longitude,logo,address', 'driver.user:id,first_name_ar,last_name_ar,first_name_en,last_name_en,phone', 'route:id,name']);
 
         if ($request->filled('school_id') && $request->school_id !== 'all' && $request->school_id !== '') {
             $query->where('school_id', $request->school_id);
@@ -271,23 +276,53 @@ class AdminDashboardController extends Controller
 
         $buses = $query->get()->map(fn ($bus) => $this->formatLiveTrackingBus($bus));
 
-        $studentsQuery = Student::where('is_active', true);
-        if ($request->filled('school_id') && $request->school_id !== 'all' && $request->school_id !== '') {
-            $studentsQuery->where('school_id', $request->school_id);
-        }
+        $schoolFilter = $request->filled('school_id') && $request->school_id !== 'all' && $request->school_id !== '' ? (int) $request->school_id : null;
+        $totalStudents = cache()->remember('admin_tracking_students_count_'.($schoolFilter ?? 'all'), 30, function () use ($schoolFilter) {
+            $q = Student::where('is_active', true);
+            if ($schoolFilter) {
+                $q->where('school_id', $schoolFilter);
+            }
+
+            return $q->count();
+        });
 
         $stats = [
             'total_buses' => $buses->count(),
             'active_buses' => $buses->where('status', 'active')->count(),
             'moving_buses' => $buses->filter(fn ($b) => ($b['speed_kmh'] ?? 0) > 0 && ($b['is_moving'] ?? false))->count(),
-            'total_students' => $studentsQuery->count(),
+            'total_students' => $totalStudents,
             'students_on_board' => $buses->sum('students_on_board'),
         ];
+
+        // Lightweight fingerprint of dynamic telemetry
+        $telemetryFingerprint = md5(json_encode([
+            $buses->map(fn ($b) => [
+                $b['id'],
+                $b['latitude'],
+                $b['longitude'],
+                $b['speed_kmh'],
+                $b['heading'],
+                $b['is_moving'],
+                $b['status'],
+                $b['students_on_board'],
+            ]),
+            $stats,
+        ]));
+
+        if ($request->header('If-None-Match') === $telemetryFingerprint) {
+            return response()->json([
+                'success' => true,
+                'not_modified' => true,
+                'etag' => $telemetryFingerprint,
+                'timestamp' => now()->toISOString(),
+            ]);
+        }
 
         return response()->json([
             'success' => true,
             'buses' => $buses,
             'stats' => $stats,
+            'etag' => $telemetryFingerprint,
             'timestamp' => now()->toISOString(),
         ]);
     }
@@ -306,19 +341,73 @@ class AdminDashboardController extends Controller
         $isMoving = ($speed > 0.0) && $isPingingRecently;
         $heading = (float) cache()->get('bus_heading_'.$bus->id, 0);
 
-        // Retrieve trip currently in progress for today
+        $schoolLat = $bus->school && $bus->school->latitude ? (float) $bus->school->latitude : 13.9407;
+        $schoolLng = $bus->school && $bus->school->longitude ? (float) $bus->school->longitude : 43.7873;
+
+        // Cache heavy trip queries for 10 seconds
+        $tripCacheKey = "admin_live_trip_bus_{$bus->id}_".today()->toDateString();
+        $tripData = cache()->remember($tripCacheKey, 10, function () use ($bus, $schoolLat, $schoolLng) {
+            return $this->resolveAdminBusTripData($bus, $schoolLat, $schoolLng);
+        });
+
+        // Fallback coordinates: if bus has null coordinates, default to school location
+        $busLat = $bus->latitude ? (float) $bus->latitude : $schoolLat;
+        $busLng = $bus->longitude ? (float) $bus->longitude : $schoolLng;
+
+        return [
+            'id' => $bus->id,
+            'bus_number' => $bus->bus_number,
+            'plate_number' => $bus->plate_number,
+            'capacity' => $bus->capacity,
+            'status' => $bus->status,
+            'latitude' => $busLat,
+            'longitude' => $busLng,
+            'current_latitude' => $busLat,
+            'current_longitude' => $busLng,
+            'trip_status' => $tripData['hasActiveTrip'] ? 'in_progress' : ($isMoving ? 'on_route' : 'idle'),
+            'speed_kmh' => $speed,
+            'is_moving' => $isMoving,
+            'heading' => $heading,
+            'school_id' => $bus->school_id,
+            'school' => $bus->school ? [
+                'id' => $bus->school->id,
+                'name' => $bus->school->name,
+                'lat' => $bus->school->latitude ? (float) $bus->school->latitude : null,
+                'lng' => $bus->school->longitude ? (float) $bus->school->longitude : null,
+                'logo_url' => $bus->school->logo_url,
+                'address' => $bus->school->address,
+            ] : null,
+            'driver' => $bus->driver?->user ? [
+                'id' => $bus->driver->user->id,
+                'name' => trim(($bus->driver->user->first_name_ar ?? '').' '.($bus->driver->user->last_name_ar ?? '')) ?: ($bus->driver->user->first_name_en ?? 'سائق'),
+                'phone' => $bus->driver->user->phone,
+            ] : null,
+            'route' => $bus->route ? [
+                'id' => $bus->route->id,
+                'name' => $bus->route->name,
+            ] : null,
+            'students_count' => $tripData['assignedStudentsCount'],
+            'students_on_board' => $tripData['studentsOnBoard'],
+            'active_trip' => $tripData['activeTrip'],
+            'last_update' => $bus->last_location_update ? $bus->last_location_update->diffForHumans() : null,
+            'last_update_seconds' => $secondsAgo,
+        ];
+    }
+
+    /**
+     * Resolve heavy active trip and roster data for admin tracking (cached per bus).
+     */
+    protected function resolveAdminBusTripData(Bus $bus, float $schoolLat, float $schoolLng): array
+    {
         $activeTrip = $bus->trips()
             ->whereDate('trip_date', today())
             ->where('status', 'in_progress')
-            ->with(['attendances.student', 'route'])
+            ->with(['attendances.student.currentEnrollment.classroom.grade', 'attendances.student.guardians', 'route'])
             ->latest('id')
             ->first();
 
         $studentsData = [];
         $waypoints = [];
-
-        $schoolLat = $bus->school && $bus->school->latitude ? (float) $bus->school->latitude : 13.9407;
-        $schoolLng = $bus->school && $bus->school->longitude ? (float) $bus->school->longitude : 43.7873;
 
         if ($activeTrip) {
             $isForth = ($activeTrip->type === 'forth');
@@ -336,11 +425,20 @@ class AdminDashboardController extends Controller
                     ? ($student->forth_longitude ?? $student->longitude)
                     : ($student->back_longitude ?? $student->longitude);
 
+                $guardian = $student->guardians?->first();
+                $guardianName = $guardian ? trim(($guardian->first_name_ar ?? '').' '.($guardian->last_name_ar ?? '')) ?: $guardian->name : null;
+
                 $studentItem = [
                     'attendance_id' => $att->id,
                     'student_id' => $student->id,
                     'name' => trim(($student->first_name_ar ?? '').' '.($student->last_name_ar ?? '')) ?: ($student->first_name_en ?? 'طالب'),
                     'student_code' => $student->student_code,
+                    'gender' => $student->gender,
+                    'photo_url' => $student->photo_url,
+                    'classroom' => $student->currentEnrollment?->classroom?->name,
+                    'grade' => $student->currentEnrollment?->classroom?->grade?->name,
+                    'guardian_name' => $guardianName,
+                    'guardian_phone' => $guardian?->phone,
                     'status' => $att->status,
                     'check_in_time' => $att->check_in_time?->format('H:i'),
                     'check_out_time' => $att->check_out_time?->format('H:i'),
@@ -359,6 +457,8 @@ class AdminDashboardController extends Controller
                         'student_id' => $student->id,
                         'name' => $studentItem['name'],
                         'status' => $att->status,
+                        'photo_url' => $student->photo_url,
+                        'gender' => $student->gender,
                     ];
                 }
             }
@@ -387,51 +487,19 @@ class AdminDashboardController extends Controller
             })
             ->count();
 
-        // Fallback coordinates: if bus has null coordinates, default to school location
-        $busLat = $bus->latitude ? (float) $bus->latitude : $schoolLat;
-        $busLng = $bus->longitude ? (float) $bus->longitude : $schoolLng;
+        $studentsOnBoard = $activeTrip ? $activeTrip->attendances->whereIn('status', ['boarded', 'present'])->count() : 0;
 
         return [
-            'id' => $bus->id,
-            'bus_number' => $bus->bus_number,
-            'plate_number' => $bus->plate_number,
-            'capacity' => $bus->capacity,
-            'status' => $bus->status,
-            'latitude' => $busLat,
-            'longitude' => $busLng,
-            'current_latitude' => $busLat,
-            'current_longitude' => $busLng,
-            'trip_status' => $activeTrip ? 'in_progress' : ($isMoving ? 'on_route' : 'idle'),
-            'speed_kmh' => $speed,
-            'is_moving' => $isMoving,
-            'heading' => $heading,
-            'school_id' => $bus->school_id,
-            'school' => $bus->school ? [
-                'id' => $bus->school->id,
-                'name' => $bus->school->name,
-                'lat' => $bus->school->latitude ? (float) $bus->school->latitude : null,
-                'lng' => $bus->school->longitude ? (float) $bus->school->longitude : null,
-            ] : null,
-            'driver' => $bus->driver?->user ? [
-                'id' => $bus->driver->user->id,
-                'name' => trim(($bus->driver->user->first_name_ar ?? '').' '.($bus->driver->user->last_name_ar ?? '')) ?: ($bus->driver->user->first_name_en ?? 'سائق'),
-                'phone' => $bus->driver->user->phone,
-            ] : null,
-            'route' => $bus->route ? [
-                'id' => $bus->route->id,
-                'name' => $bus->route->name,
-            ] : null,
-            'students_count' => $assignedStudentsCount,
-            'students_on_board' => $activeTrip ? $activeTrip->attendances->whereIn('status', ['boarded', 'present'])->count() : 0,
-            'active_trip' => $activeTrip ? [
+            'hasActiveTrip' => (bool) $activeTrip,
+            'assignedStudentsCount' => $assignedStudentsCount,
+            'studentsOnBoard' => $studentsOnBoard,
+            'activeTrip' => $activeTrip ? [
                 'id' => $activeTrip->id,
                 'type' => $activeTrip->type,
                 'status' => $activeTrip->status,
                 'students' => $studentsData,
                 'waypoints' => $waypoints,
             ] : null,
-            'last_update' => $bus->last_location_update ? $bus->last_location_update->diffForHumans() : null,
-            'last_update_seconds' => $secondsAgo,
         ];
     }
 }

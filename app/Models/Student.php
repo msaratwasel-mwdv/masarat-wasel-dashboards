@@ -91,7 +91,23 @@ class Student extends Model
      *
      * @var array
      */
-    protected $appends = ['full_name', 'full_name_en'];
+    protected $appends = ['full_name', 'full_name_en', 'photo_url'];
+
+    /**
+     * Get the student's photo URL.
+     */
+    public function getPhotoUrlAttribute(): ?string
+    {
+        if (! $this->image) {
+            return null;
+        }
+
+        if (str_starts_with($this->image, 'http://') || str_starts_with($this->image, 'https://')) {
+            return $this->image;
+        }
+
+        return \Illuminate\Support\Facades\Storage::url($this->image);
+    }
 
     /**
      * Get the student's full name (Arabic preferred).

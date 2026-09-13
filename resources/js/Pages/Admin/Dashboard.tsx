@@ -46,7 +46,7 @@ interface DashboardProps {
     total_students: number;
     students_on_board?: number;
   };
-  filterSchools: Array<{ id: number; name: string; lat?: number | null; lng?: number | null }>;
+  filterSchools: Array<{ id: number; name: string; lat?: number | null; lng?: number | null; logo_url?: string | null; address?: string | null }>;
   filterBuses?: Array<{ id: number; bus_number: string; plate_number: string; school_id?: number }>;
   tripsTrend: Array<{ date: string; count: number }>;
   fleetDistribution: Array<{ name: string; value: number; color: string }>;
@@ -125,6 +125,8 @@ export default function Dashboard({
   const [isFullscreenTracking, setIsFullscreenTracking] = useState(false);
   const isMountedRef = useRef<boolean>(true);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const lastEtagRef = useRef<string>("");
+  const isPollingBusyRef = useRef<boolean>(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -180,21 +182,46 @@ export default function Dashboard({
     };
   }, [buses?.length]);
 
-  // 2. Hybrid Background Polling with AbortController
+  // 2. High-Performance Smart Auto-Polling with ETag Caching, Visibility Awareness & WebSocket Coexistence
   useEffect(() => {
     if (!isTrackingEnabled) return;
 
     const pollTracking = async () => {
+      // Skip if browser tab is hidden
+      if (typeof document !== "undefined" && document.hidden) {
+        return;
+      }
+      // Prevent overlapping concurrent polling
+      if (isPollingBusyRef.current) {
+        return;
+      }
+
       try {
+        isPollingBusyRef.current = true;
         if (abortControllerRef.current) {
           abortControllerRef.current.abort();
         }
         abortControllerRef.current = new AbortController();
 
+        const headers: Record<string, string> = { "X-Requested-With": "XMLHttpRequest" };
+        if (lastEtagRef.current) {
+          headers["If-None-Match"] = lastEtagRef.current;
+        }
+
         const response = await axios.get("/admin/buses/tracking/api", {
           signal: abortControllerRef.current.signal,
-          headers: { "X-Requested-With": "XMLHttpRequest" },
+          headers,
         });
+
+        if (response.data?.etag) {
+          lastEtagRef.current = response.data.etag;
+        }
+
+        // If data hasn't changed on server, refresh sync time without re-rendering DOM
+        if (response.data?.not_modified) {
+          setLastSyncTime(new Date());
+          return;
+        }
 
         if (isMountedRef.current && response.data?.buses) {
           setBuses(response.data.buses);
@@ -207,17 +234,45 @@ export default function Dashboard({
         if (axios.isCancel(err) || err?.name === "CanceledError") {
           return;
         }
+        console.debug("Admin live tracking poll error:", err);
+      } finally {
+        isPollingBusyRef.current = false;
       }
     };
 
-    const intervalId = setInterval(pollTracking, 4000);
-    return () => clearInterval(intervalId);
+    const pollInterval = window.Echo ? 8000 : 5000;
+    const intervalId = setInterval(pollTracking, pollInterval);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        pollTracking();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [isTrackingEnabled]);
 
   const handleManualSync = async () => {
     setIsSyncing(true);
     try {
-      const response = await axios.get("/admin/buses/tracking/api");
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
+      const response = await axios.get("/admin/buses/tracking/api", {
+        signal: abortControllerRef.current.signal,
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      });
+
+      if (response.data?.etag) {
+        lastEtagRef.current = response.data.etag;
+      }
+
       if (response.data?.buses) {
         setBuses(response.data.buses);
         if (response.data.stats) {
